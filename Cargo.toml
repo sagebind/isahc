@@ -1,0 +1,8 @@
+[package]
+name = "chttp"
+version = "0.1.0"
+authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
+
+[dependencies]
+curl = "0.4"
+http = "0.1.1"
