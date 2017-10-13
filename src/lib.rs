@@ -3,6 +3,7 @@ extern crate http;
 
 pub mod client;
 pub mod transfer;
+pub mod transport;
 
 pub use client::Client;
 
@@ -23,4 +24,9 @@ pub enum Entity {
 
 pub fn get(uri: &str) -> Response {
     Client::new().get(uri)
+}
+
+
+pub enum Error {
+    TransportBusy,
 }
