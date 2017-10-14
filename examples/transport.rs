@@ -6,10 +6,10 @@ use std::io::Read;
 
 
 fn main() {
-    let request = Request::get("http://example.org").body(chttp::Entity::Empty).unwrap();
+    let request = Request::get("http://example.org").body(chttp::Body::Empty).unwrap();
 
     let mut transport = chttp::transport::Transport::new();
-    transport.begin(request);
+    transport.begin(request).unwrap();
 
     let mut body = String::new();
     transport.read_to_string(&mut body).unwrap();

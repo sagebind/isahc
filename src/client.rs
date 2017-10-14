@@ -16,12 +16,31 @@ impl Client {
         }
     }
 
-    pub fn get(&self, uri: &str) -> Response {
-        let request = http::Request::get(uri).body(::Entity::Empty).unwrap();
+    /// Sends a GET request.
+    pub fn get(&self, uri: &str) -> Result<Response, Error> {
+        let request = http::Request::get(uri).body(Body::Empty)?;
         self.send(request)
     }
 
-    pub fn send(&self, request: Request) -> Response {
+    /// Sends a POST request.
+    pub fn post<B: Into<Body>>(&self, uri: &str, body: B) -> Result<Response, Error> {
+        let request = http::Request::post(uri).body(body.into())?;
+        self.send(request)
+    }
+
+    /// Sends a PUT request.
+    pub fn put<B: Into<Body>>(&self, uri: &str, body: B) -> Result<Response, Error> {
+        let request = http::Request::put(uri).body(body.into())?;
+        self.send(request)
+    }
+
+    /// Sends a DELETE request.
+    pub fn delete(&self, uri: &str) -> Result<Response, Error> {
+        let request = http::Request::delete(uri).body(Body::Empty)?;
+        self.send(request)
+    }
+
+    pub fn send(&self, request: Request) -> Result<Response, Error> {
         let mut transport = self.pool.take()
             .unwrap_or_else(|| Transport::new());
 
@@ -33,7 +52,9 @@ impl Client {
             transport: Some(transport),
         };
 
-        response_builder.body(Entity::Stream(Box::new(stream))).unwrap()
+        response_builder
+            .body(Body::from_reader(stream))
+            .map_err(Into::into)
     }
 }
 

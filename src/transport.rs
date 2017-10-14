@@ -4,13 +4,15 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::io;
 use std::io::Read;
+use std::mem;
 use std::rc::Rc;
 use std::str;
 use std::str::FromStr;
 use std::time::Duration;
-use std::mem;
-use super::{Error, Entity, Request};
+use super::*;
 
+
+const WAIT_TIMEOUT_MS: u64 = 1000;
 
 /// A low-level reusable HTTP client with a single connection pool.
 ///
@@ -32,7 +34,7 @@ enum Handle {
 
 struct Data {
     /// Request body to be sent.
-    request_body: Entity,
+    request_body: Body,
     /// Builder for the response object.
     response: http::response::Builder,
     /// Indicates if the header has been read completely.
@@ -48,7 +50,7 @@ impl Transport {
     /// and recrreating them.
     pub fn new() -> Transport {
         let data = Rc::new(RefCell::new(Data {
-            request_body: Entity::Empty,
+            request_body: Body::default(),
             response: http::response::Builder::new(),
             header_complete: false,
             buffer: VecDeque::new(),
@@ -133,7 +135,9 @@ impl Transport {
     pub fn read_response(&mut self) -> Result<http::response::Builder, Error> {
         // Wait for the headers to be read.
         while !self.data.borrow().header_complete {
-            self.multi.perform()?;
+            if self.multi.perform()? > 0 {
+                self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS))?;
+            }
         }
 
         Ok(mem::replace(&mut self.data.borrow_mut().response, http::response::Builder::new()))
@@ -171,7 +175,7 @@ impl Read for Transport {
                 break;
             }
 
-            self.multi.wait(&mut [], Duration::from_secs(1)).unwrap();
+            self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS)).unwrap();
 
             match self.multi.perform() {
                 // No more transfers are active.
@@ -204,7 +208,6 @@ struct Collector {
 }
 
 impl curl::easy::Handler for Collector {
-    /// Called by curl when a response header line is read.
     fn header(&mut self, data: &[u8]) -> bool {
         let line = str::from_utf8(data).unwrap();
 
@@ -250,7 +253,13 @@ impl curl::easy::Handler for Collector {
         false
     }
 
-    /// Called by curl when a chunk of the response body is read.
+    fn read(&mut self, data: &mut [u8]) -> Result<usize, curl::easy::ReadError> {
+        self.data.borrow_mut()
+            .request_body
+            .read(data)
+            .map_err(|_| curl::easy::ReadError::Abort)
+    }
+
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
         self.data.borrow_mut().buffer.extend(data);
         Ok(data.len())
