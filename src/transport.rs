@@ -14,6 +14,33 @@ use super::*;
 
 const WAIT_TIMEOUT_MS: u64 = 1000;
 
+/// Sets various protocol and connection options for a transport.
+#[derive(Clone, Debug)]
+pub struct Options {
+    pub follow_redirects: bool,
+    pub max_redirects: Option<u32>,
+    pub preferred_http_version: Option<http::Version>,
+    pub timeout: Option<Duration>,
+    pub connect_timeout: Duration,
+    pub tcp_keepalive: Option<Duration>,
+    pub tcp_nodelay: bool,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+            follow_redirects: false,
+            max_redirects: None,
+            preferred_http_version: None,
+            timeout: None,
+            connect_timeout: Duration::from_secs(300),
+            tcp_keepalive: None,
+            tcp_nodelay: false,
+        }
+    }
+}
+
+
 /// A low-level reusable HTTP client with a single connection pool.
 ///
 /// Transports are stateful objects that can only perform one request at a time.
@@ -22,6 +49,8 @@ pub struct Transport {
     multi: curl::multi::Multi,
     /// A curl easy handle for configuring requests. Lazily initialized.
     handle: Option<Handle>,
+    /// Protocol and connection options.
+    options: Options,
     /// Contains the current request and response data.
     data: Rc<RefCell<Data>>,
 }
@@ -49,6 +78,11 @@ impl Transport {
     /// Initializing a transport is an expensive operation, so be sure to re-use your transports instead of discarding
     /// and recrreating them.
     pub fn new() -> Transport {
+        Transport::with_options(Options::default())
+    }
+
+    /// Create a new transport with the given options.
+    pub fn with_options(options: Options) -> Transport {
         let data = Rc::new(RefCell::new(Data {
             request_body: Body::default(),
             response: http::response::Builder::new(),
@@ -59,6 +93,7 @@ impl Transport {
         Transport {
             multi: curl::multi::Multi::new(),
             handle: None,
+            options: options,
             data: data,
         }
     }
@@ -79,8 +114,22 @@ impl Transport {
         }
     }
 
-    /// Begin executing a request.
-    pub fn begin(&mut self, request: Request) -> Result<(), Error> {
+    /// Send a request.
+    pub fn send(&mut self, request: Request) -> Result<http::response::Builder, Error> {
+        self.prepare(request)?;
+
+        // Wait for the headers to be read.
+        while !self.data.borrow().header_complete {
+            if self.multi.perform()? > 0 {
+                self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS))?;
+            }
+        }
+
+        Ok(mem::replace(&mut self.data.borrow_mut().response, http::response::Builder::new()))
+    }
+
+    /// Prepare a request.
+    fn prepare(&mut self, request: Request) -> Result<(), Error> {
         // Prepare the easy handle.
         let mut easy = match self.handle.take() {
             // We're already engaged in a different request.
@@ -100,17 +149,42 @@ impl Transport {
             }
         };
 
-        // Disable signal handling.
+        easy.max_connects(1)?;
         easy.signal(false)?;
 
-        // Set request method.
+        // Configure connection based on our options struct.
+        if let Some(timeout) = self.options.timeout {
+            easy.timeout(timeout)?;
+        }
+        easy.connect_timeout(self.options.connect_timeout)?;
+        easy.tcp_nodelay(self.options.tcp_nodelay)?;
+        if let Some(interval) = self.options.tcp_keepalive {
+            easy.tcp_keepalive(true)?;
+            easy.tcp_keepintvl(interval)?;
+        }
+
+        // Configure redirects.
+        if self.options.follow_redirects {
+            easy.follow_location(true)?;
+            if let Some(max) = self.options.max_redirects {
+                easy.max_redirections(max)?;
+            }
+        }
+
+        // Set a preferred HTTP version to negotiate.
+        if let Some(version) = self.options.preferred_http_version {
+            easy.http_version(match version {
+                http::Version::HTTP_10 => curl::easy::HttpVersion::V10,
+                http::Version::HTTP_11 => curl::easy::HttpVersion::V11,
+                http::Version::HTTP_2 => curl::easy::HttpVersion::V2,
+                _ => curl::easy::HttpVersion::Any,
+            })?;
+        }
+
+        // Set the request data according to the request given.
         easy.custom_request(request.method().as_str())?;
+        easy.url(&format!("{}", request.uri()))?;
 
-        // Set the URL.
-        let url = format!("{}", request.uri());
-        easy.url(&url)?;
-
-        // Set headers.
         let mut headers = curl::easy::List::new();
         for (name, value) in request.headers() {
             let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
@@ -119,7 +193,11 @@ impl Transport {
         easy.http_headers(headers)?;
 
         // Set the request body.
-        self.data.borrow_mut().request_body = request.into_parts().1;
+        let body = request.into_parts().1;
+        if !body.is_empty() {
+            easy.upload(true)?;
+        }
+        self.data.borrow_mut().request_body = body;
 
         // Finalize the easy handle state and attach it to the multi handle to be executed.
         let easy = self.multi.add2(easy)?;
@@ -130,17 +208,6 @@ impl Transport {
         self.data.borrow_mut().buffer.clear();
 
         Ok(())
-    }
-
-    pub fn read_response(&mut self) -> Result<http::response::Builder, Error> {
-        // Wait for the headers to be read.
-        while !self.data.borrow().header_complete {
-            if self.multi.perform()? > 0 {
-                self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS))?;
-            }
-        }
-
-        Ok(mem::replace(&mut self.data.borrow_mut().response, http::response::Builder::new()))
     }
 
     /// Reset the transport to the ready state.
@@ -209,7 +276,10 @@ struct Collector {
 
 impl curl::easy::Handler for Collector {
     fn header(&mut self, data: &[u8]) -> bool {
-        let line = str::from_utf8(data).unwrap();
+        let line = match str::from_utf8(data) {
+            Ok(s) => s,
+            _  => return false,
+        };
 
         // Curl calls this function for all lines in the response not part of the response body, not just for headers.
         // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
@@ -228,7 +298,10 @@ impl curl::easy::Handler for Collector {
             self.data.borrow_mut().response.version(version);
 
             // Parse the status code.
-            let status_code = http::StatusCode::from_str(&line[9..12]).unwrap();
+            let status_code = match http::StatusCode::from_str(&line[9..12]) {
+                Ok(s) => s,
+                _ => return false,
+            };
             self.data.borrow_mut().response.status(status_code);
 
             return true;

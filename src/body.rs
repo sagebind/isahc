@@ -19,6 +19,14 @@ impl Body {
         Body::Streaming(Box::new(reader))
     }
 
+    /// Report if this body is defined as empty.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            &Body::Empty => true,
+            _ => false,
+        }
+    }
+
     /// Get the size of the body, if known.
     pub fn len(&self) -> Option<usize> {
         match self {

@@ -1,5 +1,5 @@
 extern crate curl;
-extern crate http;
+pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
 
@@ -19,20 +19,20 @@ pub type Response = http::Response<Body>;
 
 /// Sends a GET request.
 pub fn get(uri: &str) -> Result<Response, Error> {
-    Client::new().get(uri)
+    Client::default().get(uri)
 }
 
 /// Sends a POST request.
 pub fn post<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
-    Client::new().post(uri, body)
+    Client::default().post(uri, body)
 }
 
 /// Sends a PUT request.
 pub fn put<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
-    Client::new().put(uri, body)
+    Client::default().put(uri, body)
 }
 
 /// Sends a DELETE request.
 pub fn delete(uri: &str) -> Result<Response, Error> {
-    Client::new().delete(uri)
+    Client::default().delete(uri)
 }
