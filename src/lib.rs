@@ -2,10 +2,11 @@ extern crate curl;
 extern crate http;
 
 pub mod client;
-pub mod transfer;
+pub mod error;
 pub mod transport;
 
 pub use client::Client;
+pub use error::Error;
 
 use std::io::Read;
 
@@ -24,9 +25,4 @@ pub enum Entity {
 
 pub fn get(uri: &str) -> Response {
     Client::new().get(uri)
-}
-
-
-pub enum Error {
-    TransportBusy,
 }

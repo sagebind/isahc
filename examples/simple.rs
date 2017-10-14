@@ -6,6 +6,8 @@ use std::io::Read;
 fn main() {
     let mut response = chttp::get("http://example.org");
 
+    println!("{:?}", response.headers());
+
     let mut body = String::new();
     match response.body_mut() {
         &mut chttp::Entity::Stream(ref mut stream) => {

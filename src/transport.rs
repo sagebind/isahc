@@ -8,7 +8,8 @@ use std::rc::Rc;
 use std::str;
 use std::str::FromStr;
 use std::time::Duration;
-use super::{Error, Entity, Request, Response};
+use std::mem;
+use super::{Error, Entity, Request};
 
 
 /// A low-level reusable HTTP client with a single connection pool.
@@ -34,6 +35,8 @@ struct Data {
     request_body: Entity,
     /// Builder for the response object.
     response: http::response::Builder,
+    /// Indicates if the header has been read completely.
+    header_complete: bool,
     /// Temporary buffer for the response body.
     buffer: VecDeque<u8>,
 }
@@ -47,6 +50,7 @@ impl Transport {
         let data = Rc::new(RefCell::new(Data {
             request_body: Entity::Empty,
             response: http::response::Builder::new(),
+            header_complete: false,
             buffer: VecDeque::new(),
         }));
 
@@ -95,50 +99,60 @@ impl Transport {
         };
 
         // Disable signal handling.
-        easy.signal(false).unwrap();
+        easy.signal(false)?;
 
         // Set request method.
-        easy.custom_request(request.method().as_str()).unwrap();
+        easy.custom_request(request.method().as_str())?;
 
         // Set the URL.
         let url = format!("{}", request.uri());
-        easy.url(&url).unwrap();
+        easy.url(&url)?;
 
         // Set headers.
         let mut headers = curl::easy::List::new();
         for (name, value) in request.headers() {
             let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
-            headers.append(&header).unwrap();
+            headers.append(&header)?;
         }
-        easy.http_headers(headers).unwrap();
+        easy.http_headers(headers)?;
 
         // Set the request body.
         self.data.borrow_mut().request_body = request.into_parts().1;
 
         // Finalize the easy handle state and attach it to the multi handle to be executed.
-        let easy = self.multi.add2(easy).unwrap();
+        let easy = self.multi.add2(easy)?;
         self.handle = Some(Handle::Active(easy));
 
         // Reset buffers and other temporary data.
+        self.data.borrow_mut().header_complete = false;
         self.data.borrow_mut().buffer.clear();
 
         Ok(())
     }
 
-    pub fn read_response(&mut self) {}
+    pub fn read_response(&mut self) -> Result<http::response::Builder, Error> {
+        // Wait for the headers to be read.
+        while !self.data.borrow().header_complete {
+            self.multi.perform()?;
+        }
+
+        Ok(mem::replace(&mut self.data.borrow_mut().response, http::response::Builder::new()))
+    }
 
     /// Reset the transport to the ready state.
     ///
     /// Note that this will abort the current request.
-    fn finish(&mut self) {
+    fn finish(&mut self) -> Result<(), Error> {
         // Reset the curl easy handle.
         self.handle = match self.handle.take() {
             Some(Handle::Active(easy)) => {
-                let easy = self.multi.remove2(easy).unwrap();
+                let easy = self.multi.remove2(easy)?;
                 Some(Handle::Ready(easy))
             },
             handle => handle,
         };
+
+        Ok(())
     }
 }
 
@@ -162,7 +176,7 @@ impl Read for Transport {
             match self.multi.perform() {
                 // No more transfers are active.
                 Ok(0) => {
-                    self.finish();
+                    self.finish().unwrap();
                 }
                 // Success, but transfer is incomplete.
                 Ok(_) => {
@@ -228,7 +242,7 @@ impl curl::easy::Handler for Collector {
 
         // Is this the end of the response header?
         if line == "\r\n" {
-            // self.data.borrow_mut().response_header_read = true;
+            self.data.borrow_mut().header_complete = true;
             return true;
         }
 
