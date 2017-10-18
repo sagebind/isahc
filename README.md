@@ -3,6 +3,7 @@ The practical HTTP client that is fun to use.
 
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
+- HTTP/2 support.
 - Connection pooling and reuse.
 - Respone body streaming.
 - Request body uploading from memory or a stream.
@@ -14,6 +15,33 @@ cHTTP provides a clean and easy-to-use interface around the venerable [libcurl].
 Not everything needs to be re-invented! For typical use cases, [libcurl] is a fantastic choice for making web requests. It's fast, reliable, well supported, and isn't going away any time soon.
 
 It has a reputation for having an unusual API that is sometimes tricky to use, but hey, that's why this library exists.
+
+## Examples
+Really simple example that spits out the response body from https://example.org:
+
+```rust
+let mut response = chttp::get("https://example.org").unwrap();
+let body = response.body_mut().text().unwrap();
+println!("{}", body);
+```
+
+Configuring a custom client:
+
+```rust
+use chttp::{http, Client, RedirectPolicy};
+use std::time::Duration;
+
+let client = Client::builder()
+    .max_connections(Some(4))
+    .timeout(Some(Duration::from_secs(60)))
+    .redirects(RedirectPolicy::Limit(10))
+    .preferred_http_version(http::Version::HTTP_2)
+    .build();
+
+let mut response = client.get("https://example.org").unwrap();
+let body = response.body_mut().text().unwrap();
+println!("{}", body);
+```
 
 ## Requirements
 On Linux:
