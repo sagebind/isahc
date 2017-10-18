@@ -17,8 +17,7 @@ const WAIT_TIMEOUT_MS: u64 = 1000;
 /// Sets various protocol and connection options for a transport.
 #[derive(Clone, Debug)]
 pub struct Options {
-    pub follow_redirects: bool,
-    pub max_redirects: Option<u32>,
+    pub redirect_policy: RedirectPolicy,
     pub preferred_http_version: Option<http::Version>,
     pub timeout: Option<Duration>,
     pub connect_timeout: Duration,
@@ -29,8 +28,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            follow_redirects: false,
-            max_redirects: None,
+            redirect_policy: RedirectPolicy::default(),
             preferred_http_version: None,
             timeout: None,
             connect_timeout: Duration::from_secs(300),
@@ -164,9 +162,15 @@ impl Transport {
         }
 
         // Configure redirects.
-        if self.options.follow_redirects {
-            easy.follow_location(true)?;
-            if let Some(max) = self.options.max_redirects {
+        match self.options.redirect_policy {
+            RedirectPolicy::None => {
+                easy.follow_location(false)?;
+            }
+            RedirectPolicy::Follow => {
+                easy.follow_location(true)?;
+            }
+            RedirectPolicy::Limit(max) => {
+                easy.follow_location(true)?;
                 easy.max_redirections(max)?;
             }
         }

@@ -3,14 +3,16 @@ pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
 
-pub mod body;
 pub mod client;
-pub mod error;
 pub mod transport;
+mod body;
+mod error;
+mod redirect;
 
 pub use body::Body;
 pub use client::Client;
 pub use error::Error;
+pub use redirect::RedirectPolicy;
 
 
 pub type Request = http::Request<Body>;

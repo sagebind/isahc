@@ -29,20 +29,11 @@ impl Builder {
         self
     }
 
-    /// Enable or disable automatically following server redirects.
+    /// Set the policy for automatically following server redirects.
     ///
-    /// The default value is `true`.
-    pub fn follow_redirects(mut self, follow: bool) -> Self {
-        self.transport_options.follow_redirects = follow;
-        self
-    }
-
-    /// If redirect following is enabled, set the maximum number of redirects to allow. Setting to `None` allows
-    /// unlimited redirects.
-    ///
-    /// The default value is `None` (unlimited).
-    pub fn max_redirects(mut self, max: Option<u32>) -> Self {
-        self.transport_options.max_redirects = max;
+    /// The default is to not follow redirects.
+    pub fn redirects(mut self, policy: RedirectPolicy) -> Self {
+        self.transport_options.redirect_policy = policy;
         self
     }
 
