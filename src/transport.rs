@@ -246,20 +246,24 @@ impl Read for Transport {
                 break;
             }
 
-            self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS)).unwrap();
+            if self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS)).is_err() {
+                return Err(io::ErrorKind::TimedOut.into());
+            }
 
             match self.multi.perform() {
                 // No more transfers are active.
                 Ok(0) => {
-                    self.finish().unwrap();
+                    if self.finish().is_err() {
+                        return Err(io::ErrorKind::Other.into());
+                    }
                 }
                 // Success, but transfer is incomplete.
                 Ok(_) => {
                     continue;
                 }
                 // Error during transfer.
-                Err(e) => {
-                    println!("{:?}", e);
+                Err(_) => {
+                    return Err(io::ErrorKind::Other.into());
                 }
             }
         }
