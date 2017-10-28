@@ -1,6 +1,11 @@
 # cHTTP
 The practical HTTP client that is fun to use.
 
+[![CircleCI](https://img.shields.io/circleci/project/github/sagebind/chttp.svg)](https://circleci.com/gh/sagebind/chttp)
+[![Crates.io](https://img.shields.io/crates/v/chttp.svg)](https://crates.io/crates/chttp)
+[![Documentation](https://docs.rs/chttp/badge.svg)](https://docs.rs/chttp)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
 - HTTP/2 support.
