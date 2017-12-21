@@ -61,8 +61,10 @@ On Windows and macOS:
 ## Installation
 Add this to your Cargo.toml file:
 
+```toml
 [dependencies]
 chttp = "0.1"
+```
 
 ## License
 This library is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
