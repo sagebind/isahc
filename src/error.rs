@@ -148,7 +148,22 @@ impl From<http::Error> for Error {
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
-        Error::Io(error)
+        match error.kind() {
+            io::ErrorKind::ConnectionRefused => Error::ConnectFailed,
+            io::ErrorKind::TimedOut => Error::Timeout,
+            _ => Error::Io(error),
+        }
+    }
+}
+
+impl From<Error> for io::Error {
+    fn from(error: Error) -> io::Error {
+        match error {
+            Error::ConnectFailed => io::ErrorKind::ConnectionRefused.into(),
+            Error::Io(e) => e,
+            Error::Timeout => io::ErrorKind::TimedOut.into(),
+            _ => io::ErrorKind::Other.into()
+        }
     }
 }
 

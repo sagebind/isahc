@@ -1,7 +1,7 @@
+use buffer::Buffer;
 use curl;
 use http;
 use std::cell::RefCell;
-use std::collections::VecDeque;
 use std::io;
 use std::io::Read;
 use std::mem;
@@ -12,7 +12,7 @@ use std::time::Duration;
 use super::*;
 
 
-const WAIT_TIMEOUT_MS: u64 = 1000;
+const DEFAULT_TIMEOUT_MS: u64 = 1000;
 
 /// Sets various protocol and connection options for a transport.
 #[derive(Clone, Debug)]
@@ -67,14 +67,14 @@ struct Data {
     /// Indicates if the header has been read completely.
     header_complete: bool,
     /// Temporary buffer for the response body.
-    buffer: VecDeque<u8>,
+    buffer: Buffer,
 }
 
 impl Transport {
     /// Create a new transport.
     ///
     /// Initializing a transport is an expensive operation, so be sure to re-use your transports instead of discarding
-    /// and recrreating them.
+    /// and recreating them.
     pub fn new() -> Transport {
         Transport::with_options(Options::default())
     }
@@ -85,7 +85,7 @@ impl Transport {
             request_body: Body::default(),
             response: http::response::Builder::new(),
             header_complete: false,
-            buffer: VecDeque::new(),
+            buffer: Buffer::new(),
         }));
 
         Transport {
@@ -96,7 +96,7 @@ impl Transport {
         }
     }
 
-    /// Check if the transport is ready to begin a new request.
+    /// Check if the transport is ready to execute a new request.
     #[inline]
     pub fn is_ready(&self) -> bool {
         !self.is_active()
@@ -112,22 +112,36 @@ impl Transport {
         }
     }
 
-    /// Send a request.
-    pub fn send(&mut self, request: Request) -> Result<http::response::Builder, Error> {
-        self.prepare(request)?;
+    /// Execute a new request.
+    ///
+    /// If another transfer is already underway, `Error::TransportBusy` will be returned.
+    pub fn execute(&mut self, request: Request) -> Result<http::response::Builder, Error> {
+        self.begin_request(request)?;
 
         // Wait for the headers to be read.
         while !self.data.borrow().header_complete {
-            if self.multi.perform()? > 0 {
-                self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS))?;
-            }
+            self.dispatch()?;
         }
 
         Ok(mem::replace(&mut self.data.borrow_mut().response, http::response::Builder::new()))
     }
 
-    /// Prepare a request.
-    fn prepare(&mut self, request: Request) -> Result<(), Error> {
+    /// Cancel the current request.
+    ///
+    /// Returns `true` if the request was canceled, or `false` if there was no active request to cancel.
+    pub fn cancel(&mut self) -> Result<bool, Error> {
+        if self.is_active() {
+            // Reset the curl handle.
+            self.end_request()?;
+
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Begin a new request.
+    fn begin_request(&mut self, request: Request) -> Result<(), Error> {
         // Prepare the easy handle.
         let mut easy = match self.handle.take() {
             // We're already engaged in a different request.
@@ -217,7 +231,7 @@ impl Transport {
     /// Reset the transport to the ready state.
     ///
     /// Note that this will abort the current request.
-    fn finish(&mut self) -> Result<(), Error> {
+    fn end_request(&mut self) -> Result<(), Error> {
         // Reset the curl easy handle.
         self.handle = match self.handle.take() {
             Some(Handle::Active(easy)) => {
@@ -229,46 +243,50 @@ impl Transport {
 
         Ok(())
     }
-}
 
-impl Read for Transport {
-    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        let mut pos = 0;
+    /// Dispatch reads and writes, blocking the current thread if necessary.
+    fn dispatch(&mut self) -> Result<(), Error> {
+        if self.is_active() {
+            // Determine the blocking timeout value.
+            let timeout = self.multi.get_timeout()?.unwrap_or(Duration::from_millis(DEFAULT_TIMEOUT_MS));
 
-        while pos < buffer.len() {
-            if let Some(byte) = self.data.borrow_mut().buffer.pop_front() {
-                buffer[pos] = byte;
-                pos += 1;
-                continue;
-            }
+            // Block until activity is detected or the timeout passes.
+            self.multi.wait(&mut [], timeout)?;
 
-            if !self.is_active() {
-                break;
-            }
+            // Perform any pending reads or writes. If `perform()` returns zero, then the current transfer is complete.
+            if self.multi.perform()? == 0 {
+                self.end_request()?;
 
-            if self.multi.wait(&mut [], Duration::from_millis(WAIT_TIMEOUT_MS)).is_err() {
-                return Err(io::ErrorKind::TimedOut.into());
-            }
+                // The current transfer has stopped, but that does not mean it succeeded. Check the transfer status now
+                // and return any errors we find.
+                let mut result = None;
 
-            match self.multi.perform() {
-                // No more transfers are active.
-                Ok(0) => {
-                    if self.finish().is_err() {
-                        return Err(io::ErrorKind::Other.into());
+                self.multi.messages(|message| {
+                    if let Some(Err(e)) = message.result() {
+                        result = Some(e);
                     }
-                }
-                // Success, but transfer is incomplete.
-                Ok(_) => {
-                    continue;
-                }
-                // Error during transfer.
-                Err(_) => {
-                    return Err(io::ErrorKind::Other.into());
+                });
+
+                if let Some(e) = result {
+                    return Err(e.into());
                 }
             }
         }
 
-        Ok(pos)
+        Ok(())
+    }
+}
+
+impl Read for Transport {
+    fn read(&mut self, dst: &mut [u8]) -> io::Result<usize> {
+        // Block until bytes arrive in the buffer or the transfer is complete.
+        while self.data.borrow().buffer.is_empty() && self.is_active() {
+            // Attempt to fill the buffer with more bytes.
+            self.dispatch()?;
+        }
+
+        // Copy bytes from the internal buffer to the given one.
+        self.data.borrow_mut().buffer.read(dst)
     }
 }
 
@@ -283,6 +301,7 @@ struct Collector {
 }
 
 impl curl::easy::Handler for Collector {
+    // Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
         let line = match str::from_utf8(data) {
             Ok(s) => s,
@@ -334,6 +353,7 @@ impl curl::easy::Handler for Collector {
         false
     }
 
+    // Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, curl::easy::ReadError> {
         self.data.borrow_mut()
             .request_body
@@ -341,8 +361,9 @@ impl curl::easy::Handler for Collector {
             .map_err(|_| curl::easy::ReadError::Abort)
     }
 
+    // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
-        self.data.borrow_mut().buffer.extend(data);
+        self.data.borrow_mut().buffer.push(data);
         Ok(data.len())
     }
 }

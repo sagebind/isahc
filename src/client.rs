@@ -146,7 +146,7 @@ impl Client {
     /// Sends a request and returns the response.
     pub fn send(&self, request: Request) -> Result<Response, Error> {
         if let Some(mut transport) = self.get_transport() {
-            let mut response = transport.send(request)?;
+            let mut response = transport.execute(request)?;
             let stream = self.create_stream(transport);
 
             response

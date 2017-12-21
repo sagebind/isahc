@@ -6,6 +6,7 @@ extern crate json;
 pub mod client;
 pub mod transport;
 mod body;
+mod buffer;
 mod error;
 mod redirect;
 
