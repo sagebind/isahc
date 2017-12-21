@@ -6,7 +6,6 @@ authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
 keywords = ["http", "request", "client"]
 categories = ["web-programming::http-client"]
-homepage = "https://github.com/sagebind/chttp"
 repository = "https://github.com/sagebind/chttp"
 
 [features]

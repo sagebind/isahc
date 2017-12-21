@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, Read, Write};
 use std::mem;
 use std::slice;
 
@@ -14,11 +14,17 @@ macro_rules! copy {
 /// Growable byte buffer implemented as a ring buffer.
 ///
 /// Optimized for repeated appending of bytes to the end and removing bytes from the front of the buffer.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Buffer {
     array: Box<[u8]>,
     head: usize,
     len: usize,
+}
+
+impl Default for Buffer {
+    fn default() -> Buffer {
+        Buffer::new()
+    }
 }
 
 impl Buffer {
@@ -125,7 +131,7 @@ impl Buffer {
         }
 
         // Calculate how much of `src` should be copied to which regions.
-        let head_available = 0.max(self.capacity() - (self.head + self.len));
+        let head_available = self.capacity().checked_sub(self.head + self.len).unwrap_or(0);
         let copy_to_head = src.len().min(head_available);
         let copy_to_tail = src.len() - copy_to_head;
 

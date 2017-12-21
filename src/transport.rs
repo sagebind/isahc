@@ -39,11 +39,11 @@ impl Default for Options {
 }
 
 
-/// A low-level reusable HTTP client with a single connection pool.
+/// A low-level reusable HTTP client with a single connection.
 ///
 /// Transports are stateful objects that can only perform one request at a time.
 pub struct Transport {
-    /// A curl multi handle used to execute transfers. Also holds the internal connection pool.
+    /// A curl multi handle used to execute transfers.
     multi: curl::multi::Multi,
     /// A curl easy handle for configuring requests. Lazily initialized.
     handle: Option<Handle>,
