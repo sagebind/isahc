@@ -14,30 +14,6 @@ use super::*;
 
 const DEFAULT_TIMEOUT_MS: u64 = 1000;
 
-/// Sets various protocol and connection options for a transport.
-#[derive(Clone, Debug)]
-pub struct Options {
-    pub redirect_policy: RedirectPolicy,
-    pub preferred_http_version: Option<http::Version>,
-    pub timeout: Option<Duration>,
-    pub connect_timeout: Duration,
-    pub tcp_keepalive: Option<Duration>,
-    pub tcp_nodelay: bool,
-}
-
-impl Default for Options {
-    fn default() -> Options {
-        Options {
-            redirect_policy: RedirectPolicy::default(),
-            preferred_http_version: None,
-            timeout: None,
-            connect_timeout: Duration::from_secs(300),
-            tcp_keepalive: None,
-            tcp_nodelay: false,
-        }
-    }
-}
-
 
 /// A low-level reusable HTTP client with a single connection.
 ///
@@ -197,6 +173,11 @@ impl Transport {
                 http::Version::HTTP_2 => curl::easy::HttpVersion::V2,
                 _ => curl::easy::HttpVersion::Any,
             })?;
+        }
+
+        // Set a proxy to use.
+        if let Some(ref proxy) = self.options.proxy {
+            easy.proxy(&format!("{}", proxy))?;
         }
 
         // Set the request data according to the request given.

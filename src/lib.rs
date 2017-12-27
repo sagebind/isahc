@@ -3,17 +3,17 @@ pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
 
+pub mod body;
 pub mod client;
+pub mod error;
+pub mod options;
 pub mod transport;
-mod body;
 mod buffer;
-mod error;
-mod redirect;
 
 pub use body::Body;
 pub use client::Client;
 pub use error::Error;
-pub use redirect::RedirectPolicy;
+pub use options::*;
 
 
 pub type Request = http::Request<Body>;
@@ -38,4 +38,8 @@ pub fn put<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
 /// Sends a DELETE request.
 pub fn delete(uri: &str) -> Result<Response, Error> {
     Client::default().delete(uri)
+}
+
+pub fn send(request: Request) -> Result<Response, Error> {
+    Client::default().send(request)
 }

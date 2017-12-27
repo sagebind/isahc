@@ -33,14 +33,17 @@ println!("{}", body);
 Configuring a custom client:
 
 ```rust
-use chttp::{http, Client, RedirectPolicy};
+use chttp::{http, Client, Options, RedirectPolicy};
 use std::time::Duration;
+
+let mut options = Options::default();
+options.timeout = Some(Duration::from_secs(60));
+options.redirect_policy = RedirectPolicy::Limit(10);
+options.preferred_http_version = http::Version::HTTP_2;
 
 let client = Client::builder()
     .max_connections(Some(4))
-    .timeout(Some(Duration::from_secs(60)))
-    .redirects(RedirectPolicy::Limit(10))
-    .preferred_http_version(http::Version::HTTP_2)
+    .options(options)
     .build();
 
 let mut response = client.get("https://example.org").unwrap();

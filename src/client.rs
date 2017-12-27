@@ -1,95 +1,8 @@
 use std::io;
 use std::io::Read;
 use std::sync::{Arc, Mutex, Weak};
-use std::time::Duration;
 use transport::Transport;
 use super::*;
-
-
-/// An HTTP client builder.
-#[derive(Clone)]
-pub struct Builder {
-    max_connections: Option<u16>,
-    transport_options: transport::Options,
-}
-
-impl Builder {
-    /// Set the maximum number of connections the client should keep in its connection pool.
-    ///
-    /// To allow simultaneous requests, the client keeps a pool of multiple transports to pull from when performing a
-    /// request. Reusing transports also improves performance if TCP keepalive is enabled. Increasing this value may
-    /// improve performance when making many or frequent requests to the same server, but will also use more memory.
-    ///
-    /// Setting this to `0` will cause the client to not reuse any connections and the client will open a new connection
-    /// for every request. Setting this to `None` will allow unlimited simultaneous connections.
-    ///
-    /// The default value is `8`.
-    pub fn max_connections(mut self, max: Option<u16>) -> Self {
-        self.max_connections = max;
-        self
-    }
-
-    /// Set the policy for automatically following server redirects.
-    ///
-    /// The default is to not follow redirects.
-    pub fn redirects(mut self, policy: RedirectPolicy) -> Self {
-        self.transport_options.redirect_policy = policy;
-        self
-    }
-
-    /// Set a preferred HTTP version the client should attempt to use to communicate to the server with.
-    ///
-    /// This is treated as a suggestion. A different version may be used if the server does not support it or negotiates
-    /// a different version.
-    ///
-    /// The default value is `None` (any).
-    pub fn preferred_http_version(mut self, version: http::Version) -> Self {
-        self.transport_options.preferred_http_version = Some(version);
-        self
-    }
-
-    /// Set a timeout for the maximum time allowed for a request-response cycle.
-    ///
-    /// The default value is `None` (unlimited).
-    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.transport_options.timeout = timeout;
-        self
-    }
-
-    /// Set a timeout for the initial connection phase.
-    ///
-    /// The default value is 300 seconds.
-    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
-        self.transport_options.connect_timeout = timeout;
-        self
-    }
-
-    /// Enable or disable TCP keepalive with a given probe interval.
-    ///
-    /// The default value is `None` (disabled).
-    pub fn tcp_keepalive(mut self, interval: Option<Duration>) -> Self {
-        self.transport_options.tcp_keepalive = interval;
-        self
-    }
-
-    /// Enable or disable the `TCP_NODELAY` option.
-    ///
-    /// The default value is `false`.
-    pub fn tcp_nodelay(mut self, enable: bool) -> Self {
-        self.transport_options.tcp_nodelay = enable;
-        self
-    }
-
-    /// Build an HTTP client using the configured options.
-    pub fn build(self) -> Client {
-        Client {
-            max_connections: self.max_connections,
-            transport_options: self.transport_options,
-            transport_pool: Arc::new(Mutex::new(Vec::new())),
-            transport_count: 0,
-        }
-    }
-}
 
 
 /// An HTTP client for making requests.
@@ -98,25 +11,26 @@ impl Builder {
 /// instead of discarding and recreating them.
 pub struct Client {
     max_connections: Option<u16>,
-    transport_options: transport::Options,
+    options: Options,
     transport_pool: Arc<Mutex<Vec<Transport>>>,
     transport_count: u16,
 }
 
 impl Default for Client {
-    /// Create a new HTTP client using the default configuration.
     fn default() -> Client {
-        Client::builder().build()
+        Client::new()
     }
 }
 
 impl Client {
     /// Create a new HTTP client builder.
-    pub fn builder() -> Builder {
-        Builder {
-            max_connections: Some(8),
-            transport_options: Default::default(),
-        }
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::default()
+    }
+
+    /// Create a new HTTP client using the default configuration.
+    pub fn new() -> Self {
+        Self::builder().build()
     }
 
     /// Sends a GET request.
@@ -174,13 +88,63 @@ impl Client {
     }
 
     fn create_transport(&self) -> Transport {
-        Transport::with_options(self.transport_options.clone())
+        Transport::with_options(self.options.clone())
     }
 
     fn create_stream(&self, transport: Transport) -> Stream {
         Stream {
             pool: Arc::downgrade(&self.transport_pool),
             transport: Some(transport),
+        }
+    }
+}
+
+
+/// An HTTP client builder.
+#[derive(Clone)]
+pub struct ClientBuilder {
+    max_connections: Option<u16>,
+    options: Options,
+}
+
+impl Default for ClientBuilder {
+    fn default() -> ClientBuilder {
+        ClientBuilder {
+            max_connections: Some(8),
+            options: Default::default(),
+        }
+    }
+}
+
+impl ClientBuilder {
+    /// Set the maximum number of connections the client should keep in its connection pool.
+    ///
+    /// To allow simultaneous requests, the client keeps a pool of multiple transports to pull from when performing a
+    /// request. Reusing transports also improves performance if TCP keepalive is enabled. Increasing this value may
+    /// improve performance when making many or frequent requests to the same server, but will also use more memory.
+    ///
+    /// Setting this to `0` will cause the client to not reuse any connections and the client will open a new connection
+    /// for every request. Setting this to `None` will allow unlimited simultaneous connections.
+    ///
+    /// The default value is `Some(8)`.
+    pub fn max_connections(mut self, max: Option<u16>) -> Self {
+        self.max_connections = max;
+        self
+    }
+
+    /// Set the connection options to use.
+    pub fn options(mut self, options: Options) -> Self {
+        self.options = options;
+        self
+    }
+
+    /// Build an HTTP client using the configured options.
+    pub fn build(self) -> Client {
+        Client {
+            max_connections: self.max_connections,
+            options: self.options,
+            transport_pool: Arc::new(Mutex::new(Vec::new())),
+            transport_count: 0,
         }
     }
 }
