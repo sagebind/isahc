@@ -7,7 +7,7 @@ pub mod body;
 pub mod client;
 pub mod error;
 pub mod options;
-pub mod transport;
+mod transport;
 mod buffer;
 
 pub use body::Body;
