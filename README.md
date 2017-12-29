@@ -10,7 +10,7 @@ The practical HTTP client that is fun to use.
 
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
-- HTTP/2 support.
+- HTTP/2 support (if libcurl is compiled with it).
 - Connection pooling and reuse.
 - Respone body streaming.
 - Request body uploading from memory or a stream.
@@ -41,7 +41,7 @@ use std::time::Duration;
 let mut options = Options::default();
 options.timeout = Some(Duration::from_secs(60));
 options.redirect_policy = RedirectPolicy::Limit(10);
-options.preferred_http_version = http::Version::HTTP_2;
+options.preferred_http_version = Some(http::Version::HTTP_2);
 
 let client = Client::builder()
     .max_connections(Some(4))
