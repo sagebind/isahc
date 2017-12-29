@@ -6,6 +6,8 @@ The practical HTTP client that is fun to use.
 [![Documentation](https://docs.rs/chttp/badge.svg)](https://docs.rs/chttp)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
+[Documentation](https://docs.rs/chttp)
+
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
 - HTTP/2 support.
