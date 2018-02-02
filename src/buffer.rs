@@ -38,7 +38,9 @@ impl Buffer {
     /// Create a new buffer with a given minimum capacity pre-allocated.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            array: Buffer::allocate(capacity.next_power_of_two()),
+            array: unsafe {
+                Buffer::allocate(capacity.next_power_of_two())
+            },
             head: 0,
             len: 0,
         }
@@ -123,7 +125,9 @@ impl Buffer {
         // If the number of bytes to add would exceed the capacity, grow the internal array first.
         if new_len > self.capacity() {
             let new_capacity = new_len.next_power_of_two();
-            let mut new_array = Self::allocate(new_capacity);
+            let mut new_array = unsafe {
+                Self::allocate(new_capacity)
+            };
 
             self.copy_to(&mut new_array);
             self.array = new_array;
@@ -174,21 +178,20 @@ impl Buffer {
 
     /// Allocate an array of memory on the heap.
     ///
-    /// Note that the contents of the array are not initialized and the values are undefined. This is safe only because
-    /// we are asking for an array of bytes anyway.
-    fn allocate(size: usize) -> Box<[u8]> {
-        unsafe {
-            let mut vec = Vec::<u8>::with_capacity(size);
-            let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
-            mem::forget(vec);
-            Box::from_raw(slice)
-        }
+    /// Note that the contents of the array are not initialized and the values are undefined.
+    unsafe fn allocate(size: usize) -> Box<[u8]> {
+        let mut vec = Vec::<u8>::with_capacity(size);
+        let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
+        mem::forget(vec);
+        Box::from_raw(slice)
     }
 }
 
 impl From<Buffer> for Vec<u8> {
     fn from(buffer: Buffer) -> Vec<u8> {
-        let mut slice = Buffer::allocate(buffer.len);
+        let mut slice = unsafe {
+            Buffer::allocate(buffer.len)
+        };
         let len = buffer.copy_to(&mut slice);
 
         unsafe {
