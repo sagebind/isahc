@@ -192,7 +192,9 @@ impl From<Buffer> for Vec<u8> {
         let len = buffer.copy_to(&mut slice);
 
         unsafe {
-            Vec::from_raw_parts(slice.as_mut_ptr(), len, slice.len())
+            let vec = Vec::from_raw_parts(slice.as_mut_ptr(), len, slice.len());
+            mem::forget(slice);
+            vec
         }
     }
 }
@@ -290,5 +292,18 @@ mod tests {
         let mut out = [0; 11];
         buffer.copy_to(&mut out);
         assert!(&out == b"hello world");
+    }
+
+    #[test]
+    fn vec_from_buffer() {
+        let mut buffer = Buffer::new();
+        let bytes = b"hello world";
+        buffer.push(bytes);
+
+        assert!(buffer.len() == bytes.len());
+
+        let vec = Vec::from(buffer);
+
+        assert!(&vec == bytes);
     }
 }
