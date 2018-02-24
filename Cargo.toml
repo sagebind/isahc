@@ -1,6 +1,6 @@
 [package]
 name = "chttp"
-version = "0.1.3"
+version = "0.1.4"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
