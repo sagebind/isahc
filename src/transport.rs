@@ -1,4 +1,4 @@
-use buffer::Buffer;
+use ringtail::ByteBuffer;
 use curl;
 use http;
 use std::cell::RefCell;
@@ -43,7 +43,7 @@ struct Data {
     /// Indicates if the header has been read completely.
     header_complete: bool,
     /// Temporary buffer for the response body.
-    buffer: Buffer,
+    buffer: ByteBuffer,
 }
 
 impl Transport {
@@ -61,7 +61,7 @@ impl Transport {
             request_body: Body::default(),
             response: http::response::Builder::new(),
             header_complete: false,
-            buffer: Buffer::new(),
+            buffer: ByteBuffer::new(),
         }));
 
         Transport {
@@ -344,7 +344,6 @@ impl curl::easy::Handler for Collector {
 
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
-        self.data.borrow_mut().buffer.push(data);
-        Ok(data.len())
+        Ok(self.data.borrow_mut().buffer.push(data))
     }
 }

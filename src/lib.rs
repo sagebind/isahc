@@ -2,13 +2,13 @@ extern crate curl;
 pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
+extern crate ringtail;
 
 pub mod body;
 pub mod client;
 pub mod error;
 pub mod options;
 mod transport;
-mod buffer;
 
 pub use body::Body;
 pub use client::Client;

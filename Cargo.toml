@@ -13,7 +13,8 @@ default = []
 
 [dependencies]
 curl = "0.4"
-http = "0.1.1"
+http = "0.1"
+ringtail = "0.1"
 
 [dependencies.json]
 version = "0.11"
