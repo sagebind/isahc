@@ -1,7 +1,7 @@
 # cHTTP
 The practical HTTP client that is fun to use.
 
-[![Shippable](https://img.shields.io/shippable/59f4fe44571f17060086ff61.svg)](https://app.shippable.com/github/sagebind/chttp)
+[![Build Status](https://semaphoreci.com/api/v1/sagebind/chttp/branches/master/badge.svg)](https://semaphoreci.com/sagebind/chttp)
 [![Crates.io](https://img.shields.io/crates/v/chttp.svg)](https://crates.io/crates/chttp)
 [![Documentation](https://docs.rs/chttp/badge.svg)](https://docs.rs/chttp)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)

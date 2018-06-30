@@ -1,8 +1,0 @@
-language: none
-build:
-    pre_ci_boot:
-        image_name: rust
-        image_tag: latest
-        pull: true
-    ci:
-        - cargo test --all
