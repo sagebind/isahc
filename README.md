@@ -1,4 +1,5 @@
 # cHTTP
+
 The practical HTTP client that is fun to use.
 
 [![Build Status](https://semaphoreci.com/api/v1/sagebind/chttp/branches/master/badge.svg)](https://semaphoreci.com/sagebind/chttp)
@@ -19,11 +20,13 @@ cHTTP provides a clean and easy-to-use interface around the venerable [libcurl].
 - Uses the future standard Rust [http] interface for requests and responses.
 
 ## Why [libcurl]?
+
 Not everything needs to be re-invented! For typical use cases, [libcurl] is a fantastic choice for making web requests. It's fast, reliable, well supported, and isn't going away any time soon.
 
 It has a reputation for having an unusual API that is sometimes tricky to use, but hey, that's why this library exists.
 
 ## Examples
+
 Really simple example that spits out the response body from https://example.org:
 
 ```rust
@@ -54,6 +57,7 @@ println!("{}", body);
 ```
 
 ## Requirements
+
 On Linux:
 
 - libcurl 7.24.0 or newer
@@ -64,6 +68,7 @@ On Windows and macOS:
 - TBD
 
 ## Installation
+
 Add this to your Cargo.toml file:
 
 ```toml
@@ -72,6 +77,7 @@ chttp = "0.1"
 ```
 
 ## License
+
 This library is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
 
 
