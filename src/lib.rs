@@ -2,6 +2,8 @@ extern crate curl;
 pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
+#[macro_use]
+extern crate log;
 extern crate ringtail;
 
 pub mod body;
