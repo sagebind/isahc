@@ -1,6 +1,8 @@
 use ringtail::ByteBuffer;
 use curl;
+use curl::easy::InfoType;
 use http;
+use log;
 use std::cell::RefCell;
 use std::io;
 use std::io::Read;
@@ -94,8 +96,8 @@ impl Transport {
     pub fn execute(&mut self, request: Request) -> Result<http::response::Builder, Error> {
         self.begin_request(request)?;
 
-        // Wait for the headers to be read.
-        while !self.data.borrow().header_complete {
+        // Wait for the headers to be read, or for the request to be aborted.
+        while self.is_active() && !self.data.borrow().header_complete {
             self.dispatch()?;
         }
 
@@ -136,6 +138,9 @@ impl Transport {
                 })
             }
         };
+
+        // Enable or disable debug tracing.
+        easy.verbose(log_enabled!(log::Level::Trace))?;
 
         easy.max_connects(1)?;
         easy.signal(false)?;
@@ -232,21 +237,24 @@ impl Transport {
             let timeout = self.multi.get_timeout()?.unwrap_or(Duration::from_millis(DEFAULT_TIMEOUT_MS));
 
             // Block until activity is detected or the timeout passes.
+            trace!("waiting with timeout of {:?}", timeout);
             self.multi.wait(&mut [], timeout)?;
 
             // Perform any pending reads or writes. If `perform()` returns zero, then the current transfer is complete.
             if self.multi.perform()? == 0 {
-                self.end_request()?;
-
                 // The current transfer has stopped, but that does not mean it succeeded. Check the transfer status now
                 // and return any errors we find.
                 let mut result = None;
 
+                // Read messages before we detach the easy handle, or the messages will be discarded.
                 self.multi.messages(|message| {
+                    trace!("curl message: {:?}", message);
                     if let Some(Err(e)) = message.result() {
                         result = Some(e);
                     }
                 });
+
+                self.end_request()?;
 
                 if let Some(e) = result {
                     return Err(e.into());
@@ -345,5 +353,14 @@ impl curl::easy::Handler for Collector {
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
         Ok(self.data.borrow_mut().buffer.push(data))
+    }
+
+    fn debug(&mut self, kind: InfoType, data: &[u8]) {
+        match kind {
+            InfoType::Text => trace!(target: "curl", "{}", String::from_utf8_lossy(data).trim_right()),
+            InfoType::HeaderIn => trace!(target: "chttp::wire", "< {:?}", String::from_utf8_lossy(data)),
+            InfoType::HeaderOut => trace!(target: "chttp::wire", "> {:?}", String::from_utf8_lossy(data)),
+            _ => (),
+        }
     }
 }
