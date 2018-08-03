@@ -1,8 +1,9 @@
-use ringtail::ByteBuffer;
 use curl;
 use curl::easy::InfoType;
 use http;
 use log;
+use ringtail::buffers::*;
+use ringtail::buffers::unbounded::UnboundedBuffer;
 use std::cell::RefCell;
 use std::io;
 use std::io::Read;
@@ -45,7 +46,7 @@ struct Data {
     /// Indicates if the header has been read completely.
     header_complete: bool,
     /// Temporary buffer for the response body.
-    buffer: ByteBuffer,
+    buffer: UnboundedBuffer<u8>,
 }
 
 impl Transport {
@@ -63,7 +64,7 @@ impl Transport {
             request_body: Body::default(),
             response: http::response::Builder::new(),
             header_complete: false,
-            buffer: ByteBuffer::new(),
+            buffer: UnboundedBuffer::new(),
         }));
 
         Transport {
@@ -275,7 +276,7 @@ impl Read for Transport {
         }
 
         // Copy bytes from the internal buffer to the given one.
-        self.data.borrow_mut().buffer.read(dst)
+        Ok(self.data.borrow_mut().buffer.pull(dst))
     }
 }
 

@@ -15,7 +15,7 @@ default = []
 curl = "0.4"
 http = "0.1"
 log = "0.4"
-ringtail = "0.1"
+ringtail = "0.2"
 
 [dependencies.json]
 version = "0.11"
