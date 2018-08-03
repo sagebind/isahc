@@ -248,8 +248,8 @@ impl Transport {
 
                 // Read messages before we detach the easy handle, or the messages will be discarded.
                 self.multi.messages(|message| {
-                    trace!("curl message: {:?}", message);
                     if let Some(Err(e)) = message.result() {
+                        debug!("libcurl error: {}", e);
                         result = Some(e);
                     }
                 });
