@@ -18,6 +18,7 @@ fn request_errors_if_read_timeout_is_reached() {
             rouille::Response::text("hello world")
         });
     });
+    thread::sleep(Duration::from_millis(100));
 
     // Create an impatient client.
     let mut options = chttp::Options::default();
