@@ -246,6 +246,7 @@ impl Transport {
                 // and return any errors we find.
                 let mut result = None;
 
+                // Read messages before we detach the easy handle, or the messages will be discarded.
                 self.multi.messages(|message| {
                     trace!("curl message: {:?}", message);
                     if let Some(Err(e)) = message.result() {
