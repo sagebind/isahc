@@ -358,10 +358,19 @@ impl curl::easy::Handler for Collector {
 
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
         match kind {
-            InfoType::Text => trace!(target: "curl", "{}", String::from_utf8_lossy(data).trim_right()),
-            InfoType::HeaderIn => trace!(target: "chttp::wire", "< {:?}", String::from_utf8_lossy(data)),
-            InfoType::HeaderOut => trace!(target: "chttp::wire", "> {:?}", String::from_utf8_lossy(data)),
+            InfoType::Text => trace!("{}", String::from_utf8_lossy(data).trim_right()),
+            InfoType::HeaderIn | InfoType::DataIn => trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),
+            InfoType::HeaderOut | InfoType::DataOut => trace!(target: "chttp::wire", ">> {}", format_byte_string(data)),
             _ => (),
         }
     }
+}
+
+fn format_byte_string(bytes: &[u8]) -> String {
+    use std::ascii;
+
+    String::from_utf8(bytes
+        .iter()
+        .flat_map(|byte| ascii::escape_default(*byte))
+        .collect()).unwrap()
 }
