@@ -1,3 +1,5 @@
+//! Provides types for working with request and response bodies.
+
 use error::Error;
 use std::fs::File;
 use std::io::{self, Cursor, Read, Seek, SeekFrom};

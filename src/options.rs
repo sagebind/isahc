@@ -1,3 +1,5 @@
+//! Definition of all configurable client options.
+
 use http::{self, Uri};
 use std::time::Duration;
 
@@ -70,6 +72,7 @@ impl Default for Options {
 }
 
 impl Options {
+    /// Create a new options with the default values.
     pub fn new() -> Options {
         Options::default()
     }

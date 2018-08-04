@@ -1,3 +1,5 @@
+//! The HTTP client implementation.
+
 use std::io;
 use std::io::Read;
 use std::sync::{Arc, Mutex, Weak};
@@ -36,6 +38,12 @@ impl Client {
     /// Sends a GET request.
     pub fn get(&self, uri: &str) -> Result<Response, Error> {
         let request = http::Request::get(uri).body(Body::Empty)?;
+        self.send(request)
+    }
+
+    /// Sends a HEAD request.
+    pub fn head(&self, uri: &str) -> Result<Response, Error> {
+        let request = http::Request::head(uri).body(Body::Empty)?;
         self.send(request)
     }
 

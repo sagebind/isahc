@@ -1,3 +1,5 @@
+//! Types for error handling.
+
 use curl;
 use http;
 use std::error::Error as StdError;
