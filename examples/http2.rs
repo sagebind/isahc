@@ -7,7 +7,8 @@ fn main() {
 
     let client = chttp::Client::builder()
         .options(options)
-        .build();
+        .build()
+        .unwrap();
 
     let mut response = client.get("https://nghttp2.org").unwrap();
     let body = response.body_mut().text().unwrap();

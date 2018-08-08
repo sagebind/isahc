@@ -14,6 +14,8 @@ pub enum Error {
     BadClientCertificate(Option<String>),
     /// The server certificate could not be validated.
     BadServerCertificate(Option<String>),
+    /// The request was canceled before it could be completed.
+    Canceled,
     /// Failed to connect to the server.
     ConnectFailed,
     /// Couldn't resolve host name.

@@ -3,7 +3,6 @@
 use http::{self, Uri};
 use std::time::Duration;
 
-
 /// Defines various protocol and connection options.
 #[derive(Clone, Debug)]
 pub struct Options {
@@ -57,8 +56,9 @@ pub struct Options {
 }
 
 impl Default for Options {
-    fn default() -> Options {
-        Options {
+    /// Create a new options with the default values.
+    fn default() -> Self {
+        Self {
             redirect_policy: RedirectPolicy::default(),
             preferred_http_version: None,
             timeout: None,
@@ -70,14 +70,6 @@ impl Default for Options {
         }
     }
 }
-
-impl Options {
-    /// Create a new options with the default values.
-    pub fn new() -> Options {
-        Options::default()
-    }
-}
-
 
 /// Describes a policy for handling server redirects.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -94,7 +86,7 @@ pub enum RedirectPolicy {
 }
 
 impl Default for RedirectPolicy {
-    fn default() -> RedirectPolicy {
+    fn default() -> Self {
         RedirectPolicy::None
     }
 }

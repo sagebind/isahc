@@ -21,7 +21,7 @@ fn request_errors_if_read_timeout_is_reached() {
     // Create an impatient client.
     let mut options = chttp::Options::default();
     options.timeout = Some(Duration::from_secs(2));
-    let client = chttp::Client::builder().options(options).build();
+    let client = chttp::Client::builder().options(options).build().unwrap();
 
     // Send a request.
     let result = client.post(&server.endpoint(), "hello world");

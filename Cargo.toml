@@ -12,10 +12,14 @@ repository = "https://github.com/sagebind/chttp"
 default = []
 
 [dependencies]
+bytes = "0.4"
 curl = "0.4"
+futures = "0.1"
 http = "0.1"
+lazy_static = "1"
 log = "0.4"
 ringtail = "0.2"
+slab = "0.4"
 
 [dependencies.json]
 version = "0.11"
