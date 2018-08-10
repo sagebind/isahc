@@ -18,7 +18,7 @@ futures = "0.1"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
-ringtail = "0.2"
+ringtail = "0.3"
 slab = "0.4"
 
 [dependencies.json]

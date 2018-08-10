@@ -1,6 +1,6 @@
 //! Definition of all configurable client options.
 
-use http::{self, Uri};
+use http;
 use std::time::Duration;
 
 /// Defines various protocol and connection options.
@@ -39,6 +39,11 @@ pub struct Options {
     /// The default value is `false`.
     pub tcp_nodelay: bool,
 
+    /// Set the max buffer size in bytes to use for reading the response body.
+    ///
+    /// The default value is 8 KiB.
+    pub buffer_size: usize,
+
     /// Indicates whether the `Referer` header should be automatically updated.
     pub auto_referer: bool,
 
@@ -52,7 +57,7 @@ pub struct Options {
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
-    pub proxy: Option<Uri>,
+    pub proxy: Option<http::Uri>,
 }
 
 impl Default for Options {
@@ -65,6 +70,7 @@ impl Default for Options {
             connect_timeout: Duration::from_secs(300),
             tcp_keepalive: None,
             tcp_nodelay: false,
+            buffer_size: 8192,
             auto_referer: false,
             proxy: None,
         }

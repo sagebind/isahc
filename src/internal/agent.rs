@@ -1,33 +1,25 @@
 use curl;
 use error::Error;
-use futures::prelude::*;
 use slab::Slab;
 use std::sync::Arc;
 use std::sync::atomic::*;
 use std::sync::mpsc;
 use std::thread;
+use super::request::*;
 use std::time::Duration;
-use transfer::*;
+
+// mod notify;
 
 const DEFAULT_TIMEOUT_MS: u64 = 1000;
 const AGENT_THREAD_NAME: &'static str = "curl agent";
 
-struct Wake {}
-
-impl Wake {
-    pub fn wake(&self) {}
-}
-
-pub struct CurlTransferToken(usize);
-
 pub struct CurlAgent {
     sender: mpsc::SyncSender<Message>,
-    thread: thread::JoinHandle<Result<(), Error>>,
     drop_flag: Arc<AtomicBool>,
 }
 
 enum Message {
-    Transfer(CurlTransfer),
+    Request(CurlRequest),
 }
 
 impl CurlAgent {
@@ -36,12 +28,12 @@ impl CurlAgent {
         let drop_flag = Arc::new(AtomicBool::default());
         let drop_flag_inner = drop_flag.clone();
 
-        let thread = thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
+        thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
             let thread = CurlAgentThread {
                 multi: curl::multi::Multi::new(),
-                drop_flag: drop_flag_inner,
-                transfers: Slab::new(),
                 inbox: rx,
+                requests: Slab::new(),
+                drop_flag: drop_flag_inner,
             };
 
             thread.run()
@@ -49,13 +41,12 @@ impl CurlAgent {
 
         Ok(Self {
             sender: tx,
-            thread: thread,
             drop_flag: drop_flag,
         })
     }
 
-    pub fn add(&self, transfer: CurlTransfer) {
-        self.sender.send(Message::Transfer(transfer)).unwrap();
+    pub fn add(&self, transfer: CurlRequest) {
+        self.sender.send(Message::Request(transfer)).unwrap();
     }
 }
 
@@ -67,9 +58,9 @@ impl Drop for CurlAgent {
 
 struct CurlAgentThread {
     multi: curl::multi::Multi,
-    drop_flag: Arc<AtomicBool>,
-    transfers: Slab<curl::multi::Easy2Handle<TransferState>>,
     inbox: mpsc::Receiver<Message>,
+    requests: Slab<curl::multi::Easy2Handle<TransferState>>,
+    drop_flag: Arc<AtomicBool>,
 }
 
 impl CurlAgentThread {
@@ -109,7 +100,7 @@ impl CurlAgentThread {
         });
 
         for (token, result) in messages {
-            let handle = self.transfers.remove(token);
+            let handle = self.requests.remove(token);
             let mut handle = self.multi.remove2(handle).unwrap();
 
             match result {
@@ -131,7 +122,7 @@ impl CurlAgentThread {
         }
 
         // While there are no active transfers, we can block until we receive a message.
-        while self.transfers.is_empty() {
+        while self.requests.is_empty() {
             match self.inbox.recv() {
                 Ok(message) => self.handle_message(message)?,
                 Err(_) => break,
@@ -143,11 +134,11 @@ impl CurlAgentThread {
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
         match message {
-            Message::Transfer(transfer) => {
-                let mut handle = self.multi.add2(transfer.easy)?;
-                let mut entry = self.transfers.vacant_entry();
+            Message::Request(request) => {
+                let mut handle = self.multi.add2(request.0)?;
+                let mut entry = self.requests.vacant_entry();
 
-                handle.set_token(entry.key());
+                handle.set_token(entry.key())?;
                 entry.insert(handle);
             },
         }

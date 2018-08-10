@@ -89,14 +89,12 @@ extern crate log;
 extern crate ringtail;
 extern crate slab;
 
-mod agent;
 pub mod body;
 pub mod client;
 pub mod error;
 pub mod options;
-mod stream;
-mod transfer;
-mod transport;
+
+mod internal;
 
 pub use body::Body;
 pub use client::Client;
