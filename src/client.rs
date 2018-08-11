@@ -2,6 +2,7 @@
 
 use body::Body;
 use error::Error;
+use futures::executor;
 use futures::prelude::*;
 use http::{self, Request, Response};
 use internal::agent::CurlAgent;
@@ -93,18 +94,19 @@ impl Client {
 
     /// Sends a request and returns the response.
     pub fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
-        self.send_async(request).wait()
+        executor::block_on(self.send_async(request))
     }
 
-    /// Sends a request and returns the response.
-    pub fn send_async(&self, request: Request<Body>) -> impl Future<Item=Response<Body>, Error=Error> {
-        let (request, future) = request::create(request, &self.options).unwrap();
+    /// Begin sending a request and return a future of the response.
+    fn send_async(&self, request: Request<Body>) -> impl Future<Item=Response<Body>, Error=Error> {
+        return request::create(request, &self.options)
+            .and_then(|(request, future)| {
+                let mut agent = self.agent.lock().unwrap();
+                agent.begin_execute(request)?;
 
-        {
-            let mut agent = self.agent.lock().unwrap();
-            agent.begin_execute(request).unwrap();
-        }
-
-        future
+                Ok(future)
+            })
+            .into_future()
+            .flatten();
     }
 }

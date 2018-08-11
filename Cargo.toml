@@ -14,7 +14,7 @@ default = []
 [dependencies]
 bytes = "0.4"
 curl = "0.4"
-futures = "0.1"
+futures-preview = "0.2"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
