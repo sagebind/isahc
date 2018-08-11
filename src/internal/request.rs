@@ -12,7 +12,7 @@ use std::io::{self, Read, Write};
 use std::str::{self, FromStr};
 use std::sync::mpsc;
 
-/// Create a new libcurl request.
+/// Create a new curl request.
 pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
     let (future_tx, future_rx) = oneshot::channel();
     let (error_tx, error_rx) = mpsc::channel();
@@ -86,7 +86,7 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     }
     easy.http_headers(headers)?;
 
-    // If the request body is non-empty, tell libcurl that we are going to upload something.
+    // If the request body is non-empty, tell curl that we are going to upload something.
     if !easy.get_ref().request_body.is_empty() {
         easy.upload(true)?;
     }
@@ -122,7 +122,7 @@ impl Read for CurlResponseStream {
     }
 }
 
-/// Sends and receives data between libcurl and the outside world.
+/// Sends and receives data between curl and the outside world.
 pub struct TransferState {
     /// Future to resolve when the initial request is complete.
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
@@ -175,14 +175,14 @@ impl TransferState {
 }
 
 impl curl::easy::Handler for TransferState {
-    // Gets called by libcurl for each line of data in the HTTP request header.
+    // Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
         let line = match str::from_utf8(data) {
             Ok(s) => s,
             _  => return false,
         };
 
-        // libcurl calls this function for all lines in the response not part of the response body, not just for headers.
+        // curl calls this function for all lines in the response not part of the response body, not just for headers.
         // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
         // if we were reading from the socket of a HTTP/1.0 or HTTP/1.1 connection ourselves.
 
@@ -227,14 +227,14 @@ impl curl::easy::Handler for TransferState {
         false
     }
 
-    // Gets called by libcurl when attempting to send bytes of the request body.
+    // Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, curl::easy::ReadError> {
         self.request_body
             .read(data)
             .map_err(|_| curl::easy::ReadError::Abort)
     }
 
-    // Gets called by libcurl when it wants to seek to a certain position in the request body.
+    // Gets called by curl when it wants to seek to a certain position in the request body.
     fn seek(&mut self, _whence: io::SeekFrom) -> curl::easy::SeekResult {
         if self.request_body.is_seekable() {
             unimplemented!();
@@ -243,7 +243,7 @@ impl curl::easy::Handler for TransferState {
         }
     }
 
-    // Gets called by libcurl when bytes from the response body are received.
+    // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
         match self.response_sink.write_all(data) {
             Ok(()) => Ok(data.len()),
@@ -251,7 +251,7 @@ impl curl::easy::Handler for TransferState {
         }
     }
 
-    // Gets called by libcurl whenever it wishes to log a debug message.
+    // Gets called by curl whenever it wishes to log a debug message.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
         fn format_byte_string(bytes: &[u8]) -> String {
             use std::ascii;

@@ -7,6 +7,7 @@ use http::{self, Request, Response};
 use internal::agent::CurlAgent;
 use internal::request;
 use options::*;
+use std::sync::Mutex;
 
 /// An HTTP client builder.
 #[derive(Clone)]
@@ -34,7 +35,7 @@ impl ClientBuilder {
         let agent = CurlAgent::new()?;
 
         Ok(Client {
-            agent: agent,
+            agent: Mutex::new(agent),
             options: self.options,
         })
     }
@@ -45,7 +46,7 @@ impl ClientBuilder {
 /// The client maintains a connection pool internally and is expensive to create, so we recommend re-using your clients
 /// instead of discarding and recreating them.
 pub struct Client {
-    agent: CurlAgent,
+    agent: Mutex<CurlAgent>,
     options: Options,
 }
 
@@ -98,7 +99,11 @@ impl Client {
     /// Sends a request and returns the response.
     pub fn send_async(&self, request: Request<Body>) -> impl Future<Item=Response<Body>, Error=Error> {
         let (request, future) = request::create(request, &self.options).unwrap();
-        self.agent.add(request);
+
+        {
+            let mut agent = self.agent.lock().unwrap();
+            agent.begin_execute(request).unwrap();
+        }
 
         future
     }

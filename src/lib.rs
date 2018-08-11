@@ -86,6 +86,8 @@ extern crate json;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+#[cfg(unix)]
+extern crate nix;
 extern crate ringtail;
 extern crate slab;
 
