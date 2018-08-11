@@ -12,7 +12,6 @@ repository = "https://github.com/sagebind/chttp"
 default = []
 
 [dependencies]
-bytes = "0.4"
 curl = "0.4"
 futures-preview = "0.2"
 http = "0.1"

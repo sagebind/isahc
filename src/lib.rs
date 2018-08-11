@@ -76,7 +76,6 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
-extern crate bytes;
 extern crate curl;
 extern crate futures;
 pub extern crate http;
