@@ -83,6 +83,7 @@ pub extern crate http;
 extern crate json;
 #[macro_use]
 extern crate lazy_static;
+extern crate lazycell;
 #[macro_use]
 extern crate log;
 #[cfg(unix)]

@@ -5,7 +5,7 @@ use curl::multi::WaitFd;
 use error::Error;
 use slab::Slab;
 use std::slice;
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
 use super::notify;
@@ -17,12 +17,13 @@ const DEFAULT_TIMEOUT_MS: u64 = 1000;
 /// An agent that executes multiple curl requests simultaneously.
 ///
 /// The agent maintains a background thread that multiplexes all active requests using a single "multi" handle.
+#[derive(Clone)]
 pub struct CurlAgent {
     /// Used to send messages to the agent thread.
     message_tx: mpsc::Sender<Message>,
 
     /// Used to wake up the agent thread while it is polling.
-    notify_tx: notify::NotifySender,
+    notify_tx: Arc<Mutex<notify::NotifySender>>,
 }
 
 impl CurlAgent {
@@ -43,18 +44,29 @@ impl CurlAgent {
 
         Ok(Self {
             message_tx,
-            notify_tx,
+            notify_tx: Arc::new(Mutex::new(notify_tx)),
         })
     }
 
     /// Begin executing a request with this agent.
-    pub fn begin_execute(&mut self, request: CurlRequest) -> Result<(), Error> {
-        if self.message_tx.send(Message::Request(request)).is_err() {
+    pub fn begin_execute(&self, request: CurlRequest) -> Result<(), Error> {
+        request.0.get_ref().set_agent(self.clone());
+
+        self.send_message(Message::BeginRequest(request))
+    }
+
+    /// Unpause a request by its token.
+    pub fn unpause_write(&self, token: usize) -> Result<(), Error> {
+        self.send_message(Message::UnpauseWrite(token))
+    }
+
+    fn send_message(&self, message: Message) -> Result<(), Error> {
+        if self.message_tx.send(message).is_err() {
             error!("agent disconnected prematurely");
             return Err(Error::Internal);
         }
 
-        self.notify_tx.notify();
+        self.notify_tx.lock().unwrap().notify();
 
         Ok(())
     }
@@ -62,7 +74,8 @@ impl CurlAgent {
 
 /// A message sent from the main thread to the agent thread.
 enum Message {
-    Request(CurlRequest),
+    BeginRequest(CurlRequest),
+    UnpauseWrite(usize),
 }
 
 /// Internal state of the agent thread.
@@ -77,7 +90,7 @@ struct CurlAgentThread {
     notify_rx: notify::NotifyReceiver,
 
     /// Contains all of the active requests.
-    requests: Slab<curl::multi::Easy2Handle<TransferState>>,
+    requests: Slab<curl::multi::Easy2Handle<CurlHandler>>,
 
     /// Indicates if the thread has been requested to stop.
     stop: bool,
@@ -161,14 +174,11 @@ impl CurlAgentThread {
         });
 
         for (token, result) in messages {
-            let handle = self.requests.remove(token);
-            let mut handle = self.multi.remove2(handle).unwrap();
-
             match result {
-                Ok(()) => {},
+                Ok(()) => self.complete_request(token)?,
                 Err(e) => {
                     debug!("curl error: {}", e);
-                    handle.get_mut().fail(e.into());
+                    self.fail_request(token, e.into())?;
                 },
             };
         }
@@ -207,14 +217,39 @@ impl CurlAgentThread {
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
         match message {
-            Message::Request(request) => {
+            Message::BeginRequest(request) => {
                 let mut handle = self.multi.add2(request.0)?;
                 let mut entry = self.requests.vacant_entry();
 
+                handle.get_ref().set_token(entry.key());
                 handle.set_token(entry.key())?;
+
                 entry.insert(handle);
             },
+            Message::UnpauseWrite(token) => {
+                if let Some(request) = self.requests.get(token) {
+                    request.unpause_write();
+                } else {
+                    warn!("received unpause request for unknown request token: {}", token);
+                }
+            },
         }
+
+        Ok(())
+    }
+
+    fn complete_request(&mut self, token: usize) -> Result<(), Error> {
+        let handle = self.requests.remove(token);
+        let handle = self.multi.remove2(handle)?;
+        handle.get_ref().complete();
+
+        Ok(())
+    }
+
+    fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
+        let handle = self.requests.remove(token);
+        let mut handle = self.multi.remove2(handle)?;
+        handle.get_mut().fail(error);
 
         Ok(())
     }

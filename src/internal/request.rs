@@ -5,32 +5,36 @@ use error::Error;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use http::{self, Request, Response};
+use lazycell::AtomicLazyCell;
 use log;
 use options::*;
 use ringtail::io::*;
 use std::io::{self, Read, Write};
 use std::str::{self, FromStr};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use super::agent::CurlAgent;
 
 /// Create a new curl request.
 pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
+    // Set up the plumbing...
     let (future_tx, future_rx) = oneshot::channel();
-    let (error_tx, error_rx) = mpsc::channel();
     let (request_parts, request_body) = request.into_parts();
-    let (response_reader, response_writer) = PipeBuilder::default()
+    let (response_reader, mut response_writer) = PipeBuilder::default()
         .capacity(options.buffer_size)
         .build();
+    response_writer.set_nonblocking(true);
 
-    let mut easy = curl::easy::Easy2::new(TransferState {
+    let mut easy = curl::easy::Easy2::new(CurlHandler {
+        state: Arc::new(State {
+            agent: AtomicLazyCell::new(),
+            token: AtomicLazyCell::new(),
+            error: AtomicLazyCell::new(),
+        }),
         future: Some(future_tx),
-        errors: error_tx,
         request_body: request_body,
         response: http::response::Builder::new(),
         response_sink: response_writer,
-        response_stream: Some(CurlResponseStream {
-            reader: response_reader,
-            errors: error_rx,
-        }),
+        response_stream: Some(response_reader),
     });
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
@@ -104,31 +108,16 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     Ok((CurlRequest(easy), future_rx))
 }
 
-pub struct CurlRequest(pub curl::easy::Easy2<TransferState>);
-
-/// Provides a stream of the response body for an ongoing request.
-pub struct CurlResponseStream {
-    reader: PipeReader,
-    errors: mpsc::Receiver<Error>,
-}
-
-impl Read for CurlResponseStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if let Ok(error) = self.errors.try_recv() {
-            return Err(error.into());
-        }
-
-        self.reader.read(buf)
-    }
-}
+/// Encapsulates a curl request that can be executed by an agent.
+pub struct CurlRequest(pub curl::easy::Easy2<CurlHandler>);
 
 /// Sends and receives data between curl and the outside world.
-pub struct TransferState {
+pub struct CurlHandler {
+    /// The shared request state.
+    state: Arc<State>,
+
     /// Future to resolve when the initial request is complete.
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
-
-    /// Channel where errors are sent after the future has already been resolved.
-    errors: mpsc::Sender<Error>,
 
     /// The request body to be sent.
     request_body: Body,
@@ -140,32 +129,56 @@ pub struct TransferState {
     response_sink: PipeWriter,
 
     /// The response body stream.
-    response_stream: Option<CurlResponseStream>,
+    response_stream: Option<PipeReader>,
 }
 
-impl TransferState {
-    pub fn is_canceled(&self) -> bool {
+impl CurlHandler {
+    /// Mark the request as completed successfully.
+    pub fn complete(&self) {
+        // nothing
+    }
+
+    /// Fail the request with the given error.
+    pub fn fail(&mut self, error: curl::Error) {
+        self.state.error.fill(error).is_ok();
+
+        // If the future has not been completed yet, complete it with the given error.
+        if let Some(future) = self.future.take() {
+            let error = self.state.error.borrow().unwrap().clone().into();
+
+            if future.send(Err(error)).is_err() {
+                debug!("error resolving future, must be dropped");
+            }
+        }
+    }
+
+    pub fn set_agent(&self, agent: CurlAgent) {
+        if self.state.agent.fill(Mutex::new(agent)).is_err() {
+            warn!("request agent cannot be changed once set");
+        }
+    }
+
+    pub fn set_token(&self, token: usize) {
+        if self.state.token.fill(token).is_err() {
+            warn!("request token cannot be changed once set");
+        }
+    }
+
+    fn is_canceled(&self) -> bool {
         match self.future {
             Some(ref future) => future.is_canceled(),
             None => false,
         }
     }
 
-    /// Fail the transfer with the given error.
-    pub fn fail(&mut self, error: Error) {
-        // If the future has not been completed yet, complete it with the given error. Otherwise send it to the error
-        // channel for the response stream to handle.
-        if let Some(future) = self.future.take() {
-            if future.send(Err(error)).is_err() {
-                panic!("error resolving future, must be dropped");
-            }
-        } else {
-            self.errors.send(error).unwrap();
-        }
-    }
+    /// Completes the associated future when headers have been received.
+    fn headers_complete(&mut self) {
+        let body = CurlResponseStream {
+            state: self.state.clone(),
+            reader: self.response_stream.take().unwrap(),
+        };
 
-    fn complete(&mut self) {
-        let response = self.response.body(self.response_stream.take().unwrap()).unwrap();
+        let response = self.response.body(body).unwrap();
 
         self.future.take()
             .unwrap()
@@ -174,7 +187,7 @@ impl TransferState {
     }
 }
 
-impl curl::easy::Handler for TransferState {
+impl curl::easy::Handler for CurlHandler {
     // Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
         let line = match str::from_utf8(data) {
@@ -219,7 +232,7 @@ impl curl::easy::Handler for TransferState {
 
         // Is this the end of the response header?
         if line == "\r\n" {
-            self.complete();
+            self.headers_complete();
             return true;
         }
 
@@ -229,6 +242,11 @@ impl curl::easy::Handler for TransferState {
 
     // Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, curl::easy::ReadError> {
+        // Don't bother if the request is canceled.
+        if self.is_canceled() {
+            return Err(curl::easy::ReadError::Abort);
+        }
+
         self.request_body
             .read(data)
             .map_err(|_| curl::easy::ReadError::Abort)
@@ -247,7 +265,17 @@ impl curl::easy::Handler for TransferState {
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
         match self.response_sink.write_all(data) {
             Ok(()) => Ok(data.len()),
-            Err(_) => Ok(0),
+            Err(e) => match e.kind() {
+                io::ErrorKind::BrokenPipe => {
+                    trace!("broken pipe, response stream was closed");
+                    Ok(0)
+                },
+                io::ErrorKind::WouldBlock => {
+                    trace!("response body buffer is full, pausing transfer");
+                    Err(curl::easy::WriteError::Pause)
+                },
+                _ => Ok(0),
+            },
         }
     }
 
@@ -269,4 +297,44 @@ impl curl::easy::Handler for TransferState {
             _ => (),
         }
     }
+}
+
+/// Provides a stream of the response body for an ongoing request.
+pub struct CurlResponseStream {
+    /// The shared request state.
+    state: Arc<State>,
+
+    /// Reading end of the response stream.
+    reader: PipeReader,
+}
+
+impl Read for CurlResponseStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // If the request failed, return an error.
+        if let Some(error) = self.state.error.borrow() {
+            debug!("failing read due to error: {:?}", error);
+            return Err(error.clone().into());
+        }
+
+        // We're about to attempt a read, which may block. Ensure the request is not paused first before we block.
+        if let Some(agent) = self.state.agent.borrow() {
+            if let Some(token) = self.state.token.get() {
+                agent.lock().unwrap().unpause_write(token)?;
+            }
+        }
+
+        self.reader.read(buf)
+    }
+}
+
+/// Holds the shared state of a request.
+struct State {
+    /// The agent handling this request. This gets populated when the request is assigned to an agent.
+    agent: AtomicLazyCell<Mutex<CurlAgent>>,
+
+    /// The request token used to uniquely identify this request.
+    token: AtomicLazyCell<usize>,
+
+    /// The request error. If the request fails, this value is populated with the curl error that caused it.
+    error: AtomicLazyCell<curl::Error>,
 }
