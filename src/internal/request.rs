@@ -1,4 +1,5 @@
 use body::Body;
+use bytes::Bytes;
 use curl;
 use curl::easy::InfoType;
 use error::Error;
@@ -8,10 +9,10 @@ use http::{self, Request, Response};
 use lazycell::AtomicLazyCell;
 use log;
 use options::*;
-use ringtail::io::*;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 use std::str::{self, FromStr};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
+use std::sync::atomic::*;
 use super::agent::CurlAgent;
 
 /// Create a new curl request.
@@ -19,22 +20,12 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     // Set up the plumbing...
     let (future_tx, future_rx) = oneshot::channel();
     let (request_parts, request_body) = request.into_parts();
-    let (response_reader, mut response_writer) = PipeBuilder::default()
-        .capacity(options.buffer_size)
-        .build();
-    response_writer.set_nonblocking(true);
 
     let mut easy = curl::easy::Easy2::new(CurlHandler {
-        state: Arc::new(State {
-            agent: AtomicLazyCell::new(),
-            token: AtomicLazyCell::new(),
-            error: AtomicLazyCell::new(),
-        }),
+        state: Arc::new(State::default()),
         future: Some(future_tx),
         request_body: request_body,
         response: http::response::Builder::new(),
-        response_sink: response_writer,
-        response_stream: Some(response_reader),
     });
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
@@ -124,18 +115,13 @@ pub struct CurlHandler {
 
     /// Builder for the response object.
     response: http::response::Builder,
-
-    /// Sink where the response body is written to.
-    response_sink: PipeWriter,
-
-    /// The response body stream.
-    response_stream: Option<PipeReader>,
 }
 
 impl CurlHandler {
     /// Mark the request as completed successfully.
     pub fn complete(&self) {
-        // nothing
+        self.state.close();
+        self.state.buffer_cond.notify_one();
     }
 
     /// Fail the request with the given error.
@@ -150,6 +136,9 @@ impl CurlHandler {
                 debug!("error resolving future, must be dropped");
             }
         }
+
+        self.state.close();
+        self.state.buffer_cond.notify_one();
     }
 
     pub fn set_agent(&self, agent: CurlAgent) {
@@ -175,7 +164,6 @@ impl CurlHandler {
     fn headers_complete(&mut self) {
         let body = CurlResponseStream {
             state: self.state.clone(),
-            reader: self.response_stream.take().unwrap(),
         };
 
         let response = self.response.body(body).unwrap();
@@ -263,20 +251,24 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
-        match self.response_sink.write_all(data) {
-            Ok(()) => Ok(data.len()),
-            Err(e) => match e.kind() {
-                io::ErrorKind::BrokenPipe => {
-                    trace!("broken pipe, response stream was closed");
-                    Ok(0)
-                },
-                io::ErrorKind::WouldBlock => {
-                    trace!("response body buffer is full, pausing transfer");
-                    Err(curl::easy::WriteError::Pause)
-                },
-                _ => Ok(0),
-            },
+        let mut buffer = self.state.buffer.lock().unwrap();
+
+        // TODO: check if request is closed
+        // return Ok(0)
+
+        // If there is existing data in the buffer, pause the request until the existing data is consumed.
+        if !buffer.is_empty() {
+            trace!("response buffer is not empty, pausing transfer");
+            return Err(curl::easy::WriteError::Pause);
         }
+
+        // Store the data in the buffer.
+        *buffer = Bytes::from(data);
+
+        // Notify the reader.
+        self.state.buffer_cond.notify_one();
+
+        Ok(buffer.len())
     }
 
     // Gets called by curl whenever it wishes to log a debug message.
@@ -303,27 +295,48 @@ impl curl::easy::Handler for CurlHandler {
 pub struct CurlResponseStream {
     /// The shared request state.
     state: Arc<State>,
-
-    /// Reading end of the response stream.
-    reader: PipeReader,
 }
 
 impl Read for CurlResponseStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        // If the request failed, return an error.
-        if let Some(error) = self.state.error.borrow() {
-            debug!("failing read due to error: {:?}", error);
-            return Err(error.clone().into());
+    fn read(&mut self, dest: &mut [u8]) -> io::Result<usize> {
+        if dest.is_empty() {
+            return Ok(0);
         }
 
-        // We're about to attempt a read, which may block. Ensure the request is not paused first before we block.
-        if let Some(agent) = self.state.agent.borrow() {
-            if let Some(token) = self.state.token.get() {
-                agent.lock().unwrap().unpause_write(token)?;
+        // Attempt to read some from the buffer.
+        let mut buffer = self.state.buffer.lock().unwrap();
+
+        loop {
+            // If the request failed, return an error.
+            if let Some(error) = self.state.error.borrow() {
+                debug!("failing read due to error: {:?}", error);
+                return Err(error.clone().into());
             }
-        }
 
-        self.reader.read(buf)
+            // If data is available, read some.
+            if !buffer.is_empty() {
+                let amount_to_consume = dest.len().min(buffer.len());
+                let consumed = buffer.split_to(amount_to_consume);
+                (&mut dest[0..amount_to_consume]).copy_from_slice(&consumed);
+
+                return Ok(consumed.len());
+            }
+
+            // If the request is closed, return EOF.
+            if self.state.is_closed() {
+                return Ok(0);
+            }
+
+            // Ensure the request is not paused so that the buffer may be filled with new data.
+            if let Some(agent) = self.state.agent.borrow() {
+                if let Some(token) = self.state.token.get() {
+                    agent.lock().unwrap().unpause_write(token)?;
+                }
+            }
+
+            // Wait for the buffer to be filled.
+            buffer = self.state.buffer_cond.wait(buffer).unwrap();
+        }
     }
 }
 
@@ -337,4 +350,33 @@ struct State {
 
     /// The request error. If the request fails, this value is populated with the curl error that caused it.
     error: AtomicLazyCell<curl::Error>,
+
+    buffer: Mutex<Bytes>,
+
+    buffer_cond: Condvar,
+
+    closed: AtomicBool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            agent: AtomicLazyCell::new(),
+            token: AtomicLazyCell::new(),
+            error: AtomicLazyCell::new(),
+            buffer: Mutex::new(Bytes::new()),
+            buffer_cond: Condvar::new(),
+            closed: AtomicBool::default(),
+        }
+    }
+}
+
+impl State {
+    fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::SeqCst)
+    }
+
+    fn close(&self) {
+        self.closed.store(true, Ordering::SeqCst);
+    }
 }

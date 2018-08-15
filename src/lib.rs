@@ -76,6 +76,7 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
+extern crate bytes;
 extern crate curl;
 extern crate futures;
 pub extern crate http;
@@ -88,7 +89,6 @@ extern crate lazycell;
 extern crate log;
 #[cfg(unix)]
 extern crate nix;
-extern crate ringtail;
 extern crate slab;
 
 pub mod body;

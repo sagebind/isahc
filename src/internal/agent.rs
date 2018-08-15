@@ -228,7 +228,7 @@ impl CurlAgentThread {
             },
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    request.unpause_write();
+                    request.unpause_write()?;
                 } else {
                     warn!("received unpause request for unknown request token: {}", token);
                 }

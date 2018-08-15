@@ -12,12 +12,12 @@ repository = "https://github.com/sagebind/chttp"
 default = []
 
 [dependencies]
+bytes = "0.4"
 futures-preview = "0.2"
 http = "0.1"
 lazy_static = "1"
 lazycell = "1.0"
 log = "0.4"
-ringtail = "0.3"
 slab = "0.4"
 
 [dependencies.curl]
