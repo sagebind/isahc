@@ -15,6 +15,9 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::sync::atomic::*;
 use super::agent::CurlAgent;
 
+const STATUS_READY: usize = 0;
+const STATUS_CLOSED: usize = 1;
+
 /// Create a new curl request.
 pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
     // Set up the plumbing...
@@ -22,7 +25,7 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     let (request_parts, request_body) = request.into_parts();
 
     let mut easy = curl::easy::Easy2::new(CurlHandler {
-        state: Arc::new(State::default()),
+        state: Arc::new(RequestState::default()),
         future: Some(future_tx),
         request_body: request_body,
         response: http::response::Builder::new(),
@@ -104,16 +107,9 @@ pub struct CurlRequest(pub curl::easy::Easy2<CurlHandler>);
 
 /// Sends and receives data between curl and the outside world.
 pub struct CurlHandler {
-    /// The shared request state.
-    state: Arc<State>,
-
-    /// Future to resolve when the initial request is complete.
+    state: Arc<RequestState>,
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
-
-    /// The request body to be sent.
     request_body: Body,
-
-    /// Builder for the response object.
     response: http::response::Builder,
 }
 
@@ -161,17 +157,19 @@ impl CurlHandler {
     }
 
     /// Completes the associated future when headers have been received.
-    fn headers_complete(&mut self) {
-        let body = CurlResponseStream {
-            state: self.state.clone(),
-        };
+    fn finalize_headers(&mut self) -> bool {
+        if let Some(future) = self.future.take() {
+            let body = CurlResponseStream {
+                state: self.state.clone(),
+            };
 
-        let response = self.response.body(body).unwrap();
+            let response = self.response.body(body).unwrap();
 
-        self.future.take()
-            .unwrap()
-            .send(Ok(response))
-            .is_ok();
+            future.send(Ok(response)).is_ok()
+        } else {
+            warn!("headers already finalized");
+            false
+        }
     }
 }
 
@@ -220,8 +218,7 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this the end of the response header?
         if line == "\r\n" {
-            self.headers_complete();
-            return true;
+            return self.finalize_headers();
         }
 
         // Unknown header line we don't know how to parse.
@@ -251,10 +248,12 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
-        let mut buffer = self.state.buffer.lock().unwrap();
+        if self.state.is_closed() {
+            debug!("aborting write, request is already closed");
+            return Ok(0);
+        }
 
-        // TODO: check if request is closed
-        // return Ok(0)
+        let mut buffer = self.state.buffer.lock().unwrap();
 
         // If there is existing data in the buffer, pause the request until the existing data is consumed.
         if !buffer.is_empty() {
@@ -293,8 +292,7 @@ impl curl::easy::Handler for CurlHandler {
 
 /// Provides a stream of the response body for an ongoing request.
 pub struct CurlResponseStream {
-    /// The shared request state.
-    state: Arc<State>,
+    state: Arc<RequestState>,
 }
 
 impl Read for CurlResponseStream {
@@ -341,42 +339,34 @@ impl Read for CurlResponseStream {
 }
 
 /// Holds the shared state of a request.
-struct State {
-    /// The agent handling this request. This gets populated when the request is assigned to an agent.
+struct RequestState {
+    status: AtomicUsize,
     agent: AtomicLazyCell<Mutex<CurlAgent>>,
-
-    /// The request token used to uniquely identify this request.
     token: AtomicLazyCell<usize>,
-
-    /// The request error. If the request fails, this value is populated with the curl error that caused it.
     error: AtomicLazyCell<curl::Error>,
-
     buffer: Mutex<Bytes>,
-
     buffer_cond: Condvar,
-
-    closed: AtomicBool,
 }
 
-impl Default for State {
+impl Default for RequestState {
     fn default() -> Self {
         Self {
+            status: AtomicUsize::new(STATUS_READY),
             agent: AtomicLazyCell::new(),
             token: AtomicLazyCell::new(),
             error: AtomicLazyCell::new(),
             buffer: Mutex::new(Bytes::new()),
             buffer_cond: Condvar::new(),
-            closed: AtomicBool::default(),
         }
     }
 }
 
-impl State {
+impl RequestState {
     fn is_closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
+        self.status.load(Ordering::SeqCst) == STATUS_CLOSED
     }
 
     fn close(&self) {
-        self.closed.store(true, Ordering::SeqCst);
+        self.status.store(STATUS_CLOSED, Ordering::SeqCst);
     }
 }
