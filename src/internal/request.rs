@@ -13,7 +13,7 @@ use std::io::{self, Read};
 use std::str::{self, FromStr};
 use std::sync::{Arc, Condvar, Mutex};
 use std::sync::atomic::*;
-use super::agent::CurlAgent;
+use super::agent;
 
 const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
@@ -137,8 +137,8 @@ impl CurlHandler {
         self.state.buffer_cond.notify_one();
     }
 
-    pub fn set_agent(&self, agent: CurlAgent) {
-        if self.state.agent.fill(Mutex::new(agent)).is_err() {
+    pub fn set_agent(&self, agent: agent::Handle) {
+        if self.state.agent.fill(agent).is_err() {
             warn!("request agent cannot be changed once set");
         }
     }
@@ -328,7 +328,7 @@ impl Read for CurlResponseStream {
             // Ensure the request is not paused so that the buffer may be filled with new data.
             if let Some(agent) = self.state.agent.borrow() {
                 if let Some(token) = self.state.token.get() {
-                    agent.lock().unwrap().unpause_write(token)?;
+                    agent.unpause_write(token)?;
                 }
             }
 
@@ -341,7 +341,7 @@ impl Read for CurlResponseStream {
 /// Holds the shared state of a request.
 struct RequestState {
     status: AtomicUsize,
-    agent: AtomicLazyCell<Mutex<CurlAgent>>,
+    agent: AtomicLazyCell<agent::Handle>,
     token: AtomicLazyCell<usize>,
     error: AtomicLazyCell<curl::Error>,
     buffer: Mutex<Bytes>,

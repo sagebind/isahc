@@ -70,9 +70,9 @@ pub struct NotifySender {
 }
 
 impl NotifySender {
-    pub fn notify(&mut self) {
+    pub fn notify(&self) {
         if !self.notified.swap(true, Ordering::SeqCst) {
-            drop(self.stream.write(&[1]));
+            drop((&self.stream).write(&[1]));
         }
     }
 }
@@ -88,13 +88,13 @@ pub struct NotifyReceiver {
 }
 
 impl NotifyReceiver {
-    pub fn drain(&mut self) -> bool {
+    pub fn drain(&self) -> bool {
         if !self.notified.swap(false, Ordering::SeqCst) {
             return false;
         }
 
         loop {
-            if self.stream.read(&mut [0; 32]).is_err() {
+            if (&self.stream).read(&mut [0; 32]).is_err() {
                 break;
             }
         }

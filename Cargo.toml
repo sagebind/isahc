@@ -13,6 +13,7 @@ default = []
 
 [dependencies]
 bytes = "0.4"
+crossbeam-channel = "0.2"
 futures-preview = "0.2"
 http = "0.1"
 lazy_static = "1"

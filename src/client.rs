@@ -5,10 +5,9 @@ use error::Error;
 use futures::executor;
 use futures::prelude::*;
 use http::{self, Request, Response};
-use internal::agent::CurlAgent;
+use internal::agent;
 use internal::request;
 use options::*;
-use std::sync::Mutex;
 
 /// An HTTP client builder.
 #[derive(Clone)]
@@ -33,10 +32,10 @@ impl ClientBuilder {
 
     /// Build an HTTP client using the configured options.
     pub fn build(self) -> Result<Client, Error> {
-        let agent = CurlAgent::new()?;
+        let agent = agent::create()?;
 
         Ok(Client {
-            agent: Mutex::new(agent),
+            agent: agent,
             options: self.options,
         })
     }
@@ -47,7 +46,7 @@ impl ClientBuilder {
 /// The client maintains a connection pool internally and is expensive to create, so we recommend re-using your clients
 /// instead of discarding and recreating them.
 pub struct Client {
-    agent: Mutex<CurlAgent>,
+    agent: agent::Handle,
     options: Options,
 }
 
@@ -101,8 +100,7 @@ impl Client {
     fn send_async(&self, request: Request<Body>) -> impl Future<Item=Response<Body>, Error=Error> {
         return request::create(request, &self.options)
             .and_then(|(request, future)| {
-                let mut agent = self.agent.lock().unwrap();
-                agent.begin_execute(request)?;
+                self.agent.begin_execute(request)?;
 
                 Ok(future)
             })
