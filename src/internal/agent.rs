@@ -6,7 +6,7 @@ use curl::multi::WaitFd;
 use error::Error;
 use slab::Slab;
 use std::slice;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
 use std::thread;
 use std::time::Duration;
@@ -23,12 +23,12 @@ pub fn create() -> Result<Handle, Error> {
     let (message_tx, message_rx) = crossbeam_channel::unbounded();
     let (notify_tx, notify_rx) = notify::create()?;
 
-    let shared = Arc::new(SharedData {
+    let handle_inner = Arc::new(HandleInner {
         message_tx,
         notify_tx,
         thread_terminated: AtomicBool::default(),
     });
-    let agent_shared = shared.clone();
+    let handle_weak = Arc::downgrade(&handle_inner);
 
     thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
         let agent = Agent {
@@ -37,7 +37,7 @@ pub fn create() -> Result<Handle, Error> {
             notify_rx,
             requests: Slab::new(),
             close_requested: false,
-            shared: agent_shared,
+            handle: handle_weak,
         };
 
         // Intentionally panic the thread if an error occurs.
@@ -45,21 +45,26 @@ pub fn create() -> Result<Handle, Error> {
     })?;
 
     Ok(Handle {
-        inner: Arc::new(HandleInner {
-            shared,
-        }),
+        inner: handle_inner,
     })
 }
 
-/// Handle to an agent.
+/// Handle to an agent. Handles can be sent between threads, shared, and cloned.
 #[derive(Clone)]
 pub struct Handle {
     inner: Arc<HandleInner>,
 }
 
+/// Actual handle to an agent. Only one of these exists per agent.
 struct HandleInner {
-    /// Agent data shared between threads.
-    shared: Arc<SharedData>,
+    /// Used to send messages to the agent.
+    message_tx: Sender<Message>,
+
+    /// Used to wake up the agent thread while it is polling.
+    notify_tx: notify::NotifySender,
+
+    /// Indicates that the agent thread has exited.
+    thread_terminated: AtomicBool,
 }
 
 impl Handle {
@@ -77,14 +82,17 @@ impl Handle {
 }
 
 impl HandleInner {
+    /// Send a message to the associated agent.
+    ///
+    /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        if self.shared.thread_terminated.load(Ordering::SeqCst) {
+        if self.thread_terminated.load(Ordering::SeqCst) {
             error!("agent thread terminated prematurely");
             return Err(Error::Internal);
         }
 
-        self.shared.message_tx.send(message);
-        self.shared.notify_tx.notify();
+        self.message_tx.send(message);
+        self.notify_tx.notify();
 
         Ok(())
     }
@@ -120,8 +128,8 @@ struct Agent {
     /// Indicates if the thread has been requested to stop.
     close_requested: bool,
 
-    /// Agent data shared between threads.
-    shared: Arc<SharedData>,
+    /// Weak reference to a handle, used to communicate back to handles.
+    handle: Weak<HandleInner>,
 }
 
 impl Agent {
@@ -193,49 +201,25 @@ impl Agent {
         Ok(())
     }
 
-    fn dispatch(&mut self) -> Result<(), Error> {
-        self.multi.perform()?;
-
-        let mut messages = Vec::new();
-        self.multi.messages(|message| {
-            if let Some(result) = message.result() {
-                if let Ok(token) = message.token() {
-                    messages.push((token, result));
-                }
-            }
-        });
-
-        for (token, result) in messages {
-            match result {
-                Ok(()) => self.complete_request(token)?,
-                Err(e) => {
-                    debug!("curl error: {}", e);
-                    self.fail_request(token, e.into())?;
-                },
-            };
-        }
-
-        Ok(())
-    }
-
+    /// Polls the message channel for new messages from any agent handles.
+    ///
+    /// If there are no active requests right now, this function will block until a message is received.
     fn poll_messages(&mut self) -> Result<(), Error> {
-        // Handle pending messages.
         loop {
-            match self.message_rx.try_recv() {
-                Some(message) => self.handle_message(message)?,
-                None => break,
-            }
-        }
-
-        // While there are no active transfers, we can block until we receive a message.
-        while self.requests.is_empty() {
-            match self.message_rx.recv() {
-                Some(message) => self.handle_message(message)?,
-                None => {
-                    warn!("agent handle disconnected without close message");
-                    self.close_requested = true;
-                    break;
-                },
+            if self.requests.is_empty() {
+                match self.message_rx.recv() {
+                    Some(message) => self.handle_message(message)?,
+                    None => {
+                        warn!("agent handle disconnected without close message");
+                        self.close_requested = true;
+                        break;
+                    },
+                }
+            } else {
+                match self.message_rx.try_recv() {
+                    Some(message) => self.handle_message(message)?,
+                    None => break,
+                }
             }
         }
 
@@ -269,6 +253,31 @@ impl Agent {
         Ok(())
     }
 
+    fn dispatch(&mut self) -> Result<(), Error> {
+        self.multi.perform()?;
+
+        let mut messages = Vec::new();
+        self.multi.messages(|message| {
+            if let Some(result) = message.result() {
+                if let Ok(token) = message.token() {
+                    messages.push((token, result));
+                }
+            }
+        });
+
+        for (token, result) in messages {
+            match result {
+                Ok(()) => self.complete_request(token)?,
+                Err(e) => {
+                    debug!("curl error: {}", e);
+                    self.fail_request(token, e.into())?;
+                },
+            };
+        }
+
+        Ok(())
+    }
+
     fn complete_request(&mut self, token: usize) -> Result<(), Error> {
         let handle = self.requests.remove(token);
         let handle = self.multi.remove2(handle)?;
@@ -288,17 +297,8 @@ impl Agent {
 
 impl Drop for Agent {
     fn drop(&mut self) {
-        self.shared.thread_terminated.store(true, Ordering::SeqCst);
+        if let Some(handle) = self.handle.upgrade() {
+            handle.thread_terminated.store(true, Ordering::SeqCst);
+        }
     }
-}
-
-struct SharedData {
-    /// Used to send messages to the agent.
-    message_tx: Sender<Message>,
-
-    /// Used to wake up the agent thread while it is polling.
-    notify_tx: notify::NotifySender,
-
-    /// Indicates that the agent thread has exited.
-    thread_terminated: AtomicBool,
 }
