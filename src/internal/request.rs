@@ -3,6 +3,7 @@ use bytes::Bytes;
 use curl;
 use curl::easy::InfoType;
 use error::Error;
+use futures;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use http::{self, Request, Response};
@@ -92,12 +93,11 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     let future_rx = future_rx.then(|result| match result {
         Ok(Ok(response)) => Ok(response),
         Ok(Err(e)) => Err(e),
-        Err(oneshot::Canceled) => Err(Error::Canceled),
-    }).map(|response| {
-        response.map(|body| {
-            Body::from_reader(body)
-        })
-    });
+        Err(oneshot::Canceled) => {
+            error!("request canceled by agent; this should never happen!");
+            Err(Error::Canceled)
+        },
+    }).map(|response| response.map(Body::from_reader));
 
     Ok((CurlRequest(easy), future_rx))
 }
@@ -129,7 +129,12 @@ impl CurlHandler {
             let error = self.state.error.borrow().unwrap().clone().into();
 
             if future.send(Err(error)).is_err() {
-                debug!("error resolving future, must be dropped");
+                debug!("future was canceled, canceling the request");
+                if let Some(agent) = self.state.agent.borrow() {
+                    if let Some(token) = self.state.token.get() {
+                        agent.cancel_request(token).is_ok();
+                    }
+                }
             }
         }
 

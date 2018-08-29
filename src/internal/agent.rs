@@ -75,6 +75,11 @@ impl Handle {
         self.inner.send_message(Message::BeginRequest(request))
     }
 
+    /// Cancel a request by its token.
+    pub fn cancel_request(&self, token: usize) -> Result<(), Error> {
+        self.inner.send_message(Message::Cancel(token))
+    }
+
     /// Unpause a request by its token.
     pub fn unpause_write(&self, token: usize) -> Result<(), Error> {
         self.inner.send_message(Message::UnpauseWrite(token))
@@ -106,6 +111,7 @@ impl Drop for HandleInner {
 
 /// A message sent from the main thread to the agent thread.
 enum Message {
+    Cancel(usize),
     Close,
     BeginRequest(CurlRequest),
     UnpauseWrite(usize),
@@ -240,6 +246,13 @@ impl Agent {
                 handle.set_token(entry.key())?;
 
                 entry.insert(handle);
+            },
+            Message::Cancel(token) => {
+                if self.requests.contains(token) {
+                    let request = self.requests.remove(token);
+                    let request = self.multi.remove2(request)?;
+                    drop(request);
+                }
             },
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
