@@ -3,7 +3,6 @@ use bytes::Bytes;
 use curl;
 use curl::easy::InfoType;
 use error::Error;
-use futures;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use http::{self, Request, Response};
@@ -244,11 +243,7 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl when it wants to seek to a certain position in the request body.
     fn seek(&mut self, _whence: io::SeekFrom) -> curl::easy::SeekResult {
-        if self.request_body.is_seekable() {
-            unimplemented!();
-        } else {
-            curl::easy::SeekResult::CantSeek
-        }
+        curl::easy::SeekResult::CantSeek
     }
 
     // Gets called by curl when bytes from the response body are received.

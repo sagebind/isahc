@@ -29,11 +29,6 @@ impl Body {
         }
     }
 
-    /// Report if this body is seekable.
-    pub fn is_seekable(&self) -> bool {
-        false
-    }
-
     /// Get the size of the body, if known.
     pub fn len(&self) -> Option<usize> {
         match self {
