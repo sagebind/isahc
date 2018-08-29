@@ -14,14 +14,18 @@ pub enum Error {
     BadClientCertificate(Option<String>),
     /// The server certificate could not be validated.
     BadServerCertificate(Option<String>),
+    /// The request was canceled before it could be completed.
+    Canceled,
     /// Failed to connect to the server.
     ConnectFailed,
     /// Couldn't resolve host name.
     CouldntResolveHost,
     /// Couldn't resolve proxy host name.
     CouldntResolveProxy,
-    /// An unrecognized error thrown by libcurl.
+    /// An unrecognized error thrown by curl.
     Curl(String),
+    /// An internal error occurred in the client.
+    Internal,
     /// Unrecognized or bad content encoding returned by the server.
     InvalidContentEncoding(Option<String>),
     /// Provided credentials were rejected by the server.
@@ -52,8 +56,6 @@ pub enum Error {
     TooManyConnections,
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,
-    /// An attempt was made to re-use a transport for a new request that already has another request in progress.
-    TransportBusy,
 }
 
 impl fmt::Display for Error {
@@ -71,6 +73,7 @@ impl StdError for Error {
             &Error::CouldntResolveHost => "couldn't resolve host name",
             &Error::CouldntResolveProxy => "couldn't resolve proxy host name",
             &Error::Curl(ref e) => e,
+            &Error::Internal => "internal error",
             &Error::InvalidContentEncoding(Some(ref e)) => e,
             &Error::InvalidCredentials => "credentials were rejected by the server",
             &Error::InvalidHttpFormat(ref e) => e.description(),
@@ -86,7 +89,6 @@ impl StdError for Error {
             &Error::Timeout => "request took longer than the configured timeout",
             &Error::TooManyConnections => "max connection limit exceeded",
             &Error::TooManyRedirects => "max redirect limit exceeded",
-            &Error::TransportBusy => "transport is already in use",
             _ => "unknown error",
         }
     }

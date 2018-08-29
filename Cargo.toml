@@ -12,14 +12,24 @@ repository = "https://github.com/sagebind/chttp"
 default = []
 
 [dependencies]
-curl = "0.4"
+bytes = "0.4"
+crossbeam-channel = "0.2"
+futures-preview = "0.2"
 http = "0.1"
+lazy_static = "1"
+lazycell = "1.0"
 log = "0.4"
-ringtail = "0.2"
+slab = "0.4"
+
+[dependencies.curl]
+git = "https://github.com/alexcrichton/curl-rust"
 
 [dependencies.json]
 version = "0.11"
 optional = true
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.11"
 
 [dev-dependencies]
 env_logger = "0.5"

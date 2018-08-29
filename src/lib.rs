@@ -76,19 +76,28 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
+extern crate bytes;
+extern crate crossbeam_channel;
 extern crate curl;
+extern crate futures;
 pub extern crate http;
 #[cfg(feature = "json")]
 extern crate json;
 #[macro_use]
+extern crate lazy_static;
+extern crate lazycell;
+#[macro_use]
 extern crate log;
-extern crate ringtail;
+#[cfg(unix)]
+extern crate nix;
+extern crate slab;
 
 pub mod body;
 pub mod client;
 pub mod error;
 pub mod options;
-mod transport;
+
+mod internal;
 
 pub use body::Body;
 pub use client::Client;
@@ -101,33 +110,36 @@ pub type Request = http::Request<Body>;
 /// An HTTP response.
 pub type Response = http::Response<Body>;
 
+lazy_static! {
+    static ref DEFAULT_CLIENT: Client = Client::new().unwrap();
+}
 
 /// Sends a GET request.
 pub fn get(uri: &str) -> Result<Response, Error> {
-    Client::default().get(uri)
+    DEFAULT_CLIENT.get(uri)
 }
 
 /// Sends a HEAD request.
 pub fn head(uri: &str) -> Result<Response, Error> {
-    Client::default().head(uri)
+    DEFAULT_CLIENT.head(uri)
 }
 
 /// Sends a POST request.
 pub fn post<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
-    Client::default().post(uri, body)
+    DEFAULT_CLIENT.post(uri, body)
 }
 
 /// Sends a PUT request.
 pub fn put<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
-    Client::default().put(uri, body)
+    DEFAULT_CLIENT.put(uri, body)
 }
 
 /// Sends a DELETE request.
 pub fn delete(uri: &str) -> Result<Response, Error> {
-    Client::default().delete(uri)
+    DEFAULT_CLIENT.delete(uri)
 }
 
 /// Sends a request.
 pub fn send(request: Request) -> Result<Response, Error> {
-    Client::default().send(request)
+    DEFAULT_CLIENT.send(request)
 }
