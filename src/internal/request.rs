@@ -3,16 +3,27 @@ use bytes::Bytes;
 use curl;
 use curl::easy::InfoType;
 use error::Error;
-use futures::channel::oneshot;
-use futures::prelude::*;
+use futures::{
+    channel::oneshot,
+    executor,
+    prelude::*,
+};
 use http::{self, Request, Response};
 use lazycell::AtomicLazyCell;
 use log;
 use options::*;
-use std::io::{self, Read};
-use std::str::{self, FromStr};
-use std::sync::{Arc, Condvar, Mutex};
-use std::sync::atomic::*;
+use std::{
+    io,
+    io::Read,
+    mem,
+    str,
+    str::FromStr,
+    sync::{
+        atomic::*,
+        Arc,
+        Mutex,
+    },
+};
 use super::agent;
 
 const STATUS_READY: usize = 0;
@@ -116,7 +127,7 @@ impl CurlHandler {
     /// Mark the request as completed successfully.
     pub fn complete(&self) {
         self.state.close();
-        self.state.buffer_cond.notify_one();
+        self.state.read_waker.wake();
     }
 
     /// Fail the request with the given error.
@@ -138,7 +149,7 @@ impl CurlHandler {
         }
 
         self.state.close();
-        self.state.buffer_cond.notify_one();
+        self.state.read_waker.wake();
     }
 
     pub fn set_agent(&self, agent: agent::Handle) {
@@ -265,7 +276,7 @@ impl curl::easy::Handler for CurlHandler {
         *buffer = Bytes::from(data);
 
         // Notify the reader.
-        self.state.buffer_cond.notify_one();
+        self.state.read_waker.wake();
 
         Ok(buffer.len())
     }
@@ -290,51 +301,81 @@ impl curl::easy::Handler for CurlHandler {
     }
 }
 
-/// Provides a stream of the response body for an ongoing request.
+/// Provides an asynchronous stream of the response body for an ongoing request.
 pub struct CurlResponseStream {
     state: Arc<RequestState>,
 }
 
-impl Read for CurlResponseStream {
-    fn read(&mut self, dest: &mut [u8]) -> io::Result<usize> {
-        if dest.is_empty() {
-            return Ok(0);
+// Synchronous wrapper around async stream.
+impl io::Read for CurlResponseStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        executor::block_on(AsyncReadExt::read(self, buf).map(|r| r.2))
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        executor::block_on(AsyncReadExt::read_exact(self, buf).map(|_| ()))
+    }
+
+    fn read_to_end(&mut self, dest: &mut Vec<u8>) -> io::Result<usize> {
+        let mut buf = Vec::new();
+        mem::swap(&mut buf, dest);
+
+        match executor::block_on(AsyncReadExt::read_to_end(self, buf)) {
+            Ok((_, buf)) => {
+                *dest = buf;
+                Ok(dest.len())
+            },
+            Err(e) => Err(e),
         }
+    }
+}
+
+impl AsyncRead for CurlResponseStream {
+    fn poll_read(&mut self, cx: &mut task::Context, dest: &mut [u8]) -> Result<Async<usize>, io::Error> {
+        trace!("received read request for {} bytes", dest.len());
+
+        if dest.is_empty() {
+            return Ok(Async::Ready(0));
+        }
+
+        // Set the current read waker.
+        self.state.read_waker.register(cx.waker());
 
         // Attempt to read some from the buffer.
         let mut buffer = self.state.buffer.lock().unwrap();
 
-        loop {
-            // If the request failed, return an error.
-            if let Some(error) = self.state.error.borrow() {
-                debug!("failing read due to error: {:?}", error);
-                return Err(error.clone().into());
-            }
-
-            // If data is available, read some.
-            if !buffer.is_empty() {
-                let amount_to_consume = dest.len().min(buffer.len());
-                let consumed = buffer.split_to(amount_to_consume);
-                (&mut dest[0..amount_to_consume]).copy_from_slice(&consumed);
-
-                return Ok(consumed.len());
-            }
-
-            // If the request is closed, return EOF.
-            if self.state.is_closed() {
-                return Ok(0);
-            }
-
-            // Ensure the request is not paused so that the buffer may be filled with new data.
-            if let Some(agent) = self.state.agent.borrow() {
-                if let Some(token) = self.state.token.get() {
-                    agent.unpause_write(token)?;
-                }
-            }
-
-            // Wait for the buffer to be filled.
-            buffer = self.state.buffer_cond.wait(buffer).unwrap();
+        // If the request failed, return an error.
+        if let Some(error) = self.state.error.borrow() {
+            debug!("failing read due to error: {:?}", error);
+            return Err(error.clone().into());
         }
+
+        // If data is available, read some.
+        if !buffer.is_empty() {
+            let amount_to_consume = dest.len().min(buffer.len());
+            trace!("read buffer contains {} bytes, consuming {} bytes", buffer.len(), amount_to_consume);
+
+            let consumed = buffer.split_to(amount_to_consume);
+            (&mut dest[0..amount_to_consume]).copy_from_slice(&consumed);
+
+            return Ok(Async::Ready(consumed.len()));
+        }
+
+        // If the request is closed, return EOF.
+        if self.state.is_closed() {
+            trace!("request is closed, satisfying read request with EOF");
+            return Ok(Async::Ready(0));
+        }
+
+        // Before we yield, ensure the request is not paused so that the buffer may be filled with new data.
+        if let Some(agent) = self.state.agent.borrow() {
+            if let Some(token) = self.state.token.get() {
+                agent.unpause_write(token)?;
+            }
+        }
+
+        trace!("buffer is empty, read is pending");
+        Ok(Async::Pending)
     }
 }
 
@@ -345,7 +386,7 @@ struct RequestState {
     token: AtomicLazyCell<usize>,
     error: AtomicLazyCell<curl::Error>,
     buffer: Mutex<Bytes>,
-    buffer_cond: Condvar,
+    read_waker: task::AtomicWaker,
 }
 
 impl Default for RequestState {
@@ -356,7 +397,7 @@ impl Default for RequestState {
             token: AtomicLazyCell::new(),
             error: AtomicLazyCell::new(),
             buffer: Mutex::new(Bytes::new()),
-            buffer_cond: Condvar::new(),
+            read_waker: task::AtomicWaker::default(),
         }
     }
 }
