@@ -98,6 +98,11 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     // If the request body is non-empty, tell curl that we are going to upload something.
     if !easy.get_ref().request_body.is_empty() {
         easy.upload(true)?;
+
+        if let Some(len) = easy.get_ref().request_body.len() {
+            // If we know the size of the request body up front, tell curl about it.
+            easy.in_filesize(len as u64)?;
+        }
     }
 
     let future_rx = future_rx.then(|result| match result {

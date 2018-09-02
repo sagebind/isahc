@@ -100,9 +100,7 @@ impl Client {
     fn send_async(&self, request: Request<Body>) -> impl Future<Item=Response<Body>, Error=Error> {
         return request::create(request, &self.options)
             .and_then(|(request, future)| {
-                self.agent.begin_execute(request)?;
-
-                Ok(future)
+                self.agent.begin_execute(request).map(|_| future)
             })
             .into_future()
             .flatten();
