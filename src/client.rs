@@ -10,6 +10,8 @@ use internal::request;
 use options::*;
 
 /// An HTTP client builder.
+///
+/// This builder can be used to create an HTTP client with customized behavior.
 #[derive(Clone)]
 pub struct ClientBuilder {
     options: Options,
@@ -63,35 +65,37 @@ impl Client {
 
     /// Sends a GET request.
     pub fn get(&self, uri: &str) -> Result<Response<Body>, Error> {
-        let request = http::Request::get(uri).body(Body::Empty)?;
+        let request = http::Request::get(uri).body(Body::default())?;
         self.send(request)
     }
 
     /// Sends a HEAD request.
     pub fn head(&self, uri: &str) -> Result<Response<Body>, Error> {
-        let request = http::Request::head(uri).body(Body::Empty)?;
+        let request = http::Request::head(uri).body(Body::default())?;
         self.send(request)
     }
 
     /// Sends a POST request.
-    pub fn post<B: Into<Body>>(&self, uri: &str, body: B) -> Result<Response<Body>, Error> {
+    pub fn post(&self, uri: &str, body: impl Into<Body>) -> Result<Response<Body>, Error> {
         let request = http::Request::post(uri).body(body.into())?;
         self.send(request)
     }
 
     /// Sends a PUT request.
-    pub fn put<B: Into<Body>>(&self, uri: &str, body: B) -> Result<Response<Body>, Error> {
+    pub fn put(&self, uri: &str, body: impl Into<Body>) -> Result<Response<Body>, Error> {
         let request = http::Request::put(uri).body(body.into())?;
         self.send(request)
     }
 
     /// Sends a DELETE request.
     pub fn delete(&self, uri: &str) -> Result<Response<Body>, Error> {
-        let request = http::Request::delete(uri).body(Body::Empty)?;
+        let request = http::Request::delete(uri).body(Body::default())?;
         self.send(request)
     }
 
     /// Sends a request and returns the response.
+    ///
+    /// The response body is provided as a stream that may only be consumed once.
     pub fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
         executor::block_on(self.send_async(request))
     }
