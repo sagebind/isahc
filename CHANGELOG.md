@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - 2018-09-04
+
+- Refactor the internals of cHTTP to be "closer to the metal", with a single curl multi handle running in a background thread per client that multiplexes all requests. This improves connection pooling and reduces memory usage, and has only minimal public API changes. This also opens the door to providing an async API in the future. (#5)
+- Redesign `Body` public API.
+- Include a `Content-Length` header automatically if the request body size is known.
+- Add shortcut functions for sending `HEAD` requests.
+- Improve debug logging.
+- Improve integration tests.
+
 ## 0.1.5 - 2018-08-03
 
 - Add wire tracing logs for inspecting raw headers being sent and received.
