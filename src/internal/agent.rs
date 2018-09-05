@@ -2,10 +2,8 @@
 
 use crossbeam_channel::{self, Sender, Receiver};
 use curl;
-use curl::multi::WaitFd;
 use error::Error;
 use slab::Slab;
-use std::slice;
 use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
 use std::thread;
@@ -141,38 +139,8 @@ struct Agent {
 impl Agent {
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
-        #[allow(unused_assignments)]
-        let mut wait_fd = None;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::io::AsRawFd;
-
-            let mut fd = WaitFd::new();
-            fd.set_fd(self.notify_rx.as_raw_fd());
-            fd.poll_on_read(true);
-
-            wait_fd = Some(fd);
-        }
-
-        #[cfg(windows)]
-        {
-            use std::os::windows::io::AsRawSocket;
-
-            let mut fd = WaitFd::new();
-            fd.set_fd(self.notify_rx.as_raw_socket() as i32);
-            fd.poll_on_read(true);
-
-            wait_fd = Some(fd);
-        }
-
-        let wait_fds = match wait_fd.as_mut() {
-            Some(mut fd) => slice::from_mut(fd),
-            None => {
-                warn!("polling interruption is not supported on your platform");
-                &mut []
-            },
-        };
+        let mut wait_fds = [self.notify_rx.as_wait_fd()];
+        wait_fds[0].poll_on_read(true);
 
         debug!("agent ready");
 
@@ -189,7 +157,7 @@ impl Agent {
 
             // Block until activity is detected or the timeout passes.
             trace!("polling with timeout of {:?}", timeout);
-            self.multi.wait(wait_fds, timeout)?;
+            self.multi.wait(&mut wait_fds, timeout)?;
 
             // We might have woken up early from the notify fd, so drain its queue.
             if self.notify_rx.drain() {

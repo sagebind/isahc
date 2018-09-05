@@ -44,6 +44,7 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
     easy.signal(false)?;
+    easy.buffer_size(options.buffer_size)?;
 
     if let Some(timeout) = options.timeout {
         easy.timeout(timeout)?;

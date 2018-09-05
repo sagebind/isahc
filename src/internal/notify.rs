@@ -1,71 +1,64 @@
 //! File descriptors that can be used to wake up an I/O selector.
 
+use curl::multi::WaitFd;
 use std::io::{self, Read, Write};
 use std::sync::atomic::*;
 use std::sync::Arc;
 
+#[cfg(unix)]
+type Stream = ::std::fs::File;
+
 #[cfg(windows)]
+type Stream = ::std::net::TcpStream;
+
 pub fn create() -> io::Result<(NotifySender, NotifyReceiver)> {
-    use std::net::*;
+    let (rx, tx) = {
+        #[cfg(unix)] {
+            use nix::{self, fcntl::OFlag, unistd};
+            use std::fs::File;
+            use std::os::unix::prelude::*;
 
-    let listener = TcpListener::bind("127.0.0.1:0")?;
-    let sender = TcpStream::connect(&listener.local_addr()?)?;
-    let receiver = listener.accept()?.0;
-    drop(listener);
+            let (rx, tx) = unistd::pipe2(OFlag::O_CLOEXEC | OFlag::O_NONBLOCK).map_err(|e| match e {
+                nix::Error::Sys(errno) => io::Error::from(errno),
+                _ => io::ErrorKind::Other.into(),
+            })?;
 
-    sender.set_nonblocking(true)?;
-    receiver.set_nonblocking(true)?;
+            unsafe {
+                (File::from_raw_fd(rx), File::from_raw_fd(tx))
+            }
+        }
+
+        #[cfg(windows)] {
+            use std::net::*;
+
+            let listener = TcpListener::bind("127.0.0.1:0")?;
+            let tx = TcpStream::connect(&listener.local_addr()?)?;
+            let rx = listener.accept()?.0;
+            drop(listener);
+
+            sender.set_nonblocking(true)?;
+            receiver.set_nonblocking(true)?;
+
+            (rx, tx)
+        }
+    };
 
     let notified = Arc::<AtomicBool>::default();
 
     Ok((
         NotifySender {
-            stream: sender,
+            stream: tx,
             notified: notified.clone(),
         },
         NotifyReceiver {
-            stream: receiver,
+            stream: rx,
             notified: notified,
         },
     ))
 }
 
-#[cfg(unix)]
-pub fn create() -> io::Result<(NotifySender, NotifyReceiver)> {
-    use nix;
-    use std::fs::File;
-    use std::os::unix::prelude::*;
-
-    let (read_fd, write_fd) = nix::unistd::pipe2(
-        nix::fcntl::OFlag::O_CLOEXEC | nix::fcntl::OFlag::O_NONBLOCK,
-    ).map_err(|e| match e {
-        nix::Error::Sys(errno) => io::Error::from(errno),
-        _ => io::ErrorKind::Other.into(),
-    })?;
-
-    let notified = Arc::<AtomicBool>::default();
-
-    unsafe {
-        Ok((
-            NotifySender {
-                stream: File::from_raw_fd(write_fd),
-                notified: notified.clone(),
-            },
-            NotifyReceiver {
-                stream: File::from_raw_fd(read_fd),
-                notified: notified,
-            },
-        ))
-    }
-}
-
 pub struct NotifySender {
-    #[cfg(unix)]
-    stream: ::std::fs::File,
-
-    #[cfg(windows)]
-    stream: ::std::net::TcpStream,
-
+    stream: Stream,
     notified: Arc<AtomicBool>,
 }
 
@@ -78,12 +71,7 @@ impl NotifySender {
 }
 
 pub struct NotifyReceiver {
-    #[cfg(unix)]
-    stream: ::std::fs::File,
-
-    #[cfg(windows)]
-    stream: ::std::net::TcpStream,
-
+    stream: Stream,
     notified: Arc<AtomicBool>,
 }
 
@@ -101,18 +89,24 @@ impl NotifyReceiver {
 
         true
     }
-}
 
-#[cfg(unix)]
-impl ::std::os::unix::io::AsRawFd for NotifyReceiver {
-    fn as_raw_fd(&self) -> ::std::os::unix::io::RawFd {
-        self.stream.as_raw_fd()
+    #[cfg(unix)]
+    pub fn as_wait_fd(&self) -> WaitFd {
+        use std::os::unix::io::AsRawFd;
+
+        let mut fd = WaitFd::new();
+        fd.set_fd(self.stream.as_raw_fd());
+
+        fd
     }
-}
 
-#[cfg(windows)]
-impl ::std::os::windows::io::AsRawSocket for NotifyReceiver {
-    fn as_raw_handle(&self) -> ::std::os::windows::io::RawSocket {
-        self.stream.as_raw_handle()
+    #[cfg(windows)]
+    pub fn as_wait_fd(&self) -> WaitFd {
+        use std::os::windows::io::AsRawSocket;
+
+        let mut fd = WaitFd::new();
+        fd.set_fd(self.stream.as_raw_socket() as i32);
+
+        fd
     }
 }
