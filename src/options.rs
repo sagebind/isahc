@@ -4,7 +4,7 @@ use http;
 use std::time::Duration;
 
 /// Defines various protocol and connection options.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Withers)]
 pub struct Options {
     /// The policy for automatically following server redirects.
     ///
@@ -58,6 +58,16 @@ pub struct Options {
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
     pub proxy: Option<http::Uri>,
+
+    /// A maximum upload speed for the request body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    pub max_upload_speed: Option<u64>,
+
+    /// A maximum download speed for the response body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    pub max_download_speed: Option<u64>,
 }
 
 impl Default for Options {
@@ -73,6 +83,8 @@ impl Default for Options {
             buffer_size: 8192,
             auto_referer: false,
             proxy: None,
+            max_upload_speed: None,
+            max_download_speed: None,
         }
     }
 }

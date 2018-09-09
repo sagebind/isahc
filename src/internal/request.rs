@@ -30,7 +30,7 @@ const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
 
 /// Create a new curl request.
-pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
+pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
     // Set up the plumbing...
     let (future_tx, future_rx) = oneshot::channel();
     let (request_parts, request_body) = request.into_parts();
@@ -38,9 +38,12 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     let mut easy = curl::easy::Easy2::new(CurlHandler {
         state: Arc::new(RequestState::default()),
         future: Some(future_tx),
-        request_body: request_body,
+        request_body: request_body.into(),
         response: http::response::Builder::new(),
     });
+
+    // If the request has options attached, use those options, otherwise use the default options.
+    let options = request_parts.extensions.get().unwrap_or(default_options);
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
     easy.signal(false)?;
@@ -56,6 +59,8 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     if let Some(interval) = options.tcp_keepalive {
         easy.tcp_keepalive(true)?;
         easy.tcp_keepintvl(interval)?;
+    } else {
+        easy.tcp_keepalive(false)?;
     }
 
     match options.redirect_policy {
@@ -72,17 +77,23 @@ pub fn create(request: Request<Body>, options: &Options) -> Result<(CurlRequest,
     }
 
     // Set a preferred HTTP version to negotiate.
-    if let Some(version) = options.preferred_http_version {
-        easy.http_version(match version {
-            http::Version::HTTP_10 => curl::easy::HttpVersion::V10,
-            http::Version::HTTP_11 => curl::easy::HttpVersion::V11,
-            http::Version::HTTP_2 => curl::easy::HttpVersion::V2,
-            _ => curl::easy::HttpVersion::Any,
-        })?;
-    }
+    easy.http_version(match options.preferred_http_version {
+        Some(http::Version::HTTP_10) => curl::easy::HttpVersion::V10,
+        Some(http::Version::HTTP_11) => curl::easy::HttpVersion::V11,
+        Some(http::Version::HTTP_2) => curl::easy::HttpVersion::V2,
+        _ => curl::easy::HttpVersion::Any,
+    })?;
 
     if let Some(ref proxy) = options.proxy {
         easy.proxy(&format!("{}", proxy))?;
+    }
+
+    if let Some(limit) = options.max_upload_speed {
+        easy.max_send_speed(limit)?;
+    }
+
+    if let Some(limit) = options.max_download_speed {
+        easy.max_recv_speed(limit)?;
     }
 
     // Set the request data according to the request given.
