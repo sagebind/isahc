@@ -281,6 +281,7 @@ impl Agent {
     }
 
     fn complete_request(&mut self, token: usize) -> Result<(), Error> {
+        debug!("request with token {} completed", token);
         let handle = self.requests.remove(token);
         let handle = self.multi.remove2(handle)?;
         handle.get_ref().complete();

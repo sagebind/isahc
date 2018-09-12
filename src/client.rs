@@ -84,13 +84,13 @@ impl Client {
     /// Sends an HTTP GET request.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    pub fn get(&self, uri: &str) -> Result<Response<Body>, Error> {
+    pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
         let request = http::Request::get(uri).body(Body::default())?;
         self.send(request)
     }
 
     /// Sends an HTTP HEAD request.
-    pub fn head(&self, uri: &str) -> Result<Response<Body>, Error> {
+    pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
         let request = http::Request::head(uri).body(Body::default())?;
         self.send(request)
     }
@@ -98,7 +98,7 @@ impl Client {
     /// Sends an HTTP POST request.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    pub fn post(&self, uri: &str, body: impl Into<Body>) -> Result<Response<Body>, Error> {
+    pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
         let request = http::Request::post(uri).body(body)?;
         self.send(request)
     }
@@ -106,7 +106,7 @@ impl Client {
     /// Sends an HTTP PUT request.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    pub fn put(&self, uri: &str, body: impl Into<Body>) -> Result<Response<Body>, Error> {
+    pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
         let request = http::Request::put(uri).body(body)?;
         self.send(request)
     }
@@ -114,7 +114,7 @@ impl Client {
     /// Sends an HTTP DELETE request.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    pub fn delete(&self, uri: &str) -> Result<Response<Body>, Error> {
+    pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
         let request = http::Request::delete(uri).body(Body::default())?;
         self.send(request)
     }

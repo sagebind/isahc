@@ -27,15 +27,17 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
     let (future_tx, future_rx) = oneshot::channel();
     let (request_parts, request_body) = request.into_parts();
 
-    let mut easy = curl::easy::Easy2::new(CurlHandler {
-        state: Arc::new(RequestState::default()),
-        future: Some(future_tx),
-        request_body: request_body.into(),
-        response: http::response::Builder::new(),
-    });
-
     // If the request has options attached, use those options, otherwise use the default options.
     let options = request_parts.extensions.get().unwrap_or(default_options);
+
+    let mut easy = curl::easy::Easy2::new(CurlHandler {
+        state: Arc::new(RequestState::new(options.clone())),
+        future: Some(future_tx),
+        request_body: request_body.into(),
+        version: None,
+        status_code: None,
+        headers: http::HeaderMap::default(),
+    });
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
     easy.signal(false)?;
@@ -128,10 +130,23 @@ pub struct CurlRequest(pub curl::easy::Easy2<CurlHandler>);
 /// Sends and receives data between curl and the outside world.
 #[derive(Debug)]
 pub struct CurlHandler {
+    /// Shared request state.
     state: Arc<RequestState>,
+
+    /// Future that resolves when the response headers are received.
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
+
+    /// A request body to send.
     request_body: Body,
-    response: http::response::Builder,
+
+    /// Status code of the response.
+    status_code: Option<http::StatusCode>,
+
+    /// HTTP version of the response.
+    version: Option<http::Version>,
+
+    /// Response headers received so far.
+    headers: http::HeaderMap,
 }
 
 impl CurlHandler {
@@ -182,14 +197,45 @@ impl CurlHandler {
         }
     }
 
+    /// Determine if curl is about to perform a redirect.
+    fn is_about_to_redirect(&self) -> bool {
+        self.state.options.redirect_policy != RedirectPolicy::None
+            && self.status_code.filter(http::StatusCode::is_redirection).is_some()
+            && self.headers.contains_key("Location")
+    }
+
     /// Completes the associated future when headers have been received.
     fn finalize_headers(&mut self) -> bool {
+        if self.is_about_to_redirect() {
+            debug!("preparing for redirect to {:?}", self.headers.get("Location"));
+
+            // It appears that curl will do a redirect, so instead of completing the future, just reset the response
+            // state.
+            self.status_code = None;
+            self.version = None;
+            self.headers.clear();
+
+            return true;
+        }
+
         if let Some(future) = self.future.take() {
             let body = CurlResponseStream {
                 state: self.state.clone(),
             };
 
-            let response = self.response.body(body).unwrap();
+            let mut builder = http::Response::builder();
+            builder.status(self.status_code.take().unwrap());
+            builder.version(self.version.take().unwrap());
+
+            for (name, values) in self.headers.drain() {
+                for value in values {
+                    builder.header(&name, value);
+                }
+            }
+
+            let response = builder
+                .body(body)
+                .unwrap();
 
             future.send(Ok(response)).is_ok()
         } else {
@@ -219,21 +265,19 @@ impl curl::easy::Handler for CurlHandler {
             };
 
             // Parse the HTTP protocol version.
-            let version = match &line[0..separator] {
+            self.version = Some(match &line[0..separator] {
                 "HTTP/2" => http::Version::HTTP_2,
                 "HTTP/1.1" => http::Version::HTTP_11,
                 "HTTP/1.0" => http::Version::HTTP_10,
                 "HTTP/0.9" => http::Version::HTTP_09,
                 _ => http::Version::default(),
-            };
-            self.response.version(version);
+            });
 
             // Parse the status code.
-            let status_code = match http::StatusCode::from_str(&line[separator+1..separator+4]) {
-                Ok(s) => s,
+            self.status_code = match http::StatusCode::from_str(&line[separator+1..separator+4]) {
+                Ok(s) => Some(s),
                 _ => return false,
             };
-            self.response.status(status_code);
 
             return true;
         }
@@ -242,7 +286,10 @@ impl curl::easy::Handler for CurlHandler {
         if let Some(pos) = line.find(":") {
             let (name, value) = line.split_at(pos);
             let value = value[2..].trim();
-            self.response.header(name, value);
+            self.headers.insert(
+                http::header::HeaderName::from_str(name).unwrap(),
+                http::header::HeaderValue::from_str(value).unwrap(),
+            );
 
             return true;
         }
@@ -275,6 +322,8 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
+        trace!("received {} bytes of data", data.len());
+
         if self.state.is_closed() {
             debug!("aborting write, request is already closed");
             return Ok(0);
@@ -390,6 +439,7 @@ impl AsyncRead for CurlResponseStream {
 /// Holds the shared state of a request.
 #[derive(Debug)]
 struct RequestState {
+    options: Options,
     status: AtomicUsize,
     agent: AtomicLazyCell<agent::Handle>,
     token: AtomicLazyCell<usize>,
@@ -398,9 +448,10 @@ struct RequestState {
     read_waker: task::AtomicWaker,
 }
 
-impl Default for RequestState {
-    fn default() -> Self {
+impl RequestState {
+    fn new(options: Options) -> Self {
         Self {
+            options: options,
             status: AtomicUsize::new(STATUS_READY),
             agent: AtomicLazyCell::new(),
             token: AtomicLazyCell::new(),
@@ -409,9 +460,7 @@ impl Default for RequestState {
             read_waker: task::AtomicWaker::default(),
         }
     }
-}
 
-impl RequestState {
     fn is_closed(&self) -> bool {
         self.status.load(Ordering::SeqCst) == STATUS_CLOSED
     }
