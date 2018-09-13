@@ -1,11 +1,15 @@
 # Changelog
 
-## 0.2.0 - 2018-09-04
+## 0.2.0 - 2018-09-12
 
 - Refactor the internals of cHTTP to be "closer to the metal", with a single curl multi handle running in a background thread per client that multiplexes all requests. This improves connection pooling and reduces memory usage, and has only minimal public API changes. This also opens the door to providing an async API in the future. (#5)
 - Redesign `Body` public API.
 - Include a `Content-Length` header automatically if the request body size is known.
 - Add shortcut functions for sending `HEAD` requests.
+- Allow users to pass in `Options` attached to individual requests as an extension, eliminating the need to create a custom client just for a simple option.
+- Add `with_` methods to `Options`, making it much more ergonomic to create instances with just a few options specified.
+- Add options for max upload/download speed.
+- Support sending any `Request` with a body that implements `Into<Body>`.
 - Improve debug logging.
 - Improve integration tests.
 
