@@ -48,12 +48,13 @@ pub fn create() -> Result<Handle, Error> {
 }
 
 /// Handle to an agent. Handles can be sent between threads, shared, and cloned.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Handle {
     inner: Arc<HandleInner>,
 }
 
 /// Actual handle to an agent. Only one of these exists per agent.
+#[derive(Debug)]
 struct HandleInner {
     /// Used to send messages to the agent.
     message_tx: Sender<Message>,
@@ -108,6 +109,7 @@ impl Drop for HandleInner {
 }
 
 /// A message sent from the main thread to the agent thread.
+#[derive(Debug)]
 enum Message {
     Cancel(usize),
     Close,
@@ -146,11 +148,14 @@ impl Agent {
 
         // Agent main loop.
         loop {
-            if self.close_requested && self.requests.is_empty() {
+            self.poll_messages()?;
+
+            // Perform any pending reads or writes and handle any state changes.
+            self.dispatch()?;
+
+            if self.close_requested {
                 break;
             }
-
-            self.poll_messages()?;
 
             // Determine the blocking timeout value.
             let timeout = self.multi.get_timeout()?.unwrap_or(Duration::from_millis(DEFAULT_TIMEOUT_MS));
@@ -163,13 +168,11 @@ impl Agent {
             if self.notify_rx.drain() {
                 trace!("woke up from notify fd");
             }
-
-            // Perform any pending reads or writes and handle any state changes.
-            self.dispatch()?;
         }
 
         debug!("agent shutting down");
 
+        self.requests.clear();
         self.multi.close()?;
 
         Ok(())
@@ -180,7 +183,7 @@ impl Agent {
     /// If there are no active requests right now, this function will block until a message is received.
     fn poll_messages(&mut self) -> Result<(), Error> {
         loop {
-            if self.requests.is_empty() {
+            if !self.close_requested && self.requests.is_empty() {
                 match self.message_rx.recv() {
                     Some(message) => self.handle_message(message)?,
                     None => {
@@ -201,6 +204,8 @@ impl Agent {
     }
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
+        trace!("received message from agent handle: {:?}", message);
+
         match message {
             Message::Close => {
                 trace!("agent close requested");

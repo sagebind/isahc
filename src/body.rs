@@ -2,10 +2,11 @@
 
 use bytes::Bytes;
 use error::Error;
+use internal;
+use std::fmt;
 use std::fs::File;
 use std::io::{self, Cursor, Read, Seek, SeekFrom};
 use std::str;
-
 
 /// Contains the body of an HTTP request or response.
 ///
@@ -154,6 +155,16 @@ impl<T: Into<Body>> From<Option<T>> for Body {
         match body {
             Some(body) => body.into(),
             None => Self::default(),
+        }
+    }
+}
+
+impl fmt::Debug for Body {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.0 {
+            Inner::Empty => write!(f, "Empty"),
+            Inner::Bytes(bytes) => write!(f, "Memory({})", internal::format_byte_string(bytes.get_ref())),
+            Inner::Streaming(_) => write!(f, "Streaming"),
         }
     }
 }

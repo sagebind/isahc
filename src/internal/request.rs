@@ -3,28 +3,20 @@ use bytes::Bytes;
 use curl;
 use curl::easy::InfoType;
 use error::Error;
-use futures::{
-    channel::oneshot,
-    executor,
-    prelude::*,
-};
+use futures::channel::oneshot;
+use futures::executor;
+use futures::prelude::*;
 use http::{self, Request, Response};
 use lazycell::AtomicLazyCell;
 use log;
 use options::*;
-use std::{
-    io,
-    io::Read,
-    mem,
-    str,
-    str::FromStr,
-    sync::{
-        atomic::*,
-        Arc,
-        Mutex,
-    },
-};
+use std::io::{self, Read};
+use std::mem;
+use std::str::{self, FromStr};
+use std::sync::atomic::*;
+use std::sync::{Arc, Mutex};
 use super::agent;
+use super::format_byte_string;
 
 const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
@@ -130,9 +122,11 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
 }
 
 /// Encapsulates a curl request that can be executed by an agent.
+#[derive(Debug)]
 pub struct CurlRequest(pub curl::easy::Easy2<CurlHandler>);
 
 /// Sends and receives data between curl and the outside world.
+#[derive(Debug)]
 pub struct CurlHandler {
     state: Arc<RequestState>,
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
@@ -300,15 +294,6 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl whenever it wishes to log a debug message.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
-        fn format_byte_string(bytes: &[u8]) -> String {
-            use std::ascii;
-
-            String::from_utf8(bytes
-                .iter()
-                .flat_map(|byte| ascii::escape_default(*byte))
-                .collect()).unwrap()
-        }
-
         match kind {
             InfoType::Text => trace!("{}", String::from_utf8_lossy(data).trim_right()),
             InfoType::HeaderIn | InfoType::DataIn => trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),
@@ -319,6 +304,7 @@ impl curl::easy::Handler for CurlHandler {
 }
 
 /// Provides an asynchronous stream of the response body for an ongoing request.
+#[derive(Debug)]
 pub struct CurlResponseStream {
     state: Arc<RequestState>,
 }
@@ -397,6 +383,7 @@ impl AsyncRead for CurlResponseStream {
 }
 
 /// Holds the shared state of a request.
+#[derive(Debug)]
 struct RequestState {
     status: AtomicUsize,
     agent: AtomicLazyCell<agent::Handle>,

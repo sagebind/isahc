@@ -57,6 +57,7 @@ pub fn create() -> io::Result<(NotifySender, NotifyReceiver)> {
     ))
 }
 
+#[derive(Debug)]
 pub struct NotifySender {
     stream: Stream,
     notified: Arc<AtomicBool>,
@@ -70,6 +71,7 @@ impl NotifySender {
     }
 }
 
+#[derive(Debug)]
 pub struct NotifyReceiver {
     stream: Stream,
     notified: Arc<AtomicBool>,
