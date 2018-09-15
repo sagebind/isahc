@@ -12,7 +12,8 @@ use super::notify;
 use super::request::*;
 
 const AGENT_THREAD_NAME: &'static str = "curl agent";
-const DEFAULT_TIMEOUT_MS: u64 = 1000;
+const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
+const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
 
 /// Create an agent that executes multiple curl requests simultaneously.
 ///
@@ -157,12 +158,27 @@ impl Agent {
                 break;
             }
 
-            // Determine the blocking timeout value.
-            let timeout = self.multi.get_timeout()?.unwrap_or(Duration::from_millis(DEFAULT_TIMEOUT_MS));
+            // Determine the blocking timeout value. If curl returns None, then it is unsure as to what timeout value is
+            // appropriate. In this case we use a default value.
+            let mut timeout = self.multi.get_timeout()?.unwrap_or(DEFAULT_TIMEOUT);
+
+            // HACK: A mysterious bug in recent versions of curl causes it to return the value of
+            // `CURLOPT_CONNECTTIMEOUT_MS` a few times during the DNS resolve phase. Work around this issue by
+            // truncating this known value to 1ms to avoid blocking the agent loop for a long time.
+            // See https://github.com/curl/curl/issues/2996 and https://github.com/alexcrichton/curl-rust/issues/227.
+            if timeout == Duration::from_secs(300) {
+                debug!("HACK: curl returned CONNECTTIMEOUT of {:?}, truncating to 1ms!", timeout);
+                timeout = Duration::from_millis(1);
+            }
+
+            // Truncate the timeout to the max value.
+            timeout = timeout.min(MAX_TIMEOUT);
 
             // Block until activity is detected or the timeout passes.
-            trace!("polling with timeout of {:?}", timeout);
-            self.multi.wait(&mut wait_fds, timeout)?;
+            if timeout > Duration::from_secs(0) {
+                trace!("polling with timeout of {:?}", timeout);
+                self.multi.wait(&mut wait_fds, timeout)?;
+            }
 
             // We might have woken up early from the notify fd, so drain its queue.
             if self.notify_rx.drain() {
