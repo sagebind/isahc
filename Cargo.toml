@@ -14,7 +14,6 @@ default = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.2"
-curl = "~0.4.15"
 futures-preview = "0.2"
 http = "0.1"
 lazy_static = "1"
@@ -22,6 +21,10 @@ lazycell = "1.0"
 log = "0.4"
 slab = "0.4"
 withers_derive = "0.2"
+
+[dependencies.curl]
+version = "~0.4.15"
+features = ["http2"]
 
 [dependencies.json]
 version = "0.11"
