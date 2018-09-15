@@ -1,11 +1,12 @@
 [package]
 name = "chttp"
-version = "0.2.0"
+version = "0.2.1"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
 keywords = ["http", "request", "client"]
 categories = ["web-programming::http-client"]
+readme = "README.md"
 repository = "https://github.com/sagebind/chttp"
 
 [features]
@@ -14,7 +15,7 @@ default = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.2"
-futures-preview = "0.2"
+futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
 lazycell = "1.0"

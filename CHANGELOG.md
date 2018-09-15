@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2018-09-15
+
+- Enable HTTP/2 support.
+- Apply a workaround for a potential bug in libcurl concerning timeouts in the agent event loop.
+
 ## 0.2.0 - 2018-09-12
 
 - Refactor the internals of cHTTP to be "closer to the metal", with a single curl multi handle running in a background thread per client that multiplexes all requests. This improves connection pooling and reduces memory usage, and has only minimal public API changes. This also opens the door to providing an async API in the future. (#5)

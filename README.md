@@ -11,9 +11,9 @@ The practical HTTP client that is fun to use.
 
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
-- HTTP/2 support (if libcurl is compiled with it).
+- HTTP/2 support.
 - Connection pooling and reuse.
-- Respone body streaming.
+- Response body streaming.
 - Request body uploading from memory or a stream.
 - Tweakable redirect policy.
 - TCP socket configuration.
@@ -55,17 +55,6 @@ let mut response = client.get("https://example.org").unwrap();
 let body = response.body_mut().text().unwrap();
 println!("{}", body);
 ```
-
-## Requirements
-
-On Linux:
-
-- libcurl 7.24.0 or newer
-- OpenSSL 1.0.1, 1.0.2, 1.1.0, or LibreSSL
-
-On Windows and macOS:
-
-- TBD
 
 ## Installation
 
