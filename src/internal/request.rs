@@ -213,9 +213,14 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this the status line?
         if line.starts_with("HTTP/") {
+            let separator = match line.find(' ') {
+                Some(idx) => idx,
+                None => return false,
+            };
+
             // Parse the HTTP protocol version.
-            let version = match &line[0..8] {
-                "HTTP/2.0" => http::Version::HTTP_2,
+            let version = match &line[0..separator] {
+                "HTTP/2" => http::Version::HTTP_2,
                 "HTTP/1.1" => http::Version::HTTP_11,
                 "HTTP/1.0" => http::Version::HTTP_10,
                 "HTTP/0.9" => http::Version::HTTP_09,
@@ -224,7 +229,7 @@ impl curl::easy::Handler for CurlHandler {
             self.response.version(version);
 
             // Parse the status code.
-            let status_code = match http::StatusCode::from_str(&line[9..12]) {
+            let status_code = match http::StatusCode::from_str(&line[separator+1..separator+4]) {
                 Ok(s) => s,
                 _ => return false,
             };
