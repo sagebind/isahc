@@ -2,6 +2,7 @@ use std::ascii;
 
 pub mod agent;
 pub mod notify;
+pub mod parse;
 pub mod request;
 
 pub fn format_byte_string(bytes: impl AsRef<[u8]>) -> String {

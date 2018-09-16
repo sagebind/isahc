@@ -132,6 +132,8 @@ impl From<curl::Error> for Error {
             Error::SSLEngineError(error.extra_description().map(str::to_owned))
         } else if error.is_operation_timedout() {
             Error::Timeout
+        } else if error.is_too_many_redirects() {
+            Error::TooManyRedirects
         } else {
             Error::Curl(error.description().to_owned())
         }

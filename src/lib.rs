@@ -121,6 +121,7 @@ extern crate lazycell;
 extern crate log;
 #[cfg(unix)]
 extern crate nix;
+extern crate regex;
 extern crate slab;
 #[macro_use]
 extern crate withers_derive;

@@ -12,11 +12,11 @@ use log;
 use options::*;
 use std::io::{self, Read};
 use std::mem;
-use std::str::{self, FromStr};
 use std::sync::atomic::*;
 use std::sync::{Arc, Mutex};
 use super::agent;
 use super::format_byte_string;
+use super::parse;
 
 const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
@@ -151,7 +151,8 @@ pub struct CurlHandler {
 
 impl CurlHandler {
     /// Mark the request as completed successfully.
-    pub fn complete(&self) {
+    pub fn complete(&mut self) {
+        self.ensure_future_is_completed();
         self.state.close();
         self.state.read_waker.wake();
     }
@@ -205,7 +206,7 @@ impl CurlHandler {
     }
 
     /// Completes the associated future when headers have been received.
-    fn finalize_headers(&mut self) -> bool {
+    fn finalize_headers(&mut self) {
         if self.is_about_to_redirect() {
             debug!("preparing for redirect to {:?}", self.headers.get("Location"));
 
@@ -215,9 +216,13 @@ impl CurlHandler {
             self.version = None;
             self.headers.clear();
 
-            return true;
+            return;
         }
 
+        self.ensure_future_is_completed();
+    }
+
+    fn ensure_future_is_completed(&mut self) {
         if let Some(future) = self.future.take() {
             let body = CurlResponseStream {
                 state: self.state.clone(),
@@ -237,10 +242,7 @@ impl CurlHandler {
                 .body(body)
                 .unwrap();
 
-            future.send(Ok(response)).is_ok()
-        } else {
-            warn!("headers already finalized");
-            false
+            future.send(Ok(response)).is_ok();
         }
     }
 }
@@ -248,55 +250,27 @@ impl CurlHandler {
 impl curl::easy::Handler for CurlHandler {
     // Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
-        let line = match str::from_utf8(data) {
-            Ok(s) => s,
-            _  => return false,
-        };
-
-        // curl calls this function for all lines in the response not part of the response body, not just for headers.
+        // Curl calls this function for all lines in the response not part of the response body, not just for headers.
         // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
         // if we were reading from the socket of a HTTP/1.0 or HTTP/1.1 connection ourselves.
 
         // Is this the status line?
-        if line.starts_with("HTTP/") {
-            let separator = match line.find(' ') {
-                Some(idx) => idx,
-                None => return false,
-            };
-
-            // Parse the HTTP protocol version.
-            self.version = Some(match &line[0..separator] {
-                "HTTP/2" => http::Version::HTTP_2,
-                "HTTP/1.1" => http::Version::HTTP_11,
-                "HTTP/1.0" => http::Version::HTTP_10,
-                "HTTP/0.9" => http::Version::HTTP_09,
-                _ => http::Version::default(),
-            });
-
-            // Parse the status code.
-            self.status_code = match http::StatusCode::from_str(&line[separator+1..separator+4]) {
-                Ok(s) => Some(s),
-                _ => return false,
-            };
-
+        if let Some((version, status)) = parse::parse_status_line(data) {
+            self.version = Some(version);
+            self.status_code = Some(status);
             return true;
         }
 
         // Is this a header line?
-        if let Some(pos) = line.find(":") {
-            let (name, value) = line.split_at(pos);
-            let value = value[2..].trim();
-            self.headers.insert(
-                http::header::HeaderName::from_str(name).unwrap(),
-                http::header::HeaderValue::from_str(value).unwrap(),
-            );
-
+        if let Some((name, value)) = parse::parse_header(data) {
+            self.headers.insert(name, value);
             return true;
         }
 
         // Is this the end of the response header?
-        if line == "\r\n" {
-            return self.finalize_headers();
+        if data == b"\r\n" {
+            self.finalize_headers();
+            return true;
         }
 
         // Unknown header line we don't know how to parse.
