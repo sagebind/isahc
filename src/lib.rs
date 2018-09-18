@@ -121,6 +121,7 @@ extern crate lazycell;
 extern crate log;
 #[cfg(unix)]
 extern crate nix;
+extern crate regex;
 extern crate slab;
 #[macro_use]
 extern crate withers_derive;
@@ -150,33 +151,33 @@ lazy_static! {
 /// Sends an HTTP GET request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get(uri: &str) -> Result<Response, Error> {
+pub fn get<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
     DEFAULT_CLIENT.get(uri)
 }
 
 /// Sends an HTTP HEAD request.
-pub fn head(uri: &str) -> Result<Response, Error> {
+pub fn head<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
     DEFAULT_CLIENT.head(uri)
 }
 
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn post<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
+pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
     DEFAULT_CLIENT.post(uri, body)
 }
 
 /// Sends an HTTP PUT request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn put<B: Into<Body>>(uri: &str, body: B) -> Result<Response, Error> {
+pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
     DEFAULT_CLIENT.put(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn delete(uri: &str) -> Result<Response, Error> {
+pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
     DEFAULT_CLIENT.delete(uri)
 }
 

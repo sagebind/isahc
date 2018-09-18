@@ -12,11 +12,11 @@ use log;
 use options::*;
 use std::io::{self, Read};
 use std::mem;
-use std::str::{self, FromStr};
 use std::sync::atomic::*;
 use std::sync::{Arc, Mutex};
 use super::agent;
 use super::format_byte_string;
+use super::parse;
 
 const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
@@ -27,15 +27,17 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
     let (future_tx, future_rx) = oneshot::channel();
     let (request_parts, request_body) = request.into_parts();
 
-    let mut easy = curl::easy::Easy2::new(CurlHandler {
-        state: Arc::new(RequestState::default()),
-        future: Some(future_tx),
-        request_body: request_body.into(),
-        response: http::response::Builder::new(),
-    });
-
     // If the request has options attached, use those options, otherwise use the default options.
     let options = request_parts.extensions.get().unwrap_or(default_options);
+
+    let mut easy = curl::easy::Easy2::new(CurlHandler {
+        state: Arc::new(RequestState::new(options.clone())),
+        future: Some(future_tx),
+        request_body: request_body.into(),
+        version: None,
+        status_code: None,
+        headers: http::HeaderMap::default(),
+    });
 
     easy.verbose(log_enabled!(log::Level::Trace))?;
     easy.signal(false)?;
@@ -128,15 +130,29 @@ pub struct CurlRequest(pub curl::easy::Easy2<CurlHandler>);
 /// Sends and receives data between curl and the outside world.
 #[derive(Debug)]
 pub struct CurlHandler {
+    /// Shared request state.
     state: Arc<RequestState>,
+
+    /// Future that resolves when the response headers are received.
     future: Option<oneshot::Sender<Result<Response<CurlResponseStream>, Error>>>,
+
+    /// A request body to send.
     request_body: Body,
-    response: http::response::Builder,
+
+    /// Status code of the response.
+    status_code: Option<http::StatusCode>,
+
+    /// HTTP version of the response.
+    version: Option<http::Version>,
+
+    /// Response headers received so far.
+    headers: http::HeaderMap,
 }
 
 impl CurlHandler {
     /// Mark the request as completed successfully.
-    pub fn complete(&self) {
+    pub fn complete(&mut self) {
+        self.ensure_future_is_completed();
         self.state.close();
         self.state.read_waker.wake();
     }
@@ -182,19 +198,51 @@ impl CurlHandler {
         }
     }
 
+    /// Determine if curl is about to perform a redirect.
+    fn is_about_to_redirect(&self) -> bool {
+        self.state.options.redirect_policy != RedirectPolicy::None
+            && self.status_code.filter(http::StatusCode::is_redirection).is_some()
+            && self.headers.contains_key("Location")
+    }
+
     /// Completes the associated future when headers have been received.
-    fn finalize_headers(&mut self) -> bool {
+    fn finalize_headers(&mut self) {
+        if self.is_about_to_redirect() {
+            debug!("preparing for redirect to {:?}", self.headers.get("Location"));
+
+            // It appears that curl will do a redirect, so instead of completing the future, just reset the response
+            // state.
+            self.status_code = None;
+            self.version = None;
+            self.headers.clear();
+
+            return;
+        }
+
+        self.ensure_future_is_completed();
+    }
+
+    fn ensure_future_is_completed(&mut self) {
         if let Some(future) = self.future.take() {
             let body = CurlResponseStream {
                 state: self.state.clone(),
             };
 
-            let response = self.response.body(body).unwrap();
+            let mut builder = http::Response::builder();
+            builder.status(self.status_code.take().unwrap());
+            builder.version(self.version.take().unwrap());
 
-            future.send(Ok(response)).is_ok()
-        } else {
-            warn!("headers already finalized");
-            false
+            for (name, values) in self.headers.drain() {
+                for value in values {
+                    builder.header(&name, value);
+                }
+            }
+
+            let response = builder
+                .body(body)
+                .unwrap();
+
+            future.send(Ok(response)).is_ok();
         }
     }
 }
@@ -202,54 +250,27 @@ impl CurlHandler {
 impl curl::easy::Handler for CurlHandler {
     // Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
-        let line = match str::from_utf8(data) {
-            Ok(s) => s,
-            _  => return false,
-        };
-
-        // curl calls this function for all lines in the response not part of the response body, not just for headers.
+        // Curl calls this function for all lines in the response not part of the response body, not just for headers.
         // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
         // if we were reading from the socket of a HTTP/1.0 or HTTP/1.1 connection ourselves.
 
         // Is this the status line?
-        if line.starts_with("HTTP/") {
-            let separator = match line.find(' ') {
-                Some(idx) => idx,
-                None => return false,
-            };
-
-            // Parse the HTTP protocol version.
-            let version = match &line[0..separator] {
-                "HTTP/2" => http::Version::HTTP_2,
-                "HTTP/1.1" => http::Version::HTTP_11,
-                "HTTP/1.0" => http::Version::HTTP_10,
-                "HTTP/0.9" => http::Version::HTTP_09,
-                _ => http::Version::default(),
-            };
-            self.response.version(version);
-
-            // Parse the status code.
-            let status_code = match http::StatusCode::from_str(&line[separator+1..separator+4]) {
-                Ok(s) => s,
-                _ => return false,
-            };
-            self.response.status(status_code);
-
+        if let Some((version, status)) = parse::parse_status_line(data) {
+            self.version = Some(version);
+            self.status_code = Some(status);
             return true;
         }
 
         // Is this a header line?
-        if let Some(pos) = line.find(":") {
-            let (name, value) = line.split_at(pos);
-            let value = value[2..].trim();
-            self.response.header(name, value);
-
+        if let Some((name, value)) = parse::parse_header(data) {
+            self.headers.insert(name, value);
             return true;
         }
 
         // Is this the end of the response header?
-        if line == "\r\n" {
-            return self.finalize_headers();
+        if data == b"\r\n" {
+            self.finalize_headers();
+            return true;
         }
 
         // Unknown header line we don't know how to parse.
@@ -275,6 +296,8 @@ impl curl::easy::Handler for CurlHandler {
 
     // Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
+        trace!("received {} bytes of data", data.len());
+
         if self.state.is_closed() {
             debug!("aborting write, request is already closed");
             return Ok(0);
@@ -390,6 +413,7 @@ impl AsyncRead for CurlResponseStream {
 /// Holds the shared state of a request.
 #[derive(Debug)]
 struct RequestState {
+    options: Options,
     status: AtomicUsize,
     agent: AtomicLazyCell<agent::Handle>,
     token: AtomicLazyCell<usize>,
@@ -398,9 +422,10 @@ struct RequestState {
     read_waker: task::AtomicWaker,
 }
 
-impl Default for RequestState {
-    fn default() -> Self {
+impl RequestState {
+    fn new(options: Options) -> Self {
         Self {
+            options: options,
             status: AtomicUsize::new(STATUS_READY),
             agent: AtomicLazyCell::new(),
             token: AtomicLazyCell::new(),
@@ -409,9 +434,7 @@ impl Default for RequestState {
             read_waker: task::AtomicWaker::default(),
         }
     }
-}
 
-impl RequestState {
     fn is_closed(&self) -> bool {
         self.status.load(Ordering::SeqCst) == STATUS_CLOSED
     }
