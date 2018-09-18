@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 - 2018-09-17
+
+- Fix following redirect policies not being respected correctly.
+
 ## 0.2.1 - 2018-09-15
 
 - Enable HTTP/2 support.
