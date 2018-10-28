@@ -70,6 +70,14 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
         }
     }
 
+    if let Some(limit) = options.max_upload_speed {
+        easy.max_send_speed(limit)?;
+    }
+
+    if let Some(limit) = options.max_download_speed {
+        easy.max_recv_speed(limit)?;
+    }
+
     // Set a preferred HTTP version to negotiate.
     easy.http_version(match options.preferred_http_version {
         Some(http::Version::HTTP_10) => curl::easy::HttpVersion::V10,
@@ -82,14 +90,6 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
         easy.proxy(&format!("{}", proxy))?;
     }
 
-    if let Some(limit) = options.max_upload_speed {
-        easy.max_send_speed(limit)?;
-    }
-
-    if let Some(limit) = options.max_download_speed {
-        easy.max_recv_speed(limit)?;
-    }
-
     // Set the request data according to the request given.
     easy.custom_request(request_parts.method.as_str())?;
     easy.url(&request_parts.uri.to_string())?;
@@ -100,6 +100,9 @@ pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> 
         headers.append(&header)?;
     }
     easy.http_headers(headers)?;
+
+    // Enable automatic response decompression.
+    easy.accept_encoding("")?;
 
     // If the request body is non-empty, tell curl that we are going to upload something.
     if !easy.get_ref().request_body.is_empty() {

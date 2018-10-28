@@ -18,14 +18,14 @@ crossbeam-channel = "0.2"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
-lazycell = "1.0"
+lazycell = "1.2"
 log = "0.4"
 regex = "1.0"
 slab = "0.4"
 withers_derive = "0.2"
 
 [dependencies.curl]
-version = "~0.4.15"
+version = "0.4"
 features = ["http2"]
 
 [dependencies.json]
@@ -37,4 +37,4 @@ nix = "0.11"
 
 [dev-dependencies]
 env_logger = "0.5"
-rouille = "2.1"
+rouille = "2.2"
