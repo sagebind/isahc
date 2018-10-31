@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 - 2018-10-30
+
+- Enable curl's built-in gzip and zlib encoding decompression.
+
 ## 0.2.2 - 2018-09-17
 
 - Fix following redirect policies not being respected correctly.
