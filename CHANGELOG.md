@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4 - 2018-11-01
+
+- Add a `version()` function, which returns a human-readable string containing the runtime version of cHTTP and important dependencies. Helpful for debugging endeavors.
+
 ## 0.2.3 - 2018-10-30
 
 - Enable curl's built-in gzip and zlib encoding decompression.
