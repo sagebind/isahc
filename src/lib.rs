@@ -138,15 +138,21 @@ pub use client::Client;
 pub use error::Error;
 pub use options::*;
 
+
+/// Gets a human-readable string with the version number of cHTTP and its dependencies.
+///
+/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
+pub fn version() -> String {
+    format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num())
+}
+
+
 /// An HTTP request.
 pub type Request = http::Request<Body>;
 
 /// An HTTP response.
 pub type Response = http::Response<Body>;
 
-lazy_static! {
-    static ref DEFAULT_CLIENT: Client = Client::new().unwrap();
-}
 
 /// Sends an HTTP GET request.
 ///
@@ -190,4 +196,8 @@ pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpT
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error> {
     DEFAULT_CLIENT.send(request.map(|body| body.into()))
+}
+
+lazy_static! {
+    static ref DEFAULT_CLIENT: Client = Client::new().unwrap();
 }
