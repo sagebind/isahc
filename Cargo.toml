@@ -14,7 +14,8 @@ default = []
 
 [dependencies]
 bytes = "0.4"
-crossbeam-channel = "0.2"
+chashmap = "2.2"
+crossbeam-channel = "0.3"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
@@ -36,5 +37,5 @@ optional = true
 nix = "0.11"
 
 [dev-dependencies]
-env_logger = "0.5"
+env_logger = "0.6"
 rouille = "2.2"

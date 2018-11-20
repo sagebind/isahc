@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! The practical HTTP client that is fun to use.
 //!
 //! cHTTP is an HTTP client that provides a clean and easy-to-use interface around the venerable [libcurl].
@@ -108,6 +106,7 @@
 //! [log]: https://docs.rs/log
 
 extern crate bytes;
+extern crate chashmap;
 extern crate crossbeam_channel;
 extern crate curl;
 extern crate futures;
@@ -128,7 +127,9 @@ extern crate withers_derive;
 
 pub mod body;
 pub mod client;
+pub mod cookies;
 pub mod error;
+pub mod middleware;
 pub mod options;
 
 mod internal;
@@ -137,14 +138,6 @@ pub use body::Body;
 pub use client::Client;
 pub use error::Error;
 pub use options::*;
-
-
-/// Gets a human-readable string with the version number of cHTTP and its dependencies.
-///
-/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
-pub fn version() -> String {
-    format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num())
-}
 
 
 /// An HTTP request.
@@ -200,4 +193,12 @@ pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error>
 
 lazy_static! {
     static ref DEFAULT_CLIENT: Client = Client::new().unwrap();
+}
+
+
+/// Gets a human-readable string with the version number of cHTTP and its dependencies.
+///
+/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
+pub fn version() -> String {
+    format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num())
 }

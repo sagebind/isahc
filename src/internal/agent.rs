@@ -201,8 +201,8 @@ impl Agent {
         loop {
             if !self.close_requested && self.requests.is_empty() {
                 match self.message_rx.recv() {
-                    Some(message) => self.handle_message(message)?,
-                    None => {
+                    Ok(message) => self.handle_message(message)?,
+                    _ => {
                         warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
@@ -210,8 +210,13 @@ impl Agent {
                 }
             } else {
                 match self.message_rx.try_recv() {
-                    Some(message) => self.handle_message(message)?,
-                    None => break,
+                    Ok(message) => self.handle_message(message)?,
+                    Err(crossbeam_channel::TryRecvError::Empty) => break,
+                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                        warn!("agent handle disconnected without close message");
+                        self.close_requested = true;
+                        break;
+                    },
                 }
             }
         }
