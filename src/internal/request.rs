@@ -22,13 +22,10 @@ const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
 
 /// Create a new curl request.
-pub fn create<B: Into<Body>>(request: Request<B>, default_options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
+pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(CurlRequest, impl Future<Item=Response<Body>, Error=Error>), Error> {
     // Set up the plumbing...
     let (future_tx, future_rx) = oneshot::channel();
     let (request_parts, request_body) = request.into_parts();
-
-    // If the request has options attached, use those options, otherwise use the default options.
-    let options = request_parts.extensions.get().unwrap_or(default_options);
 
     let mut easy = curl::easy::Easy2::new(CurlHandler {
         state: Arc::new(RequestState::new(options.clone())),

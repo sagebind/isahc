@@ -1,6 +1,7 @@
 //! The HTTP client implementation.
 
 use body::Body;
+use cookies::CookieJar;
 use error::Error;
 use futures::executor;
 use futures::prelude::*;
@@ -10,6 +11,19 @@ use internal::request;
 use middleware::Middleware;
 use options::*;
 use std::sync::Arc;
+
+lazy_static! {
+    static ref USER_AGENT: String = format!("curl/{} chttp/{}", ::curl::Version::get().version(), env!("CARGO_PKG_VERSION"));
+}
+
+/// Get a reference to a global client instance.
+pub(crate) fn global() -> &'static Client {
+    lazy_static! {
+        static ref CLIENT: Client = Client::new().unwrap();
+    }
+
+    &CLIENT
+}
 
 /// An HTTP client builder, capable of creating custom [`Client`](struct.Client.html) instances with customized
 /// behavior.
@@ -34,13 +48,26 @@ use std::sync::Arc;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Default)]
 pub struct ClientBuilder {
     default_options: Options,
-    middleware: Vec<Box<dyn Middleware + Send + Sync + 'static>>,
+    middleware: Vec<Box<dyn Middleware>>,
+}
+
+impl Default for ClientBuilder {
+    fn default() -> Self {
+        Self::new().with_cookies()
+    }
 }
 
 impl ClientBuilder {
+    /// Create a new builder for building a custom client.
+    pub fn new() -> Self {
+        Self {
+            default_options: Options::default(),
+            middleware: Vec::new(),
+        }
+    }
+
     /// Set the default connection options to use for each request.
     ///
     /// If a request has custom options, then they will override any options specified here.
@@ -49,8 +76,13 @@ impl ClientBuilder {
         self
     }
 
+    /// Enable persistent cookie handling using a cookie jar.
+    pub fn with_cookies(self) -> Self {
+        self.with_middleware(CookieJar::default())
+    }
+
     /// Add a middleware layer to the client.
-    pub fn middleware(mut self, middleware: impl Middleware + Send + Sync + 'static) -> Self {
+    pub fn with_middleware(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
         self
     }
@@ -76,7 +108,7 @@ impl ClientBuilder {
 pub struct Client {
     agent: agent::Handle,
     default_options: Options,
-    middleware: Arc<Vec<Box<dyn Middleware + Send + Sync + 'static>>>,
+    middleware: Arc<Vec<Box<dyn Middleware>>>,
 }
 
 impl Client {
@@ -84,13 +116,12 @@ impl Client {
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn new() -> Result<Self, Error> {
-        Self::builder().build()
+        ClientBuilder::default().build()
     }
 
     /// Create a new builder for building a custom client.
     pub fn builder() -> ClientBuilder {
-        ClientBuilder::default()
-            .middleware(::cookies::CookieMiddleware::from(::cookies::SessionCookieJar::default()))
+        ClientBuilder::new()
     }
 
     /// Sends an HTTP GET request.
@@ -146,6 +177,9 @@ impl Client {
     fn send_async<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
         let mut request = request.map(Into::into);
 
+        // Set default user agent if not specified.
+        // if request.headers() {}
+
         let middleware = self.middleware.clone();
 
         // Apply any request middleware, starting with the outermost one.
@@ -153,7 +187,12 @@ impl Client {
             request = middleware.before(request);
         }
 
-        return request::create(request, &self.default_options)
+        // Extract the request options, or use the default options.
+        let options = request.extensions_mut()
+            .remove()
+            .unwrap_or(&self.default_options);
+
+        return request::create(request, options)
             .and_then(|(request, future)| {
                 self.agent.begin_execute(request).map(|_| future)
             })
