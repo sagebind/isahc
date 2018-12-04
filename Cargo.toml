@@ -14,14 +14,14 @@ default = []
 
 [dependencies]
 bytes = "0.4"
-cookie = "0.11"
+chrono = "0.4"
 crossbeam-channel = "0.3"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
 lazycell = "1.2"
 log = "0.4"
-regex = "1.0"
+regex = "1.1"
 slab = "0.4"
 withers_derive = "0.2"
 
@@ -34,7 +34,7 @@ version = "0.11"
 optional = true
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.11"
+nix = "0.12"
 
 [dev-dependencies]
 env_logger = "0.6"

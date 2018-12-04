@@ -106,7 +106,7 @@
 //! [log]: https://docs.rs/log
 
 extern crate bytes;
-extern crate cookie;
+extern crate chrono;
 extern crate crossbeam_channel;
 extern crate curl;
 extern crate futures;

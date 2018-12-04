@@ -178,19 +178,23 @@ impl Client {
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.
-        // if request.headers() {}
+        request.headers_mut()
+            .entry(http::header::USER_AGENT)
+            .unwrap()
+            .or_insert(USER_AGENT.parse().unwrap());
+
+        let uri = request.uri().clone();
 
         let middleware = self.middleware.clone();
 
         // Apply any request middleware, starting with the outermost one.
         for middleware in middleware.iter().rev() {
-            request = middleware.before(request);
+            request = middleware.filter_request(request);
         }
 
         // Extract the request options, or use the default options.
-        let options = request.extensions_mut()
-            .remove()
-            .unwrap_or(&self.default_options);
+        let options = request.extensions_mut().remove::<Options>();
+        let options = options.as_ref().unwrap_or(&self.default_options);
 
         return request::create(request, options)
             .and_then(|(request, future)| {
@@ -199,10 +203,13 @@ impl Client {
             .into_future()
             .flatten()
             .map(move |mut response| {
+                response.extensions_mut().insert(uri);
+
                 // Apply response middleware, starting with the innermost one.
                 for middleware in middleware.iter() {
-                    response = middleware.after(response);
+                    response = middleware.filter_response(response);
                 }
+
                 response
             });
     }

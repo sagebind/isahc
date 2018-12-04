@@ -7,20 +7,20 @@
 use super::Request;
 use super::Response;
 
-/// Create a new _before_ middleware from a function.
+/// Create a new _request_ middleware from a function.
 pub fn before(f: impl Fn(Request) -> Request + Send + Sync + 'static) -> impl Middleware {
-    create(f, |res| res)
+    create(f, identity)
 }
 
-/// Create a new _after_ middleware from a function.
+/// Create a new _response_ middleware from a function.
 pub fn after(f: impl Fn(Response) -> Response + Send + Sync + 'static) -> impl Middleware {
-    create(|req| req, f)
+    create(identity, f)
 }
 
 /// Create a new middleware from a pair of functions.
 pub fn create(
-    before: impl Fn(Request) -> Request + Send + Sync + 'static,
-    after: impl Fn(Response) -> Response + Send + Sync + 'static,
+    request: impl Fn(Request) -> Request + Send + Sync + 'static,
+    response: impl Fn(Response) -> Response + Send + Sync + 'static,
 ) -> impl Middleware {
     struct Impl<F, G>(F, G);
 
@@ -29,16 +29,16 @@ pub fn create(
         F: Fn(Request) -> Request + Send + Sync + 'static,
         G: Fn(Response) -> Response + Send + Sync + 'static,
     {
-        fn before(&self, request: Request) -> Request {
+        fn filter_request(&self, request: Request) -> Request {
             (self.0)(request)
         }
 
-        fn after(&self, response: Response) -> Response {
+        fn filter_response(&self, response: Response) -> Response {
             (self.1)(response)
         }
     }
 
-    Impl(before, after)
+    Impl(request, response)
 }
 
 /// Base trait for middleware.
@@ -47,12 +47,17 @@ pub fn create(
 /// account for multiple requests being made in parallel.
 pub trait Middleware: Send + Sync + 'static {
     /// Transform a request before it is sent.
-    fn before(&self, request: Request) -> Request {
+    fn filter_request(&self, request: Request) -> Request {
         request
     }
 
     /// Transform a response after it is received.
-    fn after(&self, response: Response) -> Response {
+    fn filter_response(&self, response: Response) -> Response {
         response
     }
+}
+
+/// The identity function. Here for convenience.
+fn identity<T>(t: T) -> T {
+    t
 }
