@@ -96,7 +96,7 @@ impl HandleInner {
             return Err(Error::Internal);
         }
 
-        self.message_tx.send(message);
+        self.message_tx.send(message).map_err(|_| Error::Internal)?;
         self.notify_tx.notify();
 
         Ok(())
