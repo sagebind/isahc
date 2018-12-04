@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! The practical HTTP client that is fun to use.
 //!
 //! cHTTP is an HTTP client that provides a clean and easy-to-use interface around the venerable [libcurl].
@@ -108,6 +106,7 @@
 //! [log]: https://docs.rs/log
 
 extern crate bytes;
+extern crate chrono;
 extern crate crossbeam_channel;
 extern crate curl;
 extern crate futures;
@@ -128,7 +127,9 @@ extern crate withers_derive;
 
 pub mod body;
 pub mod client;
+pub mod cookies;
 pub mod error;
+pub mod middleware;
 pub mod options;
 
 mod internal;
@@ -137,14 +138,6 @@ pub use body::Body;
 pub use client::Client;
 pub use error::Error;
 pub use options::*;
-
-
-/// Gets a human-readable string with the version number of cHTTP and its dependencies.
-///
-/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
-pub fn version() -> String {
-    format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num())
-}
 
 
 /// An HTTP request.
@@ -158,33 +151,33 @@ pub type Response = http::Response<Body>;
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn get<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    DEFAULT_CLIENT.get(uri)
+    client::global().get(uri)
 }
 
 /// Sends an HTTP HEAD request.
 pub fn head<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    DEFAULT_CLIENT.head(uri)
+    client::global().head(uri)
 }
 
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    DEFAULT_CLIENT.post(uri, body)
+    client::global().post(uri, body)
 }
 
 /// Sends an HTTP PUT request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    DEFAULT_CLIENT.put(uri, body)
+    client::global().put(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    DEFAULT_CLIENT.delete(uri)
+    client::global().delete(uri)
 }
 
 /// Sends an HTTP request.
@@ -195,9 +188,16 @@ pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpT
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error> {
-    DEFAULT_CLIENT.send(request.map(|body| body.into()))
+    client::global().send(request.map(|body| body.into()))
 }
 
-lazy_static! {
-    static ref DEFAULT_CLIENT: Client = Client::new().unwrap();
+/// Gets a human-readable string with the version number of cHTTP and its dependencies.
+///
+/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
+pub fn version() -> &'static str {
+    lazy_static! {
+        static ref VERSION_STRING: String = format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num());
+    }
+
+    &VERSION_STRING
 }
