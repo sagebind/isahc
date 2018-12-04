@@ -77,11 +77,13 @@ impl ClientBuilder {
     }
 
     /// Enable persistent cookie handling using a cookie jar.
-    pub fn with_cookies(self) -> Self {
-        self.with_middleware(CookieJar::default())
+    pub fn with_cookies(mut self) -> Self {
+        self.middleware.push(Box::new(CookieJar::default()));
+        self
     }
 
     /// Add a middleware layer to the client.
+    #[cfg(feature = "middleware")]
     pub fn with_middleware(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
         self
@@ -170,11 +172,23 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed once.
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        executor::block_on(self.send_async(request))
+        executor::block_on(self.send_async_impl(request))
     }
 
     /// Begin sending a request and return a future of the response.
-    fn send_async<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
+    ///
+    /// The request may include [extensions](../../http/struct.Extensions.html) to customize how it is sent. If the
+    /// request contains an [`Options`](chttp::options::Options) struct as an extension, then those options will be used
+    /// instead of the default options this client is configured with.
+    ///
+    /// The response body is provided as a stream that may only be consumed once.
+    #[cfg(feature = "async")]
+    #[inline]
+    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
+        self.send_async_impl(request)
+    }
+
+    fn send_async_impl<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.

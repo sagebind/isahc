@@ -9,8 +9,30 @@ categories = ["web-programming::http-client"]
 readme = "README.md"
 repository = "https://github.com/sagebind/chttp"
 
+[badges.maintenance]
+status = "actively-developed"
+
 [features]
 default = []
+async = []
+middleware = []
+
+[[test]]
+name = "cookies"
+path = "tests/cookies.rs"
+required-features = ["middleware"]
+
+[[test]]
+name = "redirects"
+path = "tests/redirects.rs"
+
+[[test]]
+name = "response"
+path = "tests/response.rs"
+
+[[test]]
+name = "timeouts"
+path = "tests/timeouts.rs"
 
 [dependencies]
 bytes = "0.4"

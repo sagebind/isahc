@@ -102,6 +102,29 @@
 //! while in flight. This may come in handy if you are debugging code and need to see the exact data being sent to the
 //! server and being received.
 //!
+//! ## Unstable features
+//!
+//! cHTTP has a couple additional unstable features behind Cargo feature flags. You can add the feature names below to
+//! your `Cargo.toml` file to enable them:
+//!
+//! ```toml
+//! [dependencies.chttp]
+//! version = "0.3"
+//! features = ["async"]
+//! ```
+//!
+//! Be aware that any functionality behind such a feature is likely considered to be "unstable" and might change between
+//! patch versions. Details for current features are below.
+//!
+//! ### `async`
+//!
+//! Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently
+//! behind a feature flag until the futures API stabilizes.
+//!
+//! ### `middleware`
+//!
+//! Enable the new middleware API. Unstable until the API is finalized.
+//!
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
@@ -110,7 +133,7 @@ extern crate chrono;
 extern crate crossbeam_channel;
 extern crate curl;
 extern crate futures;
-pub extern crate http;
+extern crate http as __http;
 #[cfg(feature = "json")]
 extern crate json;
 #[macro_use]
@@ -129,8 +152,17 @@ pub mod body;
 pub mod client;
 pub mod cookies;
 pub mod error;
-pub mod middleware;
 pub mod options;
+
+/// Re-export of the standard HTTP types.
+pub mod http {
+    pub use __http::*;
+}
+
+#[cfg(feature = "middleware")]
+pub mod middleware;
+#[cfg(not(feature = "middleware"))]
+mod middleware;
 
 mod internal;
 

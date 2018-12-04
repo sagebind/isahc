@@ -7,8 +7,6 @@ The practical HTTP client that is fun to use.
 [![Documentation](https://docs.rs/chttp/badge.svg)](https://docs.rs/chttp)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-[Documentation](https://docs.rs/chttp)
-
 cHTTP provides a clean and easy-to-use interface around the venerable [libcurl]. Here are some of the features that are currently available:
 
 - HTTP/2 support.
@@ -16,8 +14,13 @@ cHTTP provides a clean and easy-to-use interface around the venerable [libcurl].
 - Response body streaming.
 - Request body uploading from memory or a stream.
 - Tweakable redirect policy.
+- Persistent cookies across requests.
 - TCP socket configuration.
 - Uses the future standard Rust [http] interface for requests and responses.
+
+## [Documentation](https://docs.rs/chttp)
+
+Check out the documentation for details on how to use cHTTP.
 
 ## Why [libcurl]?
 
@@ -62,7 +65,7 @@ Add this to your Cargo.toml file:
 
 ```toml
 [dependencies]
-chttp = "0.2"
+chttp = "0.3"
 ```
 
 ## License
