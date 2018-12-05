@@ -147,6 +147,7 @@
 //! [log]: https://docs.rs/log
 
 extern crate bytes;
+#[cfg(feature = "cookies")]
 extern crate chrono;
 extern crate crossbeam_channel;
 extern crate curl;
