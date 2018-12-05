@@ -200,22 +200,31 @@ impl CookieJar {
             !cookie.is_expired()
         });
     }
+
+    fn get_cookies(&self, uri: &Uri) -> Option<String> {
+        let jar = self.cookies.read().unwrap();
+
+        let mut values: Vec<String> = jar.values()
+            .filter(|cookie| cookie.matches(uri))
+            .map(|cookie| format!("{}={}", cookie.name, cookie.value))
+            .collect();
+
+
+        if values.is_empty() {
+            None
+        } else {
+            // Cookies should be returned in lexical order.
+            values.sort();
+
+            Some(values.join("; "))
+        }
+    }
 }
 
 impl Middleware for CookieJar {
     fn filter_request(&self, mut request: Request) -> Request {
-        let jar = self.cookies.read().unwrap();
-
-        let mut values: Vec<String> = jar.values()
-            .filter(|cookie| cookie.matches(request.uri()))
-            .map(|cookie| format!("{}={}", cookie.name, cookie.value))
-            .collect();
-
-        // Cookies should be returned in lexical order.
-        values.sort();
-
-        if !values.is_empty() {
-            request.headers_mut().insert(header::COOKIE, values.join("; ").parse().unwrap());
+        if let Some(header) = self.get_cookies(request.uri()) {
+            request.headers_mut().insert(header::COOKIE, header.parse().unwrap());
         }
 
         request
@@ -242,5 +251,58 @@ impl Middleware for CookieJar {
         }
 
         response
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_set_cookie_header() {
+        let uri = "https://baz.com".parse().unwrap();
+        let cookie = Cookie::parse("foo=bar; path=/sub;Secure ; expires =Wed, 21 Oct 2015 07:28:00 GMT", &uri).unwrap();
+
+        assert_eq!(cookie.name, "foo");
+        assert_eq!(cookie.value, "bar");
+        assert_eq!(cookie.path, "/sub");
+        assert_eq!(cookie.domain, "baz.com");
+        assert!(cookie.secure);
+        assert!(cookie.host_only);
+        assert_eq!(cookie.expiration.as_ref().map(|t| t.timestamp()), Some(1445412480));
+    }
+
+    #[test]
+    fn cookie_lifecycle() {
+        let uri: Uri = "https://example.com/foo".parse().unwrap();
+        let jar = CookieJar::default();
+
+        jar.filter_response(::http::Response::builder()
+            .header(header::SET_COOKIE, "foo=bar")
+            .header(header::SET_COOKIE, "baz=123")
+            .extension(uri.clone())
+            .body(::Body::default())
+            .unwrap());
+
+        let request = jar.filter_request(::http::Request::builder()
+            .uri(uri)
+            .body(::Body::default())
+            .unwrap());
+
+        assert_eq!(request.headers()[header::COOKIE], "baz=123; foo=bar");
+    }
+
+    #[test]
+    fn expire_a_cookie() {
+        let uri: Uri = "https://example.com/foo".parse().unwrap();
+        let jar = CookieJar::default();
+
+        jar.add(Cookie::parse("foo=bar", &uri).into_iter());
+
+        assert_eq!(jar.get_cookies(&uri).unwrap(), "foo=bar");
+
+        jar.add(Cookie::parse("foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT", &uri).into_iter());
+
+        assert_eq!(jar.get_cookies(&uri), None);
     }
 }

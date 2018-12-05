@@ -10,7 +10,7 @@ pub fn setup() {
     static ONCE: Once = Once::new();
 
     ONCE.call_once(|| {
-        env::set_var("RUST_LOG", "chttp=trace,curl=trace");
+        env::set_var("RUST_LOG", "chttp=debug,curl=debug");
         env_logger::init();
     });
 }
