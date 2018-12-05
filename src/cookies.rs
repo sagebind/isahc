@@ -84,12 +84,14 @@ impl Cookie {
         // Perform some validations on the domain.
         if let Some(domain) = cookie_domain.as_ref() {
             // The given domain must domain-match the origin.
-            if !Cookie::domain_matches(domain, uri.host()?) {
+            // https://tools.ietf.org/html/rfc6265#section-5.3.6
+            if !Cookie::domain_matches(uri.host()?, domain) {
                 warn!("cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'", cookie_name, uri.host()?, domain);
                 return None;
             }
 
             // Check the PSL for bad domain suffixes if available.
+            // https://tools.ietf.org/html/rfc6265#section-5.3.5
             #[cfg(feature = "psl")] {
                 use ::psl::Psl;
                 let list = ::psl::List::new();
@@ -284,6 +286,7 @@ impl Middleware for CookieJar {
 
 #[cfg(test)]
 mod tests {
+    extern crate env_logger;
     use super::*;
 
     #[test]
@@ -302,12 +305,22 @@ mod tests {
 
     #[test]
     fn cookie_domain_not_allowed() {
+        ::std::env::set_var("RUST_LOG", "chttp=debug,curl=debug");
+        env_logger::init();
+
         let uri = "https://baz.com".parse().unwrap();
 
         assert!(Cookie::parse("foo=bar", &uri).is_some());
         assert!(Cookie::parse("foo=bar; domain=bar.com", &uri).is_none());
         assert!(Cookie::parse("foo=bar; domain=baz.com", &uri).is_some());
-        assert!(Cookie::parse("foo=bar; domain=com", &uri).is_none());
+        assert!(Cookie::parse("foo=bar; domain=www.baz.com", &uri).is_some());
+
+        if cfg!(feature = "psl") {
+            assert!(Cookie::parse("foo=bar; domain=com", &uri).is_none());
+            assert!(Cookie::parse("foo=bar; domain=.com", &uri).is_none());
+        } else {
+            assert!(Cookie::parse("foo=bar; domain=com", &uri).is_some());
+        }
     }
 
     #[test]
@@ -318,6 +331,7 @@ mod tests {
             ("bar.com", "bar.com", true),
             ("baz.com", "bar.com", false),
             ("baz.bar.com", "bar.com", true),
+            ("www.baz.com", "baz.com", true),
             ("baz.bar.com", "com", true),
         ] {
             assert_eq!(Cookie::domain_matches(case.0, case.1), case.2);
