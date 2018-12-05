@@ -13,14 +13,17 @@ repository = "https://github.com/sagebind/chttp"
 status = "actively-developed"
 
 [features]
-default = []
-async = []
-middleware = []
+default = ["cookies", "http2", "psl"]
+cookies = ["psl"]
+http2 = ["curl/http2"]
+async-api = []
+middleware-api = []
 
 [dependencies]
 bytes = "0.4"
 chrono = "0.4"
 crossbeam-channel = "0.3"
+curl = "0.4"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
@@ -30,12 +33,12 @@ regex = "1.1"
 slab = "0.4"
 withers_derive = "0.2"
 
-[dependencies.curl]
-version = "0.4"
-features = ["http2"]
-
 [dependencies.json]
 version = "0.11"
+optional = true
+
+[dependencies.psl]
+version = "0.4"
 optional = true
 
 [target.'cfg(unix)'.dependencies]

@@ -8,11 +8,13 @@ use super::Request;
 use super::Response;
 
 /// Create a new _request_ middleware from a function.
+#[allow(unused)]
 pub fn before(f: impl Fn(Request) -> Request + Send + Sync + 'static) -> impl Middleware {
     create(f, identity)
 }
 
 /// Create a new _response_ middleware from a function.
+#[allow(unused)]
 pub fn after(f: impl Fn(Response) -> Response + Send + Sync + 'static) -> impl Middleware {
     create(identity, f)
 }

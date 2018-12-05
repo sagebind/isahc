@@ -1,7 +1,6 @@
 //! The HTTP client implementation.
 
 use body::Body;
-use cookies::CookieJar;
 use error::Error;
 use futures::executor;
 use futures::prelude::*;
@@ -55,7 +54,7 @@ pub struct ClientBuilder {
 
 impl Default for ClientBuilder {
     fn default() -> Self {
-        Self::new().with_cookies()
+        Self::new()
     }
 }
 
@@ -77,14 +76,19 @@ impl ClientBuilder {
     }
 
     /// Enable persistent cookie handling using a cookie jar.
-    pub fn with_cookies(mut self) -> Self {
-        self.middleware.push(Box::new(CookieJar::default()));
-        self
+    #[cfg(feature = "cookies")]
+    pub fn with_cookies(self) -> Self {
+        self.with_middleware_impl(::cookies::CookieJar::default())
     }
 
     /// Add a middleware layer to the client.
-    #[cfg(feature = "middleware")]
-    pub fn with_middleware(mut self, middleware: impl Middleware) -> Self {
+    #[cfg(feature = "middleware-api")]
+    pub fn with_middleware(self, middleware: impl Middleware) -> Self {
+        self.with_middleware_impl(middleware)
+    }
+
+    #[allow(unused)]
+    fn with_middleware_impl(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
         self
     }
@@ -182,8 +186,7 @@ impl Client {
     /// instead of the default options this client is configured with.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    #[cfg(feature = "async")]
-    #[inline]
+    #[cfg(feature = "async-api")]
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
         self.send_async_impl(request)
     }

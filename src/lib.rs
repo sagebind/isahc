@@ -102,28 +102,46 @@
 //! while in flight. This may come in handy if you are debugging code and need to see the exact data being sent to the
 //! server and being received.
 //!
-//! ## Unstable features
+//! ## Feature flags
 //!
-//! cHTTP has a couple additional unstable features behind Cargo feature flags. You can add the feature names below to
-//! your `Cargo.toml` file to enable them:
+//! cHTTP is designed to be as "pay-as-you-need" as possible using Cargo feature flags and optional dependencies.
+//! Unstable features are also initially released behind feature flags until they are stabilized. You can add the
+//! feature names below to your `Cargo.toml` file to enable them:
 //!
 //! ```toml
 //! [dependencies.chttp]
 //! version = "0.3"
-//! features = ["async"]
+//! features = ["async-api"]
 //! ```
 //!
-//! Be aware that any functionality behind such a feature is likely considered to be "unstable" and might change between
-//! patch versions. Details for current features are below.
+//! Below is a list of all available feature flags and their meanings.
 //!
-//! ### `async`
+//! ### `cookies`
+//!
+//! Enable persistent HTTP cookie support. Enabled by default.
+//!
+//! ### `http2`
+//!
+//! Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
+//!
+//! ### `json`
+//!
+//! Enable convenience methods for parsing HTTP responses into JSON objects. Disabled by default.
+//!
+//! ### `psl`
+//!
+//! Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Enabled by default.
+//!
+//! ### `async-api`
 //!
 //! Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently
-//! behind a feature flag until the futures API stabilizes.
+//! behind a feature flag until the futures API stabilizes. This an unstable feature whose interface may change between
+//! patch releases.
 //!
-//! ### `middleware`
+//! ### `middleware-api`
 //!
-//! Enable the new middleware API. Unstable until the API is finalized.
+//! Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may
+//! change between patch releases.
 //!
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
@@ -143,6 +161,8 @@ extern crate lazycell;
 extern crate log;
 #[cfg(unix)]
 extern crate nix;
+#[cfg(feature = "psl")]
+extern crate psl;
 extern crate regex;
 extern crate slab;
 #[macro_use]
@@ -150,18 +170,20 @@ extern crate withers_derive;
 
 pub mod body;
 pub mod client;
-pub mod cookies;
 pub mod error;
 pub mod options;
+
+#[cfg(feature = "cookies")]
+pub mod cookies;
 
 /// Re-export of the standard HTTP types.
 pub mod http {
     pub use __http::*;
 }
 
-#[cfg(feature = "middleware")]
+#[cfg(feature = "middleware-api")]
 pub mod middleware;
-#[cfg(not(feature = "middleware"))]
+#[cfg(not(feature = "middleware-api"))]
 mod middleware;
 
 mod internal;

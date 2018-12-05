@@ -73,9 +73,33 @@ impl Cookie {
                     }
                 }
             } else if name.eq_ignore_ascii_case("Path") {
-                cookie_path = value.map(ToOwned::to_owned);
+                cookie_path = value
+                    .map(|s| s.trim_start_matches("."))
+                    .map(str::to_lowercase);
             } else if name.eq_ignore_ascii_case("Secure") {
                 cookie_secure = true;
+            }
+        }
+
+        // Perform some validations on the domain.
+        if let Some(domain) = cookie_domain.as_ref() {
+            // The given domain must domain-match the origin.
+            if !Cookie::domain_matches(domain, uri.host()?) {
+                warn!("cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'", cookie_name, uri.host()?, domain);
+                return None;
+            }
+
+            // Check the PSL for bad domain suffixes if available.
+            #[cfg(feature = "psl")] {
+                use ::psl::Psl;
+                let list = ::psl::List::new();
+
+                if let Some(suffix) = list.suffix(domain) {
+                    if domain == suffix.to_str() {
+                        warn!("cookie '{}' dropped, setting cookies for domain '{}' is not allowed", cookie_name, domain);
+                        return None;
+                    }
+                }
             }
         }
 
@@ -111,11 +135,19 @@ impl Cookie {
             return false;
         }
 
-        if !self.matches_domain(uri.host().unwrap_or("")) {
-            return false;
+        let request_host = uri.host().unwrap_or("");
+
+        if self.host_only {
+            if !self.domain.eq_ignore_ascii_case(request_host) {
+                return false;
+            }
+        } else {
+            if !Cookie::domain_matches(request_host, &self.domain) {
+                return false;
+            }
         }
 
-        if !self.matches_path(uri.path()) {
+        if !Cookie::path_matches(uri.path(), &self.path) {
             return false;
         }
 
@@ -127,32 +159,28 @@ impl Cookie {
     }
 
     // http://tools.ietf.org/html/rfc6265#section-5.1.3
-    fn matches_domain(&self, domain: &str) -> bool {
-        if self.domain.eq_ignore_ascii_case(domain) {
+    fn domain_matches(string: &str, domain_string: &str) -> bool {
+        if domain_string.eq_ignore_ascii_case(string) {
             return true;
         }
 
-        if !self.host_only {
-            let string = &domain.to_lowercase();
-            let domain_string = &self.domain.to_lowercase();
+        let string = &string.to_lowercase();
+        let domain_string = &domain_string.to_lowercase();
 
-            return string.ends_with(domain_string) &&
-                string.as_bytes()[string.len() - domain_string.len() - 1] == b'.' &&
-                string.parse::<Ipv4Addr>().is_err() &&
-                string.parse::<Ipv6Addr>().is_err();
-        }
-
-        false
+        string.ends_with(domain_string) &&
+            string.as_bytes()[string.len() - domain_string.len() - 1] == b'.' &&
+            string.parse::<Ipv4Addr>().is_err() &&
+            string.parse::<Ipv6Addr>().is_err()
     }
 
     // http://tools.ietf.org/html/rfc6265#section-5.1.4
-    fn matches_path(&self, path: &str) -> bool {
-        if self.path == path {
+    fn path_matches(request_path: &str, cookie_path: &str) -> bool {
+        if request_path == cookie_path {
             return true;
         }
 
-        if path.starts_with(&self.path) {
-            if self.path.ends_with("/") || path[self.path.len()..].starts_with("/") {
+        if request_path.starts_with(cookie_path) {
+            if cookie_path.ends_with("/") || request_path[cookie_path.len()..].starts_with("/") {
                 return true;
             }
         }
@@ -270,6 +298,53 @@ mod tests {
         assert!(cookie.secure);
         assert!(cookie.host_only);
         assert_eq!(cookie.expiration.as_ref().map(|t| t.timestamp()), Some(1445412480));
+    }
+
+    #[test]
+    fn cookie_domain_not_allowed() {
+        let uri = "https://baz.com".parse().unwrap();
+
+        assert!(Cookie::parse("foo=bar", &uri).is_some());
+        assert!(Cookie::parse("foo=bar; domain=bar.com", &uri).is_none());
+        assert!(Cookie::parse("foo=bar; domain=baz.com", &uri).is_some());
+        assert!(Cookie::parse("foo=bar; domain=com", &uri).is_none());
+    }
+
+    #[test]
+    fn domain_matches() {
+        for case in &[
+            ("127.0.0.1", "127.0.0.1", true),
+            (".127.0.0.1", "127.0.0.1", true),
+            ("bar.com", "bar.com", true),
+            ("baz.com", "bar.com", false),
+            ("baz.bar.com", "bar.com", true),
+            ("baz.bar.com", "com", true),
+        ] {
+            assert_eq!(Cookie::domain_matches(case.0, case.1), case.2);
+        }
+    }
+
+    #[test]
+    fn path_matches() {
+        for case in &[
+            ("/foo", "/foo", true),
+            ("/Foo", "/foo", false),
+            ("/fo", "/foo", false),
+            ("/foo/bar", "/foo", true),
+            ("/foo/bar/baz", "/foo", true),
+            ("/foo/bar//baz", "/foo", true),
+            ("/foobar", "/foo", false),
+            ("/foo", "/foo/bar", false),
+            ("/foobar", "/foo/bar", false),
+            ("/foo/bar", "/foo/bar", true),
+            ("/foo/bar/", "/foo/bar", true),
+            ("/foo/bar/baz", "/foo/bar", true),
+            ("/foo/bar", "/foo/bar/", false),
+            ("/foo/bar/", "/foo/bar/", true),
+            ("/foo/bar/baz", "/foo/bar/", true),
+        ] {
+            assert_eq!(Cookie::path_matches(case.0, case.1), case.2);
+        }
     }
 
     #[test]
