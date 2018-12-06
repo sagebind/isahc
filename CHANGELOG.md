@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2018-12-05
+
+- Add a new in-memory cookie jar system for preserving cookies between requests. Use `.with_cookies()` on the client builder to enable cookie management for a client. This feature is put behind the `cookies` feature flag, which is enabled by default.
+- Add a new unstable _middleware_ API, which allows you to apply transformations to every client request. You must enable the `middleware-api` feature flag to access it.
+- Add a new unstable futures-based API for sending requests asynchronously. You must enable the `async-api` feature flag to access it. This feature will likely not be stabilized until futures are stabilized in the standard library.
+- Requests will now include a default user agent if an explicit `User-Agent` header is not set.
+- HTTP/2 support can now be disabled by removing the `http2` feature flag (enabled by default).
+
 ## 0.2.4 - 2018-11-01
 
 - Add a `version()` function, which returns a human-readable string containing the runtime version of cHTTP and important dependencies. Helpful for debugging endeavors.
