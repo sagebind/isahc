@@ -91,7 +91,7 @@ impl StdError for Error {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match self {
             &Error::InvalidHttpFormat(ref e) => Some(e),
             &Error::Io(ref e) => Some(e),
@@ -171,23 +171,23 @@ impl From<Error> for io::Error {
     }
 }
 
-impl From<::std::string::FromUtf8Error> for Error {
-    fn from(_: ::std::string::FromUtf8Error) -> Error {
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(_: std::string::FromUtf8Error) -> Error {
         Error::InvalidUtf8
     }
 }
 
-impl From<::std::str::Utf8Error> for Error {
-    fn from(_: ::std::str::Utf8Error) -> Error {
+impl From<std::str::Utf8Error> for Error {
+    fn from(_: std::str::Utf8Error) -> Error {
         Error::InvalidUtf8
     }
 }
 
 #[cfg(feature = "json")]
-impl From<::json::Error> for Error {
-    fn from(error: ::json::Error) -> Error {
+impl From<json::Error> for Error {
+    fn from(error: json::Error) -> Error {
         match error {
-            ::json::Error::FailedUtf8Parsing => Error::InvalidUtf8,
+            json::Error::FailedUtf8Parsing => Error::InvalidUtf8,
             _ => Error::InvalidJson,
         }
     }

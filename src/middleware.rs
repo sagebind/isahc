@@ -60,6 +60,6 @@ pub trait Middleware: Send + Sync + 'static {
 }
 
 /// The identity function. Here for convenience.
-fn identity<T>(t: T) -> T {
+const fn identity<T>(t: T) -> T {
     t
 }
