@@ -1,5 +1,6 @@
 use http::{StatusCode, Version};
 use http::header::*;
+use lazy_static::lazy_static;
 use regex::bytes::Regex;
 
 lazy_static! {

@@ -4,8 +4,8 @@
 //! that augment HTTP client functionality by applying transformations to HTTP requests before they are sent and/or HTTP
 //! responses after they are received.
 
-use super::Request;
-use super::Response;
+use crate::Request;
+use crate::Response;
 
 /// Create a new _request_ middleware from a function.
 #[allow(unused)]

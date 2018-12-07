@@ -4,13 +4,13 @@
 
 use chrono::Duration;
 use chrono::prelude::*;
-use http::header;
+use crate::{Request, Response};
+use crate::middleware::Middleware;
 use http::Uri;
-use middleware::Middleware;
+use log::*;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::RwLock;
-use super::{Request, Response};
 
 /// Information stored about an HTTP cookie.
 pub struct Cookie {
@@ -254,7 +254,7 @@ impl CookieJar {
 impl Middleware for CookieJar {
     fn filter_request(&self, mut request: Request) -> Request {
         if let Some(header) = self.get_cookies(request.uri()) {
-            request.headers_mut().insert(header::COOKIE, header.parse().unwrap());
+            request.headers_mut().insert(http::header::COOKIE, header.parse().unwrap());
         }
 
         request
@@ -262,9 +262,9 @@ impl Middleware for CookieJar {
 
     /// Extracts cookies set via the Set-Cookie header.
     fn filter_response(&self, response: Response) -> Response {
-        if response.headers().contains_key(header::SET_COOKIE) {
+        if response.headers().contains_key(http::header::SET_COOKIE) {
             let cookies = response.headers()
-                .get_all(header::SET_COOKIE)
+                .get_all(http::header::SET_COOKIE)
                 .into_iter()
                 .filter_map(|header| {
                     match header.to_str() {
@@ -362,19 +362,19 @@ mod tests {
         let uri: Uri = "https://example.com/foo".parse().unwrap();
         let jar = CookieJar::default();
 
-        jar.filter_response(::http::Response::builder()
-            .header(header::SET_COOKIE, "foo=bar")
-            .header(header::SET_COOKIE, "baz=123")
+        jar.filter_response(http::Response::builder()
+            .header(http::header::SET_COOKIE, "foo=bar")
+            .header(http::header::SET_COOKIE, "baz=123")
             .extension(uri.clone())
-            .body(::Body::default())
+            .body(crate::Body::default())
             .unwrap());
 
-        let request = jar.filter_request(::http::Request::builder()
+        let request = jar.filter_request(http::Request::builder()
             .uri(uri)
-            .body(::Body::default())
+            .body(crate::Body::default())
             .unwrap());
 
-        assert_eq!(request.headers()[header::COOKIE], "baz=123; foo=bar");
+        assert_eq!(request.headers()[http::header::COOKIE], "baz=123; foo=bar");
     }
 
     #[test]

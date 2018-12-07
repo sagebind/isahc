@@ -6,8 +6,10 @@ authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
 keywords = ["http", "request", "client"]
 categories = ["web-programming::http-client"]
-readme = "README.md"
 repository = "https://github.com/sagebind/chttp"
+documentation = "https://docs.rs/chttp/"
+readme = "README.md"
+edition = "2018"
 
 [badges.maintenance]
 status = "actively-developed"
@@ -50,3 +52,6 @@ nix = "0.12"
 [dev-dependencies]
 env_logger = "0.6"
 rouille = "2.2"
+
+[package.metadata.docs.rs]
+all-features = true

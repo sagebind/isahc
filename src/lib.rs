@@ -146,29 +146,6 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
-extern crate bytes;
-#[cfg(feature = "cookies")]
-extern crate chrono;
-extern crate crossbeam_channel;
-extern crate curl;
-extern crate futures;
-extern crate http as __http;
-#[cfg(feature = "json")]
-extern crate json;
-#[macro_use]
-extern crate lazy_static;
-extern crate lazycell;
-#[macro_use]
-extern crate log;
-#[cfg(unix)]
-extern crate nix;
-#[cfg(feature = "psl")]
-extern crate psl;
-extern crate regex;
-extern crate slab;
-#[macro_use]
-extern crate withers_derive;
-
 pub mod body;
 pub mod client;
 pub mod error;
@@ -177,11 +154,6 @@ pub mod options;
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
-/// Re-export of the standard HTTP types.
-pub mod http {
-    pub use __http::*;
-}
-
 #[cfg(feature = "middleware-api")]
 pub mod middleware;
 #[cfg(not(feature = "middleware-api"))]
@@ -189,10 +161,13 @@ mod middleware;
 
 mod internal;
 
-pub use body::Body;
-pub use client::Client;
-pub use error::Error;
-pub use options::*;
+/// Re-export of the standard HTTP types.
+pub use http;
+
+pub use crate::body::Body;
+pub use crate::client::Client;
+pub use crate::error::Error;
+pub use crate::options::*;
 
 
 /// An HTTP request.
@@ -250,7 +225,7 @@ pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error>
 ///
 /// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
 pub fn version() -> &'static str {
-    lazy_static! {
+    lazy_static::lazy_static! {
         static ref VERSION_STRING: String = format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num());
     }
 

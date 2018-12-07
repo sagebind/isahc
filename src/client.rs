@@ -1,14 +1,15 @@
 //! The HTTP client implementation.
 
-use body::Body;
-use error::Error;
+use crate::body::Body;
+use crate::error::Error;
+use crate::internal::agent;
+use crate::internal::request;
+use crate::middleware::Middleware;
+use crate::options::*;
 use futures::executor;
 use futures::prelude::*;
-use http::{self, Request, Response};
-use internal::agent;
-use internal::request;
-use middleware::Middleware;
-use options::*;
+use http::{Request, Response};
+use lazy_static::lazy_static;
 use std::sync::Arc;
 
 lazy_static! {
@@ -78,7 +79,7 @@ impl ClientBuilder {
     /// Enable persistent cookie handling using a cookie jar.
     #[cfg(feature = "cookies")]
     pub fn with_cookies(self) -> Self {
-        self.with_middleware_impl(::cookies::CookieJar::default())
+        self.with_middleware_impl(crate::cookies::CookieJar::default())
     }
 
     /// Add a middleware layer to the client.

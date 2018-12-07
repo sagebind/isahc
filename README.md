@@ -11,6 +11,7 @@ cHTTP provides a clean and easy-to-use interface around the venerable [libcurl].
 
 - HTTP/2 support.
 - Connection pooling and reuse.
+- Sessions and cookie persistence.
 - Response body streaming.
 - Request body uploading from memory or a stream.
 - Tweakable redirect policy.

@@ -1,22 +1,21 @@
-use body::Body;
 use bytes::Bytes;
-use curl;
+use crate::body::Body;
+use crate::error::Error;
+use crate::internal::agent;
+use crate::internal::format_byte_string;
+use crate::internal::parse;
+use crate::options::*;
 use curl::easy::InfoType;
-use error::Error;
 use futures::channel::oneshot;
 use futures::executor;
 use futures::prelude::*;
-use http::{self, Request, Response};
+use http::{Request, Response};
 use lazycell::AtomicLazyCell;
-use log;
-use options::*;
+use log::*;
 use std::io::{self, Read};
 use std::mem;
-use std::sync::atomic::*;
 use std::sync::{Arc, Mutex};
-use super::agent;
-use super::format_byte_string;
-use super::parse;
+use std::sync::atomic::*;
 
 const STATUS_READY: usize = 0;
 const STATUS_CLOSED: usize = 1;
@@ -36,7 +35,7 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
         headers: http::HeaderMap::default(),
     });
 
-    easy.verbose(log_enabled!(log::Level::Trace))?;
+    easy.verbose(log_enabled!(Level::Trace))?;
     easy.signal(false)?;
     easy.buffer_size(options.buffer_size)?;
 

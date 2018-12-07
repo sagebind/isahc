@@ -1,8 +1,8 @@
 //! Provides types for working with request and response bodies.
 
 use bytes::Bytes;
-use error::Error;
-use internal;
+use crate::error::Error;
+use crate::internal;
 use std::fmt;
 use std::fs::File;
 use std::io::{self, Cursor, Read, Seek, SeekFrom};
@@ -73,9 +73,9 @@ impl Body {
 
     /// Attempt to parse the response as JSON.
     #[cfg(feature = "json")]
-    pub fn json(&mut self) -> Result<::json::JsonValue, Error> {
+    pub fn json(&mut self) -> Result<json::JsonValue, Error> {
         let text = self.text()?;
-        Ok(::json::parse(&text)?)
+        Ok(json::parse(&text)?)
     }
 }
 

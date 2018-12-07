@@ -1,10 +1,9 @@
 //! Definition of all configurable client options.
 
-use http;
 use std::time::Duration;
 
 /// Defines various protocol and connection options.
-#[derive(Clone, Debug, Withers)]
+#[derive(Clone, Debug, withers_derive::Withers)]
 pub struct Options {
     /// The policy for automatically following server redirects.
     ///

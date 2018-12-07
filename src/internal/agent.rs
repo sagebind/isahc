@@ -1,15 +1,15 @@
 //! Curl agent that executes multiple requests simultaneously.
 
+use crate::error::Error;
+use crate::internal::notify;
+use crate::internal::request::*;
 use crossbeam_channel::{self, Sender, Receiver};
-use curl;
-use error::Error;
+use log::*;
 use slab::Slab;
 use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
 use std::thread;
 use std::time::Duration;
-use super::notify;
-use super::request::*;
 
 const AGENT_THREAD_NAME: &'static str = "curl agent";
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
@@ -234,7 +234,7 @@ impl Agent {
             },
             Message::BeginRequest(request) => {
                 let mut handle = self.multi.add2(request.0)?;
-                let mut entry = self.requests.vacant_entry();
+                let entry = self.requests.vacant_entry();
 
                 handle.get_ref().set_token(entry.key());
                 handle.set_token(entry.key())?;

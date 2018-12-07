@@ -2,19 +2,19 @@
 
 use curl::multi::WaitFd;
 use std::io::{self, Read, Write};
-use std::sync::atomic::*;
 use std::sync::Arc;
+use std::sync::atomic::*;
 
 #[cfg(unix)]
-type Stream = ::std::fs::File;
+type Stream = std::fs::File;
 
 #[cfg(windows)]
-type Stream = ::std::net::TcpStream;
+type Stream = std::net::TcpStream;
 
 pub fn create() -> io::Result<(NotifySender, NotifyReceiver)> {
     let (rx, tx) = {
         #[cfg(unix)] {
-            use nix::{self, fcntl::OFlag, unistd};
+            use nix::{fcntl::OFlag, unistd};
             use std::fs::File;
             use std::os::unix::prelude::*;
 

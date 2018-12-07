@@ -1,7 +1,3 @@
-extern crate chttp;
-extern crate env_logger;
-extern crate rouille;
-
 use chttp::http::Request;
 use chttp::Options;
 
