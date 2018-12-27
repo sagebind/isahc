@@ -2,7 +2,6 @@
 
 The practical HTTP client that is fun to use.
 
-[![Build Status](https://semaphoreci.com/api/v1/sagebind/chttp/branches/master/badge.svg)](https://semaphoreci.com/sagebind/chttp)
 [![Crates.io](https://img.shields.io/crates/v/chttp.svg)](https://crates.io/crates/chttp)
 [![Documentation](https://docs.rs/chttp/badge.svg)](https://docs.rs/chttp)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
