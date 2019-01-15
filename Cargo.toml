@@ -47,11 +47,16 @@ version = "0.4"
 optional = true
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.12"
+nix = "0.13"
 
 [dev-dependencies]
 env_logger = "0.6"
+rayon = "1"
 rouille = "2.2"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "async"
+required-features = ["async-api"]

@@ -322,7 +322,7 @@ impl curl::easy::Handler for CurlHandler {
     // Gets called by curl whenever it wishes to log a debug message.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
         match kind {
-            InfoType::Text => trace!("{}", String::from_utf8_lossy(data).trim_right()),
+            InfoType::Text => trace!("{}", String::from_utf8_lossy(data).trim_end()),
             InfoType::HeaderIn | InfoType::DataIn => trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),
             InfoType::HeaderOut | InfoType::DataOut => trace!(target: "chttp::wire", ">> {}", format_byte_string(data)),
             _ => (),
