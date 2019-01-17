@@ -8,6 +8,8 @@ use std::time::Instant;
 use std::env;
 
 fn main() -> Result<(), chttp::Error> {
+    env_logger::init();
+
     let count = env::args().nth(1)
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(100);

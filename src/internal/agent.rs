@@ -9,7 +9,7 @@ use slab::Slab;
 use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const AGENT_THREAD_NAME: &'static str = "curl agent";
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
@@ -19,6 +19,8 @@ const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
 ///
 /// The agent maintains a background thread that multiplexes all active requests using a single "multi" handle.
 pub fn create() -> Result<Handle, Error> {
+    let create_start = Instant::now();
+
     let (message_tx, message_rx) = crossbeam_channel::unbounded();
     let (notify_tx, notify_rx) = notify::create()?;
 
@@ -38,6 +40,8 @@ pub fn create() -> Result<Handle, Error> {
             close_requested: false,
             handle: handle_weak,
         };
+
+        debug!("agent took {:?} to start up", create_start.elapsed());
 
         // Intentionally panic the thread if an error occurs.
         agent.run().unwrap();
@@ -105,7 +109,9 @@ impl HandleInner {
 
 impl Drop for HandleInner {
     fn drop(&mut self) {
-        self.send_message(Message::Close).is_ok();
+        if self.send_message(Message::Close).is_err() {
+            warn!("agent thread was already terminated");
+        }
     }
 }
 
