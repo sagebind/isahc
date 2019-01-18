@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 - 2019-01-17
+
+- Add some new debug logging and assertions that point out unexpected behavior.
+- Add more examples of how cHTTP can be used.
+- Update source code to use Rust 2018 edition conventions.
+
 ## 0.3.0 - 2018-12-05
 
 - Add a new in-memory cookie jar system for preserving cookies between requests. Use `.with_cookies()` on the client builder to enable cookie management for a client. This feature is put behind the `cookies` feature flag, which is enabled by default.
