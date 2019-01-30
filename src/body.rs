@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::internal;
 use std::fmt;
 use std::fs::File;
-use std::io::{self, Cursor, Read, Seek, SeekFrom};
+use std::io::{self, Cursor, Read};
 use std::str;
 
 /// Contains the body of an HTTP request or response.
@@ -34,21 +34,25 @@ impl Body {
         self.len() == Some(0)
     }
 
-    /// Check if this body reports seeking.
-    pub fn is_seekable(&self) -> bool {
-        match &self.0 {
-            Inner::Empty => true,
-            Inner::Bytes(_) => true,
-            Inner::Streaming(_) => false,
-        }
-    }
-
     /// Get the size of the body, if known.
     pub fn len(&self) -> Option<usize> {
         match &self.0 {
-            &Inner::Empty => Some(0),
-            &Inner::Bytes(ref bytes) => Some(bytes.get_ref().len()),
-            &Inner::Streaming(_) => None,
+            Inner::Empty => Some(0),
+            Inner::Bytes(bytes) => Some(bytes.get_ref().len()),
+            Inner::Streaming(_) => None,
+        }
+    }
+
+    /// If this body is repeatable, reset the body stream back to the start of
+    /// the content. Returns `false` if the body cannot be reset.
+    pub fn reset(&mut self) -> bool {
+        match &mut self.0 {
+            Inner::Empty => true,
+            Inner::Bytes(bytes) => {
+                bytes.set_position(0);
+                true
+            },
+            _ => false,
         }
     }
 
@@ -59,11 +63,11 @@ impl Body {
     /// method again later.
     pub fn text(&mut self) -> Result<String, Error> {
         match &mut self.0 {
-            &mut Inner::Empty => Ok(String::new()),
-            &mut Inner::Bytes(ref bytes) => str::from_utf8(bytes.get_ref())
+            Inner::Empty => Ok(String::new()),
+            Inner::Bytes(bytes) => str::from_utf8(bytes.get_ref())
                 .map(Into::into)
                 .map_err(Into::into),
-            &mut Inner::Streaming(ref mut reader) => {
+            Inner::Streaming(reader) => {
                 let mut string = String::new();
                 reader.read_to_string(&mut string)?;
                 Ok(string)
@@ -82,22 +86,9 @@ impl Body {
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.0 {
-            &mut Inner::Empty => Ok(0),
-            &mut Inner::Bytes(ref mut bytes) => bytes.read(buf),
-            &mut Inner::Streaming(ref mut reader) => reader.read(buf),
-        }
-    }
-}
-
-impl Seek for Body {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        match &mut self.0 {
-            &mut Inner::Empty => match pos {
-                SeekFrom::Start(0) | SeekFrom::End(0) | SeekFrom::Current(0) => Ok(0),
-                _ => Err(io::ErrorKind::InvalidInput.into()),
-            },
-            &mut Inner::Bytes(ref mut bytes) => bytes.seek(pos),
-            _ => Err(io::ErrorKind::InvalidInput.into()),
+            Inner::Empty => Ok(0),
+            Inner::Bytes(bytes) => bytes.read(buf),
+            Inner::Streaming(reader) => reader.read(buf),
         }
     }
 }

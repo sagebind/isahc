@@ -289,8 +289,12 @@ impl curl::easy::Handler for CurlHandler {
     }
 
     // Gets called by curl when it wants to seek to a certain position in the request body.
-    fn seek(&mut self, _whence: io::SeekFrom) -> curl::easy::SeekResult {
-        curl::easy::SeekResult::CantSeek
+    fn seek(&mut self, whence: io::SeekFrom) -> curl::easy::SeekResult {
+        if whence == io::SeekFrom::Start(0) && self.request_body.reset() {
+            curl::easy::SeekResult::CantSeek
+        } else {
+            curl::easy::SeekResult::CantSeek
+        }
     }
 
     // Gets called by curl when bytes from the response body are received.
