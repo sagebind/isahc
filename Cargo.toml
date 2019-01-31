@@ -52,7 +52,7 @@ nix = "0.13"
 [dev-dependencies]
 env_logger = "0.6"
 rayon = "1"
-rouille = "2.2"
+rouille = "3.0"
 
 [package.metadata.docs.rs]
 all-features = true
