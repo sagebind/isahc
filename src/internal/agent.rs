@@ -34,6 +34,7 @@ pub fn create() -> Result<Handle, Error> {
     thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
         let agent = Agent {
             multi: curl::multi::Multi::new(),
+            multi_messages: crossbeam_channel::unbounded(),
             message_rx,
             notify_rx,
             requests: Slab::new(),
@@ -124,10 +125,15 @@ enum Message {
     UnpauseWrite(usize),
 }
 
+type MultiMessage = (usize, Result<(), curl::Error>);
+
 /// Internal state of the agent thread.
 struct Agent {
     /// A curl multi handle, of course.
     multi: curl::multi::Multi,
+
+    /// Queue of messages from the multi handle.
+    multi_messages: (Sender<MultiMessage>, Receiver<MultiMessage>),
 
     /// Incoming message from the main thread.
     message_rx: Receiver<Message>,
@@ -269,16 +275,17 @@ impl Agent {
     fn dispatch(&mut self) -> Result<(), Error> {
         self.multi.perform()?;
 
-        let mut messages = Vec::new();
         self.multi.messages(|message| {
             if let Some(result) = message.result() {
                 if let Ok(token) = message.token() {
-                    messages.push((token, result));
+                    if self.multi_messages.0.send((token, result)).is_err() {
+                        error!("Multi message queue broken!");
+                    }
                 }
             }
         });
 
-        for (token, result) in messages {
+        for (token, result) in self.multi_messages.1.clone().try_iter() {
             match result {
                 Ok(()) => self.complete_request(token)?,
                 Err(e) => {
