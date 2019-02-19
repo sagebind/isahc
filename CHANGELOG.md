@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2019-01-19
+
+- Reduced API surface area of `Body`, removed `Seek` implementation. In the future, request and response body may be `AsyncRead` instead, or even a trait.
+- `Body` can be "resettable" instead of seekable, which will now be used if curl requests to seek to the beginning of the request body stream.
+- Small optimization in handling curl multi messages to reduce allocations.
+
 ## 0.3.1 - 2019-01-17
 
 - Add some new debug logging and assertions that point out unexpected behavior.
