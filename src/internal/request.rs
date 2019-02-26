@@ -86,6 +86,20 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
         easy.proxy(&format!("{}", proxy))?;
     }
 
+    // Configure SSL options.
+    if let Some(ciphers) = &options.ssl_ciphers {
+        easy.ssl_cipher_list(&ciphers.join(":"))?;
+    }
+    if let Some(cert) = &options.ssl_client_certificate {
+        easy.ssl_cert(&cert.path)?;
+        easy.ssl_cert_type(&cert.format.to_string())?;
+    }
+    if let Some(key) = &options.ssl_private_key {
+        easy.ssl_key(&key.path)?;
+        easy.ssl_key_type(&key.format.to_string())?;
+        easy.key_password(&key.password)?;
+    }
+
     // Set the request data according to the request given.
     easy.custom_request(request_parts.method.as_str())?;
     easy.url(&request_parts.uri.to_string())?;
