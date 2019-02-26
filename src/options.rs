@@ -125,7 +125,7 @@ impl Default for Options {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RedirectPolicy {
     /// Do not apply any special treatment to redirect responses. The response
-    /// will be return as-is and redirects will not be followed.
+    /// will be returned as-is and redirects will not be followed.
     ///
     /// This is the default policy.
     None,
@@ -190,20 +190,41 @@ impl Certificate {
 }
 
 /// A private key file.
+///
+/// If your private key file is encrypted with a password, use
+/// [`PrivateKey::with_password`] to set the password to use.
+///
+/// # Examples
+///
+/// ```
+/// # use chttp::options::*;
+/// let private_key = PrivateKey::new("key.pem", CertificateFormat::PEM)
+///     .with_password("secret");
+/// let options = Options::default()
+///     .with_ssl_private_key(Some(private_key));
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PrivateKey {
     pub(crate) path: PathBuf,
     pub(crate) format: CertificateFormat,
-    pub(crate) password: String,
+    pub(crate) password: Option<String>,
 }
 
 impl PrivateKey {
     /// Create a new private key object from the given path.
-    pub fn new(path: impl Into<PathBuf>, format: CertificateFormat, password: String) -> Self {
+    pub fn new(path: impl Into<PathBuf>, format: CertificateFormat) -> Self {
         Self {
             path: path.into(),
             format,
-            password,
+            password: None,
         }
+    }
+
+    /// Set the passphrase to private key.
+    ///
+    /// This will be used as the password required to decrypt the private key file.
+    pub fn with_password(mut self, password: impl Into<String>) -> Self {
+        self.password = Some(password.into());
+        self
     }
 }

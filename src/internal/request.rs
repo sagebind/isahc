@@ -97,7 +97,9 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
     if let Some(key) = &options.ssl_private_key {
         easy.ssl_key(&key.path)?;
         easy.ssl_key_type(&key.format.to_string())?;
-        easy.key_password(&key.password)?;
+        if let Some(password) = &key.password {
+            easy.key_password(password)?;
+        }
     }
 
     // Set the request data according to the request given.
