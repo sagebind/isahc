@@ -83,20 +83,27 @@ pub struct Options {
 
     /// A custom SSL/TLS client certificate to use for all client connections.
     ///
-    /// When using a client certificate, you most likely also need to provide a
-    /// private key with `ssl_private_key`.
+    /// If a format is not supported by the underlying SSL/TLS engine, an error
+    /// will be returned when attempting to send a request using the offending
+    /// certificate.
     ///
     /// The default value is none.
-    pub ssl_client_certificate: Option<Certificate>,
-
-    /// Private key corresponding to the custom SSL/TLS client certificate.
     ///
-    /// This option is ignored if curl was built against Secure Transport on
-    /// macOS or iOS. Secure Transport expects the private key to be already
-    /// present in the keychain or PKCS#12 file containing the certificate.
+    /// # Examples
     ///
-    /// The default value is none.
-    pub ssl_private_key: Option<PrivateKey>,
+    /// ```
+    /// # use chttp::options::*;
+    /// let cert = ClientCertificate::PEM {
+    ///     path: "client.pem".into(),
+    ///     private_key: Some(PrivateKey::PEM {
+    ///         path: "key.pem".into(),
+    ///         password: Some("secret".into()),
+    ///     }),
+    /// };
+    /// let options = Options::default()
+    ///     .with_ssl_client_certificate(Some(cert));
+    /// ```
+    pub ssl_client_certificate: Option<ClientCertificate>,
 }
 
 impl Default for Options {
@@ -116,7 +123,6 @@ impl Default for Options {
             max_download_speed: None,
             ssl_ciphers: None,
             ssl_client_certificate: None,
-            ssl_private_key: None,
         }
     }
 }
@@ -141,90 +147,50 @@ impl Default for RedirectPolicy {
     }
 }
 
-/// Possible certificate archive file formats.
-///
-/// If a format is not supported by the underlying SSL/TLS engine, an error will
-/// be returned when attempting to send a request using the offending
-/// certificate.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CertificateFormat {
-    /// A DER-encoded certificate file.
-    DER,
-    /// A PEM-encoded certificate file.
-    PEM,
-    /// A PKCS#12-encoded certificate file.
-    P12,
-}
-
-impl Default for CertificateFormat {
-    fn default() -> Self {
-        CertificateFormat::PEM
-    }
-}
-
-impl std::fmt::Display for CertificateFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            CertificateFormat::DER => f.write_str("DER"),
-            CertificateFormat::PEM => f.write_str("PEM"),
-            CertificateFormat::P12 => f.write_str("P12"),
-        }
-    }
-}
-
 /// A public key certificate file.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Certificate {
-    pub(crate) path: PathBuf,
-    pub(crate) format: CertificateFormat,
-}
+pub enum ClientCertificate {
+    /// A PEM-encoded certificate file.
+    PEM {
+        /// Path to the certificate file.
+        path: PathBuf,
 
-impl Certificate {
-    /// Create a new certificate object from the given path.
-    pub fn new(path: impl Into<PathBuf>, format: CertificateFormat) -> Self {
-        Self {
-            path: path.into(),
-            format,
-        }
-    }
+        /// Private key corresponding to the SSL/TLS certificate.
+        private_key: Option<PrivateKey>,
+    },
+    /// A DER-encoded certificate file.
+    DER {
+        /// Path to the certificate file.
+        path: PathBuf,
+
+        /// Private key corresponding to the SSL/TLS certificate.
+        private_key: Option<PrivateKey>,
+    },
+    /// A PKCS#12-encoded certificate file.
+    P12 {
+        /// Path to the certificate file.
+        path: PathBuf,
+
+        /// Password to decrypt the certificate file.
+        password: Option<String>,
+    },
 }
 
 /// A private key file.
-///
-/// If your private key file is encrypted with a password, use
-/// [`PrivateKey::with_password`] to set the password to use.
-///
-/// # Examples
-///
-/// ```
-/// # use chttp::options::*;
-/// let private_key = PrivateKey::new("key.pem", CertificateFormat::PEM)
-///     .with_password("secret");
-/// let options = Options::default()
-///     .with_ssl_private_key(Some(private_key));
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct PrivateKey {
-    pub(crate) path: PathBuf,
-    pub(crate) format: CertificateFormat,
-    pub(crate) password: Option<String>,
-}
+pub enum PrivateKey {
+    PEM {
+        /// Path to the key file.
+        path: PathBuf,
 
-impl PrivateKey {
-    /// Create a new private key object from the given path.
-    pub fn new(path: impl Into<PathBuf>, format: CertificateFormat) -> Self {
-        Self {
-            path: path.into(),
-            format,
-            password: None,
-        }
-    }
+        /// Password to decrypt the key file.
+        password: Option<String>,
+    },
+    DER {
+        /// Path to the key file.
+        path: PathBuf,
 
-    /// Set the passphrase to private key.
-    ///
-    /// This will be used as the password required to decrypt the private key file.
-    pub fn with_password(mut self, password: impl Into<String>) -> Self {
-        self.password = Some(password.into());
-        self
-    }
+        /// Password to decrypt the key file.
+        password: Option<String>,
+    },
 }
