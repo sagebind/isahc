@@ -86,6 +86,14 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
         easy.proxy(&format!("{}", proxy))?;
     }
 
+    // Configure SSL options.
+    if let Some(ciphers) = &options.ssl_ciphers {
+        easy.ssl_cipher_list(&ciphers.join(":"))?;
+    }
+    if let Some(cert) = &options.ssl_client_certificate {
+        easy.ssl_client_certificate(cert)?;
+    }
+
     // Set the request data according to the request given.
     easy.custom_request(request_parts.method.as_str())?;
     easy.url(&request_parts.uri.to_string())?;
@@ -120,6 +128,66 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
     }).map(|response| response.map(Body::from_reader));
 
     Ok((CurlRequest(easy), future_rx))
+}
+
+/// Helper extension methods for curl easy handles.
+trait EasyExt {
+    fn easy(&mut self) -> &mut curl::easy::Easy2<CurlHandler>;
+
+    fn ssl_client_certificate(&mut self, cert: &ClientCertificate) -> Result<(), curl::Error> {
+        match cert {
+            ClientCertificate::PEM {path, private_key} => {
+                self.easy().ssl_cert(path)?;
+                self.easy().ssl_cert_type("PEM")?;
+                if let Some(key) = private_key {
+                    self.ssl_private_key(key)?;
+                }
+            },
+            ClientCertificate::DER {path, private_key} => {
+                self.easy().ssl_cert(path)?;
+                self.easy().ssl_cert_type("DER")?;
+                if let Some(key) = private_key {
+                    self.ssl_private_key(key)?;
+                }
+            },
+            ClientCertificate::P12 {path, password} => {
+                self.easy().ssl_cert(path)?;
+                self.easy().ssl_cert_type("P12")?;
+                if let Some(password) = password {
+                    self.easy().key_password(password)?;
+                }
+            },
+        }
+
+        Ok(())
+    }
+
+    fn ssl_private_key(&mut self, key: &PrivateKey) -> Result<(), curl::Error> {
+        match key {
+            PrivateKey::PEM {path, password} => {
+                self.easy().ssl_key(path)?;
+                self.easy().ssl_key_type("PEM")?;
+                if let Some(password) = password {
+                    self.easy().key_password(password)?;
+                }
+            },
+            PrivateKey::DER {path, password} => {
+                self.easy().ssl_key(path)?;
+                self.easy().ssl_key_type("DER")?;
+                if let Some(password) = password {
+                    self.easy().key_password(password)?;
+                }
+            },
+        }
+
+        Ok(())
+    }
+}
+
+impl EasyExt for curl::easy::Easy2<CurlHandler> {
+    fn easy(&mut self) -> &mut Self {
+        self
+    }
 }
 
 /// Encapsulates a curl request that can be executed by an agent.
