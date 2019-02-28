@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2019-02-27
+
+- Add additional options for SSL/TLS. You can now override the list of acceptable ciphers to use in an SSL/TLS connection, and also provide a custom client certificate to use.
+
 ## 0.4.0 - 2019-01-19
 
 - Reduced API surface area of `Body`, removed `Seek` implementation. In the future, request and response body may be `AsyncRead` instead, or even a trait.
