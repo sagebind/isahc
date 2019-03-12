@@ -86,6 +86,16 @@ pub fn create<B: Into<Body>>(request: Request<B>, options: &Options) -> Result<(
         easy.proxy(&format!("{}", proxy))?;
     }
 
+    if let Some(addrs) = &options.dns_servers {
+        let dns_string = addrs.iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        if let Err(e) = easy.dns_servers(&dns_string) {
+            warn!("DNS servers could not be configured: {}", e);
+        }
+    }
+
     // Configure SSL options.
     if let Some(ciphers) = &options.ssl_ciphers {
         easy.ssl_cipher_list(&ciphers.join(":"))?;

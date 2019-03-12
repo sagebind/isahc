@@ -1,5 +1,6 @@
 //! Definition of all configurable client options.
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -60,6 +61,14 @@ pub struct Options {
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
     pub proxy: Option<http::Uri>,
 
+    /// A list of specific DNS servers to be used for DNS resolution.
+    ///
+    /// By default this option is not set and the system's built-in DNS
+    /// resolver is used. This option can only be used if libcurl is compiled
+    /// with [c-ares](https://c-ares.haxx.se), otherwise this option has no
+    /// effect.
+    pub dns_servers: Option<Vec<SocketAddr>>,
+
     /// A maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
@@ -119,6 +128,7 @@ impl Default for Options {
             buffer_size: 8192,
             auto_referer: false,
             proxy: None,
+            dns_servers: None,
             max_upload_speed: None,
             max_download_speed: None,
             ssl_ciphers: None,

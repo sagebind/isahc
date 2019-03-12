@@ -24,7 +24,7 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.3"
-curl = "0.4"
+curl = "^0.4.20"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
