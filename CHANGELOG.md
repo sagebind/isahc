@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 - 2019-04-05
+
+- Fix compile issues in the agent notify channel on Windows.
+
 ## 0.4.1 - 2019-02-27
 
 - Add additional options for SSL/TLS. You can now override the list of acceptable ciphers to use in an SSL/TLS connection, and also provide a custom client certificate to use.
