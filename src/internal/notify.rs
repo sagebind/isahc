@@ -36,8 +36,8 @@ pub fn create() -> io::Result<(NotifySender, NotifyReceiver)> {
             let rx = listener.accept()?.0;
             drop(listener);
 
-            sender.set_nonblocking(true)?;
-            receiver.set_nonblocking(true)?;
+            tx.set_nonblocking(true)?;
+            rx.set_nonblocking(true)?;
 
             (rx, tx)
         }
@@ -107,7 +107,7 @@ impl NotifyReceiver {
         use std::os::windows::io::AsRawSocket;
 
         let mut fd = WaitFd::new();
-        fd.set_fd(self.stream.as_raw_socket() as i32);
+        fd.set_fd(self.stream.as_raw_socket());
 
         fd
     }
