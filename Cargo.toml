@@ -15,25 +15,27 @@ edition = "2018"
 status = "actively-developed"
 
 [features]
-default = ["cookies", "http2", "psl", "static-curl"]
+default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 static-curl = ["curl/static-curl"]
-async-api = []
 middleware-api = []
 
 [dependencies]
 bytes = "0.4"
-crossbeam = "0.7"
+# crossbeam = "0.7"
 curl = "^0.4.20"
-futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
 lazycell = "1.2"
 log = "0.4"
 regex = "1.1"
 slab = "0.4"
+static_assertions = "0.3"
 withers_derive = "0.2"
+
+[dependencies.futures-preview]
+version = "0.3.0-alpha.16"
 
 [dependencies.chrono]
 version = "0.4"

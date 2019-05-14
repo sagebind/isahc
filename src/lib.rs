@@ -150,6 +150,8 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
+#![feature(async_await)]
+
 pub mod body;
 pub mod client;
 pub mod error;

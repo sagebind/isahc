@@ -2,12 +2,10 @@
 
 use crate::body::Body;
 use crate::error::Error;
-use crate::internal::agent;
-use crate::internal::request;
+use crate::internal::response::ResponseFuture;
 use crate::middleware::Middleware;
 use crate::options::*;
 use futures::executor;
-use futures::prelude::*;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::sync::Arc;
@@ -102,10 +100,10 @@ impl ClientBuilder {
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn build(&mut self) -> Result<Client, Error> {
-        let agent = agent::create()?;
+        // let agent = agent::create()?;
 
         Ok(Client {
-            agent: agent,
+            // agent: agent,
             default_options: self.default_options.clone(),
             middleware: Arc::new(self.middleware.drain(..).collect()),
         })
@@ -117,7 +115,7 @@ impl ClientBuilder {
 /// The client maintains a connection pool internally and is expensive to create, so we recommend re-using your clients
 /// instead of discarding and recreating them.
 pub struct Client {
-    agent: agent::Handle,
+    // agent: agent::Handle,
     default_options: Options,
     middleware: Arc<Vec<Box<dyn Middleware>>>,
 }
@@ -181,7 +179,7 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed once.
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        executor::block_on(self.send_async_impl(request))
+        executor::block_on(self.send_async(request))
     }
 
     /// Begin sending a request and return a future of the response.
@@ -191,12 +189,10 @@ impl Client {
     /// instead of the default options this client is configured with.
     ///
     /// The response body is provided as a stream that may only be consumed once.
-    #[cfg(feature = "async-api")]
-    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
-        self.send_async_impl(request)
-    }
+    pub async fn send_async<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
+        let (future, controller) = ResponseFuture::new();
 
-    fn send_async_impl<B: Into<Body>>(&self, request: Request<B>) -> impl Future<Item=Response<Body>, Error=Error> {
+
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.
@@ -218,21 +214,20 @@ impl Client {
         let options = request.extensions_mut().remove::<Options>();
         let options = options.as_ref().unwrap_or(&self.default_options);
 
-        return request::create(request, options)
-            .and_then(|(request, future)| {
-                self.agent.begin_execute(request).map(|_| future)
-            })
-            .into_future()
-            .flatten()
-            .map(move |mut response| {
-                response.extensions_mut().insert(uri);
+        unimplemented!();
+        // let (request, future) = request::create(request, options)?;
 
-                // Apply response middleware, starting with the innermost one.
-                for middleware in middleware.iter() {
-                    response = middleware.filter_response(response);
-                }
+        // self.agent.begin_execute(request)?;
 
-                response
-            });
+        // let mut response = future.await?;
+
+        // response.extensions_mut().insert(uri);
+
+        // // Apply response middleware, starting with the innermost one.
+        // for middleware in middleware.iter() {
+        //     response = middleware.filter_response(response);
+        // }
+
+        // Ok(response)
     }
 }

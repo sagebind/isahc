@@ -3,8 +3,6 @@
 use crate::error::Error;
 use crate::internal::notify;
 use crate::internal::request::*;
-use crossbeam::channel::{Sender, Receiver};
-use crossbeam::sync::WaitGroup;
 use log::*;
 use slab::Slab;
 use std::sync::{Arc, Weak};
