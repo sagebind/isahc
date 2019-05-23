@@ -2,6 +2,7 @@
 
 use crate::body::Body;
 use crate::error::Error;
+use crate::internal::handler::CurlHandler;
 use crate::internal::response::ResponseFuture;
 use crate::middleware::Middleware;
 use crate::options::*;
@@ -105,7 +106,7 @@ impl ClientBuilder {
         Ok(Client {
             // agent: agent,
             default_options: self.default_options.clone(),
-            middleware: Arc::new(self.middleware.drain(..).collect()),
+            middleware: self.middleware.drain(..).collect(),
         })
     }
 }
@@ -117,7 +118,7 @@ impl ClientBuilder {
 pub struct Client {
     // agent: agent::Handle,
     default_options: Options,
-    middleware: Arc<Vec<Box<dyn Middleware>>>,
+    middleware: Vec<Box<dyn Middleware>>,
 }
 
 impl Client {
@@ -190,9 +191,6 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed once.
     pub async fn send_async<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        let (future, controller) = ResponseFuture::new();
-
-
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.
@@ -201,33 +199,33 @@ impl Client {
             .unwrap()
             .or_insert(USER_AGENT.parse().unwrap());
 
-        let uri = request.uri().clone();
-
-        let middleware = self.middleware.clone();
-
         // Apply any request middleware, starting with the outermost one.
-        for middleware in middleware.iter().rev() {
+        for middleware in self.middleware.iter().rev() {
             request = middleware.filter_request(request);
         }
 
         // Extract the request options, or use the default options.
         let options = request.extensions_mut().remove::<Options>();
         let options = options.as_ref().unwrap_or(&self.default_options);
+        let uri = request.uri().clone();
 
-        unimplemented!();
-        // let (request, future) = request::create(request, options)?;
+        // Prepare the request plumbing.
+        let (future, producer) = ResponseFuture::new();
+        let (request_parts, request_body) = request.into_parts();
+        let handler = CurlHandler::new(request_body, producer);
 
+        // Send the request to the agent to be executed.
         // self.agent.begin_execute(request)?;
 
-        // let mut response = future.await?;
+        // Wait for the response to complete or fail.
+        let mut response = future.await?;
+        response.extensions_mut().insert(uri);
 
-        // response.extensions_mut().insert(uri);
+        // Apply response middleware, starting with the innermost one.
+        for middleware in self.middleware.iter() {
+            response = middleware.filter_response(response);
+        }
 
-        // // Apply response middleware, starting with the innermost one.
-        // for middleware in middleware.iter() {
-        //     response = middleware.filter_response(response);
-        // }
-
-        // Ok(response)
+        Ok(response)
     }
 }

@@ -79,7 +79,7 @@ struct HandleInner {
 
 impl Handle {
     /// Begin executing a request with this agent.
-    pub fn begin_execute(&self, request: CurlRequest) -> Result<(), Error> {
+    pub fn submit_request(&self, request: CurlRequest) -> Result<(), Error> {
         request.0.get_ref().set_agent(self.clone());
 
         self.inner.send_message(Message::BeginRequest(request))

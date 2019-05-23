@@ -44,17 +44,19 @@ impl Future for ResponseFuture {
     }
 }
 
+/// Producing end of a response future that builds up the response object
+/// incrementally.
 pub struct ResponseProducer {
     sender: Option<Sender<Response<Body>>>,
 
     /// Status code of the response.
-    status_code: Option<http::StatusCode>,
+    pub(crate) status_code: Option<http::StatusCode>,
 
     /// HTTP version of the response.
-    version: Option<http::Version>,
+    pub(crate) version: Option<http::Version>,
 
     /// Response headers received so far.
-    headers: Option<http::HeaderMap>,
+    pub(crate) headers: Option<http::HeaderMap>,
 }
 
 impl ResponseProducer {
@@ -76,6 +78,7 @@ impl ResponseProducer {
         }
     }
 
+    /// Finishes constructing the response and sends it to the receiver.
     pub fn finish(&mut self, body: Body) -> Result<(), Body> {
         Err(body)
     }

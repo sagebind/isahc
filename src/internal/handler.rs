@@ -2,23 +2,23 @@ use crate::body::Body;
 use crate::internal::format_byte_string;
 use crate::internal::parse;
 use crate::internal::response::ResponseProducer;
-use bytes::Bytes;
-use curl::easy::InfoType;
-use futures::io::AsyncRead;
-use futures::lock::{Mutex, MutexLockFuture};
+use curl::easy::{ReadError, InfoType, WriteError};
+use futures::prelude::*;
 use futures::task::AtomicWaker;
-use std::io::{self, Read};
+use sluice::pipe;
+use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::*;
 
-struct State {
-    buffer: Mutex<Bytes>,
-    read_waker: AtomicWaker,
-}
-
+/// Drives the state for a single request/response life cycle.
 pub struct CurlHandler {
+    /// The body to be sent in the request.
     request_body: Body,
+
+    /// Pipe to write the response body to.
+    response_body_writer: pipe::PipeWriter,
+
     producer: ResponseProducer,
 }
 
@@ -26,6 +26,7 @@ impl CurlHandler {
     pub fn new(request_body: Body, producer: ResponseProducer) -> Self {
         Self {
             request_body,
+            response_body_writer: pipe::pipe().1,
             producer,
         }
     }
@@ -40,14 +41,14 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this the status line?
         if let Some((version, status)) = parse::parse_status_line(data) {
-            // self.version = Some(version);
-            // self.status_code = Some(status);
+            self.producer.version = Some(version);
+            self.producer.status_code = Some(status);
             return true;
         }
 
         // Is this a header line?
         if let Some((name, value)) = parse::parse_header(data) {
-            // self.headers.insert(name, value);
+            // self.producer.headers.insert(name, value);
             return true;
         }
 
@@ -62,15 +63,22 @@ impl curl::easy::Handler for CurlHandler {
     }
 
     // Gets called by curl when attempting to send bytes of the request body.
-    fn read(&mut self, data: &mut [u8]) -> Result<usize, curl::easy::ReadError> {
+    fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
         // Don't bother if the request is canceled.
         if self.producer.is_closed() {
             return Err(curl::easy::ReadError::Abort);
         }
 
-        self.request_body
-            .read(data)
-            .map_err(|_| curl::easy::ReadError::Abort)
+        // TODO: Custom context + waker that unpauses read.
+
+        match self.request_body.poll_read(0, data) {
+            Poll::Pending => Err(ReadError::Pause),
+            Poll::Ready(Ok(len)) => Ok(len),
+            Poll::Ready(Err(e)) => {
+                log::error!("error reading request body: {}", e);
+                Err(ReadError::Abort)
+            },
+        }
     }
 
     // Gets called by curl when it wants to seek to a certain position in the request body.
@@ -79,7 +87,7 @@ impl curl::easy::Handler for CurlHandler {
     }
 
     // Gets called by curl when bytes from the response body are received.
-    fn write(&mut self, data: &[u8]) -> Result<usize, curl::easy::WriteError> {
+    fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         log::trace!("received {} bytes of data", data.len());
 
         if self.producer.is_closed() {
@@ -87,22 +95,16 @@ impl curl::easy::Handler for CurlHandler {
             return Ok(0);
         }
 
-        // let mut buffer = self.state.buffer.lock().unwrap();
+        // TODO: Custom context + waker that unpauses write.
 
-        // // If there is existing data in the buffer, pause the request until the existing data is consumed.
-        // if !buffer.is_empty() {
-        //     trace!("response buffer is not empty, pausing transfer");
-        //     return Err(curl::easy::WriteError::Pause);
-        // }
-
-        // // Store the data in the buffer.
-        // *buffer = Bytes::from(data);
-
-        // // Notify the reader.
-        // self.state.read_waker.wake();
-
-        // Ok(buffer.len())
-        unimplemented!()
+        match self.response_body_writer.poll_write(0, data) {
+            Poll::Pending => Err(WriteError::Pause),
+            Poll::Ready(Ok(len)) => Ok(len),
+            Poll::Ready(Err(e)) => {
+                log::error!("error writing response body to buffer: {}", e);
+                Ok(0)
+            },
+        }
     }
 
     // Gets called by curl whenever it wishes to log a debug message.
@@ -116,56 +118,9 @@ impl curl::easy::Handler for CurlHandler {
     }
 }
 
-struct CurlResponseStream {
-    state: Arc<State>,
-    // buffer_future: Option<MutexLockFuture>,
-}
+struct AgentWaker {}
 
-impl AsyncRead for CurlResponseStream {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context, dest: &mut [u8]) -> Poll<Result<usize, io::Error>> {
-        log::trace!("received read request for {} bytes", dest.len());
-
-        if dest.is_empty() {
-            return Poll::Ready(Ok(0));
-        }
-
-        // Set the current read waker.
-        self.state.read_waker.register(cx.waker());
-
-        // Attempt to read some from the buffer.
-        // let mut buffer = self.state.buffer.lock().unwrap();
-
-        // If the request failed, return an error.
-        // if let Some(error) = self.state.error.borrow() {
-        //     log::debug!("failing read due to error: {:?}", error);
-        //     return Err(error.clone().into());
-        // }
-
-        // // If data is available, read some.
-        // if !buffer.is_empty() {
-        //     let amount_to_consume = dest.len().min(buffer.len());
-        //     log::trace!("read buffer contains {} bytes, consuming {} bytes", buffer.len(), amount_to_consume);
-
-        //     let consumed = buffer.split_to(amount_to_consume);
-        //     (&mut dest[0..amount_to_consume]).copy_from_slice(&consumed);
-
-        //     return Ok(Async::Ready(consumed.len()));
-        // }
-
-        // // If the request is closed, return EOF.
-        // if self.state.is_closed() {
-        //     log::trace!("request is closed, satisfying read request with EOF");
-        //     return Ok(Async::Ready(0));
-        // }
-
-        // // Before we yield, ensure the request is not paused so that the buffer may be filled with new data.
-        // if let Some(agent) = self.state.agent.borrow() {
-        //     if let Some(token) = self.state.token.get() {
-        //         agent.unpause_write(token)?;
-        //     }
-        // }
-
-        log::trace!("buffer is empty, read is pending");
-        Poll::Pending
-    }
+struct RequestWaker {
+    inner: AgentWaker,
+    token: usize,
 }
