@@ -4,41 +4,65 @@ use crate::error::Error;
 use bytes::Bytes;
 use futures::prelude::*;
 use std::fmt;
-use std::io::{self, Cursor, Read, SeekFrom};
+use std::io::{self, Cursor, Read};
 use std::task::*;
 use std::pin::Pin;
 use std::str;
 
 /// Contains the body of an HTTP request or response.
 ///
-/// This type is used to encapsulate the underlying stream or region of memory where the contents of the body is stored.
-/// A `Body` can be created from many types of sources using the [`Into`](std::convert::Into) trait.
+/// This type is used to encapsulate the underlying stream or region of memory
+/// where the contents of the body are stored. A `Body` can be created from many
+/// types of sources using the [`Into`](std::convert::Into) trait or one of its
+/// constructor functions.
+///
+/// Since the entire request life-cycle in cHTTP is asynchronous, bodies must
+/// also be asynchronous. You can create a body from anything that implements
+/// [`AsyncRead`](futures::io::AsyncRead), which `Body` itself also implements.
 pub struct Body(Inner);
 
 /// All possible body implementations.
 enum Inner {
     /// An empty body.
     Empty,
+
+    /// A body stored in memory.
+    Bytes(Cursor<Bytes>),
+
     /// An asynchronous reader.
-    AsyncRead {
-        object: Pin<Box<dyn AsyncRead + Send>>,
-        size_hint: Option<usize>,
-    },
-    /// An asynchronous reader that can also seek.
-    AsyncReadSeek {
-        object: Pin<Box<dyn AsyncReadSeek + Send>>,
-        size_hint: Option<usize>,
-    },
+    AsyncRead(Pin<Box<dyn AsyncRead + Send>>, Option<usize>),
 }
 
 impl Body {
-    pub const EMPTY: Self = Body(Inner::Empty);
+    /// Create a new empty body.
+    ///
+    /// An empty body will have a known length of 0 bytes.
+    pub const fn empty() -> Self {
+        Body(Inner::Empty)
+    }
 
-    pub fn from_read(read: impl AsyncRead + Send + 'static) -> Self {
-        Body(Inner::AsyncRead {
-            object: Box::pin(read),
-            size_hint: None,
-        })
+    /// Create a new body from bytes stored in memory.
+    ///
+    /// The body will have a known length equal to the number of bytes given.
+    pub fn bytes(bytes: impl Into<Bytes>) -> Self {
+        Body(Inner::Bytes(Cursor::new(bytes.into())))
+    }
+
+    /// Create a streaming body that reads from the given reader.
+    ///
+    /// The body will have an unknown length. When used as a request body,
+    /// chunked transfer encoding might be used to send the request.
+    pub fn reader(read: impl AsyncRead + Send + 'static) -> Self {
+        Body(Inner::AsyncRead(Box::pin(read), None))
+    }
+
+    /// Create a streaming body with a known length.
+    ///
+    /// If the size of the body is known in advance, such as with a file, then
+    /// this function can be used to create a body that can determine its
+    /// `Content-Length` while still reading the bytes asynchronously.
+    pub fn reader_sized(read: impl AsyncRead + Send + 'static, length: usize) -> Self {
+        Body(Inner::AsyncRead(Box::pin(read), Some(length)))
     }
 
     /// Report if this body is empty.
@@ -47,29 +71,45 @@ impl Body {
     }
 
     /// Get the size of the body, if known.
+    ///
+    /// The value reported by this method is used to set the `Content-Length`
+    /// for outgoing requests.
+    ///
+    /// When coming from a response, this method will report the value of the
+    /// `Content-Length` response header if present. If this method returns
+    /// `None` then there's a good chance that the server used something like
+    /// chunked transfer encoding to send the response body.
+    ///
+    /// Since the length may be determined totally separately from the actual
+    /// bytes, even if a value is returned it should not be relied on as always
+    /// being accurate, and should be treated as a "hint".
     pub fn len(&self) -> Option<usize> {
         match &self.0 {
             Inner::Empty => Some(0),
-            Inner::AsyncRead {size_hint, ..} => size_hint.clone(),
-            Inner::AsyncReadSeek {size_hint, ..} => size_hint.clone(),
+            Inner::Bytes(bytes) => Some(bytes.get_ref().len()),
+            Inner::AsyncRead(_, len) => len.clone(),
         }
     }
 
     /// If this body is repeatable, reset the body stream back to the start of
     /// the content. Returns `false` if the body cannot be reset.
-    pub async fn reset(&mut self) -> bool {
+    pub fn reset(&mut self) -> bool {
         match &mut self.0 {
             Inner::Empty => true,
-            Inner::AsyncReadSeek {object, ..} => AsyncSeekExt::seek(&mut *object, SeekFrom::Start(0)).await.is_ok(),
-            _ => false,
+            Inner::Bytes(cursor) => {
+                cursor.set_position(0);
+                true
+            },
+            Inner::AsyncRead(_, _) => false,
         }
     }
 
     /// Get the response body as a string.
     ///
-    /// If the body comes from a stream, the steam bytes will be consumed and this method will return an empty string
-    /// next call. If this body supports seeking, you can seek to the beginning of the body if you need to call this
-    /// method again later.
+    /// If the body comes from a stream, the steam bytes will be consumed and
+    /// this method will return an empty string next call. If this body supports
+    /// seeking, you can seek to the beginning of the body if you need to call
+    /// this method again later.
     pub async fn text(&mut self) -> Result<String, Error> {
         if self.is_empty() {
             Ok(String::new())
@@ -98,42 +138,33 @@ impl AsyncRead for Body {
     fn poll_read(self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         match &mut self.0 {
             Inner::Empty => Poll::Ready(Ok(0)),
-            Inner::AsyncRead {object, ..} => AsyncRead::poll_read(object.as_mut(), cx, buf),
-            Inner::AsyncReadSeek {object, ..} => AsyncRead::poll_read(object.as_mut(), cx, buf),
+            Inner::Bytes(cursor) => AsyncRead::poll_read(Pin::new(cursor), cx, buf),
+            Inner::AsyncRead(read, _) => AsyncRead::poll_read(read.as_mut(), cx, buf),
         }
     }
 }
 
 impl Default for Body {
     fn default() -> Self {
-        Body::EMPTY
+        Self::empty()
     }
 }
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Body(Inner::AsyncReadSeek {
-            object: Box::pin(Cursor::new(body)),
-            size_hint: Some(body.len()),
-        })
+        Self::bytes(body)
     }
 }
 
 impl From<&'static [u8]> for Body {
     fn from(body: &'static [u8]) -> Self {
-        Body(Inner::AsyncReadSeek {
-            object: Box::pin(Cursor::new(body)),
-            size_hint: Some(body.len()),
-        })
+        Bytes::from_static(body).into()
     }
 }
 
 impl From<Bytes> for Body {
     fn from(body: Bytes) -> Self {
-        Body(Inner::AsyncReadSeek {
-            object: Box::pin(Cursor::new(body)),
-            size_hint: Some(body.len()),
-        })
+        Self::bytes(body)
     }
 }
 
@@ -148,12 +179,6 @@ impl From<&'static str> for Body {
         body.as_bytes().into()
     }
 }
-
-// impl From<File> for Body {
-//     fn from(body: File) -> Self {
-//         Self::from_reader(body)
-//     }
-// }
 
 impl<T: Into<Body>> From<Option<T>> for Body {
     fn from(body: Option<T>) -> Self {
@@ -172,8 +197,3 @@ impl fmt::Debug for Body {
         }
     }
 }
-
-/// Helper trait combining `AsyncRead` and `AsyncSeek`.
-trait AsyncReadSeek: AsyncRead + AsyncSeek {}
-
-impl<T> AsyncReadSeek for T where T: AsyncRead + AsyncSeek {}
