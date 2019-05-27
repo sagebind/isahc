@@ -1,10 +1,12 @@
 //! Curl agent that executes multiple requests simultaneously.
 
 use crate::error::Error;
-use crate::internal::notify;
-use crate::internal::request::*;
-use log::*;
+use crate::internal::handler::CurlHandler;
+use crate::internal::wakers::AgentWaker;
+use crossbeam_channel::{Receiver, Sender};
+use futures::task::*;
 use slab::Slab;
+use std::net::UdpSocket;
 use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
 use std::thread;
@@ -14,109 +16,104 @@ const AGENT_THREAD_NAME: &'static str = "curl agent";
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
 const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
 
-/// Create an agent that executes multiple curl requests simultaneously.
-///
-/// The agent maintains a background thread that multiplexes all active requests using a single "multi" handle.
-pub fn create() -> Result<Handle, Error> {
-    let create_start = Instant::now();
-
-    let (message_tx, message_rx) = crossbeam::channel::unbounded();
-    let (notify_tx, notify_rx) = notify::create()?;
-    let close_wait_group = WaitGroup::new();
-
-    let handle_inner = Arc::new(HandleInner {
-        message_tx,
-        notify_tx,
-        close_wait_group: Some(close_wait_group.clone()),
-        thread_terminated: AtomicBool::default(),
-    });
-    let handle_weak = Arc::downgrade(&handle_inner);
-
-    thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
-        let agent = Agent {
-            multi: curl::multi::Multi::new(),
-            multi_messages: crossbeam::channel::unbounded(),
-            message_rx,
-            notify_rx,
-            requests: Slab::new(),
-            close_requested: false,
-            handle: handle_weak,
-            _close_wait_group: close_wait_group,
-        };
-
-        debug!("agent took {:?} to start up", create_start.elapsed());
-
-        // Intentionally panic the thread if an error occurs.
-        agent.run().unwrap();
-    })?;
-
-    Ok(Handle {
-        inner: handle_inner,
-    })
-}
-
-/// Handle to an agent. Handles can be sent between threads, shared, and cloned.
-#[derive(Clone, Debug)]
-pub struct Handle {
-    inner: Arc<HandleInner>,
-}
-
-/// Actual handle to an agent. Only one of these exists per agent.
-#[derive(Debug)]
-struct HandleInner {
-    /// Used to send messages to the agent.
+pub struct Agent {
+    /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
 
-    /// Used to wake up the agent thread while it is polling.
-    notify_tx: notify::NotifySender,
+    /// A waker that can wake up the agent thread while it is polling.
+    waker: Waker,
 
-    /// Indicates that the agent thread has exited.
-    thread_terminated: AtomicBool,
-
-    /// Used to await until the agent thread terminates on drop.
-    close_wait_group: Option<WaitGroup>,
+    /// Flag indicating whether the agent thread has terminated.
+    terminated: Arc<AtomicBool>,
 }
 
-impl Handle {
+impl Agent {
+    /// Create an agent that executes multiple curl requests simultaneously.
+    ///
+    /// The agent maintains a background thread that multiplexes all active
+    /// requests using a single "multi" handle.
+    pub fn new() -> Result<Self, Error> {
+        let create_start = Instant::now();
+
+        let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
+        wake_socket.set_nonblocking(true)?;
+
+        let wake_addr = wake_socket.local_addr()?;
+        let waker = Arc::new(AgentWaker::connect(wake_addr)?).into_waker();
+        log::debug!("agent waker listening on {}", wake_addr);
+
+        let (message_tx, message_rx) = crossbeam_channel::unbounded();
+        let terminated = Arc::new(AtomicBool::default());
+
+        thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
+            let agent = AgentThread {
+                multi: curl::multi::Multi::new(),
+                multi_messages: crossbeam_channel::unbounded(),
+                message_rx,
+                wake_socket,
+                requests: Slab::new(),
+                close_requested: false,
+                handle: handle_weak,
+            };
+
+            log::debug!("agent took {:?} to start up", create_start.elapsed());
+
+            // Intentionally panic the thread if an error occurs.
+            agent.run().unwrap();
+        })?;
+
+        Ok(Self {
+            message_tx,
+            waker,
+            terminated,
+        })
+    }
+
+    /// Get a waker object for waking up this agent's event loop from another
+    /// thread.
+    pub fn waker(&self) -> &Waker {
+        &self.waker
+    }
+
     /// Begin executing a request with this agent.
     pub fn submit_request(&self, request: CurlRequest) -> Result<(), Error> {
-        request.0.get_ref().set_agent(self.clone());
+        // request.0.get_ref().set_agent(self.clone());
 
-        self.inner.send_message(Message::BeginRequest(request))
+        self.send_message(Message::BeginRequest(request))
     }
 
     /// Cancel a request by its token.
     pub fn cancel_request(&self, token: usize) -> Result<(), Error> {
-        self.inner.send_message(Message::Cancel(token))
+        self.send_message(Message::Cancel(token))
     }
 
     /// Unpause a request by its token.
     pub fn unpause_write(&self, token: usize) -> Result<(), Error> {
-        self.inner.send_message(Message::UnpauseWrite(token))
+        self.send_message(Message::UnpauseWrite(token))
     }
-}
 
-impl HandleInner {
-    /// Send a message to the associated agent.
+    /// Send a message to the agent thread.
     ///
     /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        if self.thread_terminated.load(Ordering::SeqCst) {
-            error!("agent thread terminated prematurely");
+        if self.terminated.load(Ordering::SeqCst) {
+            log::error!("agent thread terminated prematurely");
             return Err(Error::Internal);
         }
 
         self.message_tx.send(message).map_err(|_| Error::Internal)?;
-        self.notify_tx.notify();
+
+        // Wake the agent thread up so it will check its messages soon.
+        self.waker.wake_by_ref();
 
         Ok(())
     }
 }
 
-impl Drop for HandleInner {
+impl Drop for Agent {
     fn drop(&mut self) {
         if self.send_message(Message::Close).is_err() {
-            warn!("agent thread was already terminated");
+            log::warn!("agent thread was already terminated");
         }
 
         if let Some(close_wait_group) = self.close_wait_group.take() {
@@ -137,7 +134,11 @@ enum Message {
 type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// Internal state of the agent thread.
-struct Agent {
+///
+/// The agent thread runs the primary client event loop, which is essentially a
+/// traditional curl multi event loop with some extra bookkeeping and async
+/// features like wakers.
+struct AgentThread {
     /// A curl multi handle, of course.
     multi: curl::multi::Multi,
 
@@ -148,7 +149,7 @@ struct Agent {
     message_rx: Receiver<Message>,
 
     /// Used to wake up the agent when polling.
-    notify_rx: notify::NotifyReceiver,
+    wake_socket: UdpSocket,
 
     /// Contains all of the active requests.
     requests: Slab<curl::multi::Easy2Handle<CurlHandler>>,
@@ -163,13 +164,13 @@ struct Agent {
     _close_wait_group: WaitGroup,
 }
 
-impl Agent {
+impl AgentThread {
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
         let mut wait_fds = [self.notify_rx.as_wait_fd()];
         wait_fds[0].poll_on_read(true);
 
-        debug!("agent ready");
+        log::debug!("agent ready");
 
         // Agent main loop.
         loop {
@@ -191,7 +192,7 @@ impl Agent {
             // truncating this known value to 1ms to avoid blocking the agent loop for a long time.
             // See https://github.com/curl/curl/issues/2996 and https://github.com/alexcrichton/curl-rust/issues/227.
             if timeout == Duration::from_secs(300) {
-                debug!("HACK: curl returned CONNECTTIMEOUT of {:?}, truncating to 1ms!", timeout);
+                log::debug!("HACK: curl returned CONNECTTIMEOUT of {:?}, truncating to 1ms!", timeout);
                 timeout = Duration::from_millis(1);
             }
 
@@ -200,17 +201,17 @@ impl Agent {
 
             // Block until activity is detected or the timeout passes.
             if timeout > Duration::from_secs(0) {
-                trace!("polling with timeout of {:?}", timeout);
+                log::trace!("polling with timeout of {:?}", timeout);
                 self.multi.wait(&mut wait_fds, timeout)?;
             }
 
             // We might have woken up early from the notify fd, so drain its queue.
-            if self.notify_rx.drain() {
-                trace!("woke up from notify fd");
+            if self.waker_drain() {
+                log::trace!("woke up from waker");
             }
         }
 
-        debug!("agent shutting down");
+        log::debug!("agent shutting down");
 
         self.requests.clear();
         self.multi.close()?;
@@ -227,7 +228,7 @@ impl Agent {
                 match self.message_rx.recv() {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
-                        warn!("agent handle disconnected without close message");
+                        log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     },
@@ -235,9 +236,9 @@ impl Agent {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam::channel::TryRecvError::Empty) => break,
-                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
-                        warn!("agent handle disconnected without close message");
+                    Err(crossbeam_channel::TryRecvError::Empty) => break,
+                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                        log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     },
@@ -249,11 +250,11 @@ impl Agent {
     }
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
-        trace!("received message from agent handle: {:?}", message);
+        log::trace!("received message from agent handle: {:?}", message);
 
         match message {
             Message::Close => {
-                trace!("agent close requested");
+                log::trace!("agent close requested");
                 self.close_requested = true;
             },
             Message::BeginRequest(request) => {
@@ -276,7 +277,7 @@ impl Agent {
                 if let Some(request) = self.requests.get(token) {
                     request.unpause_write()?;
                 } else {
-                    warn!("received unpause request for unknown request token: {}", token);
+                    log::warn!("received unpause request for unknown request token: {}", token);
                 }
             },
         }
@@ -291,7 +292,7 @@ impl Agent {
             if let Some(result) = message.result() {
                 if let Ok(token) = message.token() {
                     if self.multi_messages.0.send((token, result)).is_err() {
-                        error!("Multi message queue broken!");
+                        log::error!("Multi message queue broken!");
                     }
                 }
             }
@@ -301,7 +302,7 @@ impl Agent {
             match result {
                 Ok(()) => self.complete_request(token)?,
                 Err(e) => {
-                    debug!("curl error: {}", e);
+                    log::debug!("curl error: {}", e);
                     self.fail_request(token, e.into())?;
                 },
             };
@@ -311,7 +312,7 @@ impl Agent {
     }
 
     fn complete_request(&mut self, token: usize) -> Result<(), Error> {
-        debug!("request with token {} completed", token);
+        log::debug!("request with token {} completed", token);
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
         handle.get_mut().complete();
@@ -326,9 +327,22 @@ impl Agent {
 
         Ok(())
     }
+
+    fn waker_drain(&self) -> bool {
+        let mut woke = false;
+
+        loop {
+            match self.wake_socket.recv_from(&mut [0; 32]) {
+                Ok(_) => woke = true,
+                Err(e) => break,
+            }
+        }
+
+        woke
+    }
 }
 
-impl Drop for Agent {
+impl Drop for AgentThread {
     fn drop(&mut self) {
         if let Some(handle) = self.handle.upgrade() {
             handle.thread_terminated.store(true, Ordering::SeqCst);

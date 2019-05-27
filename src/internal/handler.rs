@@ -2,7 +2,7 @@ use crate::body::Body;
 use crate::internal::format_byte_string;
 use crate::internal::parse;
 use crate::internal::response::ResponseProducer;
-use curl::easy::{ReadError, InfoType, WriteError};
+use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::prelude::*;
 use futures::task::AtomicWaker;
 use sluice::pipe;
@@ -16,7 +16,14 @@ pub struct CurlHandler {
     /// The body to be sent in the request.
     request_body: Body,
 
-    /// Pipe to write the response body to.
+    /// Reading end of the pipe where the response body is written.
+    ///
+    /// This is moved out of the handler and set as the response body stream
+    /// when the response future is ready. We continue to stream the response
+    /// body using the writer.
+    response_body_reader: Option<pipe::PipeReader>,
+
+    /// Writing end of the pipe where the response body is written.
     response_body_writer: pipe::PipeWriter,
 
     producer: ResponseProducer,
@@ -24,16 +31,29 @@ pub struct CurlHandler {
 
 impl CurlHandler {
     pub fn new(request_body: Body, producer: ResponseProducer) -> Self {
+        let (response_body_reader, response_body_writer) = pipe::pipe();
+
         Self {
             request_body,
-            response_body_writer: pipe::pipe().1,
+            response_body_reader: Some(response_body_reader),
+            response_body_writer,
             producer,
         }
     }
 }
 
+impl CurlHandler {
+    fn finish_response_and_complete(&mut self) {
+        if let Some(body) = self.response_body_reader.take() {
+            self.producer.finish(Body::reader(body));
+        } else {
+            log::debug!("response already finished!");
+        }
+    }
+}
+
 impl curl::easy::Handler for CurlHandler {
-    // Gets called by curl for each line of data in the HTTP request header.
+    /// Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
         // Curl calls this function for all lines in the response not part of the response body, not just for headers.
         // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
@@ -54,6 +74,7 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this the end of the response header?
         if data == b"\r\n" {
+            self.finish_response_and_complete();
             // self.finalize_headers();
             return true;
         }
@@ -62,7 +83,7 @@ impl curl::easy::Handler for CurlHandler {
         false
     }
 
-    // Gets called by curl when attempting to send bytes of the request body.
+    /// Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
         // Don't bother if the request is canceled.
         if self.producer.is_closed() {
@@ -81,12 +102,27 @@ impl curl::easy::Handler for CurlHandler {
         }
     }
 
-    // Gets called by curl when it wants to seek to a certain position in the request body.
-    fn seek(&mut self, whence: io::SeekFrom) -> curl::easy::SeekResult {
-        curl::easy::SeekResult::CantSeek
+    /// Gets called by curl when it wants to seek to a certain position in the
+    /// request body.
+    ///
+    /// Since this method is synchronous and provides no means of deferring the
+    /// seek, we can't do any async operations in this callback. That's why we
+    /// only support trivial types of seeking.
+    fn seek(&mut self, whence: io::SeekFrom) -> SeekResult {
+        match whence {
+            // If curl wants to seek to the beginning, there's a chance that we
+            // can do that.
+            io::SeekFrom::Start(0) => if self.request_body.reset() {
+                SeekResult::Ok
+            } else {
+                SeekResult::CantSeek
+            },
+            // We can't do any other type of seek, sorry :(
+            _ => SeekResult::CantSeek,
+        }
     }
 
-    // Gets called by curl when bytes from the response body are received.
+    /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         log::trace!("received {} bytes of data", data.len());
 
@@ -94,6 +130,8 @@ impl curl::easy::Handler for CurlHandler {
             log::debug!("aborting write, request is already closed");
             return Ok(0);
         }
+
+        // Now that we know
 
         // TODO: Custom context + waker that unpauses write.
 
@@ -107,7 +145,10 @@ impl curl::easy::Handler for CurlHandler {
         }
     }
 
-    // Gets called by curl whenever it wishes to log a debug message.
+    /// Gets called by curl whenever it wishes to log a debug message.
+    ///
+    /// Since we're using the log crate, this callback normalizes the debug info
+    /// and writes it to our log.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
         match kind {
             InfoType::Text => log::trace!("{}", String::from_utf8_lossy(data).trim_end()),
@@ -115,6 +156,14 @@ impl curl::easy::Handler for CurlHandler {
             InfoType::HeaderOut | InfoType::DataOut => log::trace!(target: "chttp::wire", ">> {}", format_byte_string(data)),
             _ => (),
         }
+    }
+}
+
+impl Drop for CurlHandler {
+    fn drop(&mut self) {
+        // Ensure we always at least attempt to complete the associated response
+        // future before the handler is closed.
+        self.finish_response_and_complete();
     }
 }
 

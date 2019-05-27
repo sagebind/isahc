@@ -1,8 +1,8 @@
 //! Provides types for working with request and response bodies.
 
-use crate::error::Error;
+use crate::Error;
 use bytes::Bytes;
-use futures::prelude::*;
+use futures::io::{AsyncRead, AsyncReadExt};
 use std::fmt;
 use std::io::{self, Cursor, Read};
 use std::task::*;
@@ -61,6 +61,10 @@ impl Body {
     /// If the size of the body is known in advance, such as with a file, then
     /// this function can be used to create a body that can determine its
     /// `Content-Length` while still reading the bytes asynchronously.
+    ///
+    /// Giving a value for `length` that doesn't actually match how much data
+    /// the reader will produce may result in errors when sending the body in a
+    /// request.
     pub fn reader_sized(read: impl AsyncRead + Send + 'static, length: usize) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), Some(length)))
     }

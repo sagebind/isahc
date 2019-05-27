@@ -154,7 +154,6 @@
 
 pub mod body;
 pub mod client;
-pub mod error;
 pub mod options;
 
 #[cfg(feature = "cookies")]
@@ -165,7 +164,9 @@ pub mod middleware;
 #[cfg(not(feature = "middleware-api"))]
 mod middleware;
 
+mod error;
 mod internal;
+mod request;
 
 /// Re-export of the standard HTTP types.
 pub use http;

@@ -23,7 +23,7 @@ impl ResponseFuture {
             sender: Some(sender),
             status_code: None,
             version: None,
-            headers: None,
+            headers: http::HeaderMap::new(),
         };
 
         (future, producer)
@@ -56,7 +56,7 @@ pub struct ResponseProducer {
     pub(crate) version: Option<http::Version>,
 
     /// Response headers received so far.
-    pub(crate) headers: Option<http::HeaderMap>,
+    pub(crate) headers: http::HeaderMap,
 }
 
 impl ResponseProducer {
@@ -79,8 +79,34 @@ impl ResponseProducer {
     }
 
     /// Finishes constructing the response and sends it to the receiver.
-    pub fn finish(&mut self, body: Body) -> Result<(), Body> {
-        Err(body)
+    pub fn finish(&mut self, body: Body) -> bool {
+        let mut builder = http::Response::builder();
+        builder.status(self.status_code.take().unwrap());
+        builder.version(self.version.take().unwrap());
+
+        for (name, values) in self.headers.drain() {
+            for value in values {
+                builder.header(&name, value);
+            }
+        }
+
+        let response = builder
+            .body(body)
+            .unwrap();
+
+        match self.sender.take() {
+            Some(sender) => match sender.send(response) {
+                Ok(()) => true,
+                Err(_) => {
+                    log::info!("response future cancelled");
+                    false
+                },
+            }
+            None => {
+                log::warn!("response future already completed!");
+                false
+            },
+        }
     }
 }
 
