@@ -4,17 +4,23 @@ use crate::internal::parse;
 use crate::internal::response::ResponseProducer;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::prelude::*;
-use futures::task::AtomicWaker;
 use sluice::pipe;
 use std::io;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::*;
 
 /// Drives the state for a single request/response life cycle.
 pub struct CurlHandler {
+    /// The ID of the request that this handler is managing. Assigned by the
+    /// request agent.
+    id: Option<usize>,
+
     /// The body to be sent in the request.
     request_body: Body,
+
+    /// A waker used with reading the request body asynchronously. Populated by
+    /// the agent when the request is initialized.
+    request_body_waker: Option<Waker>,
 
     /// Reading end of the pipe where the response body is written.
     ///
@@ -26,6 +32,10 @@ pub struct CurlHandler {
     /// Writing end of the pipe where the response body is written.
     response_body_writer: pipe::PipeWriter,
 
+    /// A waker used with writing the response body asynchronously. Populated by
+    /// the agent when the request is initialized.
+    response_body_waker: Option<Waker>,
+
     producer: ResponseProducer,
 }
 
@@ -34,15 +44,26 @@ impl CurlHandler {
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         Self {
+            id: None,
             request_body,
+            request_body_waker: None,
             response_body_reader: Some(response_body_reader),
             response_body_writer,
+            response_body_waker: None,
             producer,
         }
     }
 }
 
 impl CurlHandler {
+    /// Initialize the handler and prepare it for the request to begin.
+    fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
+        log::debug!("initializing handler for request [id={}]", id);
+        self.id = Some(id);
+        self.request_body_waker = Some(request_waker);
+        self.response_body_waker = Some(response_waker);
+    }
+
     fn finish_response_and_complete(&mut self) {
         if let Some(body) = self.response_body_reader.take() {
             self.producer.finish(Body::reader(body));
@@ -90,15 +111,21 @@ impl curl::easy::Handler for CurlHandler {
             return Err(curl::easy::ReadError::Abort);
         }
 
-        // TODO: Custom context + waker that unpauses read.
+        if let Some(waker) = self.request_body_waker.as_ref() {
+            let mut context = Context::from_waker(waker);
 
-        match self.request_body.poll_read(0, data) {
-            Poll::Pending => Err(ReadError::Pause),
-            Poll::Ready(Ok(len)) => Ok(len),
-            Poll::Ready(Err(e)) => {
-                log::error!("error reading request body: {}", e);
-                Err(ReadError::Abort)
-            },
+            match Pin::new(&mut self.request_body).poll_read(&mut context, data) {
+                Poll::Pending => Err(ReadError::Pause),
+                Poll::Ready(Ok(len)) => Ok(len),
+                Poll::Ready(Err(e)) => {
+                    log::error!("error reading request body: {}", e);
+                    Err(ReadError::Abort)
+                },
+            }
+        } else {
+            // The request should never be started without calling init first.
+            log::error!("request has not been initialized!");
+            Err(ReadError::Abort)
         }
     }
 
@@ -131,17 +158,21 @@ impl curl::easy::Handler for CurlHandler {
             return Ok(0);
         }
 
-        // Now that we know
+        if let Some(waker) = self.response_body_waker.as_ref() {
+            let mut context = Context::from_waker(waker);
 
-        // TODO: Custom context + waker that unpauses write.
-
-        match self.response_body_writer.poll_write(0, data) {
-            Poll::Pending => Err(WriteError::Pause),
-            Poll::Ready(Ok(len)) => Ok(len),
-            Poll::Ready(Err(e)) => {
-                log::error!("error writing response body to buffer: {}", e);
-                Ok(0)
-            },
+            match Pin::new(&mut self.response_body_writer).poll_write(&mut context, data) {
+                Poll::Pending => Err(WriteError::Pause),
+                Poll::Ready(Ok(len)) => Ok(len),
+                Poll::Ready(Err(e)) => {
+                    log::error!("error writing response body to buffer: {}", e);
+                    Ok(0)
+                },
+            }
+        } else {
+            // The request should never be started without calling init first.
+            log::error!("request has not been initialized!");
+            Ok(0)
         }
     }
 
