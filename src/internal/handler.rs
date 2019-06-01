@@ -5,6 +5,7 @@ use crate::internal::response::ResponseProducer;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::prelude::*;
 use sluice::pipe;
+use std::fmt;
 use std::io;
 use std::pin::Pin;
 use std::task::*;
@@ -57,7 +58,7 @@ impl CurlHandler {
 
 impl CurlHandler {
     /// Initialize the handler and prepare it for the request to begin.
-    fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
+    pub fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
         log::debug!("initializing handler for request [id={}]", id);
         self.id = Some(id);
         self.request_body_waker = Some(request_waker);
@@ -111,6 +112,8 @@ impl curl::easy::Handler for CurlHandler {
             return Err(curl::easy::ReadError::Abort);
         }
 
+        // Create a task context using a waker provided by the agent so we can
+        // do an asynchronous read.
         if let Some(waker) = self.request_body_waker.as_ref() {
             let mut context = Context::from_waker(waker);
 
@@ -158,6 +161,8 @@ impl curl::easy::Handler for CurlHandler {
             return Ok(0);
         }
 
+        // Create a task context using a waker provided by the agent so we can
+        // do an asynchronous write.
         if let Some(waker) = self.response_body_waker.as_ref() {
             let mut context = Context::from_waker(waker);
 
@@ -195,6 +200,12 @@ impl Drop for CurlHandler {
         // Ensure we always at least attempt to complete the associated response
         // future before the handler is closed.
         self.finish_response_and_complete();
+    }
+}
+
+impl fmt::Debug for CurlHandler {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "CurlHandler({:?})", self.id)
     }
 }
 

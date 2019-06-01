@@ -1,14 +1,18 @@
 //! Curl agent that executes multiple requests simultaneously.
+//!
+//! Since request executions are driven through futures, the agent also acts as
+//! a specialized task executor for tasks related to requests.
 
 use crate::error::Error;
 use crate::internal::handler::CurlHandler;
-use crate::internal::wakers::AgentWaker;
+use crate::internal::wakers::{AgentWaker, WakerExt};
 use crossbeam_channel::{Receiver, Sender};
 use futures::task::*;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::{Arc, Weak};
 use std::sync::atomic::*;
+use futures::task::ArcWake;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -16,6 +20,10 @@ const AGENT_THREAD_NAME: &'static str = "curl agent";
 const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
 const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
 
+type EasyHandle = curl::easy::Easy2<CurlHandler>;
+type MultiMessage = (usize, Result<(), curl::Error>);
+
+/// A handle to an active agent running in a background thread.
 pub struct Agent {
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
@@ -27,6 +35,61 @@ pub struct Agent {
     terminated: Arc<AtomicBool>,
 }
 
+/// Internal state of an agent thread.
+///
+/// The agent thread runs the primary client event loop, which is essentially a
+/// traditional curl multi event loop with some extra bookkeeping and async
+/// features like wakers.
+struct AgentThread {
+    /// A curl multi handle, of course.
+    multi: curl::multi::Multi,
+
+    /// Queue of messages from the multi handle.
+    multi_messages: (Sender<MultiMessage>, Receiver<MultiMessage>),
+
+    /// Used to send messages to the agent thread.
+    message_tx: Sender<Message>,
+
+    /// Incoming message from the main thread.
+    message_rx: Receiver<Message>,
+
+    /// Used to wake up the agent when polling.
+    wake_socket: UdpSocket,
+
+    /// Contains all of the active requests.
+    requests: Slab<curl::multi::Easy2Handle<CurlHandler>>,
+
+    /// Indicates if the thread has been requested to stop.
+    close_requested: bool,
+
+    /// Weak reference to a handle, used to communicate back to handles.
+    handle: Weak<HandleInner>,
+
+    /// A waker that can wake up the agent thread while it is polling.
+    waker: Waker,
+}
+
+/// A message sent from the main thread to the agent thread.
+#[derive(Debug)]
+enum Message {
+    /// Requests the agent to close.
+    Close,
+
+    /// Begin executing a new request.
+    Execute(EasyHandle),
+
+    /// Requests the agent to cancel the request with the given ID.
+    Cancel(usize),
+
+    /// Request to resume reading the request body for the request with the
+    /// given ID.
+    UnpauseRead(usize),
+
+    /// Request to resume writing the response body for the request with the
+    /// given ID.
+    UnpauseWrite(usize),
+}
+
 impl Agent {
     /// Create an agent that executes multiple curl requests simultaneously.
     ///
@@ -35,9 +98,9 @@ impl Agent {
     pub fn new() -> Result<Self, Error> {
         let create_start = Instant::now();
 
+        // Create an UDP socket for the agent thread to listen for wakeups on.
         let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
         wake_socket.set_nonblocking(true)?;
-
         let wake_addr = wake_socket.local_addr()?;
         let waker = Arc::new(AgentWaker::connect(wake_addr)?).into_waker();
         log::debug!("agent waker listening on {}", wake_addr);
@@ -76,20 +139,13 @@ impl Agent {
     }
 
     /// Begin executing a request with this agent.
-    pub fn submit_request(&self, request: CurlRequest) -> Result<(), Error> {
-        // request.0.get_ref().set_agent(self.clone());
-
-        self.send_message(Message::BeginRequest(request))
+    pub fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
+        self.send_message(Message::Execute(request))
     }
 
     /// Cancel a request by its token.
     pub fn cancel_request(&self, token: usize) -> Result<(), Error> {
         self.send_message(Message::Cancel(token))
-    }
-
-    /// Unpause a request by its token.
-    pub fn unpause_write(&self, token: usize) -> Result<(), Error> {
-        self.send_message(Message::UnpauseWrite(token))
     }
 
     /// Send a message to the agent thread.
@@ -122,49 +178,51 @@ impl Drop for Agent {
     }
 }
 
-/// A message sent from the main thread to the agent thread.
-#[derive(Debug)]
-enum Message {
-    Cancel(usize),
-    Close,
-    BeginRequest(CurlRequest),
-    UnpauseWrite(usize),
-}
-
-type MultiMessage = (usize, Result<(), curl::Error>);
-
-/// Internal state of the agent thread.
-///
-/// The agent thread runs the primary client event loop, which is essentially a
-/// traditional curl multi event loop with some extra bookkeeping and async
-/// features like wakers.
-struct AgentThread {
-    /// A curl multi handle, of course.
-    multi: curl::multi::Multi,
-
-    /// Queue of messages from the multi handle.
-    multi_messages: (Sender<MultiMessage>, Receiver<MultiMessage>),
-
-    /// Incoming message from the main thread.
-    message_rx: Receiver<Message>,
-
-    /// Used to wake up the agent when polling.
-    wake_socket: UdpSocket,
-
-    /// Contains all of the active requests.
-    requests: Slab<curl::multi::Easy2Handle<CurlHandler>>,
-
-    /// Indicates if the thread has been requested to stop.
-    close_requested: bool,
-
-    /// Weak reference to a handle, used to communicate back to handles.
-    handle: Weak<HandleInner>,
-
-    /// Used to await until the agent thread terminates on drop.
-    _close_wait_group: WaitGroup,
-}
-
 impl AgentThread {
+    fn begin_request(&mut self, request: curl::easy::Easy2<CurlHandler>) -> Result<(), Error> {
+        // Prepare an entry for storing this request while it executes.
+        let entry = self.requests.vacant_entry();
+        let id = entry.key();
+
+        // Initialize the handler.
+        request.get_mut().init(
+            id,
+            self.create_read_waker(id),
+            self.create_write_waker(id),
+        );
+
+        // Register the request with curl.
+        let mut handle = self.multi.add2(request)?;
+        handle.set_token(id)?;
+
+        // Add the handle to our bookkeeping structure.
+        entry.insert(handle);
+
+        Ok(())
+    }
+
+    fn create_read_waker(&self, id: usize) -> Waker {
+        let tx = self.message_tx.clone();
+
+        self.waker.chain(move |inner| {
+            match tx.send(Message::UnpauseRead(id)) {
+                Ok(()) => inner.wake_by_ref(),
+                Err(e) => log::warn!("agent went away while resuming read for request [id={}]", id),
+            }
+        })
+    }
+
+    fn create_write_waker(&self, id: usize) -> Waker {
+        let tx = self.message_tx.clone();
+
+        self.waker.chain(move |inner| {
+            match tx.send(Message::UnpauseWrite(id)) {
+                Ok(()) => inner.wake_by_ref(),
+                Err(e) => log::warn!("agent went away while resuming write for request [id={}]", id),
+            }
+        })
+    }
+
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
         let mut wait_fds = [self.notify_rx.as_wait_fd()];
@@ -292,7 +350,7 @@ impl AgentThread {
             if let Some(result) = message.result() {
                 if let Ok(token) = message.token() {
                     if self.multi_messages.0.send((token, result)).is_err() {
-                        log::error!("Multi message queue broken!");
+                        log::error!("multi message queue broken!");
                     }
                 }
             }

@@ -5,6 +5,33 @@ use futures::task::*;
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::Arc;
 
+/// Helper methods for working with wakers.
+pub trait WakerExt {
+    /// Create a waker from a closure.
+    fn from_fn(f: impl Fn() + 'static) -> Waker {
+        struct Impl<F>(F);
+
+        impl<F: Fn() + 'static> ArcWake for Impl<F> {
+            fn wake_by_ref(arc_self: &Arc<Self>) {
+                (&arc_self.0)()
+            }
+        }
+
+        Arc::new(Impl(f)).into_waker()
+    }
+
+    /// Create a new waker from a closure that accepts this waker as an
+    /// argument.
+    fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker;
+}
+
+impl WakerExt for Waker {
+    fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker {
+        let inner = self.clone();
+        WakerExt::from_fn(move || (f)(&inner))
+    }
+}
+
 /// A waker that knows how to wake up an agent thread.
 pub struct AgentWaker {
     /// It's not actually magic! We actually just use UDP to send wakeup signals
@@ -29,19 +56,9 @@ impl AgentWaker {
 impl ArcWake for AgentWaker {
     /// Request the connected agent event loop to wake up. Just like a morning
     /// person would do.
-    fn wake_by_ref(arc_self: &Arc<AgentWaker>) {
+    fn wake_by_ref(arc_self: &Arc<Self>) {
         // We don't actually care here if this succeeds. Maybe the agent is
         // busy, or tired, or just needs some alone time right now.
         arc_self.socket.send(&[1]).is_ok();
     }
-}
-
-/// Waker that unpauses reads for an active request.
-pub struct ReadWaker {
-    token: usize,
-}
-
-/// Waker that unpauses writes for an active request.
-pub struct WriteWaker {
-    token: usize,
 }

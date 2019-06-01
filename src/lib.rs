@@ -166,7 +166,7 @@ mod middleware;
 
 mod error;
 mod internal;
-mod request;
+// mod request;
 
 /// Re-export of the standard HTTP types.
 pub use http;
