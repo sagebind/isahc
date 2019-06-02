@@ -2,6 +2,7 @@
 
 use crate::body::Body;
 use crate::error::Error;
+use crate::internal::agent;
 use crate::internal::handler::CurlHandler;
 use crate::internal::response::ResponseFuture;
 use crate::middleware::Middleware;
@@ -101,10 +102,10 @@ impl ClientBuilder {
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn build(&mut self) -> Result<Client, Error> {
-        // let agent = agent::create()?;
+        let agent = agent::Agent::new()?;
 
         Ok(Client {
-            // agent: agent,
+            agent: agent,
             default_options: self.default_options.clone(),
             middleware: self.middleware.drain(..).collect(),
         })
@@ -116,7 +117,7 @@ impl ClientBuilder {
 /// The client maintains a connection pool internally and is expensive to create, so we recommend re-using your clients
 /// instead of discarding and recreating them.
 pub struct Client {
-    // agent: agent::Handle,
+    agent: agent::Agent,
     default_options: Options,
     middleware: Vec<Box<dyn Middleware>>,
 }
@@ -214,8 +215,10 @@ impl Client {
         let (request_parts, request_body) = request.into_parts();
         let handler = CurlHandler::new(request_body, producer);
 
+        let mut easy = curl::easy::Easy2::new(handler);
+
         // Send the request to the agent to be executed.
-        // self.agent.begin_execute(request)?;
+        self.agent.submit_request(easy)?;
 
         // Wait for the response to complete or fail.
         let mut response = future.await?;

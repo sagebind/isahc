@@ -7,12 +7,13 @@ use crate::error::Error;
 use crate::internal::handler::CurlHandler;
 use crate::internal::wakers::{AgentWaker, WakerExt};
 use crossbeam_channel::{Receiver, Sender};
+use curl::multi::WaitFd;
 use futures::task::*;
+use futures::task::ArcWake;
 use slab::Slab;
 use std::net::UdpSocket;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::sync::atomic::*;
-use futures::task::ArcWake;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -31,8 +32,8 @@ pub struct Agent {
     /// A waker that can wake up the agent thread while it is polling.
     waker: Waker,
 
-    /// Flag indicating whether the agent thread has terminated.
-    terminated: Arc<AtomicBool>,
+    /// State that is shared between the agent handle and the agent thread.
+    shared: Arc<Shared>,
 }
 
 /// Internal state of an agent thread.
@@ -62,11 +63,17 @@ struct AgentThread {
     /// Indicates if the thread has been requested to stop.
     close_requested: bool,
 
-    /// Weak reference to a handle, used to communicate back to handles.
-    handle: Weak<HandleInner>,
-
     /// A waker that can wake up the agent thread while it is polling.
     waker: Waker,
+
+    /// State that is shared between the agent handle and the agent thread.
+    shared: Arc<Shared>,
+}
+
+/// State that is shared between the agent handle and the agent thread.
+struct Shared {
+    /// Flag indicating whether the agent thread has closed.
+    is_closed: AtomicBool,
 }
 
 /// A message sent from the main thread to the agent thread.
@@ -106,17 +113,27 @@ impl Agent {
         log::debug!("agent waker listening on {}", wake_addr);
 
         let (message_tx, message_rx) = crossbeam_channel::unbounded();
-        let terminated = Arc::new(AtomicBool::default());
+        let shared = Arc::new(Shared {
+            is_closed: AtomicBool::default(),
+        });
+
+        let agent = Agent {
+            message_tx: message_tx.clone(),
+            waker: waker.clone(),
+            shared: shared.clone(),
+        };
 
         thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
             let agent = AgentThread {
                 multi: curl::multi::Multi::new(),
                 multi_messages: crossbeam_channel::unbounded(),
+                message_tx,
                 message_rx,
                 wake_socket,
                 requests: Slab::new(),
                 close_requested: false,
-                handle: handle_weak,
+                waker,
+                shared,
             };
 
             log::debug!("agent took {:?} to start up", create_start.elapsed());
@@ -125,11 +142,11 @@ impl Agent {
             agent.run().unwrap();
         })?;
 
-        Ok(Self {
-            message_tx,
-            waker,
-            terminated,
-        })
+        Ok(agent)
+    }
+
+    pub fn is_closed(&self) -> bool {
+        self.shared.is_closed.load(Ordering::SeqCst)
     }
 
     /// Get a waker object for waking up this agent's event loop from another
@@ -152,7 +169,7 @@ impl Agent {
     ///
     /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        if self.terminated.load(Ordering::SeqCst) {
+        if self.is_closed() {
             log::error!("agent thread terminated prematurely");
             return Err(Error::Internal);
         }
@@ -179,7 +196,7 @@ impl Drop for Agent {
 }
 
 impl AgentThread {
-    fn begin_request(&mut self, request: curl::easy::Easy2<CurlHandler>) -> Result<(), Error> {
+    fn begin_request(&mut self, mut request: curl::easy::Easy2<CurlHandler>) -> Result<(), Error> {
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();
         let id = entry.key();
@@ -187,8 +204,26 @@ impl AgentThread {
         // Initialize the handler.
         request.get_mut().init(
             id,
-            self.create_read_waker(id),
-            self.create_write_waker(id),
+            {
+                let tx = self.message_tx.clone();
+
+                self.waker.chain(move |inner| {
+                    match tx.send(Message::UnpauseRead(id)) {
+                        Ok(()) => inner.wake_by_ref(),
+                        Err(_) => log::warn!("agent went away while resuming read for request [id={}]", id),
+                    }
+                })
+            },
+            {
+                let tx = self.message_tx.clone();
+
+                self.waker.chain(move |inner| {
+                    match tx.send(Message::UnpauseWrite(id)) {
+                        Ok(()) => inner.wake_by_ref(),
+                        Err(_) => log::warn!("agent went away while resuming write for request [id={}]", id),
+                    }
+                })
+            },
         );
 
         // Register the request with curl.
@@ -201,32 +236,151 @@ impl AgentThread {
         Ok(())
     }
 
-    fn create_read_waker(&self, id: usize) -> Waker {
-        let tx = self.message_tx.clone();
+    fn get_wait_fds(&self) -> [WaitFd; 1] {
+        let mut fd = WaitFd::new();
 
-        self.waker.chain(move |inner| {
-            match tx.send(Message::UnpauseRead(id)) {
-                Ok(()) => inner.wake_by_ref(),
-                Err(e) => log::warn!("agent went away while resuming read for request [id={}]", id),
-            }
-        })
+        #[cfg(unix)] {
+            use std::os::unix::io::AsRawFd;
+            fd.set_fd(self.wake_socket.as_raw_fd());
+        }
+
+        #[cfg(windows)] {
+            use std::os::windows::io::AsRawSocket;
+            fd.set_fd(self.wake_socket.as_raw_socket());
+        }
+
+        fd.poll_on_read(true);
+
+        [fd]
     }
 
-    fn create_write_waker(&self, id: usize) -> Waker {
-        let tx = self.message_tx.clone();
-
-        self.waker.chain(move |inner| {
-            match tx.send(Message::UnpauseWrite(id)) {
-                Ok(()) => inner.wake_by_ref(),
-                Err(e) => log::warn!("agent went away while resuming write for request [id={}]", id),
+    /// Polls the message channel for new messages from any agent handles.
+    ///
+    /// If there are no active requests right now, this function will block until a message is received.
+    fn poll_messages(&mut self) -> Result<(), Error> {
+        loop {
+            if !self.close_requested && self.requests.is_empty() {
+                match self.message_rx.recv() {
+                    Ok(message) => self.handle_message(message)?,
+                    _ => {
+                        log::warn!("agent handle disconnected without close message");
+                        self.close_requested = true;
+                        break;
+                    },
+                }
+            } else {
+                match self.message_rx.try_recv() {
+                    Ok(message) => self.handle_message(message)?,
+                    Err(crossbeam_channel::TryRecvError::Empty) => break,
+                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                        log::warn!("agent handle disconnected without close message");
+                        self.close_requested = true;
+                        break;
+                    },
+                }
             }
-        })
+        }
+
+        Ok(())
+    }
+
+    fn handle_message(&mut self, message: Message) -> Result<(), Error> {
+        log::trace!("received message from agent handle: {:?}", message);
+
+        match message {
+            Message::Close => {
+                log::trace!("agent close requested");
+                self.close_requested = true;
+            },
+            Message::Execute(request) => self.begin_request(request)?,
+            Message::Cancel(token) => {
+                if self.requests.contains(token) {
+                    let request = self.requests.remove(token);
+                    let request = self.multi.remove2(request)?;
+                    drop(request);
+                }
+            },
+            Message::UnpauseRead(token) => {
+                if let Some(request) = self.requests.get(token) {
+                    request.unpause_read()?;
+                } else {
+                    log::warn!("received unpause request for unknown request token: {}", token);
+                }
+            },
+            Message::UnpauseWrite(token) => {
+                if let Some(request) = self.requests.get(token) {
+                    request.unpause_write()?;
+                } else {
+                    log::warn!("received unpause request for unknown request token: {}", token);
+                }
+            },
+        }
+
+        Ok(())
+    }
+
+    fn dispatch(&mut self) -> Result<(), Error> {
+        self.multi.perform()?;
+
+        // Collect messages from curl about requests that have completed,
+        // whether successfully or with an error.
+        self.multi.messages(|message| {
+            if let Some(result) = message.result() {
+                if let Ok(token) = message.token() {
+                    self.multi_messages.0.send((token, result)).unwrap();
+                }
+            }
+        });
+
+        loop {
+            match self.multi_messages.1.try_recv() {
+                Ok((token, Ok(()))) => self.complete_request(token)?,
+                Ok((token, Err(e))) => {
+                    log::debug!("curl error: {}", e);
+                    self.fail_request(token, e.into())?;
+                },
+                Err(crossbeam_channel::TryRecvError::Empty) => break,
+                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn complete_request(&mut self, token: usize) -> Result<(), Error> {
+        log::debug!("request with token {} completed", token);
+
+        let handle = self.requests.remove(token);
+        let mut handle = self.multi.remove2(handle)?;
+        // handle.get_mut().complete();
+
+        Ok(())
+    }
+
+    fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
+        let handle = self.requests.remove(token);
+        let mut handle = self.multi.remove2(handle)?;
+        // handle.get_mut().fail(error);
+
+        Ok(())
+    }
+
+    fn waker_drain(&self) -> bool {
+        let mut woke = false;
+
+        loop {
+            match self.wake_socket.recv_from(&mut [0; 32]) {
+                Ok(_) => woke = true,
+                Err(e) => break,
+            }
+        }
+
+        woke
     }
 
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
-        let mut wait_fds = [self.notify_rx.as_wait_fd()];
-        wait_fds[0].poll_on_read(true);
+        let mut wait_fds = self.get_wait_fds();
 
         log::debug!("agent ready");
 
@@ -276,134 +430,10 @@ impl AgentThread {
 
         Ok(())
     }
-
-    /// Polls the message channel for new messages from any agent handles.
-    ///
-    /// If there are no active requests right now, this function will block until a message is received.
-    fn poll_messages(&mut self) -> Result<(), Error> {
-        loop {
-            if !self.close_requested && self.requests.is_empty() {
-                match self.message_rx.recv() {
-                    Ok(message) => self.handle_message(message)?,
-                    _ => {
-                        log::warn!("agent handle disconnected without close message");
-                        self.close_requested = true;
-                        break;
-                    },
-                }
-            } else {
-                match self.message_rx.try_recv() {
-                    Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam_channel::TryRecvError::Empty) => break,
-                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                        log::warn!("agent handle disconnected without close message");
-                        self.close_requested = true;
-                        break;
-                    },
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn handle_message(&mut self, message: Message) -> Result<(), Error> {
-        log::trace!("received message from agent handle: {:?}", message);
-
-        match message {
-            Message::Close => {
-                log::trace!("agent close requested");
-                self.close_requested = true;
-            },
-            Message::BeginRequest(request) => {
-                let mut handle = self.multi.add2(request.0)?;
-                let entry = self.requests.vacant_entry();
-
-                handle.get_ref().set_token(entry.key());
-                handle.set_token(entry.key())?;
-
-                entry.insert(handle);
-            },
-            Message::Cancel(token) => {
-                if self.requests.contains(token) {
-                    let request = self.requests.remove(token);
-                    let request = self.multi.remove2(request)?;
-                    drop(request);
-                }
-            },
-            Message::UnpauseWrite(token) => {
-                if let Some(request) = self.requests.get(token) {
-                    request.unpause_write()?;
-                } else {
-                    log::warn!("received unpause request for unknown request token: {}", token);
-                }
-            },
-        }
-
-        Ok(())
-    }
-
-    fn dispatch(&mut self) -> Result<(), Error> {
-        self.multi.perform()?;
-
-        self.multi.messages(|message| {
-            if let Some(result) = message.result() {
-                if let Ok(token) = message.token() {
-                    if self.multi_messages.0.send((token, result)).is_err() {
-                        log::error!("multi message queue broken!");
-                    }
-                }
-            }
-        });
-
-        for (token, result) in self.multi_messages.1.clone().try_iter() {
-            match result {
-                Ok(()) => self.complete_request(token)?,
-                Err(e) => {
-                    log::debug!("curl error: {}", e);
-                    self.fail_request(token, e.into())?;
-                },
-            };
-        }
-
-        Ok(())
-    }
-
-    fn complete_request(&mut self, token: usize) -> Result<(), Error> {
-        log::debug!("request with token {} completed", token);
-        let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
-        handle.get_mut().complete();
-
-        Ok(())
-    }
-
-    fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
-        let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
-        handle.get_mut().fail(error);
-
-        Ok(())
-    }
-
-    fn waker_drain(&self) -> bool {
-        let mut woke = false;
-
-        loop {
-            match self.wake_socket.recv_from(&mut [0; 32]) {
-                Ok(_) => woke = true,
-                Err(e) => break,
-            }
-        }
-
-        woke
-    }
 }
 
 impl Drop for AgentThread {
     fn drop(&mut self) {
-        if let Some(handle) = self.handle.upgrade() {
-            handle.thread_terminated.store(true, Ordering::SeqCst);
-        }
+        self.shared.is_closed.store(true, Ordering::SeqCst);
     }
 }

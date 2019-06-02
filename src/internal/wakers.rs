@@ -5,20 +5,21 @@ use futures::task::*;
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::Arc;
 
+/// Create a waker from a closure.
+fn waker_fn(f: impl Fn() + 'static) -> Waker {
+    struct Impl<F>(F);
+
+    impl<F: Fn() + 'static> ArcWake for Impl<F> {
+        fn wake_by_ref(arc_self: &Arc<Self>) {
+            (&arc_self.0)()
+        }
+    }
+
+    Arc::new(Impl(f)).into_waker()
+}
+
 /// Helper methods for working with wakers.
 pub trait WakerExt {
-    /// Create a waker from a closure.
-    fn from_fn(f: impl Fn() + 'static) -> Waker {
-        struct Impl<F>(F);
-
-        impl<F: Fn() + 'static> ArcWake for Impl<F> {
-            fn wake_by_ref(arc_self: &Arc<Self>) {
-                (&arc_self.0)()
-            }
-        }
-
-        Arc::new(Impl(f)).into_waker()
-    }
 
     /// Create a new waker from a closure that accepts this waker as an
     /// argument.
@@ -28,7 +29,9 @@ pub trait WakerExt {
 impl WakerExt for Waker {
     fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker {
         let inner = self.clone();
-        WakerExt::from_fn(move || (f)(&inner))
+        waker_fn(move || {
+            (f)(&inner)
+        })
     }
 }
 

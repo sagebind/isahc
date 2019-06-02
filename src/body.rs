@@ -154,6 +154,12 @@ impl Default for Body {
     }
 }
 
+impl From<()> for Body {
+    fn from(value: ()) -> Self {
+        Self::empty()
+    }
+}
+
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
         Self::bytes(body)

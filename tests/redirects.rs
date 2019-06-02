@@ -1,5 +1,8 @@
+#![feature(async_await)]
+
 use chttp::http::Request;
 use chttp::Options;
+use futures::executor::block_on;
 
 mod common;
 
@@ -38,8 +41,10 @@ fn response_301_auto_follow() {
         .and_then(chttp::send)
         .unwrap();
 
-    assert_eq!(response.status(), 200);
-    assert_eq!(response.body_mut().text().unwrap(), "ok");
+    block_on(async {
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.body_mut().text().await.unwrap(), "ok");
+    })
 }
 
 #[test]
