@@ -1,10 +1,12 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! cHTTP is an HTTP client that provides a clean and easy-to-use interface around the venerable [libcurl].
+//! cHTTP is an HTTP client that provides a clean and easy-to-use interface
+//! around the venerable [libcurl].
 //!
 //! ## Sending requests
 //!
-//! Sending requests is as easy as calling a single function. Let's make a simple GET request to an example website:
+//! Sending requests is as easy as calling a single function. Let's make a
+//! simple GET request to an example website:
 //!
 //! ```rust
 //! use chttp;
@@ -16,10 +18,12 @@
 //! # }
 //! ```
 //!
-//! Requests are performed _synchronously_, up until the response headers are received. The returned response struct
-//! includes the response body as an open stream implementing `Read`.
+//! Requests are performed _synchronously_, up until the response headers are
+//! received. The returned response struct includes the response body as an open
+//! stream implementing `Read`.
 //!
-//! Sending a POST request is also easy, and takes an additional argument for the request body:
+//! Sending a POST request is also easy, and takes an additional argument for
+//! the request body:
 //!
 //! ```rust
 //! use chttp;
@@ -45,8 +49,8 @@
 //!
 //! ## Custom requests
 //!
-//! cHTTP is not limited to canned HTTP verbs; you can customize requests by creating your own `Request` object and then
-//! `send`ing that.
+//! cHTTP is not limited to canned HTTP verbs; you can customize requests by
+//! creating your own `Request` object and then `send`ing that.
 //!
 //! ```rust
 //! use chttp::{self, http};
@@ -65,9 +69,11 @@
 //!
 //! ## Request options
 //!
-//! How requests are sent can be customized using the [`Options`](options/struct.Options.html) struct, which provides various
-//! fields for setting timeouts, proxies, and other connection and protocol configuration. These options can be included
-//! right along your request as an extension object:
+//! How requests are sent can be customized using the
+//! [`Options`](options/struct.Options.html) struct, which provides various
+//! fields for setting timeouts, proxies, and other connection and protocol
+//! configuration. These options can be included right along your request as an
+//! extension object:
 //!
 //! ```rust
 //! use chttp::{self, http, Options};
@@ -86,26 +92,32 @@
 //!
 //! ## Custom clients
 //!
-//! The free-standing functions for sending request delegate to a shared client instance that is lazily instantiated
-//! with the default options. You can also create custom client instances of your own, which allows you to set default
-//! options for all requests and group related connections together. Each client has its own connection pool and event
-//! loop, so separating certain requests into separate clients can ensure that they are isolated from each other.
+//! The free-standing functions for sending request delegate to a shared client
+//! instance that is lazily instantiated with the default options. You can also
+//! create custom client instances of your own, which allows you to set default
+//! options for all requests and group related connections together. Each client
+//! has its own connection pool and event loop, so separating certain requests
+//! into separate clients can ensure that they are isolated from each other.
 //!
 //! See the documentation for [`Client`](client/struct.Client.html) and
-//! [`ClientBuilder`](client/struct.ClientBuilder.html) for more details on creating custom clients.
+//! [`ClientBuilder`](client/struct.ClientBuilder.html) for more details on
+//! creating custom clients.
 //!
 //! ## Logging
 //!
-//! cHTTP logs quite a bit of useful information at various levels using the [log] crate.
+//! cHTTP logs quite a bit of useful information at various levels using the
+//! [log] crate.
 //!
-//! If you set the log level to `Trace` for the `chttp::wire` target, cHTTP will also log all incoming and outgoing data
-//! while in flight. This may come in handy if you are debugging code and need to see the exact data being sent to the
-//! server and being received.
+//! If you set the log level to `Trace` for the `chttp::wire` target, cHTTP will
+//! also log all incoming and outgoing data while in flight. This may come in
+//! handy if you are debugging code and need to see the exact data being sent to
+//! the server and being received.
 //!
 //! ## Feature flags
 //!
-//! cHTTP is designed to be as "pay-as-you-need" as possible using Cargo feature flags and optional dependencies.
-//! Unstable features are also initially released behind feature flags until they are stabilized. You can add the
+//! cHTTP is designed to be as "pay-as-you-need" as possible using Cargo feature
+//! flags and optional dependencies. Unstable features are also initially
+//! released behind feature flags until they are stabilized. You can add the
 //! feature names below to your `Cargo.toml` file to enable them:
 //!
 //! ```toml
@@ -126,11 +138,13 @@
 //!
 //! ### `json`
 //!
-//! Enable convenience methods for parsing HTTP responses into JSON objects. Disabled by default.
+//! Enable convenience methods for parsing HTTP responses into JSON objects.
+//! Disabled by default.
 //!
 //! ### `psl`
 //!
-//! Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Enabled by default.
+//! Enable use of the Public Suffix List to filter out potentially malicious
+//! cross-domain cookies. Enabled by default.
 //!
 //! ### `static-curl`
 //!
@@ -138,17 +152,17 @@
 //!
 //! ### `async-api`
 //!
-//! Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently
-//! behind a feature flag until the futures API stabilizes. This an unstable feature whose interface may change between
-//! patch releases.
+//! Enable the async futures-based API. This allows you to take full advantage
+//! of cHTTP's asynchronous core. Currently behind a feature flag until the
+//! futures API stabilizes. This an unstable feature whose interface may change
+//! between patch releases.
 //!
 //! ### `middleware-api`
 //!
-//! Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may
-//! change between patch releases.
+//! Enable the new middleware API. Unstable until the API is finalized. This an
+//! unstable feature whose interface may change between patch releases.
 //!
-//! [libcurl]: https://curl.haxx.se/libcurl/
-//! [log]: https://docs.rs/log
+//! [libcurl]: https://curl.haxx.se/libcurl/ [log]: https://docs.rs/log
 
 #![feature(async_await)]
 
@@ -219,18 +233,21 @@ pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpT
 
 /// Sends an HTTP request.
 ///
-/// The request may include [extensions](../http/struct.Extensions.html) to customize how it is sent. You can include an
-/// [`Options`](chttp::options::Options) struct as a request extension to control various connection and protocol
-/// options.
+/// The request may include [extensions](../http/struct.Extensions.html) to
+/// customize how it is sent. You can include an
+/// [`Options`](chttp::options::Options) struct as a request extension to
+/// control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error> {
     client::global().send(request.map(|body| body.into()))
 }
 
-/// Gets a human-readable string with the version number of cHTTP and its dependencies.
+/// Gets a human-readable string with the version number of cHTTP and its
+/// dependencies.
 ///
-/// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
+/// This function can be helpful when troubleshooting issues in cHTTP or one of
+/// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &'static str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
 

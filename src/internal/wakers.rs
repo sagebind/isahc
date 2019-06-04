@@ -62,6 +62,8 @@ impl ArcWake for AgentWaker {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         // We don't actually care here if this succeeds. Maybe the agent is
         // busy, or tired, or just needs some alone time right now.
-        arc_self.socket.send(&[1]).is_ok();
+        if let Err(e) = arc_self.socket.send(&[1]) {
+            log::warn!("agent waker produced an error: {}", e);
+        }
     }
 }

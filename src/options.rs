@@ -54,7 +54,8 @@ pub struct Options {
     /// The proxy protocol is specified by the URI scheme.
     ///
     /// - **`http`**: Proxy. Default when no scheme is specified.
-    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and NSS)
+    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and
+    ///   NSS)
     /// - **`socks4`**: SOCKS4 Proxy.
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.

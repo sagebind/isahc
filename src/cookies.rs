@@ -24,15 +24,17 @@ pub struct Cookie {
     path: String,
     /// True if the cookie is marked as secure (limited in scope to HTTPS).
     secure: bool,
-    /// True if the cookie is a host-only cookie (i.e. the request's host must exactly match the domain of the cookie).
+    /// True if the cookie is a host-only cookie (i.e. the request's host must
+    /// exactly match the domain of the cookie).
     host_only: bool,
-    /// Time when this cookie expires. If not present, then this is a session cookie that expires when the current
-    /// client session ends.
+    /// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
     expiration: Option<DateTime<Utc>>,
 }
 
 impl Cookie {
-    /// Parse a cookie from a Set-Cookie header value, within the context of the given URI.
+    /// Parse a cookie from a Set-Cookie header value, within the context of the
+    /// given URI.
     fn parse(header: &str, uri: &Uri) -> Option<Self> {
         let mut attributes = header.split(";")
             .map(str::trim)
@@ -209,10 +211,12 @@ impl Cookie {
     }
 }
 
-/// Provides automatic cookie session management using an in-memory cookie store.
+/// Provides automatic cookie session management using an in-memory cookie
+/// store.
 #[derive(Default)]
 pub struct CookieJar {
-    /// A map of cookies indexed by a string of the format `{domain}.{path}.{name}`.
+    /// A map of cookies indexed by a string of the format
+    /// `{domain}.{path}.{name}`.
     cookies: RwLock<HashMap<String, Cookie>>,
 }
 

@@ -77,9 +77,11 @@ impl CurlHandler {
 impl curl::easy::Handler for CurlHandler {
     /// Gets called by curl for each line of data in the HTTP request header.
     fn header(&mut self, data: &[u8]) -> bool {
-        // Curl calls this function for all lines in the response not part of the response body, not just for headers.
-        // We need to inspect the contents of the string in order to determine what it is and how to parse it, just as
-        // if we were reading from the socket of a HTTP/1.0 or HTTP/1.1 connection ourselves.
+        // Curl calls this function for all lines in the response not part of
+        // the response body, not just for headers. We need to inspect the
+        // contents of the string in order to determine what it is and how to
+        // parse it, just as if we were reading from the socket of a HTTP/1.0 or
+        // HTTP/1.1 connection ourselves.
 
         // Is this the status line?
         if let Some((version, status)) = parse::parse_status_line(data) {
@@ -207,11 +209,4 @@ impl fmt::Debug for CurlHandler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "CurlHandler({:?})", self.id)
     }
-}
-
-struct AgentWaker {}
-
-struct RequestWaker {
-    inner: AgentWaker,
-    token: usize,
 }

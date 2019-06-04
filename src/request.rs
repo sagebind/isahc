@@ -12,7 +12,8 @@ pub trait RequestBuilderExt {
 pub trait RequestExt {
     /// Send the HTTP request and return the response synchronously.
     ///
-    /// The response body is provided as a stream that may only be consumed once.
+    /// The response body is provided as a stream that may only be consumed
+    /// once.
     fn send(self) -> Result<Response<Body>, Error>;
 }
 

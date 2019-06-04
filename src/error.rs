@@ -50,7 +50,8 @@ pub enum Error {
     SSLEngineError(Option<String>),
     /// An ongoing request took longer than the configured timeout time.
     Timeout,
-    /// Returned when making more simultaneous requests would exceed the configured TCP connection limit.
+    /// Returned when making more simultaneous requests would exceed the
+    /// configured TCP connection limit.
     TooManyConnections,
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,

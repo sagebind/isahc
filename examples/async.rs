@@ -1,5 +1,5 @@
-//! This example demonstrates the use of `send_async()` (incubating) to make a request asynchronously using the unstable
-//! futures API.
+//! This example demonstrates the use of `send_async()` (incubating) to make a
+//! request asynchronously using the unstable futures API.
 use chttp::Client;
 use chttp::http::Request;
 use futures::executor;

@@ -3,7 +3,6 @@ use std::ascii;
 pub mod agent;
 pub mod handler;
 pub mod parse;
-// pub mod request;
 pub mod response;
 pub mod wakers;
 

@@ -1,5 +1,6 @@
-//! In this example, we demonstrate cHTTP's ability to run many requests simultaneously with no extra cost. Concurrent
-//! requests may be made in the same thread, or from different threads as in this example.
+//! In this example, we demonstrate cHTTP's ability to run many requests
+//! simultaneously with no extra cost. Concurrent requests may be made in the
+//! same thread, or from different threads as in this example.
 //!
 //! We're using Rayon here to make parallelism easy.
 use chttp::Client;

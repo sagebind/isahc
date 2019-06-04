@@ -1,8 +1,9 @@
 //! HTTP client middleware API.
 //!
-//! This module provides the core types and functions for defining and working with middleware. Middleware are handlers
-//! that augment HTTP client functionality by applying transformations to HTTP requests before they are sent and/or HTTP
-//! responses after they are received.
+//! This module provides the core types and functions for defining and working
+//! with middleware. Middleware are handlers that augment HTTP client
+//! functionality by applying transformations to HTTP requests before they are
+//! sent and/or HTTP responses after they are received.
 
 use crate::Request;
 use crate::Response;
@@ -45,8 +46,9 @@ pub fn create(
 
 /// Base trait for middleware.
 ///
-/// Since clients may be used to send requests concurrently, all middleware must be synchronized and must be able to
-/// account for multiple requests being made in parallel.
+/// Since clients may be used to send requests concurrently, all middleware must
+/// be synchronized and must be able to account for multiple requests being made
+/// in parallel.
 pub trait Middleware: Send + Sync + 'static {
     /// Transform a request before it is sent.
     fn filter_request(&self, request: Request) -> Request {

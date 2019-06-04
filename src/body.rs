@@ -155,7 +155,7 @@ impl Default for Body {
 }
 
 impl From<()> for Body {
-    fn from(value: ()) -> Self {
+    fn from(_: ()) -> Self {
         Self::empty()
     }
 }

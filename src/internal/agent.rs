@@ -256,7 +256,8 @@ impl AgentThread {
 
     /// Polls the message channel for new messages from any agent handles.
     ///
-    /// If there are no active requests right now, this function will block until a message is received.
+    /// If there are no active requests right now, this function will block
+    /// until a message is received.
     fn poll_messages(&mut self) -> Result<(), Error> {
         loop {
             if !self.close_requested && self.requests.is_empty() {
@@ -353,6 +354,7 @@ impl AgentThread {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
         // handle.get_mut().complete();
+        // TODO
 
         Ok(())
     }
@@ -361,6 +363,7 @@ impl AgentThread {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
         // handle.get_mut().fail(error);
+        // TODO
 
         Ok(())
     }
@@ -395,14 +398,18 @@ impl AgentThread {
                 break;
             }
 
-            // Determine the blocking timeout value. If curl returns None, then it is unsure as to what timeout value is
-            // appropriate. In this case we use a default value.
+            // Determine the blocking timeout value. If curl returns None, then
+            // it is unsure as to what timeout value is appropriate. In this
+            // case we use a default value.
             let mut timeout = self.multi.get_timeout()?.unwrap_or(DEFAULT_TIMEOUT);
 
-            // HACK: A mysterious bug in recent versions of curl causes it to return the value of
-            // `CURLOPT_CONNECTTIMEOUT_MS` a few times during the DNS resolve phase. Work around this issue by
-            // truncating this known value to 1ms to avoid blocking the agent loop for a long time.
-            // See https://github.com/curl/curl/issues/2996 and https://github.com/alexcrichton/curl-rust/issues/227.
+            // HACK: A mysterious bug in recent versions of curl causes it to
+            // return the value of `CURLOPT_CONNECTTIMEOUT_MS` a few times
+            // during the DNS resolve phase. Work around this issue by
+            // truncating this known value to 1ms to avoid blocking the agent
+            // loop for a long time. See
+            // https://github.com/curl/curl/issues/2996 and
+            // https://github.com/alexcrichton/curl-rust/issues/227.
             if timeout == Duration::from_secs(300) {
                 log::debug!("HACK: curl returned CONNECTTIMEOUT of {:?}, truncating to 1ms!", timeout);
                 timeout = Duration::from_millis(1);
@@ -417,7 +424,8 @@ impl AgentThread {
                 self.multi.wait(&mut wait_fds, timeout)?;
             }
 
-            // We might have woken up early from the notify fd, so drain its queue.
+            // We might have woken up early from the notify fd, so drain its
+            // queue.
             if self.waker_drain() {
                 log::trace!("woke up from waker");
             }
