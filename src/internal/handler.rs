@@ -1,10 +1,10 @@
 use crate::body::Body;
-use crate::internal::format_byte_string;
-use crate::internal::parse;
-use crate::internal::response::ResponseProducer;
+use super::parse;
+use super::response::ResponseProducer;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::prelude::*;
 use sluice::pipe;
+use std::ascii;
 use std::fmt;
 use std::io;
 use std::pin::Pin;
@@ -54,11 +54,18 @@ impl CurlHandler {
             producer,
         }
     }
-}
 
-impl CurlHandler {
     /// Initialize the handler and prepare it for the request to begin.
+    ///
+    /// This is called from within the agent thread when it registers the
+    /// request handled by this handler with the multi handle and begins the
+    /// request's execution.
     pub fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
+        // Init should not be called more than once.
+        debug_assert!(self.id.is_none());
+        debug_assert!(self.request_body_waker.is_none());
+        debug_assert!(self.response_body_waker.is_none());
+
         log::debug!("initializing handler for request [id={}]", id);
         self.id = Some(id);
         self.request_body_waker = Some(request_waker);
@@ -67,6 +74,7 @@ impl CurlHandler {
 
     fn finish_response_and_complete(&mut self) {
         if let Some(body) = self.response_body_reader.take() {
+            // TODO: Extract and include Content-Length here.
             self.producer.finish(Body::reader(body));
         } else {
             log::debug!("response already finished!");
@@ -188,6 +196,15 @@ impl curl::easy::Handler for CurlHandler {
     /// Since we're using the log crate, this callback normalizes the debug info
     /// and writes it to our log.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
+        fn format_byte_string(bytes: impl AsRef<[u8]>) -> String {
+            String::from_utf8(bytes
+                .as_ref()
+                .iter()
+                .flat_map(|byte| ascii::escape_default(*byte))
+                .collect())
+                .unwrap_or(String::from("<binary>"))
+        }
+
         match kind {
             InfoType::Text => log::trace!("{}", String::from_utf8_lossy(data).trim_end()),
             InfoType::HeaderIn | InfoType::DataIn => log::trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),

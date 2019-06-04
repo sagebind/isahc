@@ -205,3 +205,5 @@ pub enum PrivateKey {
         password: Option<String>,
     },
 }
+
+static_assertions::assert_impl!(options; Options, Send);

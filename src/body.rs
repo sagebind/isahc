@@ -207,3 +207,5 @@ impl fmt::Debug for Body {
         }
     }
 }
+
+static_assertions::assert_impl!(body; Body, Send);

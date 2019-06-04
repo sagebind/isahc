@@ -10,6 +10,7 @@ use crate::options::*;
 use futures::executor;
 use http::{Request, Response};
 use lazy_static::lazy_static;
+use std::fmt;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -347,6 +348,15 @@ impl Client {
     }
 }
 
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("default_options", &self.default_options)
+            .field("middleware", &self.middleware.len())
+            .finish()
+    }
+}
+
 /// Helper extension methods for curl easy handles.
 trait EasyExt {
     fn easy(&mut self) -> &mut curl::easy::Easy2<CurlHandler>;
@@ -406,3 +416,6 @@ impl EasyExt for curl::easy::Easy2<CurlHandler> {
         self
     }
 }
+
+static_assertions::assert_impl!(builder; Builder, Send);
+static_assertions::assert_impl!(client; Client, Send, Sync);

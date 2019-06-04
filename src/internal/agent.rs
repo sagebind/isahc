@@ -25,6 +25,7 @@ type EasyHandle = curl::easy::Easy2<CurlHandler>;
 type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// A handle to an active agent running in a background thread.
+#[derive(Debug)]
 pub struct Agent {
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
@@ -71,6 +72,7 @@ struct AgentThread {
 }
 
 /// State that is shared between the agent handle and the agent thread.
+#[derive(Debug)]
 struct Shared {
     /// Flag indicating whether the agent thread has closed.
     is_closed: AtomicBool,
