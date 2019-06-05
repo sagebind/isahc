@@ -51,13 +51,22 @@ version = "0.4"
 optional = true
 
 [dev-dependencies]
-env_logger = "0.6"
+criterion = "0.2"
 rayon = "1"
-rouille = "3.0"
+
+[dev-dependencies.utilities]
+path = "utilities"
 
 [package.metadata.docs.rs]
 all-features = true
 
+[[bench]]
+name = "download"
+harness = false
+
 [[example]]
 name = "async"
 required-features = ["async-api"]
+
+[workspace]
+members = ["utilities"]

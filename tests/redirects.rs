@@ -4,13 +4,11 @@ use chttp::http::Request;
 use chttp::Options;
 use futures::executor::block_on;
 
-mod common;
-
 #[test]
 fn response_301_no_follow() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
+    let server = utilities::server::spawn(|request| {
         match request.raw_url() {
             "/a" => rouille::Response::redirect_301("/b"),
             _ => rouille::Response::text("ok"),
@@ -24,9 +22,9 @@ fn response_301_no_follow() {
 
 #[test]
 fn response_301_auto_follow() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
+    let server = utilities::server::spawn(|request| {
         match request.raw_url() {
             "/a" => rouille::Response::redirect_301("/b"),
             _ => rouille::Response::text("ok"),
@@ -49,9 +47,9 @@ fn response_301_auto_follow() {
 
 #[test]
 fn redirect_limit_is_respected() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
+    let server = utilities::server::spawn(|request| {
         let count = request.raw_url()[1..].parse::<u32>().unwrap();
 
         rouille::Response::redirect_301(format!("/{}", count + 1))

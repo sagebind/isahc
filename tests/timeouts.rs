@@ -3,15 +3,13 @@ use chttp::Options;
 use std::time::Duration;
 use std::thread;
 
-mod common;
-
 /// Issue #3
 #[test]
 fn request_errors_if_read_timeout_is_reached() {
-    common::setup();
+    utilities::logging();
 
     // Spawn a slow server.
-    let server = common::TestServer::spawn(|_| {
+    let server = utilities::server::spawn(|_| {
         thread::sleep(Duration::from_secs(3));
         rouille::Response::text("hello world")
     });

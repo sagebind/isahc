@@ -2,13 +2,11 @@
 
 use futures::executor::block_on;
 
-mod common;
-
 #[test]
 fn simple_response_body() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|_| {
+    let server = utilities::server::spawn(|_| {
         rouille::Response::text("hello world")
     });
 
@@ -21,9 +19,9 @@ fn simple_response_body() {
 
 #[test]
 fn large_response_body() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|_| {
+    let server = utilities::server::spawn(|_| {
         rouille::Response::text("wow so large ".repeat(1000))
     });
 
