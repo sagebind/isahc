@@ -2,6 +2,7 @@ use chttp::http::Request;
 use chttp::Options;
 use std::time::Duration;
 use std::thread;
+use utilities::rouille;
 
 /// Issue #3
 #[test]

@@ -166,10 +166,10 @@ impl curl::easy::Handler for CurlHandler {
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         log::trace!("received {} bytes of data", data.len());
 
-        if self.producer.is_closed() {
-            log::debug!("aborting write, request is already closed");
-            return Ok(0);
-        }
+        // if self.producer.is_closed() {
+        //     log::debug!("aborting write, request is already closed");
+        //     return Ok(0);
+        // }
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous write.
@@ -206,19 +206,11 @@ impl curl::easy::Handler for CurlHandler {
         }
 
         match kind {
-            InfoType::Text => log::trace!("{}", String::from_utf8_lossy(data).trim_end()),
+            InfoType::Text => log::debug!(target: "chttp::curl", "{}", String::from_utf8_lossy(data).trim_end()),
             InfoType::HeaderIn | InfoType::DataIn => log::trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),
             InfoType::HeaderOut | InfoType::DataOut => log::trace!(target: "chttp::wire", ">> {}", format_byte_string(data)),
             _ => (),
         }
-    }
-}
-
-impl Drop for CurlHandler {
-    fn drop(&mut self) {
-        // Ensure we always at least attempt to complete the associated response
-        // future before the handler is closed.
-        self.finish_response_and_complete();
     }
 }
 

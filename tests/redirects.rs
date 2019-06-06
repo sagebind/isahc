@@ -3,6 +3,7 @@
 use chttp::http::Request;
 use chttp::Options;
 use futures::executor::block_on;
+use utilities::rouille;
 
 #[test]
 fn response_301_no_follow() {

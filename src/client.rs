@@ -23,7 +23,7 @@ lazy_static! {
 /// Get a reference to a global client instance.
 pub(crate) fn global() -> &'static Client {
     lazy_static! {
-        static ref CLIENT: Client = Client::new().unwrap();
+        static ref CLIENT: Client = Client::new();
     }
 
     &CLIENT
@@ -127,9 +127,11 @@ pub struct Client {
 impl Client {
     /// Create a new HTTP client using the default configuration.
     ///
-    /// If the client fails to initialize, an error will be returned.
-    pub fn new() -> Result<Self, Error> {
-        Builder::default().build()
+    /// Panics if any internal systems failed to initialize during creation.
+    /// This might occur if creating a socket fails, spawning a thread fails, or
+    /// if something else goes wrong.
+    pub fn new() -> Self {
+        Builder::default().build().expect("client failed to initialize")
     }
 
     /// Create a new builder for building a custom client.

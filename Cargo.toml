@@ -11,6 +11,9 @@ documentation = "https://docs.rs/chttp/"
 readme = "README.md"
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [badges.maintenance]
 status = "actively-developed"
 
@@ -31,7 +34,7 @@ lazycell = "1.2"
 log = "0.4"
 regex = "1.1"
 slab = "0.4"
-sluice = "0.4.0-alpha.1"
+sluice = "0.4.0-alpha.2"
 static_assertions = "0.3"
 withers_derive = "0.2"
 
@@ -53,12 +56,10 @@ optional = true
 [dev-dependencies]
 criterion = "0.2"
 rayon = "1"
+reqwest = "0.9"
 
 [dev-dependencies.utilities]
 path = "utilities"
-
-[package.metadata.docs.rs]
-all-features = true
 
 [[bench]]
 name = "download"

@@ -7,7 +7,7 @@ use futures::prelude::*;
 
 fn main() -> Result<(), chttp::Error> {
     env_logger::init();
-    let client = Client::new()?;
+    let client = Client::new();
 
     let future = client
         .send_async(Request::get("http://example.org").body(())?)

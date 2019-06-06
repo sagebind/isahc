@@ -3,7 +3,7 @@ use std::env;
 fn main() -> Result<(), chttp::Error> {
     env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_LOG", "trace");
-    env_logger::init();
+    utilities::logging();
 
     let client = chttp::Client::new()?;
     let mut response = client.get("http://example.org")?;

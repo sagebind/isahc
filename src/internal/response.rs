@@ -46,6 +46,9 @@ impl Future for ResponseFuture {
 
 /// Producing end of a response future that builds up the response object
 /// incrementally.
+///
+/// If dropped before the response is finished, the associated future will be
+/// completed with a `Canceled` error.
 pub struct ResponseProducer {
     sender: Option<Sender<Response<Body>>>,
 

@@ -9,14 +9,14 @@ use std::time::Instant;
 use std::env;
 
 fn main() -> Result<(), chttp::Error> {
-    env_logger::init();
+    utilities::logging();
 
     let count = env::args().nth(1)
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(100);
 
     let urls: Vec<String> = (0..count).map(|i| format!("https://httpbin.org/anything/{:03}", i)).collect();
-    let client = Client::new()?;
+    let client = Client::new();
 
     let start = Instant::now();
 
