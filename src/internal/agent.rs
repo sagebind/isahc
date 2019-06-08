@@ -355,8 +355,9 @@ impl AgentThread {
 
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
-        // handle.get_mut().complete();
+
         // TODO
+        handle.get_mut().finish_response_and_complete();
 
         Ok(())
     }
@@ -364,8 +365,9 @@ impl AgentThread {
     fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
-        // handle.get_mut().fail(error);
+
         // TODO
+        handle.get_mut().complete_with_error(error);
 
         Ok(())
     }

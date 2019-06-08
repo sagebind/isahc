@@ -1,6 +1,6 @@
 use crate::body::Body;
 use crate::error::Error;
-use futures::channel::oneshot::*;
+use futures::channel::oneshot;
 use futures::prelude::*;
 use http::Response;
 use std::pin::Pin;
@@ -8,12 +8,12 @@ use std::task::*;
 
 // A future for a response.
 pub struct ResponseFuture {
-    receiver: Receiver<Response<Body>>,
+    receiver: oneshot::Receiver<Result<Response<Body>, Error>>,
 }
 
 impl ResponseFuture {
     pub fn new() -> (Self, ResponseProducer) {
-        let (sender, receiver) = channel();
+        let (sender, receiver) = oneshot::channel();
 
         let future = Self {
             receiver,
@@ -38,8 +38,8 @@ impl Future for ResponseFuture {
 
         match inner.poll(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(Ok(response)) => Poll::Ready(Ok(response)),
-            Poll::Ready(Err(e)) => Poll::Ready(Err(Error::Canceled)),
+            Poll::Ready(Ok(result)) => Poll::Ready(result),
+            Poll::Ready(Err(oneshot::Canceled)) => Poll::Ready(Err(Error::Canceled)),
         }
     }
 }
@@ -50,7 +50,7 @@ impl Future for ResponseFuture {
 /// If dropped before the response is finished, the associated future will be
 /// completed with a `Canceled` error.
 pub struct ResponseProducer {
-    sender: Option<Sender<Response<Body>>>,
+    sender: Option<oneshot::Sender<Result<Response<Body>, Error>>>,
 
     /// Status code of the response.
     pub(crate) status_code: Option<http::StatusCode>,
@@ -98,7 +98,23 @@ impl ResponseProducer {
             .unwrap();
 
         match self.sender.take() {
-            Some(sender) => match sender.send(response) {
+            Some(sender) => match sender.send(Ok(response)) {
+                Ok(()) => true,
+                Err(_) => {
+                    log::info!("response future cancelled");
+                    false
+                },
+            }
+            None => {
+                log::warn!("response future already completed!");
+                false
+            },
+        }
+    }
+
+    pub fn complete_with_error(&mut self, error: impl Into<Error>) -> bool {
+        match self.sender.take() {
+            Some(sender) => match sender.send(Err(error.into())) {
                 Ok(()) => true,
                 Err(_) => {
                     log::info!("response future cancelled");

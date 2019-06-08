@@ -1,4 +1,4 @@
-use crate::body::Body;
+use crate::{Body, Error};
 use super::parse;
 use super::response::ResponseProducer;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
@@ -72,13 +72,24 @@ impl CurlHandler {
         self.response_body_waker = Some(response_waker);
     }
 
-    fn finish_response_and_complete(&mut self) {
+    // /// Guess if curl is about to perform a redirect.
+    // fn is_about_to_redirect(&self) -> bool {
+    //     self.state.options.redirect_policy != RedirectPolicy::None
+    //         && self.status_code.filter(http::StatusCode::is_redirection).is_some()
+    //         && self.headers.contains_key("Location")
+    // }
+
+    pub(crate) fn finish_response_and_complete(&mut self) {
         if let Some(body) = self.response_body_reader.take() {
             // TODO: Extract and include Content-Length here.
             self.producer.finish(Body::reader(body));
         } else {
             log::debug!("response already finished!");
         }
+    }
+
+    pub fn complete_with_error(&mut self, error: impl Into<Error>) {
+        self.producer.complete_with_error(error);
     }
 }
 
@@ -100,13 +111,13 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this a header line?
         if let Some((name, value)) = parse::parse_header(data) {
-            // self.producer.headers.insert(name, value);
+            self.producer.headers.insert(name, value);
             return true;
         }
 
         // Is this the end of the response header?
         if data == b"\r\n" {
-            self.finish_response_and_complete();
+            // self.finish_response_and_complete();
             // self.finalize_headers();
             return true;
         }
@@ -165,6 +176,8 @@ impl curl::easy::Handler for CurlHandler {
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         log::trace!("received {} bytes of data", data.len());
+
+        self.finish_response_and_complete();
 
         // if self.producer.is_closed() {
         //     log::debug!("aborting write, request is already closed");
