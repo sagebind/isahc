@@ -7,7 +7,7 @@ use crate::internal::handler::CurlHandler;
 use crate::internal::response::ResponseFuture;
 use crate::middleware::Middleware;
 use crate::options::*;
-use futures::executor;
+use futures::executor::block_on;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
@@ -18,15 +18,6 @@ lazy_static! {
         curl::Version::get().version(),
         env!("CARGO_PKG_VERSION")
     );
-}
-
-/// Get a reference to a global client instance.
-pub(crate) fn global() -> &'static Client {
-    lazy_static! {
-        static ref CLIENT: Client = Client::new();
-    }
-
-    &CLIENT
 }
 
 /// An HTTP client builder, capable of creating custom
@@ -134,6 +125,14 @@ impl Client {
         Builder::default().build().expect("client failed to initialize")
     }
 
+    /// Get a reference to a global client instance.
+    pub(crate) fn shared() -> &'static Self {
+        lazy_static! {
+            static ref CLIENT: Client = Client::new();
+        }
+        &CLIENT
+    }
+
     /// Create a new builder for building a custom client.
     pub fn builder() -> Builder {
         Builder::new()
@@ -144,13 +143,21 @@ impl Client {
     /// The response body is provided as a stream that may only be consumed
     /// once.
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
-        let request = http::Request::get(uri).body(Body::default())?;
-        self.send(request)
+        block_on(self.get_async(uri))
+    }
+
+    /// Sends an HTTP GET request asynchronously.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once.
+    pub async fn get_async<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+        let request = http::Request::get(uri).body(Body::empty())?;
+        self.send_async(request).await
     }
 
     /// Sends an HTTP HEAD request.
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
-        let request = http::Request::head(uri).body(Body::default())?;
+        let request = http::Request::head(uri).body(Body::empty())?;
         self.send(request)
     }
 
@@ -177,7 +184,7 @@ impl Client {
     /// The response body is provided as a stream that may only be consumed
     /// once.
     pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
-        let request = http::Request::delete(uri).body(Body::default())?;
+        let request = http::Request::delete(uri).body(Body::empty())?;
         self.send(request)
     }
 
@@ -192,7 +199,7 @@ impl Client {
     /// The response body is provided as a stream that may only be consumed
     /// once.
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        executor::block_on(self.send_async(request))
+        block_on(self.send_async(request))
     }
 
     /// Begin sending a request and return a future of the response.

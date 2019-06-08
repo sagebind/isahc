@@ -166,6 +166,8 @@
 
 #![feature(async_await)]
 
+use std::future::Future;
+
 pub mod body;
 pub mod client;
 pub mod options;
@@ -202,33 +204,40 @@ pub type Response = http::Response<Body>;
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn get<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    client::global().get(uri)
+    Client::shared().get(uri)
+}
+
+/// Sends an HTTP GET request asynchronously.
+///
+/// The response body is provided as a stream that may only be consumed once.
+pub fn get_async<U>(uri: U) -> impl Future<Output=Result<Response, Error>> where http::Uri: http::HttpTryFrom<U> {
+    Client::shared().get_async(uri)
 }
 
 /// Sends an HTTP HEAD request.
 pub fn head<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    client::global().head(uri)
+    Client::shared().head(uri)
 }
 
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    client::global().post(uri, body)
+    Client::shared().post(uri, body)
 }
 
 /// Sends an HTTP PUT request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    client::global().put(uri, body)
+    Client::shared().put(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
-    client::global().delete(uri)
+    Client::shared().delete(uri)
 }
 
 /// Sends an HTTP request.
@@ -240,7 +249,7 @@ pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpT
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error> {
-    client::global().send(request.map(|body| body.into()))
+    Client::shared().send(request.map(|body| body.into()))
 }
 
 /// Gets a human-readable string with the version number of cHTTP and its
