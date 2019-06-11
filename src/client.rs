@@ -13,7 +13,11 @@ use lazy_static::lazy_static;
 use std::sync::Arc;
 
 lazy_static! {
-    static ref USER_AGENT: String = format!("curl/{} chttp/{}", curl::Version::get().version(), env!("CARGO_PKG_VERSION"));
+    static ref USER_AGENT: String = format!(
+        "curl/{} chttp/{}",
+        curl::Version::get().version(),
+        env!("CARGO_PKG_VERSION")
+    );
 }
 
 /// Get a reference to a global client instance.

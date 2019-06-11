@@ -229,8 +229,15 @@ pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error>
 ///
 /// This function can be helpful when troubleshooting issues in cHTTP or one of its dependencies.
 pub fn version() -> &'static str {
+    static FEATURES_STRING: &'static str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
+
     lazy_static::lazy_static! {
-        static ref VERSION_STRING: String = format!("chttp/{} {}", env!("CARGO_PKG_VERSION"), curl::Version::num());
+        static ref VERSION_STRING: String = format!(
+            "chttp/{} (features:{}) {}",
+            env!("CARGO_PKG_VERSION"),
+            FEATURES_STRING,
+            curl::Version::num(),
+        );
     }
 
     &VERSION_STRING
