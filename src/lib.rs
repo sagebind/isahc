@@ -132,6 +132,10 @@
 //!
 //! Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Enabled by default.
 //!
+//! ### `static-curl`
+//!
+//! Use a bundled libcurl version and statically link to it. Enabled by default.
+//!
 //! ### `async-api`
 //!
 //! Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently

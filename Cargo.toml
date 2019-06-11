@@ -1,6 +1,6 @@
 [package]
 name = "chttp"
-version = "0.4.2"
+version = "0.4.3"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -15,9 +15,10 @@ edition = "2018"
 status = "actively-developed"
 
 [features]
-default = ["cookies", "http2", "psl"]
+default = ["cookies", "http2", "psl", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
+static-curl = ["curl/static-curl"]
 async-api = []
 middleware-api = []
 
