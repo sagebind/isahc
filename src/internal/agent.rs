@@ -3,7 +3,8 @@
 use crate::error::Error;
 use crate::internal::notify;
 use crate::internal::request::*;
-use crossbeam_channel::{self, Sender, Receiver};
+use crossbeam::channel::{Sender, Receiver};
+use crossbeam::sync::WaitGroup;
 use log::*;
 use slab::Slab;
 use std::sync::{Arc, Weak};
@@ -21,12 +22,14 @@ const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
 pub fn create() -> Result<Handle, Error> {
     let create_start = Instant::now();
 
-    let (message_tx, message_rx) = crossbeam_channel::unbounded();
+    let (message_tx, message_rx) = crossbeam::channel::unbounded();
     let (notify_tx, notify_rx) = notify::create()?;
+    let close_wait_group = WaitGroup::new();
 
     let handle_inner = Arc::new(HandleInner {
         message_tx,
         notify_tx,
+        close_wait_group: Some(close_wait_group.clone()),
         thread_terminated: AtomicBool::default(),
     });
     let handle_weak = Arc::downgrade(&handle_inner);
@@ -34,12 +37,13 @@ pub fn create() -> Result<Handle, Error> {
     thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
         let agent = Agent {
             multi: curl::multi::Multi::new(),
-            multi_messages: crossbeam_channel::unbounded(),
+            multi_messages: crossbeam::channel::unbounded(),
             message_rx,
             notify_rx,
             requests: Slab::new(),
             close_requested: false,
             handle: handle_weak,
+            _close_wait_group: close_wait_group,
         };
 
         debug!("agent took {:?} to start up", create_start.elapsed());
@@ -70,6 +74,9 @@ struct HandleInner {
 
     /// Indicates that the agent thread has exited.
     thread_terminated: AtomicBool,
+
+    /// Used to await until the agent thread terminates on drop.
+    close_wait_group: Option<WaitGroup>,
 }
 
 impl Handle {
@@ -113,6 +120,10 @@ impl Drop for HandleInner {
         if self.send_message(Message::Close).is_err() {
             warn!("agent thread was already terminated");
         }
+
+        if let Some(close_wait_group) = self.close_wait_group.take() {
+            close_wait_group.wait();
+        }
     }
 }
 
@@ -149,6 +160,9 @@ struct Agent {
 
     /// Weak reference to a handle, used to communicate back to handles.
     handle: Weak<HandleInner>,
+
+    /// Used to await until the agent thread terminates on drop.
+    _close_wait_group: WaitGroup,
 }
 
 impl Agent {
@@ -223,8 +237,8 @@ impl Agent {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam_channel::TryRecvError::Empty) => break,
-                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    Err(crossbeam::channel::TryRecvError::Empty) => break,
+                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
                         warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
