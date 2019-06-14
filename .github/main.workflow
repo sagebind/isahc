@@ -19,7 +19,6 @@ action "examples" {
 }
 
 action "publish" {
-  needs = ["test", "examples"]
   uses = "docker://rust"
   args = ".github/publish.sh"
   secrets = ["CARGO_TOKEN"]
