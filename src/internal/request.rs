@@ -236,7 +236,7 @@ impl CurlHandler {
 
     /// Fail the request with the given error.
     pub fn fail(&mut self, error: curl::Error) {
-        debug_assert!(self.state.error.fill(error).is_ok());
+        self.state.error.fill(error).unwrap();
 
         // If the future has not been completed yet, complete it with the given error.
         if let Some(future) = self.future.take() {
@@ -246,7 +246,7 @@ impl CurlHandler {
                 debug!("future was canceled, canceling the request");
                 if let Some(agent) = self.state.agent.borrow() {
                     if let Some(token) = self.state.token.get() {
-                        debug_assert!(agent.cancel_request(token).is_ok());
+                        agent.cancel_request(token).unwrap();
                     }
                 }
             }
@@ -319,7 +319,10 @@ impl CurlHandler {
                 .body(body)
                 .unwrap();
 
-            debug_assert!(future.send(Ok(response)).is_ok());
+            if future.send(Ok(response)).is_err() {
+                debug!("request canceled by user");
+                self.state.close();
+            }
         }
     }
 }

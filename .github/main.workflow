@@ -1,6 +1,6 @@
 workflow "main" {
   on = "push"
-  resolves = ["test"]
+  resolves = ["test", "examples"]
 }
 
 workflow "release" {
@@ -13,8 +13,13 @@ action "test" {
   args = "cargo test"
 }
 
+action "examples" {
+  uses = "docker://rust"
+  args = "cargo run --release --example simple"
+}
+
 action "publish" {
-  needs = "test"
+  needs = ["test", "examples"]
   uses = "docker://rust"
   args = ".github/publish.sh"
   secrets = ["CARGO_TOKEN"]
