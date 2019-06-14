@@ -18,7 +18,13 @@ action "examples" {
   args = "cargo run --release --example simple"
 }
 
+action "release-published" {
+  uses = "dschep/filter-event-action@master"
+  args = "event.action == 'published'"
+}
+
 action "publish" {
+  needs = ["release-published"]
   uses = "docker://rust"
   args = ".github/publish.sh"
   secrets = ["CARGO_TOKEN"]
