@@ -65,7 +65,7 @@ Add this to your Cargo.toml file:
 
 ```toml
 [dependencies]
-chttp = "0.3"
+chttp = "0.4"
 ```
 
 ## License
