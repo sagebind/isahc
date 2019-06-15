@@ -6,7 +6,8 @@
 use crate::error::Error;
 use crate::internal::handler::CurlHandler;
 use crate::internal::wakers::{AgentWaker, WakerExt};
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
+use crossbeam::sync::WaitGroup;
 use curl::multi::WaitFd;
 use futures::task::*;
 use futures::task::ArcWake;
@@ -35,6 +36,9 @@ pub struct Agent {
 
     /// State that is shared between the agent handle and the agent thread.
     shared: Arc<Shared>,
+
+    /// Used to await until the agent thread terminates on drop.
+    drop_wait_group: Option<WaitGroup>,
 }
 
 /// Internal state of an agent thread.
@@ -69,6 +73,9 @@ struct AgentThread {
 
     /// State that is shared between the agent handle and the agent thread.
     shared: Arc<Shared>,
+
+    /// Used to signal to the main thread when the agent thread terminates.
+    _drop_wait_group: WaitGroup,
 }
 
 /// State that is shared between the agent handle and the agent thread.
@@ -114,21 +121,24 @@ impl Agent {
         let waker = Arc::new(AgentWaker::connect(wake_addr)?).into_waker();
         log::debug!("agent waker listening on {}", wake_addr);
 
-        let (message_tx, message_rx) = crossbeam_channel::unbounded();
+        let (message_tx, message_rx) = crossbeam::channel::unbounded();
         let shared = Arc::new(Shared {
             is_closed: AtomicBool::default(),
         });
+
+        let drop_wait_group = WaitGroup::new();
 
         let agent = Agent {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
             shared: shared.clone(),
+            drop_wait_group: Some(drop_wait_group.clone()),
         };
 
         thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
             let agent = AgentThread {
                 multi: curl::multi::Multi::new(),
-                multi_messages: crossbeam_channel::unbounded(),
+                multi_messages: crossbeam::channel::unbounded(),
                 message_tx,
                 message_rx,
                 wake_socket,
@@ -136,6 +146,7 @@ impl Agent {
                 close_requested: false,
                 waker,
                 shared,
+                _drop_wait_group: drop_wait_group,
             };
 
             log::debug!("agent took {:?} to start up", create_start.elapsed());
@@ -191,8 +202,8 @@ impl Drop for Agent {
             log::warn!("agent thread was already terminated");
         }
 
-        if let Some(close_wait_group) = self.close_wait_group.take() {
-            close_wait_group.wait();
+        if let Some(wait_group) = self.drop_wait_group.take() {
+            wait_group.wait();
         }
     }
 }
@@ -274,8 +285,8 @@ impl AgentThread {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam_channel::TryRecvError::Empty) => break,
-                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    Err(crossbeam::channel::TryRecvError::Empty) => break,
+                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
                         log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
@@ -342,8 +353,8 @@ impl AgentThread {
                     log::debug!("curl error: {}", e);
                     self.fail_request(token, e.into())?;
                 },
-                Err(crossbeam_channel::TryRecvError::Empty) => break,
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
+                Err(crossbeam::channel::TryRecvError::Empty) => break,
+                Err(crossbeam::channel::TryRecvError::Disconnected) => panic!(),
             }
         }
 
