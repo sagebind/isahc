@@ -8,6 +8,7 @@ use std::ascii;
 use std::fmt;
 use std::io;
 use std::pin::Pin;
+use std::str::FromStr;
 use std::task::*;
 
 /// Drives the state for a single request/response life cycle.
@@ -79,10 +80,20 @@ impl CurlHandler {
     //         && self.headers.contains_key("Location")
     // }
 
+    fn get_content_length(&self) -> Option<usize> {
+        self.producer.headers.get(http::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok())
+    }
+
     pub(crate) fn finish_response_and_complete(&mut self) {
-        if let Some(body) = self.response_body_reader.take() {
-            // TODO: Extract and include Content-Length here.
-            self.producer.finish(Body::reader(body));
+        if let Some(reader) = self.response_body_reader.take() {
+            let body = match self.get_content_length() {
+                Some(len) => Body::reader_sized(reader, len),
+                None => Body::reader(reader),
+            };
+
+            self.producer.finish(body);
         } else {
             log::debug!("response already finished!");
         }
