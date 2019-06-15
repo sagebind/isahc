@@ -35,16 +35,17 @@ impl WakerExt for Waker {
     }
 }
 
-/// A waker that knows how to wake up an agent thread.
-pub struct AgentWaker {
-    /// It's not actually magic! We actually just use UDP to send wakeup signals
-    /// to an agent. Each agent listens on a unique loopback address, which is
-    /// chosen randomly when the agent is created.
+/// A waker that sends a signal to an UDP socket.
+///
+/// This kind of waker is used to wake up agent threads while they are polling.
+/// Each agent listens on a unique loopback address, which is chosen randomly
+/// when the agent is created.
+pub struct UdpWaker {
     socket: UdpSocket,
 }
 
-impl AgentWaker {
-    /// Create a waker by connecting to the wake address of an agent.
+impl UdpWaker {
+    /// Create a waker by connecting to the wake address of an UDP server.
     pub fn connect(addr: SocketAddr) -> Result<Self, Error> {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.set_nonblocking(true)?;
@@ -56,7 +57,7 @@ impl AgentWaker {
     }
 }
 
-impl ArcWake for AgentWaker {
+impl ArcWake for UdpWaker {
     /// Request the connected agent event loop to wake up. Just like a morning
     /// person would do.
     fn wake_by_ref(arc_self: &Arc<Self>) {

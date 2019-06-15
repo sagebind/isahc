@@ -8,6 +8,7 @@ use std::task::*;
 
 // A future for a response.
 pub struct ResponseFuture {
+    completed: bool,
     receiver: oneshot::Receiver<Result<Response<Body>, Error>>,
 }
 
@@ -16,6 +17,7 @@ impl ResponseFuture {
         let (sender, receiver) = oneshot::channel();
 
         let future = Self {
+            completed: false,
             receiver,
         };
 
@@ -38,8 +40,22 @@ impl Future for ResponseFuture {
 
         match inner.poll(cx) {
             Poll::Pending => Poll::Pending,
-            Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(oneshot::Canceled)) => Poll::Ready(Err(Error::Canceled)),
+            Poll::Ready(result) => {
+                self.completed = true;
+                match result {
+                    Ok(result) => Poll::Ready(result),
+                    Err(oneshot::Canceled) => Poll::Ready(Err(Error::Aborted)),
+                }
+            },
+        }
+    }
+}
+
+impl Drop for ResponseFuture {
+    fn drop(&mut self) {
+        self.receiver.close();
+        if !self.completed {
+            log::debug!("request future canceled by user");
         }
     }
 }
@@ -48,7 +64,7 @@ impl Future for ResponseFuture {
 /// incrementally.
 ///
 /// If dropped before the response is finished, the associated future will be
-/// completed with a `Canceled` error.
+/// completed with an `Aborted` error.
 pub struct ResponseProducer {
     sender: Option<oneshot::Sender<Result<Response<Body>, Error>>>,
 
@@ -62,22 +78,21 @@ pub struct ResponseProducer {
     pub(crate) headers: http::HeaderMap,
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ResponseState {
+    Active,
+    Canceled,
+    Completed,
+}
+
 impl ResponseProducer {
-    pub fn is_canceled(&self) -> bool {
+    pub fn state(&self) -> ResponseState {
         match self.sender.as_ref() {
-            Some(sender) => sender.is_canceled(),
-            None => false,
-        }
-    }
-
-    pub fn is_complete(&self) -> bool {
-        self.sender.is_none()
-    }
-
-    pub fn is_closed(&self) -> bool {
-        match self.sender.as_ref() {
-            Some(sender) => sender.is_canceled(),
-            None => true,
+            Some(sender) => match sender.is_canceled() {
+                true => ResponseState::Canceled,
+                false => ResponseState::Active,
+            },
+            None => ResponseState::Completed,
         }
     }
 

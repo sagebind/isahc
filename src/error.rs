@@ -8,12 +8,12 @@ use std::io;
 /// All possible types of errors that can be returned from cHTTP.
 #[derive(Debug)]
 pub enum Error {
+    /// The request was aborted before it could be completed.
+    Aborted,
     /// A problem occurred with the local certificate.
     BadClientCertificate(Option<String>),
     /// The server certificate could not be validated.
     BadServerCertificate(Option<String>),
-    /// The request was canceled before it could be completed.
-    Canceled,
     /// Failed to connect to the server.
     ConnectFailed,
     /// Couldn't resolve host name.
@@ -66,28 +66,29 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::BadClientCertificate(Some(ref e)) => e,
-            &Error::BadServerCertificate(Some(ref e)) => e,
-            &Error::ConnectFailed => "failed to connect to the server",
-            &Error::CouldntResolveHost => "couldn't resolve host name",
-            &Error::CouldntResolveProxy => "couldn't resolve proxy host name",
-            &Error::Curl(ref e) => e,
-            &Error::Internal => "internal error",
-            &Error::InvalidContentEncoding(Some(ref e)) => e,
-            &Error::InvalidCredentials => "credentials were rejected by the server",
-            &Error::InvalidHttpFormat(ref e) => e.description(),
-            &Error::InvalidJson => "body is not valid JSON",
-            &Error::InvalidUtf8 => "bytes are not valid UTF-8",
-            &Error::Io(ref e) => e.description(),
-            &Error::NoResponse => "server did not send a response",
-            &Error::RangeRequestUnsupported => "server does not support or accept range requests",
-            &Error::RequestBodyError(Some(ref e)) => e,
-            &Error::ResponseBodyError(Some(ref e)) => e,
-            &Error::SSLConnectFailed(Some(ref e)) => e,
-            &Error::SSLEngineError(Some(ref e)) => e,
-            &Error::Timeout => "request took longer than the configured timeout",
-            &Error::TooManyConnections => "max connection limit exceeded",
-            &Error::TooManyRedirects => "max redirect limit exceeded",
+            Error::Aborted => "request aborted unexpectedly",
+            Error::BadClientCertificate(Some(ref e)) => e,
+            Error::BadServerCertificate(Some(ref e)) => e,
+            Error::ConnectFailed => "failed to connect to the server",
+            Error::CouldntResolveHost => "couldn't resolve host name",
+            Error::CouldntResolveProxy => "couldn't resolve proxy host name",
+            Error::Curl(ref e) => e,
+            Error::Internal => "internal error",
+            Error::InvalidContentEncoding(Some(ref e)) => e,
+            Error::InvalidCredentials => "credentials were rejected by the server",
+            Error::InvalidHttpFormat(ref e) => e.description(),
+            Error::InvalidJson => "body is not valid JSON",
+            Error::InvalidUtf8 => "bytes are not valid UTF-8",
+            Error::Io(ref e) => e.description(),
+            Error::NoResponse => "server did not send a response",
+            Error::RangeRequestUnsupported => "server does not support or accept range requests",
+            Error::RequestBodyError(Some(ref e)) => e,
+            Error::ResponseBodyError(Some(ref e)) => e,
+            Error::SSLConnectFailed(Some(ref e)) => e,
+            Error::SSLEngineError(Some(ref e)) => e,
+            Error::Timeout => "request took longer than the configured timeout",
+            Error::TooManyConnections => "max connection limit exceeded",
+            Error::TooManyRedirects => "max redirect limit exceeded",
             _ => "unknown error",
         }
     }

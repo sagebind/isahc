@@ -5,7 +5,7 @@
 
 use crate::error::Error;
 use crate::internal::handler::CurlHandler;
-use crate::internal::wakers::{AgentWaker, WakerExt};
+use crate::internal::wakers::{UdpWaker, WakerExt};
 use crossbeam::channel::{Receiver, Sender};
 use crossbeam::sync::WaitGroup;
 use curl::multi::WaitFd;
@@ -94,9 +94,6 @@ enum Message {
     /// Begin executing a new request.
     Execute(EasyHandle),
 
-    /// Requests the agent to cancel the request with the given ID.
-    Cancel(usize),
-
     /// Request to resume reading the request body for the request with the
     /// given ID.
     UnpauseRead(usize),
@@ -118,7 +115,7 @@ impl Agent {
         let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
         wake_socket.set_nonblocking(true)?;
         let wake_addr = wake_socket.local_addr()?;
-        let waker = Arc::new(AgentWaker::connect(wake_addr)?).into_waker();
+        let waker = Arc::new(UdpWaker::connect(wake_addr)?).into_waker();
         log::debug!("agent waker listening on {}", wake_addr);
 
         let (message_tx, message_rx) = crossbeam::channel::unbounded();
@@ -162,20 +159,9 @@ impl Agent {
         self.shared.is_closed.load(Ordering::SeqCst)
     }
 
-    /// Get a waker object for waking up this agent's event loop from another
-    /// thread.
-    pub fn waker(&self) -> &Waker {
-        &self.waker
-    }
-
     /// Begin executing a request with this agent.
     pub fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
         self.send_message(Message::Execute(request))
-    }
-
-    /// Cancel a request by its token.
-    pub fn cancel_request(&self, token: usize) -> Result<(), Error> {
-        self.send_message(Message::Cancel(token))
     }
 
     /// Send a message to the agent thread.
@@ -307,13 +293,6 @@ impl AgentThread {
                 self.close_requested = true;
             },
             Message::Execute(request) => self.begin_request(request)?,
-            Message::Cancel(token) => {
-                if self.requests.contains(token) {
-                    let request = self.requests.remove(token);
-                    let request = self.multi.remove2(request)?;
-                    drop(request);
-                }
-            },
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
                     request.unpause_read()?;
@@ -416,7 +395,8 @@ impl AgentThread {
             // Determine the blocking timeout value. If curl returns None, then
             // it is unsure as to what timeout value is appropriate. In this
             // case we use a default value.
-            let mut timeout = self.multi.get_timeout()?.unwrap_or(DEFAULT_TIMEOUT);
+            // let mut timeout = self.multi.get_timeout()?.unwrap_or(DEFAULT_TIMEOUT);
+            let mut timeout = DEFAULT_TIMEOUT;
 
             // HACK: A mysterious bug in recent versions of curl causes it to
             // return the value of `CURLOPT_CONNECTTIMEOUT_MS` a few times

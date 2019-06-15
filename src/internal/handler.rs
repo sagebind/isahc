@@ -1,6 +1,6 @@
 use crate::{Body, Error};
 use super::parse;
-use super::response::ResponseProducer;
+use super::response::*;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::prelude::*;
 use sluice::pipe;
@@ -94,8 +94,13 @@ impl CurlHandler {
 }
 
 impl curl::easy::Handler for CurlHandler {
-    /// Gets called by curl for each line of data in the HTTP request header.
+    /// Gets called by curl for each line of data in the HTTP response header.
     fn header(&mut self, data: &[u8]) -> bool {
+        // Don't bother if the request is canceled.
+        if self.producer.state() != ResponseState::Active {
+            return false;
+        }
+
         // Curl calls this function for all lines in the response not part of
         // the response body, not just for headers. We need to inspect the
         // contents of the string in order to determine what it is and how to
@@ -129,8 +134,8 @@ impl curl::easy::Handler for CurlHandler {
     /// Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
         // Don't bother if the request is canceled.
-        if self.producer.is_closed() {
-            return Err(curl::easy::ReadError::Abort);
+        if self.producer.state() != ResponseState::Active {
+            return Err(ReadError::Abort);
         }
 
         // Create a task context using a waker provided by the agent so we can
@@ -175,6 +180,11 @@ impl curl::easy::Handler for CurlHandler {
 
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
+        // Don't bother if the request is canceled.
+        if self.producer.state() == ResponseState::Canceled {
+            return Ok(0);
+        }
+
         log::trace!("received {} bytes of data", data.len());
 
         self.finish_response_and_complete();
