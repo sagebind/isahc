@@ -33,7 +33,7 @@ pub struct Agent {
     waker: Waker,
 
     /// A join handle for the agent thread.
-    join_handle: Option<thread::JoinHandle<()>>,
+    join_handle: Option<thread::JoinHandle<Result<(), Error>>>,
 }
 
 /// Internal state of an agent thread.
@@ -119,8 +119,7 @@ impl Agent {
 
                 log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                // Intentionally panic the thread if an error occurs.
-                agent.run().unwrap();
+                agent.run()
             })?),
         })
     }
@@ -157,15 +156,17 @@ impl Drop for Agent {
 
         // Wait for the agent thread to shut down before continuing.
         if let Some(join_handle) = self.join_handle.take() {
-            if let Err(_) = join_handle.join() {
-                log::error!("agent thread panicked");
+            match join_handle.join() {
+                Ok(Ok(())) => {},
+                Ok(Err(e)) => log::error!("agent thread terminated with error: {}", e),
+                Err(_) => log::error!("agent thread panicked"),
             }
         }
     }
 }
 
 impl AgentThread {
-    fn begin_request(&mut self, mut request: curl::easy::Easy2<CurlHandler>) -> Result<(), Error> {
+    fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();
         let id = entry.key();
@@ -338,7 +339,7 @@ impl AgentThread {
         loop {
             match self.wake_socket.recv_from(&mut [0; 32]) {
                 Ok(_) => woke = true,
-                Err(e) => break,
+                Err(_) => break,
             }
         }
 
