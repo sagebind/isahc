@@ -8,7 +8,6 @@ use std::ascii;
 use std::fmt;
 use std::io;
 use std::pin::Pin;
-use std::str::FromStr;
 use std::task::*;
 
 /// Drives the state for a single request/response life cycle.

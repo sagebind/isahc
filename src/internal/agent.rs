@@ -7,14 +7,12 @@ use crate::error::Error;
 use crate::internal::handler::CurlHandler;
 use crate::internal::wakers::{UdpWaker, WakerExt};
 use crossbeam::channel::{Receiver, Sender};
-use crossbeam::sync::WaitGroup;
 use curl::multi::WaitFd;
 use futures::task::*;
 use futures::task::ArcWake;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::Arc;
-use std::sync::atomic::*;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -34,11 +32,8 @@ pub struct Agent {
     /// A waker that can wake up the agent thread while it is polling.
     waker: Waker,
 
-    /// State that is shared between the agent handle and the agent thread.
-    shared: Arc<Shared>,
-
-    /// Used to await until the agent thread terminates on drop.
-    drop_wait_group: Option<WaitGroup>,
+    /// A join handle for the agent thread.
+    join_handle: Option<thread::JoinHandle<()>>,
 }
 
 /// Internal state of an agent thread.
@@ -70,19 +65,6 @@ struct AgentThread {
 
     /// A waker that can wake up the agent thread while it is polling.
     waker: Waker,
-
-    /// State that is shared between the agent handle and the agent thread.
-    shared: Arc<Shared>,
-
-    /// Used to signal to the main thread when the agent thread terminates.
-    _drop_wait_group: WaitGroup,
-}
-
-/// State that is shared between the agent handle and the agent thread.
-#[derive(Debug)]
-struct Shared {
-    /// Flag indicating whether the agent thread has closed.
-    is_closed: AtomicBool,
 }
 
 /// A message sent from the main thread to the agent thread.
@@ -119,44 +101,28 @@ impl Agent {
         log::debug!("agent waker listening on {}", wake_addr);
 
         let (message_tx, message_rx) = crossbeam::channel::unbounded();
-        let shared = Arc::new(Shared {
-            is_closed: AtomicBool::default(),
-        });
 
-        let drop_wait_group = WaitGroup::new();
-
-        let agent = Agent {
+        Ok(Self {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
-            shared: shared.clone(),
-            drop_wait_group: Some(drop_wait_group.clone()),
-        };
+            join_handle: Some(thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
+                let agent = AgentThread {
+                    multi: curl::multi::Multi::new(),
+                    multi_messages: crossbeam::channel::unbounded(),
+                    message_tx,
+                    message_rx,
+                    wake_socket,
+                    requests: Slab::new(),
+                    close_requested: false,
+                    waker,
+                };
 
-        thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
-            let agent = AgentThread {
-                multi: curl::multi::Multi::new(),
-                multi_messages: crossbeam::channel::unbounded(),
-                message_tx,
-                message_rx,
-                wake_socket,
-                requests: Slab::new(),
-                close_requested: false,
-                waker,
-                shared,
-                _drop_wait_group: drop_wait_group,
-            };
+                log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-            log::debug!("agent took {:?} to start up", create_start.elapsed());
-
-            // Intentionally panic the thread if an error occurs.
-            agent.run().unwrap();
-        })?;
-
-        Ok(agent)
-    }
-
-    pub fn is_closed(&self) -> bool {
-        self.shared.is_closed.load(Ordering::SeqCst)
+                // Intentionally panic the thread if an error occurs.
+                agent.run().unwrap();
+            })?),
+        })
     }
 
     /// Begin executing a request with this agent.
@@ -168,28 +134,32 @@ impl Agent {
     ///
     /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        if self.is_closed() {
-            log::error!("agent thread terminated prematurely");
-            return Err(Error::Internal);
+        match self.message_tx.send(message) {
+            Ok(()) => {
+                // Wake the agent thread up so it will check its messages soon.
+                self.waker.wake_by_ref();
+                Ok(())
+            }
+            Err(_) => {
+                log::error!("agent thread terminated prematurely");
+                Err(Error::Internal)
+            }
         }
-
-        self.message_tx.send(message).map_err(|_| Error::Internal)?;
-
-        // Wake the agent thread up so it will check its messages soon.
-        self.waker.wake_by_ref();
-
-        Ok(())
     }
 }
 
 impl Drop for Agent {
     fn drop(&mut self) {
+        // Request the agent thread to shut down.
         if self.send_message(Message::Close).is_err() {
-            log::warn!("agent thread was already terminated");
+            log::error!("agent thread terminated prematurely");
         }
 
-        if let Some(wait_group) = self.drop_wait_group.take() {
-            wait_group.wait();
+        // Wait for the agent thread to shut down before continuing.
+        if let Some(join_handle) = self.join_handle.take() {
+            if let Err(_) = join_handle.join() {
+                log::error!("agent thread panicked");
+            }
         }
     }
 }
@@ -435,8 +405,3 @@ impl AgentThread {
     }
 }
 
-impl Drop for AgentThread {
-    fn drop(&mut self) {
-        self.shared.is_closed.store(true, Ordering::SeqCst);
-    }
-}
