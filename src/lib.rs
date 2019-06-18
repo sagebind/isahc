@@ -220,6 +220,14 @@ where
     Client::shared().head(uri)
 }
 
+/// Sends an HTTP HEAD request asynchronously.
+pub fn head_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
+    Client::shared().head_async(uri)
+}
+
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
@@ -228,6 +236,19 @@ where
     http::Uri: http::HttpTryFrom<U>,
 {
     Client::shared().post(uri, body)
+}
+
+/// Sends an HTTP POST request asynchronously.
+///
+/// The response body is provided as a stream that may only be consumed once.
+pub fn post_async<U>(
+    uri: U,
+    body: impl Into<Body>,
+) -> impl Future<Output = Result<Response<Body>, Error>>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
+    Client::shared().post_async(uri, body)
 }
 
 /// Sends an HTTP PUT request.
@@ -240,6 +261,19 @@ where
     Client::shared().put(uri, body)
 }
 
+/// Sends an HTTP PUT request asynchronously.
+///
+/// The response body is provided as a stream that may only be consumed once.
+pub fn put_async<U>(
+    uri: U,
+    body: impl Into<Body>,
+) -> impl Future<Output = Result<Response<Body>, Error>>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
+    Client::shared().put_async(uri, body)
+}
+
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
@@ -248,6 +282,16 @@ where
     http::Uri: http::HttpTryFrom<U>,
 {
     Client::shared().delete(uri)
+}
+
+/// Sends an HTTP DELETE request asynchronously.
+///
+/// The response body is provided as a stream that may only be consumed once.
+pub fn delete_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
+    Client::shared().delete_async(uri)
 }
 
 /// Sends an HTTP request.
@@ -259,7 +303,21 @@ where
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
-    Client::shared().send(request.map(|body| body.into()))
+    Client::shared().send(request)
+}
+
+/// Sends an HTTP request asynchronously.
+///
+/// The request may include [extensions](../http/struct.Extensions.html) to
+/// customize how it is sent. You can include an
+/// [`Options`](chttp::options::Options) struct as a request extension to
+/// control various connection and protocol options.
+///
+/// The response body is provided as a stream that may only be consumed once.
+pub fn send_async<B: Into<Body>>(
+    request: Request<B>,
+) -> impl Future<Output = Result<Response<Body>, Error>> {
+    Client::shared().send_async(request)
 }
 
 /// Gets a human-readable string with the version number of cHTTP and its

@@ -3,7 +3,7 @@
 use crate::Error;
 use bytes::Bytes;
 use futures::executor::block_on;
-use futures::io::{AsyncRead, AsyncReadExt};
+use futures::prelude::*;
 use std::fmt;
 use std::io::{self, Cursor, Read};
 use std::pin::Pin;
@@ -125,13 +125,16 @@ impl Body {
     /// this method will return an empty string next call. If this body supports
     /// seeking, you can seek to the beginning of the body if you need to call
     /// this method again later.
-    pub async fn text_async(&mut self) -> Result<String, Error> {
-        if self.is_empty() {
-            Ok(String::new())
-        } else {
-            let mut bytes = Vec::new();
-            AsyncReadExt::read_to_end(self, &mut bytes).await?;
-            Ok(String::from_utf8(bytes)?)
+    pub fn text_async(&mut self) -> impl Future<Output = Result<String, Error>> + '_ {
+        // TODO: Implement without async block?
+        async move {
+            if self.is_empty() {
+                Ok(String::new())
+            } else {
+                let mut bytes = Vec::new();
+                AsyncReadExt::read_to_end(self, &mut bytes).await?;
+                Ok(String::from_utf8(bytes)?)
+            }
         }
     }
 }

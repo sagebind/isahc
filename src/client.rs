@@ -5,9 +5,11 @@ use crate::middleware::Middleware;
 use crate::options::*;
 use crate::{agent, Body, Error};
 use futures::executor::block_on;
+use futures::prelude::*;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
+use std::sync::Arc;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -96,7 +98,7 @@ impl Builder {
         Ok(Client {
             agent: agent,
             default_options: self.default_options.clone(),
-            middleware: self.middleware.drain(..).collect(),
+            middleware: Arc::new(self.middleware.drain(..).collect()),
         })
     }
 }
@@ -109,7 +111,7 @@ impl Builder {
 pub struct Client {
     agent: agent::Handle,
     default_options: Options,
-    middleware: Vec<Box<dyn Middleware>>,
+    middleware: Arc<Vec<Box<dyn Middleware>>>,
 }
 
 impl Client {
@@ -152,12 +154,15 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub async fn get_async<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    #[auto_enums::auto_enum(Future)]
+    pub fn get_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        let request = http::Request::get(uri).body(Body::empty())?;
-        self.send_async(request).await
+        match http::Request::get(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => future::err(e.into()),
+        }
     }
 
     /// Sends an HTTP HEAD request.
@@ -165,8 +170,19 @@ impl Client {
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        let request = http::Request::head(uri).body(Body::empty())?;
-        self.send(request)
+        block_on(self.head_async(uri))
+    }
+
+    /// Sends an HTTP HEAD request asynchronously.
+    #[auto_enums::auto_enum(Future)]
+    pub fn head_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
+        match http::Request::head(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => future::err(e.into()),
+        }
     }
 
     /// Sends an HTTP POST request.
@@ -177,8 +193,26 @@ impl Client {
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        let request = http::Request::post(uri).body(body)?;
-        self.send(request)
+        block_on(self.post_async(uri, body))
+    }
+
+    /// Sends an HTTP POST request asynchronously.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once.
+    #[auto_enums::auto_enum(Future)]
+    pub fn post_async<U>(
+        &self,
+        uri: U,
+        body: impl Into<Body>,
+    ) -> impl Future<Output = Result<Response<Body>, Error>>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
+        match http::Request::post(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => future::err(e.into()),
+        }
     }
 
     /// Sends an HTTP PUT request.
@@ -189,8 +223,26 @@ impl Client {
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        let request = http::Request::put(uri).body(body)?;
-        self.send(request)
+        block_on(self.put_async(uri, body))
+    }
+
+    /// Sends an HTTP PUT request asynchronously.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once.
+    #[auto_enums::auto_enum(Future)]
+    pub fn put_async<U>(
+        &self,
+        uri: U,
+        body: impl Into<Body>,
+    ) -> impl Future<Output = Result<Response<Body>, Error>>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
+        match http::Request::put(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => future::err(e.into()),
+        }
     }
 
     /// Sends an HTTP DELETE request.
@@ -201,8 +253,22 @@ impl Client {
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        let request = http::Request::delete(uri).body(Body::empty())?;
-        self.send(request)
+        block_on(self.delete_async(uri))
+    }
+
+    /// Sends an HTTP DELETE request asynchronously.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once.
+    #[auto_enums::auto_enum(Future)]
+    pub fn delete_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
+        match http::Request::delete(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => future::err(e.into()),
+        }
     }
 
     /// Sends a request and returns the response.
@@ -229,11 +295,12 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub async fn send_async<B: Into<Body>>(
+    pub fn send_async<B: Into<Body>>(
         &self,
         request: Request<B>,
-    ) -> Result<Response<Body>, Error> {
+    ) -> impl Future<Output = Result<Response<Body>, Error>> {
         let mut request = request.map(Into::into);
+        let uri = request.uri().clone();
 
         // Set default user agent if not specified.
         request
@@ -247,10 +314,37 @@ impl Client {
             request = middleware.filter_request(request);
         }
 
+        let middleware = self.middleware.clone();
+
+        // Create and configure a curl easy handle to fulfil the request.
+        let result = self
+            .create_easy_handle(request)
+            // Send the request to the agent to be executed.
+            .and_then(|(easy, future)| self.agent.submit_request(easy).map(move |_| future));
+
+        future::ready(result)
+            .and_then(|future| future)
+            .map(move |result| {
+                result.map(move |mut response| {
+                    response.extensions_mut().insert(uri);
+
+                    // Apply response middleware, starting with the innermost one.
+                    for middleware in middleware.iter() {
+                        response = middleware.filter_response(response);
+                    }
+
+                    response
+                })
+            })
+    }
+
+    fn create_easy_handle(
+        &self,
+        mut request: Request<Body>,
+    ) -> Result<(curl::easy::Easy2<RequestHandler>, ResponseFuture), Error> {
         // Extract the request options, or use the default options.
         let options = request.extensions_mut().remove::<Options>();
         let options = options.as_ref().unwrap_or(&self.default_options);
-        let uri = request.uri().clone();
 
         // Prepare the request plumbing.
         let (request_parts, request_body) = request.into_parts();
@@ -258,53 +352,8 @@ impl Client {
         let body_size = request_body.len();
         let (handler, future) = RequestHandler::new(request_body);
 
-        // Create and configure a curl easy handle to fulfil the request.
         let mut easy = curl::easy::Easy2::new(handler);
-        self.configure_easy_handle(&mut easy, options)?;
 
-        // Set the request data according to the request given.
-        easy.custom_request(request_parts.method.as_str())?;
-        easy.url(&request_parts.uri.to_string())?;
-
-        let mut headers = curl::easy::List::new();
-        for (name, value) in request_parts.headers.iter() {
-            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
-            headers.append(&header)?;
-        }
-        easy.http_headers(headers)?;
-
-        // If the request body is non-empty, tell curl that we are going to
-        // upload something.
-        if !body_is_empty {
-            easy.upload(true)?;
-
-            if let Some(len) = body_size {
-                // If we know the size of the request body up front, tell curl
-                // about it.
-                easy.in_filesize(len as u64)?;
-            }
-        }
-
-        // Send the request to the agent to be executed.
-        self.agent.submit_request(easy)?;
-
-        // Wait for the response to complete or fail.
-        let mut response = future.await?;
-        response.extensions_mut().insert(uri);
-
-        // Apply response middleware, starting with the innermost one.
-        for middleware in self.middleware.iter() {
-            response = middleware.filter_response(response);
-        }
-
-        Ok(response)
-    }
-
-    fn configure_easy_handle(
-        &self,
-        easy: &mut curl::easy::Easy2<RequestHandler>,
-        options: &Options,
-    ) -> Result<(), Error> {
         easy.verbose(log::log_enabled!(log::Level::Trace))?;
         easy.signal(false)?;
         easy.buffer_size(options.buffer_size)?;
@@ -378,7 +427,30 @@ impl Client {
         // Enable automatic response decompression.
         easy.accept_encoding("")?;
 
-        Ok(())
+        // Set the request data according to the request given.
+        easy.custom_request(request_parts.method.as_str())?;
+        easy.url(&request_parts.uri.to_string())?;
+
+        let mut headers = curl::easy::List::new();
+        for (name, value) in request_parts.headers.iter() {
+            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
+            headers.append(&header)?;
+        }
+        easy.http_headers(headers)?;
+
+        // If the request body is non-empty, tell curl that we are going to
+        // upload something.
+        if !body_is_empty {
+            easy.upload(true)?;
+
+            if let Some(len) = body_size {
+                // If we know the size of the request body up front, tell curl
+                // about it.
+                easy.in_filesize(len as u64)?;
+            }
+        }
+
+        Ok((easy, future))
     }
 }
 

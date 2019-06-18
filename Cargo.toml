@@ -25,6 +25,7 @@ static-curl = ["curl/static-curl"]
 middleware-api = []
 
 [dependencies]
+auto_enums = "0.5"
 bytes = "0.4"
 crossbeam-channel = "0.3"
 curl = "^0.4.20"
