@@ -42,7 +42,7 @@ fn response_301_auto_follow() {
 
     block_on(async {
         assert_eq!(response.status(), 200);
-        assert_eq!(response.body_mut().text().await.unwrap(), "ok");
+        assert_eq!(response.body_mut().text_async().await.unwrap(), "ok");
     })
 }
 

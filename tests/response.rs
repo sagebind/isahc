@@ -13,7 +13,7 @@ fn simple_response_body() {
 
     block_on(async {
         let mut response = chttp::get_async(server.endpoint()).await.unwrap();
-        let response_text = response.body_mut().text().await.unwrap();
+        let response_text = response.body_mut().text_async().await.unwrap();
         assert_eq!(response_text, "hello world");
     })
 }
@@ -28,7 +28,7 @@ fn large_response_body() {
 
     block_on(async {
         let mut response = chttp::get_async(server.endpoint()).await.unwrap();
-        let response_text = response.body_mut().text().await.unwrap();
+        let response_text = response.body_mut().text_async().await.unwrap();
         assert_eq!(response_text, "wow so large ".repeat(1000));
     })
 }

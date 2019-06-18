@@ -2,6 +2,7 @@
 
 use crate::Error;
 use bytes::Bytes;
+use futures::executor::block_on;
 use futures::io::{AsyncRead, AsyncReadExt};
 use std::fmt;
 use std::io::{self, Cursor, Read};
@@ -114,7 +115,17 @@ impl Body {
     /// this method will return an empty string next call. If this body supports
     /// seeking, you can seek to the beginning of the body if you need to call
     /// this method again later.
-    pub async fn text(&mut self) -> Result<String, Error> {
+    pub fn text(&mut self) -> Result<String, Error> {
+        block_on(self.text_async())
+    }
+
+    /// Get the response body as a string asynchronously.
+    ///
+    /// If the body comes from a stream, the steam bytes will be consumed and
+    /// this method will return an empty string next call. If this body supports
+    /// seeking, you can seek to the beginning of the body if you need to call
+    /// this method again later.
+    pub async fn text_async(&mut self) -> Result<String, Error> {
         if self.is_empty() {
             Ok(String::new())
         } else {
