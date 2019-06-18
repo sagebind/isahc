@@ -10,7 +10,7 @@ pub fn logging() {
 
     ONCE.call_once(|| {
         env::set_var("RUST_BACKTRACE", "1");
-        env::set_var("RUST_LOG", "chttp=trace,curl=debug");
+        env::set_var("RUST_LOG", "chttp=debug,curl=debug");
         env_logger::init();
     });
 }

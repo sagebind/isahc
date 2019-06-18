@@ -2,12 +2,11 @@
 //!
 //! This module provides a cookie jar implementation conforming to RFC 6265.
 
+use crate::Body;
+use crate::middleware::Middleware;
 use chrono::Duration;
 use chrono::prelude::*;
-use crate::{Request, Response};
-use crate::middleware::Middleware;
-use http::Uri;
-use log::*;
+use http::{Request, Response, Uri};
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::RwLock;
@@ -88,7 +87,7 @@ impl Cookie {
             // The given domain must domain-match the origin.
             // https://tools.ietf.org/html/rfc6265#section-5.3.6
             if !Cookie::domain_matches(uri.host()?, domain) {
-                warn!("cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'", cookie_name, uri.host()?, domain);
+                log::warn!("cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'", cookie_name, uri.host()?, domain);
                 return None;
             }
 
@@ -100,7 +99,7 @@ impl Cookie {
 
                 if let Some(suffix) = list.suffix(domain) {
                     if domain == suffix.to_str() {
-                        warn!("cookie '{}' dropped, setting cookies for domain '{}' is not allowed", cookie_name, domain);
+                        log::warn!("cookie '{}' dropped, setting cookies for domain '{}' is not allowed", cookie_name, domain);
                         return None;
                     }
                 }
@@ -256,7 +255,7 @@ impl CookieJar {
 }
 
 impl Middleware for CookieJar {
-    fn filter_request(&self, mut request: Request) -> Request {
+    fn filter_request(&self, mut request: Request<Body>) -> Request<Body> {
         if let Some(header) = self.get_cookies(request.uri()) {
             request.headers_mut().insert(http::header::COOKIE, header.parse().unwrap());
         }
@@ -265,7 +264,7 @@ impl Middleware for CookieJar {
     }
 
     /// Extracts cookies set via the Set-Cookie header.
-    fn filter_response(&self, response: Response) -> Response {
+    fn filter_response(&self, response: Response<Body>) -> Response<Body> {
         if response.headers().contains_key(http::header::SET_COOKIE) {
             let cookies = response.headers()
                 .get_all(http::header::SET_COOKIE)
@@ -274,9 +273,9 @@ impl Middleware for CookieJar {
                     match header.to_str() {
                         Ok(header) => match Cookie::parse(header, response.extensions().get().unwrap()) {
                             Some(cookie) => return Some(cookie),
-                            _ => warn!("could not parse Set-Cookie header"),
+                            _ => log::warn!("could not parse Set-Cookie header"),
                         },
-                        _ => warn!("invalid encoding in Set-Cookie header"),
+                        _ => log::warn!("invalid encoding in Set-Cookie header"),
                     }
                     None
                 });

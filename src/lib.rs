@@ -166,6 +166,8 @@
 
 #![feature(async_await)]
 
+use http::{Request, Response};
+use lazy_static::lazy_static;
 use std::future::Future;
 
 pub mod body;
@@ -180,9 +182,11 @@ pub mod middleware;
 #[cfg(not(feature = "middleware-api"))]
 mod middleware;
 
+mod agent;
 mod error;
-mod internal;
-// mod request;
+mod handler;
+mod parse;
+mod wakers;
 
 /// Re-export of the standard HTTP types.
 pub use http;
@@ -193,50 +197,43 @@ pub use crate::error::Error;
 pub use crate::options::*;
 
 
-/// An HTTP request.
-pub type Request = http::Request<Body>;
-
-/// An HTTP response.
-pub type Response = http::Response<Body>;
-
-
 /// Sends an HTTP GET request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn get<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().get(uri)
 }
 
 /// Sends an HTTP GET request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get_async<U>(uri: U) -> impl Future<Output=Result<Response, Error>> where http::Uri: http::HttpTryFrom<U> {
+pub fn get_async<U>(uri: U) -> impl Future<Output=Result<Response<Body>, Error>> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().get_async(uri)
 }
 
 /// Sends an HTTP HEAD request.
-pub fn head<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn head<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().head(uri)
 }
 
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().post(uri, body)
 }
 
 /// Sends an HTTP PUT request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().put(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn delete<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
     Client::shared().delete(uri)
 }
 
@@ -248,7 +245,7 @@ pub fn delete<U>(uri: U) -> Result<Response, Error> where http::Uri: http::HttpT
 /// control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error> {
+pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
     Client::shared().send(request.map(|body| body.into()))
 }
 
@@ -260,7 +257,7 @@ pub fn send<B: Into<Body>>(request: http::Request<B>) -> Result<Response, Error>
 pub fn version() -> &'static str {
     static FEATURES_STRING: &'static str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
 
-    lazy_static::lazy_static! {
+    lazy_static! {
         static ref VERSION_STRING: String = format!(
             "chttp/{} (features:{}) {}",
             env!("CARGO_PKG_VERSION"),

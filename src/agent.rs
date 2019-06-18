@@ -8,8 +8,8 @@
 //! a specialized task executor for tasks related to requests.
 
 use crate::Error;
-use super::handler::RequestHandler;
-use super::wakers::{UdpWaker, WakerExt};
+use crate::handler::RequestHandler;
+use crate::wakers::{UdpWaker, WakerExt};
 use crossbeam::channel::{Receiver, Sender};
 use curl::multi::WaitFd;
 use futures::task::*;
@@ -298,31 +298,23 @@ impl AgentThread {
 
         loop {
             match self.multi_messages.1.try_recv() {
-                Ok((token, Ok(()))) => self.complete_request(token)?,
-                Ok((token, Err(e))) => {
-                    log::debug!("curl error: {}", e);
-                    self.fail_request(token, e.into())?;
+                // A request completed.
+                Ok((token, result)) => {
+                    let handle = self.requests.remove(token);
+                    let mut handle = self.multi.remove2(handle)?;
+
+                    match result {
+                        Ok(()) => handle.get_mut().complete(),
+                        Err(e) => {
+                            log::debug!("curl error: {}", e);
+                            handle.get_mut().complete_with_error(e);
+                        }
+                    }
                 },
                 Err(crossbeam::channel::TryRecvError::Empty) => break,
                 Err(crossbeam::channel::TryRecvError::Disconnected) => panic!(),
             }
         }
-
-        Ok(())
-    }
-
-    fn complete_request(&mut self, token: usize) -> Result<(), Error> {
-        let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
-        handle.get_mut().complete();
-
-        Ok(())
-    }
-
-    fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
-        let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
-        handle.get_mut().complete_with_error(error);
 
         Ok(())
     }

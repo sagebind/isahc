@@ -1,9 +1,7 @@
 //! The HTTP client implementation.
 
-use crate::body::Body;
-use crate::error::Error;
-use crate::internal::agent;
-use crate::internal::handler::*;
+use crate::{agent, Body, Error};
+use crate::handler::*;
 use crate::middleware::Middleware;
 use crate::options::*;
 use futures::executor::block_on;

@@ -5,38 +5,38 @@
 //! functionality by applying transformations to HTTP requests before they are
 //! sent and/or HTTP responses after they are received.
 
-use crate::Request;
-use crate::Response;
+use crate::Body;
+use http::{Request, Response};
 
 /// Create a new _request_ middleware from a function.
 #[allow(unused)]
-pub fn before(f: impl Fn(Request) -> Request + Send + Sync + 'static) -> impl Middleware {
+pub fn before(f: impl Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static) -> impl Middleware {
     create(f, identity)
 }
 
 /// Create a new _response_ middleware from a function.
 #[allow(unused)]
-pub fn after(f: impl Fn(Response) -> Response + Send + Sync + 'static) -> impl Middleware {
+pub fn after(f: impl Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static) -> impl Middleware {
     create(identity, f)
 }
 
 /// Create a new middleware from a pair of functions.
 pub fn create(
-    request: impl Fn(Request) -> Request + Send + Sync + 'static,
-    response: impl Fn(Response) -> Response + Send + Sync + 'static,
+    request: impl Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static,
+    response: impl Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static,
 ) -> impl Middleware {
     struct Impl<F, G>(F, G);
 
     impl<F, G> Middleware for Impl<F, G>
     where
-        F: Fn(Request) -> Request + Send + Sync + 'static,
-        G: Fn(Response) -> Response + Send + Sync + 'static,
+        F: Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static,
+        G: Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static,
     {
-        fn filter_request(&self, request: Request) -> Request {
+        fn filter_request(&self, request: Request<Body>) -> Request<Body> {
             (self.0)(request)
         }
 
-        fn filter_response(&self, response: Response) -> Response {
+        fn filter_response(&self, response: Response<Body>) -> Response<Body> {
             (self.1)(response)
         }
     }
@@ -51,12 +51,12 @@ pub fn create(
 /// in parallel.
 pub trait Middleware: Send + Sync + 'static {
     /// Transform a request before it is sent.
-    fn filter_request(&self, request: Request) -> Request {
+    fn filter_request(&self, request: Request<Body>) -> Request<Body> {
         request
     }
 
     /// Transform a response after it is received.
-    fn filter_response(&self, response: Response) -> Response {
+    fn filter_response(&self, response: Response<Body>) -> Response<Body> {
         response
     }
 }

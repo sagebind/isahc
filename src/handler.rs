@@ -1,5 +1,4 @@
-use crate::{Body, Error};
-use super::parse;
+use crate::{Body, Error, parse};
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
 use futures::channel::oneshot;
 use futures::prelude::*;
@@ -175,7 +174,7 @@ impl curl::easy::Handler for RequestHandler {
             self.response_status_code = Some(status);
 
             // Also clear any pre-existing headers that might be left over from
-            // a previous transient response.
+            // a previous intermediate response.
             self.response_headers.clear();
 
             return true;
