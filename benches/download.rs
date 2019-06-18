@@ -22,10 +22,12 @@ fn benchmark(c: &mut Criterion) {
                 let mut body = Vec::new();
                 let mut transfer = easy.transfer();
 
-                transfer.write_function(|bytes| {
-                    body.extend_from_slice(bytes);
-                    Ok(bytes.len())
-                }).unwrap();
+                transfer
+                    .write_function(|bytes| {
+                        body.extend_from_slice(bytes);
+                        Ok(bytes.len())
+                    })
+                    .unwrap();
 
                 transfer.perform().unwrap();
             },
@@ -45,9 +47,7 @@ fn benchmark(c: &mut Criterion) {
                 let mut body = Vec::new();
 
                 let mut response = client.get(&endpoint).unwrap();
-                response.body_mut()
-                    .read_to_end(&mut body)
-                    .unwrap();
+                response.body_mut().read_to_end(&mut body).unwrap();
             },
             BatchSize::SmallInput,
         )
@@ -62,7 +62,8 @@ fn benchmark(c: &mut Criterion) {
             |client| {
                 let mut body = Vec::new();
 
-                client.get(&endpoint)
+                client
+                    .get(&endpoint)
                     .send()
                     .unwrap()
                     .copy_to(&mut body)

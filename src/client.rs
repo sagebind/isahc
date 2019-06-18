@@ -1,9 +1,9 @@
 //! The HTTP client implementation.
 
-use crate::{agent, Body, Error};
 use crate::handler::*;
 use crate::middleware::Middleware;
 use crate::options::*;
+use crate::{agent, Body, Error};
 use futures::executor::block_on;
 use http::{Request, Response};
 use lazy_static::lazy_static;
@@ -119,7 +119,9 @@ impl Client {
     /// This might occur if creating a socket fails, spawning a thread fails, or
     /// if something else goes wrong.
     pub fn new() -> Self {
-        Builder::default().build().expect("client failed to initialize")
+        Builder::default()
+            .build()
+            .expect("client failed to initialize")
     }
 
     /// Get a reference to a global client instance.
@@ -139,7 +141,10 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         block_on(self.get_async(uri))
     }
 
@@ -147,13 +152,19 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub async fn get_async<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub async fn get_async<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         let request = http::Request::get(uri).body(Body::empty())?;
         self.send_async(request).await
     }
 
     /// Sends an HTTP HEAD request.
-    pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         let request = http::Request::head(uri).body(Body::empty())?;
         self.send(request)
     }
@@ -162,7 +173,10 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         let request = http::Request::post(uri).body(body)?;
         self.send(request)
     }
@@ -171,7 +185,10 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         let request = http::Request::put(uri).body(body)?;
         self.send(request)
     }
@@ -180,7 +197,10 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+    pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    where
+        http::Uri: http::HttpTryFrom<U>,
+    {
         let request = http::Request::delete(uri).body(Body::empty())?;
         self.send(request)
     }
@@ -209,11 +229,15 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub async fn send_async<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
+    pub async fn send_async<B: Into<Body>>(
+        &self,
+        request: Request<B>,
+    ) -> Result<Response<Body>, Error> {
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.
-        request.headers_mut()
+        request
+            .headers_mut()
             .entry(http::header::USER_AGENT)
             .unwrap()
             .or_insert(USER_AGENT.parse().unwrap());
@@ -276,7 +300,11 @@ impl Client {
         Ok(response)
     }
 
-    fn configure_easy_handle(&self, easy: &mut curl::easy::Easy2<RequestHandler>, options: &Options) -> Result<(), Error> {
+    fn configure_easy_handle(
+        &self,
+        easy: &mut curl::easy::Easy2<RequestHandler>,
+        options: &Options,
+    ) -> Result<(), Error> {
         easy.verbose(log::log_enabled!(log::Level::Trace))?;
         easy.signal(false)?;
         easy.buffer_size(options.buffer_size)?;
@@ -329,7 +357,8 @@ impl Client {
         }
 
         if let Some(addrs) = &options.dns_servers {
-            let dns_string = addrs.iter()
+            let dns_string = addrs
+                .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(",");
@@ -368,27 +397,27 @@ trait EasyExt {
 
     fn ssl_client_certificate(&mut self, cert: &ClientCertificate) -> Result<(), curl::Error> {
         match cert {
-            ClientCertificate::PEM {path, private_key} => {
+            ClientCertificate::PEM { path, private_key } => {
                 self.easy().ssl_cert(path)?;
                 self.easy().ssl_cert_type("PEM")?;
                 if let Some(key) = private_key {
                     self.ssl_private_key(key)?;
                 }
-            },
-            ClientCertificate::DER {path, private_key} => {
+            }
+            ClientCertificate::DER { path, private_key } => {
                 self.easy().ssl_cert(path)?;
                 self.easy().ssl_cert_type("DER")?;
                 if let Some(key) = private_key {
                     self.ssl_private_key(key)?;
                 }
-            },
-            ClientCertificate::P12 {path, password} => {
+            }
+            ClientCertificate::P12 { path, password } => {
                 self.easy().ssl_cert(path)?;
                 self.easy().ssl_cert_type("P12")?;
                 if let Some(password) = password {
                     self.easy().key_password(password)?;
                 }
-            },
+            }
         }
 
         Ok(())
@@ -396,20 +425,20 @@ trait EasyExt {
 
     fn ssl_private_key(&mut self, key: &PrivateKey) -> Result<(), curl::Error> {
         match key {
-            PrivateKey::PEM {path, password} => {
+            PrivateKey::PEM { path, password } => {
                 self.easy().ssl_key(path)?;
                 self.easy().ssl_key_type("PEM")?;
                 if let Some(password) = password {
                     self.easy().key_password(password)?;
                 }
-            },
-            PrivateKey::DER {path, password} => {
+            }
+            PrivateKey::DER { path, password } => {
                 self.easy().ssl_key(path)?;
                 self.easy().ssl_key_type("DER")?;
                 if let Some(password) = password {
                     self.easy().key_password(password)?;
                 }
-            },
+            }
         }
 
         Ok(())

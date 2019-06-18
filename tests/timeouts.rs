@@ -1,7 +1,7 @@
 use chttp::http::Request;
 use chttp::Options;
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 use utilities::rouille;
 
 /// Issue #3
@@ -17,8 +17,7 @@ fn request_errors_if_read_timeout_is_reached() {
 
     // Send a request with a timeout.
     let result = Request::post(server.endpoint())
-        .extension(Options::default()
-            .with_timeout(Some(Duration::from_secs(2))))
+        .extension(Options::default().with_timeout(Some(Duration::from_secs(2))))
         .body("hello world")
         .map_err(Into::into)
         .and_then(chttp::send);

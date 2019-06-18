@@ -9,11 +9,9 @@ use utilities::rouille;
 fn response_301_no_follow() {
     utilities::logging();
 
-    let server = utilities::server::spawn(|request| {
-        match request.raw_url() {
-            "/a" => rouille::Response::redirect_301("/b"),
-            _ => rouille::Response::text("ok"),
-        }
+    let server = utilities::server::spawn(|request| match request.raw_url() {
+        "/a" => rouille::Response::redirect_301("/b"),
+        _ => rouille::Response::text("ok"),
     });
 
     let response = chttp::get(&format!("{}/a", &server.endpoint())).unwrap();
@@ -25,16 +23,13 @@ fn response_301_no_follow() {
 fn response_301_auto_follow() {
     utilities::logging();
 
-    let server = utilities::server::spawn(|request| {
-        match request.raw_url() {
-            "/a" => rouille::Response::redirect_301("/b"),
-            _ => rouille::Response::text("ok"),
-        }
+    let server = utilities::server::spawn(|request| match request.raw_url() {
+        "/a" => rouille::Response::redirect_301("/b"),
+        _ => rouille::Response::text("ok"),
     });
 
     let mut response = Request::get(format!("{}/a", server.endpoint()))
-        .extension(Options::default()
-            .with_redirect_policy(chttp::options::RedirectPolicy::Follow))
+        .extension(Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Follow))
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send)
@@ -57,12 +52,12 @@ fn redirect_limit_is_respected() {
     });
 
     let result = Request::get(format!("{}/0", server.endpoint()))
-        .extension(Options::default()
-            .with_redirect_policy(chttp::options::RedirectPolicy::Limit(5)))
+        .extension(
+            Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Limit(5)),
+        )
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send);
-
 
     // Request should error with too many redirects.
     assert!(match result {

@@ -6,9 +6,9 @@ use futures::executor::block_on;
 use futures::io::{AsyncRead, AsyncReadExt};
 use std::fmt;
 use std::io::{self, Cursor, Read};
-use std::task::*;
 use std::pin::Pin;
 use std::str;
+use std::task::*;
 
 /// Contains the body of an HTTP request or response.
 ///
@@ -104,7 +104,7 @@ impl Body {
             Inner::Bytes(cursor) => {
                 cursor.set_position(0);
                 true
-            },
+            }
             Inner::AsyncRead(_, _) => false,
         }
     }
@@ -143,7 +143,11 @@ impl Read for Body {
 }
 
 impl AsyncRead for Body {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         match &mut self.0 {
             Inner::Empty => Poll::Ready(Ok(0)),
             Inner::Bytes(cursor) => AsyncRead::poll_read(Pin::new(cursor), cx, buf),

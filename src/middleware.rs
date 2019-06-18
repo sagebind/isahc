@@ -10,13 +10,17 @@ use http::{Request, Response};
 
 /// Create a new _request_ middleware from a function.
 #[allow(unused)]
-pub fn before(f: impl Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static) -> impl Middleware {
+pub fn before(
+    f: impl Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static,
+) -> impl Middleware {
     create(f, identity)
 }
 
 /// Create a new _response_ middleware from a function.
 #[allow(unused)]
-pub fn after(f: impl Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static) -> impl Middleware {
+pub fn after(
+    f: impl Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static,
+) -> impl Middleware {
     create(identity, f)
 }
 

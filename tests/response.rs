@@ -7,9 +7,7 @@ use utilities::rouille;
 fn simple_response_body() {
     utilities::logging();
 
-    let server = utilities::server::spawn(|_| {
-        rouille::Response::text("hello world")
-    });
+    let server = utilities::server::spawn(|_| rouille::Response::text("hello world"));
 
     block_on(async {
         let mut response = chttp::get_async(server.endpoint()).await.unwrap();
@@ -22,9 +20,8 @@ fn simple_response_body() {
 fn large_response_body() {
     utilities::logging();
 
-    let server = utilities::server::spawn(|_| {
-        rouille::Response::text("wow so large ".repeat(1000))
-    });
+    let server =
+        utilities::server::spawn(|_| rouille::Response::text("wow so large ".repeat(1000)));
 
     block_on(async {
         let mut response = chttp::get_async(server.endpoint()).await.unwrap();

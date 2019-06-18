@@ -7,13 +7,13 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::Error;
 use crate::handler::RequestHandler;
 use crate::wakers::{UdpWaker, WakerExt};
+use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
-use futures::task::*;
 use futures::task::ArcWake;
+use futures::task::*;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::Arc;
@@ -107,22 +107,26 @@ pub fn new() -> Result<Handle, Error> {
     Ok(Handle {
         message_tx: message_tx.clone(),
         waker: waker.clone(),
-        join_handle: Some(thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
-            let agent = AgentThread {
-                multi: curl::multi::Multi::new(),
-                multi_messages: crossbeam_channel::unbounded(),
-                message_tx,
-                message_rx,
-                wake_socket,
-                requests: Slab::new(),
-                close_requested: false,
-                waker,
-            };
+        join_handle: Some(
+            thread::Builder::new()
+                .name(String::from(AGENT_THREAD_NAME))
+                .spawn(move || {
+                    let agent = AgentThread {
+                        multi: curl::multi::Multi::new(),
+                        multi_messages: crossbeam_channel::unbounded(),
+                        message_tx,
+                        message_rx,
+                        wake_socket,
+                        requests: Slab::new(),
+                        close_requested: false,
+                        waker,
+                    };
 
-            log::debug!("agent took {:?} to start up", create_start.elapsed());
+                    log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-            agent.run()
-        })?),
+                    agent.run()
+                })?,
+        ),
     })
 }
 
@@ -160,7 +164,7 @@ impl Drop for Handle {
         // Wait for the agent thread to shut down before continuing.
         if let Some(join_handle) = self.join_handle.take() {
             match join_handle.join() {
-                Ok(Ok(())) => {},
+                Ok(Ok(())) => {}
                 Ok(Err(e)) => log::error!("agent thread terminated with error: {}", e),
                 Err(_) => log::error!("agent thread panicked"),
             }
@@ -180,22 +184,26 @@ impl AgentThread {
             {
                 let tx = self.message_tx.clone();
 
-                self.waker.chain(move |inner| {
-                    match tx.send(Message::UnpauseRead(id)) {
+                self.waker
+                    .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => log::warn!("agent went away while resuming read for request [id={}]", id),
-                    }
-                })
+                        Err(_) => log::warn!(
+                            "agent went away while resuming read for request [id={}]",
+                            id
+                        ),
+                    })
             },
             {
                 let tx = self.message_tx.clone();
 
-                self.waker.chain(move |inner| {
-                    match tx.send(Message::UnpauseWrite(id)) {
+                self.waker
+                    .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => log::warn!("agent went away while resuming write for request [id={}]", id),
-                    }
-                })
+                        Err(_) => log::warn!(
+                            "agent went away while resuming write for request [id={}]",
+                            id
+                        ),
+                    })
             },
         );
 
@@ -212,12 +220,14 @@ impl AgentThread {
     fn get_wait_fds(&self) -> [WaitFd; 1] {
         let mut fd = WaitFd::new();
 
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             use std::os::unix::io::AsRawFd;
             fd.set_fd(self.wake_socket.as_raw_fd());
         }
 
-        #[cfg(windows)] {
+        #[cfg(windows)]
+        {
             use std::os::windows::io::AsRawSocket;
             fd.set_fd(self.wake_socket.as_raw_socket());
         }
@@ -240,7 +250,7 @@ impl AgentThread {
                         log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
-                    },
+                    }
                 }
             } else {
                 match self.message_rx.try_recv() {
@@ -250,7 +260,7 @@ impl AgentThread {
                         log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
-                    },
+                    }
                 }
             }
         }
@@ -268,16 +278,22 @@ impl AgentThread {
                 if let Some(request) = self.requests.get(token) {
                     request.unpause_read()?;
                 } else {
-                    log::warn!("received unpause request for unknown request token: {}", token);
+                    log::warn!(
+                        "received unpause request for unknown request token: {}",
+                        token
+                    );
                 }
-            },
+            }
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
                     request.unpause_write()?;
                 } else {
-                    log::warn!("received unpause request for unknown request token: {}", token);
+                    log::warn!(
+                        "received unpause request for unknown request token: {}",
+                        token
+                    );
                 }
-            },
+            }
         }
 
         Ok(())
@@ -310,7 +326,7 @@ impl AgentThread {
                             handle.get_mut().complete_with_error(e);
                         }
                     }
-                },
+                }
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
             }
@@ -367,4 +383,3 @@ impl AgentThread {
         Ok(())
     }
 }
-

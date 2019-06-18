@@ -124,7 +124,10 @@ impl From<curl::Error> for Error {
             Error::ResponseBodyError(error.extra_description().map(str::to_owned))
         } else if error.is_ssl_connect_error() {
             Error::SSLConnectFailed(error.extra_description().map(str::to_owned))
-        } else if error.is_ssl_engine_initfailed() || error.is_ssl_engine_notfound() || error.is_ssl_engine_setfailed() {
+        } else if error.is_ssl_engine_initfailed()
+            || error.is_ssl_engine_notfound()
+            || error.is_ssl_engine_setfailed()
+        {
             Error::SSLEngineError(error.extra_description().map(str::to_owned))
         } else if error.is_operation_timedout() {
             Error::Timeout
@@ -164,7 +167,7 @@ impl From<Error> for io::Error {
             Error::ConnectFailed => io::ErrorKind::ConnectionRefused.into(),
             Error::Io(e) => e,
             Error::Timeout => io::ErrorKind::TimedOut.into(),
-            _ => io::ErrorKind::Other.into()
+            _ => io::ErrorKind::Other.into(),
         }
     }
 }

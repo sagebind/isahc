@@ -28,9 +28,7 @@ pub trait WakerExt {
 impl WakerExt for Waker {
     fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker {
         let inner = self.clone();
-        waker_fn(move || {
-            (f)(&inner)
-        })
+        waker_fn(move || (f)(&inner))
     }
 }
 
@@ -49,9 +47,7 @@ impl UdpWaker {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.connect(addr)?;
 
-        Ok(Self {
-            socket,
-        })
+        Ok(Self { socket })
     }
 }
 

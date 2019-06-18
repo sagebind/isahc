@@ -192,44 +192,61 @@ pub use crate::client::Client;
 pub use crate::error::Error;
 pub use crate::options::*;
 
-
 /// Sends an HTTP GET request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().get(uri)
 }
 
 /// Sends an HTTP GET request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get_async<U>(uri: U) -> impl Future<Output=Result<Response<Body>, Error>> where http::Uri: http::HttpTryFrom<U> {
+pub fn get_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().get_async(uri)
 }
 
 /// Sends an HTTP HEAD request.
-pub fn head<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().head(uri)
 }
 
 /// Sends an HTTP POST request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().post(uri, body)
 }
 
 /// Sends an HTTP PUT request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().put(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn delete<U>(uri: U) -> Result<Response<Body>, Error> where http::Uri: http::HttpTryFrom<U> {
+pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
+where
+    http::Uri: http::HttpTryFrom<U>,
+{
     Client::shared().delete(uri)
 }
 

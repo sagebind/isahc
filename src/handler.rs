@@ -1,5 +1,5 @@
-use crate::{Body, Error, parse};
-use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
+use crate::{parse, Body, Error};
+use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use futures::channel::oneshot;
 use futures::prelude::*;
 use http::Response;
@@ -220,7 +220,7 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Err(e)) => {
                     log::error!("error reading request body: {}", e);
                     Err(ReadError::Abort)
-                },
+                }
             }
         } else {
             // The request should never be started without calling init first.
@@ -239,11 +239,13 @@ impl curl::easy::Handler for RequestHandler {
         match whence {
             // If curl wants to seek to the beginning, there's a chance that we
             // can do that.
-            io::SeekFrom::Start(0) => if self.request_body.reset() {
-                SeekResult::Ok
-            } else {
-                SeekResult::CantSeek
-            },
+            io::SeekFrom::Start(0) => {
+                if self.request_body.reset() {
+                    SeekResult::Ok
+                } else {
+                    SeekResult::CantSeek
+                }
+            }
             // We can't do any other type of seek, sorry :(
             _ => SeekResult::CantSeek,
         }
@@ -274,7 +276,7 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Err(e)) => {
                     log::error!("error writing response body to buffer: {}", e);
                     Ok(0)
-                },
+                }
             }
         } else {
             // The request should never be started without calling init first.
@@ -289,18 +291,26 @@ impl curl::easy::Handler for RequestHandler {
     /// and writes it to our log.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
         fn format_byte_string(bytes: impl AsRef<[u8]>) -> String {
-            String::from_utf8(bytes
-                .as_ref()
-                .iter()
-                .flat_map(|byte| ascii::escape_default(*byte))
-                .collect())
-                .unwrap_or(String::from("<binary>"))
+            String::from_utf8(
+                bytes
+                    .as_ref()
+                    .iter()
+                    .flat_map(|byte| ascii::escape_default(*byte))
+                    .collect(),
+            )
+            .unwrap_or(String::from("<binary>"))
         }
 
         match kind {
-            InfoType::Text => log::debug!(target: "chttp::curl", "{}", String::from_utf8_lossy(data).trim_end()),
-            InfoType::HeaderIn | InfoType::DataIn => log::trace!(target: "chttp::wire", "<< {}", format_byte_string(data)),
-            InfoType::HeaderOut | InfoType::DataOut => log::trace!(target: "chttp::wire", ">> {}", format_byte_string(data)),
+            InfoType::Text => {
+                log::debug!(target: "chttp::curl", "{}", String::from_utf8_lossy(data).trim_end())
+            }
+            InfoType::HeaderIn | InfoType::DataIn => {
+                log::trace!(target: "chttp::wire", "<< {}", format_byte_string(data))
+            }
+            InfoType::HeaderOut | InfoType::DataOut => {
+                log::trace!(target: "chttp::wire", ">> {}", format_byte_string(data))
+            }
             _ => (),
         }
     }
@@ -342,7 +352,9 @@ impl Future for ResponseFuture {
 
                 // If a Content-Length header is present, include that
                 // information in the body as well.
-                let content_length = builder.headers_ref().unwrap()
+                let content_length = builder
+                    .headers_ref()
+                    .unwrap()
                     .get(http::header::CONTENT_LENGTH)
                     .and_then(|v| v.to_str().ok())
                     .and_then(|v| v.parse().ok());
@@ -356,7 +368,7 @@ impl Future for ResponseFuture {
                     Ok(response) => Ok(response),
                     Err(e) => Err(Error::InvalidHttpFormat(e)),
                 })
-            },
+            }
 
             // The request handler produced an error.
             Poll::Ready(Ok(Err(e))) => Poll::Ready(Err(e)),

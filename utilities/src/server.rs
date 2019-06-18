@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 
 pub fn static_response(body: &'static [u8]) -> rouille::Response {
     use std::io::Cursor;
@@ -13,7 +13,9 @@ pub fn static_response(body: &'static [u8]) -> rouille::Response {
     }
 }
 
-pub fn spawn(handler: impl Send + Sync + 'static + Fn(&rouille::Request) -> rouille::Response) -> Server {
+pub fn spawn(
+    handler: impl Send + Sync + 'static + Fn(&rouille::Request) -> rouille::Response,
+) -> Server {
     let server = rouille::Server::new("localhost:0", handler).unwrap();
     let addr = server.server_addr();
 
