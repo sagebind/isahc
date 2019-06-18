@@ -1,5 +1,9 @@
 //! Curl agent that executes multiple requests simultaneously.
 //!
+//! The agent is implemented as a single background thread attached to a
+//! "handle". The handle communicates with the agent thread by using message
+//! passing.
+//!
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
@@ -17,15 +21,14 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const AGENT_THREAD_NAME: &'static str = "curl agent";
-const DEFAULT_TIMEOUT: Duration = Duration::from_millis(100);
-const MAX_TIMEOUT: Duration = Duration::from_millis(1000);
+const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
 type EasyHandle = curl::easy::Easy2<CurlHandler>;
 type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// A handle to an active agent running in a background thread.
 #[derive(Debug)]
-pub struct Agent {
+pub struct Handle {
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
 
@@ -51,7 +54,7 @@ struct AgentThread {
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
 
-    /// Incoming message from the main thread.
+    /// Incoming messages from the agent handle.
     message_rx: Receiver<Message>,
 
     /// Used to wake up the agent when polling.
@@ -85,45 +88,45 @@ enum Message {
     UnpauseWrite(usize),
 }
 
-impl Agent {
-    /// Create an agent that executes multiple curl requests simultaneously.
-    ///
-    /// The agent maintains a background thread that multiplexes all active
-    /// requests using a single "multi" handle.
-    pub fn new() -> Result<Self, Error> {
-        let create_start = Instant::now();
+/// Create an agent that executes multiple curl requests simultaneously.
+///
+/// The agent maintains a background thread that multiplexes all active
+/// requests using a single "multi" handle.
+pub fn new() -> Result<Handle, Error> {
+    let create_start = Instant::now();
 
-        // Create an UDP socket for the agent thread to listen for wakeups on.
-        let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
-        wake_socket.set_nonblocking(true)?;
-        let wake_addr = wake_socket.local_addr()?;
-        let waker = Arc::new(UdpWaker::connect(wake_addr)?).into_waker();
-        log::debug!("agent waker listening on {}", wake_addr);
+    // Create an UDP socket for the agent thread to listen for wakeups on.
+    let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
+    wake_socket.set_nonblocking(true)?;
+    let wake_addr = wake_socket.local_addr()?;
+    let waker = Arc::new(UdpWaker::connect(wake_addr)?).into_waker();
+    log::debug!("agent waker listening on {}", wake_addr);
 
-        let (message_tx, message_rx) = crossbeam::channel::unbounded();
+    let (message_tx, message_rx) = crossbeam::channel::unbounded();
 
-        Ok(Self {
-            message_tx: message_tx.clone(),
-            waker: waker.clone(),
-            join_handle: Some(thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
-                let agent = AgentThread {
-                    multi: curl::multi::Multi::new(),
-                    multi_messages: crossbeam::channel::unbounded(),
-                    message_tx,
-                    message_rx,
-                    wake_socket,
-                    requests: Slab::new(),
-                    close_requested: false,
-                    waker,
-                };
+    Ok(Handle {
+        message_tx: message_tx.clone(),
+        waker: waker.clone(),
+        join_handle: Some(thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
+            let agent = AgentThread {
+                multi: curl::multi::Multi::new(),
+                multi_messages: crossbeam::channel::unbounded(),
+                message_tx,
+                message_rx,
+                wake_socket,
+                requests: Slab::new(),
+                close_requested: false,
+                waker,
+            };
 
-                log::debug!("agent took {:?} to start up", create_start.elapsed());
+            log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                agent.run()
-            })?),
-        })
-    }
+            agent.run()
+        })?),
+    })
+}
 
+impl Handle {
     /// Begin executing a request with this agent.
     pub fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
         self.send_message(Message::Execute(request))
@@ -147,7 +150,7 @@ impl Agent {
     }
 }
 
-impl Drop for Agent {
+impl Drop for Handle {
     fn drop(&mut self) {
         // Request the agent thread to shut down.
         if self.send_message(Message::Close).is_err() {
@@ -363,32 +366,8 @@ impl AgentThread {
                 break;
             }
 
-            // Determine the blocking timeout value. If curl returns None, then
-            // it is unsure as to what timeout value is appropriate. In this
-            // case we use a default value.
-            // let mut timeout = self.multi.get_timeout()?.unwrap_or(DEFAULT_TIMEOUT);
-            let mut timeout = DEFAULT_TIMEOUT;
-
-            // HACK: A mysterious bug in recent versions of curl causes it to
-            // return the value of `CURLOPT_CONNECTTIMEOUT_MS` a few times
-            // during the DNS resolve phase. Work around this issue by
-            // truncating this known value to 1ms to avoid blocking the agent
-            // loop for a long time. See
-            // https://github.com/curl/curl/issues/2996 and
-            // https://github.com/alexcrichton/curl-rust/issues/227.
-            if timeout == Duration::from_secs(300) {
-                log::debug!("HACK: curl returned CONNECTTIMEOUT of {:?}, truncating to 1ms!", timeout);
-                timeout = Duration::from_millis(1);
-            }
-
-            // Truncate the timeout to the max value.
-            timeout = timeout.min(MAX_TIMEOUT);
-
             // Block until activity is detected or the timeout passes.
-            if timeout > Duration::from_secs(0) {
-                log::trace!("polling with timeout of {:?}", timeout);
-                self.multi.wait(&mut wait_fds, timeout)?;
-            }
+            self.multi.wait(&mut wait_fds, WAIT_TIMEOUT)?;
 
             // We might have woken up early from the notify fd, so drain its
             // queue.

@@ -94,7 +94,7 @@ impl Builder {
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn build(&mut self) -> Result<Client, Error> {
-        let agent = agent::Agent::new()?;
+        let agent = agent::new()?;
 
         Ok(Client {
             agent: agent,
@@ -110,7 +110,7 @@ impl Builder {
 /// create, so we recommend re-using your clients instead of discarding and
 /// recreating them.
 pub struct Client {
-    agent: agent::Agent,
+    agent: agent::Handle,
     default_options: Options,
     middleware: Vec<Box<dyn Middleware>>,
 }

@@ -48,7 +48,6 @@ impl UdpWaker {
     /// Create a waker by connecting to the wake address of an UDP server.
     pub fn connect(addr: SocketAddr) -> Result<Self, Error> {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
-        socket.set_nonblocking(true)?;
         socket.connect(addr)?;
 
         Ok(Self {
