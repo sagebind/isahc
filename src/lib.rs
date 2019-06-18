@@ -122,7 +122,7 @@
 //!
 //! ```toml
 //! [dependencies.chttp]
-//! version = "0.3"
+//! version = "*"
 //! features = ["async-api"]
 //! ```
 //!
@@ -135,11 +135,6 @@
 //! ### `http2`
 //!
 //! Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
-//!
-//! ### `json`
-//!
-//! Enable convenience methods for parsing HTTP responses into JSON objects.
-//! Disabled by default.
 //!
 //! ### `psl`
 //!
@@ -162,7 +157,8 @@
 //! Enable the new middleware API. Unstable until the API is finalized. This an
 //! unstable feature whose interface may change between patch releases.
 //!
-//! [libcurl]: https://curl.haxx.se/libcurl/ [log]: https://docs.rs/log
+//! [libcurl]: https://curl.haxx.se/libcurl/
+//! [log]: https://docs.rs/log
 
 #![feature(async_await)]
 
@@ -170,7 +166,6 @@ use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::future::Future;
 
-pub mod body;
 pub mod client;
 pub mod options;
 
@@ -183,13 +178,14 @@ pub mod middleware;
 mod middleware;
 
 mod agent;
+mod body;
 mod error;
 mod handler;
 mod parse;
 mod wakers;
 
 /// Re-export of the standard HTTP types.
-pub use http;
+pub extern crate http;
 
 pub use crate::body::Body;
 pub use crate::client::Client;

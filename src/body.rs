@@ -123,13 +123,6 @@ impl Body {
             Ok(String::from_utf8(bytes)?)
         }
     }
-
-    /// Attempt to parse the response as JSON.
-    #[cfg(feature = "json")]
-    pub async fn json(&mut self) -> Result<json::JsonValue, Error> {
-        let text = self.text().await?;
-        Ok(json::parse(&text)?)
-    }
 }
 
 impl Read for Body {

@@ -4,7 +4,6 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 
-
 /// All possible types of errors that can be returned from cHTTP.
 #[derive(Debug)]
 pub enum Error {
@@ -30,8 +29,6 @@ pub enum Error {
     InvalidCredentials,
     /// Validation error when constructing the request or parsing the response.
     InvalidHttpFormat(http::Error),
-    /// JSON syntax error when constructing or parsing JSON values.
-    InvalidJson,
     /// Invalid UTF-8 string error.
     InvalidUtf8,
     /// An unknown I/O error.
@@ -77,7 +74,6 @@ impl StdError for Error {
             Error::InvalidContentEncoding(Some(ref e)) => e,
             Error::InvalidCredentials => "credentials were rejected by the server",
             Error::InvalidHttpFormat(ref e) => e.description(),
-            Error::InvalidJson => "body is not valid JSON",
             Error::InvalidUtf8 => "bytes are not valid UTF-8",
             Error::Io(ref e) => e.description(),
             Error::NoResponse => "server did not send a response",
@@ -182,15 +178,5 @@ impl From<std::string::FromUtf8Error> for Error {
 impl From<std::str::Utf8Error> for Error {
     fn from(_: std::str::Utf8Error) -> Error {
         Error::InvalidUtf8
-    }
-}
-
-#[cfg(feature = "json")]
-impl From<json::Error> for Error {
-    fn from(error: json::Error) -> Error {
-        match error {
-            json::Error::FailedUtf8Parsing => Error::InvalidUtf8,
-            _ => Error::InvalidJson,
-        }
     }
 }

@@ -10,7 +10,7 @@
 use crate::Error;
 use crate::handler::RequestHandler;
 use crate::wakers::{UdpWaker, WakerExt};
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
 use futures::task::*;
 use futures::task::ArcWake;
@@ -102,7 +102,7 @@ pub fn new() -> Result<Handle, Error> {
     let waker = Arc::new(UdpWaker::connect(wake_addr)?).into_waker();
     log::debug!("agent waker listening on {}", wake_addr);
 
-    let (message_tx, message_rx) = crossbeam::channel::unbounded();
+    let (message_tx, message_rx) = crossbeam_channel::unbounded();
 
     Ok(Handle {
         message_tx: message_tx.clone(),
@@ -110,7 +110,7 @@ pub fn new() -> Result<Handle, Error> {
         join_handle: Some(thread::Builder::new().name(String::from(AGENT_THREAD_NAME)).spawn(move || {
             let agent = AgentThread {
                 multi: curl::multi::Multi::new(),
-                multi_messages: crossbeam::channel::unbounded(),
+                multi_messages: crossbeam_channel::unbounded(),
                 message_tx,
                 message_rx,
                 wake_socket,
@@ -245,8 +245,8 @@ impl AgentThread {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam::channel::TryRecvError::Empty) => break,
-                    Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                    Err(crossbeam_channel::TryRecvError::Empty) => break,
+                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
                         log::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
@@ -311,8 +311,8 @@ impl AgentThread {
                         }
                     }
                 },
-                Err(crossbeam::channel::TryRecvError::Empty) => break,
-                Err(crossbeam::channel::TryRecvError::Disconnected) => panic!(),
+                Err(crossbeam_channel::TryRecvError::Empty) => break,
+                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
             }
         }
 
