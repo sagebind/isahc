@@ -1,8 +1,9 @@
 use crate::{Body, Error};
 use super::parse;
-use super::response::*;
 use curl::easy::{ReadError, InfoType, WriteError, SeekResult};
+use futures::channel::oneshot;
 use futures::prelude::*;
+use http::Response;
 use sluice::pipe;
 use std::ascii;
 use std::fmt;
@@ -10,48 +11,92 @@ use std::io;
 use std::pin::Pin;
 use std::task::*;
 
-/// Drives the state for a single request/response life cycle.
-pub struct CurlHandler {
+/// Manages the state of a single request/response life cycle.
+///
+/// During the lifetime of a handler, it will receive callbacks from curl about
+/// the progress of the request, and the handler will incrementally build up a
+/// response struct as the response is received.
+///
+/// Every request handler has an associated `Future` that can be used to poll
+/// the state of the response. The handler will complete the future once the
+/// final HTTP response headers are received. The body of the response (if any)
+/// is made available to the consumer of the future, and is also driven by the
+/// request handler until the response body is fully consumed or discarded.
+///
+/// If dropped before the response is finished, the associated future will be
+/// completed with an `Aborted` error.
+pub struct RequestHandler {
     /// The ID of the request that this handler is managing. Assigned by the
     /// request agent.
     id: Option<usize>,
+
+    /// Sender for the associated future.
+    sender: Option<oneshot::Sender<Result<http::response::Builder, Error>>>,
 
     /// The body to be sent in the request.
     request_body: Body,
 
     /// A waker used with reading the request body asynchronously. Populated by
-    /// the agent when the request is initialized.
+    /// an agent when the request is initialized.
     request_body_waker: Option<Waker>,
 
-    /// Reading end of the pipe where the response body is written.
-    ///
-    /// This is moved out of the handler and set as the response body stream
-    /// when the response future is ready. We continue to stream the response
-    /// body using the writer.
-    response_body_reader: Option<pipe::PipeReader>,
+    /// Status code of the response.
+    response_status_code: Option<http::StatusCode>,
+
+    /// HTTP version of the response.
+    response_version: Option<http::Version>,
+
+    /// Response headers received so far.
+    response_headers: http::HeaderMap,
 
     /// Writing end of the pipe where the response body is written.
     response_body_writer: pipe::PipeWriter,
 
     /// A waker used with writing the response body asynchronously. Populated by
-    /// the agent when the request is initialized.
+    /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
-
-    producer: ResponseProducer,
 }
 
-impl CurlHandler {
-    pub fn new(request_body: Body, producer: ResponseProducer) -> Self {
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ResponseState {
+    Active,
+    Canceled,
+    Completed,
+}
+
+impl RequestHandler {
+    /// Create a new request handler and an associated response future.
+    pub fn new(request_body: Body) -> (Self, ResponseFuture) {
+        let (sender, receiver) = oneshot::channel();
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
-        Self {
-            id: None,
-            request_body,
-            request_body_waker: None,
-            response_body_reader: Some(response_body_reader),
-            response_body_writer,
-            response_body_waker: None,
-            producer,
+        (
+            Self {
+                id: None,
+                sender: Some(sender),
+                request_body,
+                request_body_waker: None,
+                response_status_code: None,
+                response_version: None,
+                response_headers: http::HeaderMap::new(),
+                response_body_writer,
+                response_body_waker: None,
+            },
+            ResponseFuture {
+                receiver,
+                response_body_reader: Some(response_body_reader),
+            },
+        )
+    }
+
+    /// Get the current state of the handler.
+    pub fn state(&self) -> ResponseState {
+        match self.sender.as_ref() {
+            Some(sender) => match sender.is_canceled() {
+                true => ResponseState::Canceled,
+                false => ResponseState::Active,
+            },
+            None => ResponseState::Completed,
         }
     }
 
@@ -72,42 +117,49 @@ impl CurlHandler {
         self.response_body_waker = Some(response_waker);
     }
 
-    // /// Guess if curl is about to perform a redirect.
-    // fn is_about_to_redirect(&self) -> bool {
-    //     self.state.options.redirect_policy != RedirectPolicy::None
-    //         && self.status_code.filter(http::StatusCode::is_redirection).is_some()
-    //         && self.headers.contains_key("Location")
-    // }
+    /// Finishes building the response with a given body and completes the
+    /// associated future with the response.
+    pub fn complete(&mut self) {
+        if let Some(sender) = self.sender.take() {
+            let mut builder = http::Response::builder();
 
-    fn get_content_length(&self) -> Option<usize> {
-        self.producer.headers.get(http::header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse().ok())
-    }
+            if let Some(status) = self.response_status_code.take() {
+                builder.status(status);
+            }
 
-    pub(crate) fn finish_response_and_complete(&mut self) {
-        if let Some(reader) = self.response_body_reader.take() {
-            let body = match self.get_content_length() {
-                Some(len) => Body::reader_sized(reader, len),
-                None => Body::reader(reader),
-            };
+            if let Some(version) = self.response_version.take() {
+                builder.version(version);
+            }
 
-            self.producer.finish(body);
-        } else {
-            log::debug!("response already finished!");
+            for (name, values) in self.response_headers.drain() {
+                for value in values {
+                    builder.header(&name, value);
+                }
+            }
+
+            match sender.send(Ok(builder)) {
+                Ok(()) => log::debug!("request completed [id={:?}]", self.id),
+                Err(_) => log::debug!("request canceled by user [id={:?}]", self.id),
+            }
         }
     }
 
+    /// Complete the associated future with an error.
     pub fn complete_with_error(&mut self, error: impl Into<Error>) {
-        self.producer.complete_with_error(error);
+        if let Some(sender) = self.sender.take() {
+            match sender.send(Err(error.into())) {
+                Ok(()) => log::warn!("request completed with error [id={:?}]", self.id),
+                Err(_) => log::debug!("request canceled by user [id={:?}]", self.id),
+            }
+        }
     }
 }
 
-impl curl::easy::Handler for CurlHandler {
+impl curl::easy::Handler for RequestHandler {
     /// Gets called by curl for each line of data in the HTTP response header.
     fn header(&mut self, data: &[u8]) -> bool {
         // Don't bother if the request is canceled.
-        if self.producer.state() != ResponseState::Active {
+        if self.state() != ResponseState::Active {
             return false;
         }
 
@@ -119,21 +171,31 @@ impl curl::easy::Handler for CurlHandler {
 
         // Is this the status line?
         if let Some((version, status)) = parse::parse_status_line(data) {
-            self.producer.version = Some(version);
-            self.producer.status_code = Some(status);
+            self.response_version = Some(version);
+            self.response_status_code = Some(status);
+
+            // Also clear any pre-existing headers that might be left over from
+            // a previous transient response.
+            self.response_headers.clear();
+
             return true;
         }
 
         // Is this a header line?
         if let Some((name, value)) = parse::parse_header(data) {
-            self.producer.headers.insert(name, value);
+            self.response_headers.insert(name, value);
             return true;
         }
 
         // Is this the end of the response header?
         if data == b"\r\n" {
-            // self.finish_response_and_complete();
-            // self.finalize_headers();
+            // We will acknowledge the end of the header, but we can't complete
+            // our response future yet. If curl decides to follow a redirect,
+            // then this current response is not the final response and not the
+            // one we should complete with.
+            //
+            // Instead, we will complete the future when curl marks the transfer
+            // as complete, or when we start receiving a response body.
             return true;
         }
 
@@ -144,7 +206,7 @@ impl curl::easy::Handler for CurlHandler {
     /// Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
         // Don't bother if the request is canceled.
-        if self.producer.state() != ResponseState::Active {
+        if self.state() != ResponseState::Active {
             return Err(ReadError::Abort);
         }
 
@@ -190,19 +252,17 @@ impl curl::easy::Handler for CurlHandler {
 
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
+        log::trace!("received {} bytes of data", data.len());
+
         // Don't bother if the request is canceled.
-        if self.producer.state() == ResponseState::Canceled {
+        if self.state() == ResponseState::Canceled {
+            log::debug!("aborting write, request was canceled");
             return Ok(0);
         }
 
-        log::trace!("received {} bytes of data", data.len());
-
-        self.finish_response_and_complete();
-
-        // if self.producer.is_closed() {
-        //     log::debug!("aborting write, request is already closed");
-        //     return Ok(0);
-        // }
+        // Now that we've started receiving the response body, we know no more
+        // redirects can happen and we can complete the future safely.
+        self.complete();
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous write.
@@ -247,8 +307,71 @@ impl curl::easy::Handler for CurlHandler {
     }
 }
 
-impl fmt::Debug for CurlHandler {
+impl fmt::Debug for RequestHandler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CurlHandler({:?})", self.id)
+        write!(f, "RequestHandler({:?})", self.id)
     }
 }
+
+// A future for a response.
+pub struct ResponseFuture {
+    receiver: oneshot::Receiver<Result<http::response::Builder, Error>>,
+
+    /// Reading end of the pipe where the response body is written.
+    ///
+    /// This is moved out of the future and set as the response body stream when
+    /// the future is ready. We continue to stream the response body from the
+    /// handler.
+    response_body_reader: Option<pipe::PipeReader>,
+}
+
+impl Future for ResponseFuture {
+    type Output = Result<Response<Body>, Error>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+        let inner = Pin::new(&mut self.receiver);
+
+        match inner.poll(cx) {
+            // Response headers are still pending.
+            Poll::Pending => Poll::Pending,
+
+            // Response headers have been fully received.
+            Poll::Ready(Ok(Ok(mut builder))) => {
+                // Since we only take the reader here, we are allowed to panic
+                // if someone tries to poll us again after the end of this call.
+                let reader = self.response_body_reader.take().unwrap();
+
+                // If a Content-Length header is present, include that
+                // information in the body as well.
+                let content_length = builder.headers_ref().unwrap()
+                    .get(http::header::CONTENT_LENGTH)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse().ok());
+
+                let body = match content_length {
+                    Some(len) => Body::reader_sized(reader, len),
+                    None => Body::reader(reader),
+                };
+
+                Poll::Ready(match builder.body(body) {
+                    Ok(response) => Ok(response),
+                    Err(e) => Err(Error::InvalidHttpFormat(e)),
+                })
+            },
+
+            // The request handler produced an error.
+            Poll::Ready(Ok(Err(e))) => Poll::Ready(Err(e)),
+
+            // The request handler was dropped abnormally.
+            Poll::Ready(Err(oneshot::Canceled)) => Poll::Ready(Err(Error::Aborted)),
+        }
+    }
+}
+
+impl Drop for ResponseFuture {
+    fn drop(&mut self) {
+        self.receiver.close();
+    }
+}
+
+static_assertions::assert_impl!(f; ResponseFuture, Send);

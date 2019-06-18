@@ -3,8 +3,7 @@
 use crate::body::Body;
 use crate::error::Error;
 use crate::internal::agent;
-use crate::internal::handler::CurlHandler;
-use crate::internal::response::ResponseFuture;
+use crate::internal::handler::*;
 use crate::middleware::Middleware;
 use crate::options::*;
 use futures::executor::block_on;
@@ -232,11 +231,10 @@ impl Client {
         let uri = request.uri().clone();
 
         // Prepare the request plumbing.
-        let (future, producer) = ResponseFuture::new();
         let (request_parts, request_body) = request.into_parts();
         let body_is_empty = request_body.is_empty();
         let body_size = request_body.len();
-        let handler = CurlHandler::new(request_body, producer);
+        let (handler, future) = RequestHandler::new(request_body);
 
         // Create and configure a curl easy handle to fulfil the request.
         let mut easy = curl::easy::Easy2::new(handler);
@@ -280,7 +278,7 @@ impl Client {
         Ok(response)
     }
 
-    fn configure_easy_handle(&self, easy: &mut curl::easy::Easy2<CurlHandler>, options: &Options) -> Result<(), Error> {
+    fn configure_easy_handle(&self, easy: &mut curl::easy::Easy2<RequestHandler>, options: &Options) -> Result<(), Error> {
         easy.verbose(log::log_enabled!(log::Level::Trace))?;
         easy.signal(false)?;
         easy.buffer_size(options.buffer_size)?;
@@ -368,7 +366,7 @@ impl fmt::Debug for Client {
 
 /// Helper extension methods for curl easy handles.
 trait EasyExt {
-    fn easy(&mut self) -> &mut curl::easy::Easy2<CurlHandler>;
+    fn easy(&mut self) -> &mut curl::easy::Easy2<RequestHandler>;
 
     fn ssl_client_certificate(&mut self, cert: &ClientCertificate) -> Result<(), curl::Error> {
         match cert {
@@ -420,7 +418,7 @@ trait EasyExt {
     }
 }
 
-impl EasyExt for curl::easy::Easy2<CurlHandler> {
+impl EasyExt for curl::easy::Easy2<RequestHandler> {
     fn easy(&mut self) -> &mut Self {
         self
     }

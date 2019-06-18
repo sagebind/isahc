@@ -20,7 +20,6 @@ fn waker_fn(f: impl Fn() + 'static) -> Waker {
 
 /// Helper methods for working with wakers.
 pub trait WakerExt {
-
     /// Create a new waker from a closure that accepts this waker as an
     /// argument.
     fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker;

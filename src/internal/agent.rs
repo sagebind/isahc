@@ -7,9 +7,9 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::error::Error;
-use crate::internal::handler::CurlHandler;
-use crate::internal::wakers::{UdpWaker, WakerExt};
+use crate::Error;
+use super::handler::RequestHandler;
+use super::wakers::{UdpWaker, WakerExt};
 use crossbeam::channel::{Receiver, Sender};
 use curl::multi::WaitFd;
 use futures::task::*;
@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 const AGENT_THREAD_NAME: &'static str = "curl agent";
 const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
-type EasyHandle = curl::easy::Easy2<CurlHandler>;
+type EasyHandle = curl::easy::Easy2<RequestHandler>;
 type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// A handle to an active agent running in a background thread.
@@ -61,7 +61,7 @@ struct AgentThread {
     wake_socket: UdpSocket,
 
     /// Contains all of the active requests.
-    requests: Slab<curl::multi::Easy2Handle<CurlHandler>>,
+    requests: Slab<curl::multi::Easy2Handle<RequestHandler>>,
 
     /// Indicates if the thread has been requested to stop.
     close_requested: bool,
@@ -262,10 +262,7 @@ impl AgentThread {
         log::trace!("received message from agent handle: {:?}", message);
 
         match message {
-            Message::Close => {
-                log::trace!("agent close requested");
-                self.close_requested = true;
-            },
+            Message::Close => self.close_requested = true,
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
@@ -315,13 +312,9 @@ impl AgentThread {
     }
 
     fn complete_request(&mut self, token: usize) -> Result<(), Error> {
-        log::debug!("request with token {} completed", token);
-
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
-
-        // TODO
-        handle.get_mut().finish_response_and_complete();
+        handle.get_mut().complete();
 
         Ok(())
     }
@@ -329,8 +322,6 @@ impl AgentThread {
     fn fail_request(&mut self, token: usize, error: curl::Error) -> Result<(), Error> {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
-
-        // TODO
         handle.get_mut().complete_with_error(error);
 
         Ok(())
