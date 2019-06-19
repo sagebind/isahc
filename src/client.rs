@@ -42,18 +42,18 @@ lazy_static! {
 /// # Ok(())
 /// # }
 /// ```
-pub struct Builder {
+pub struct ClientBuilder {
     default_options: Options,
     middleware: Vec<Box<dyn Middleware>>,
 }
 
-impl Default for Builder {
+impl Default for ClientBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Builder {
+impl ClientBuilder {
     /// Create a new builder for building a custom client.
     pub fn new() -> Self {
         Self {
@@ -121,7 +121,7 @@ impl Client {
     /// This might occur if creating a socket fails, spawning a thread fails, or
     /// if something else goes wrong.
     pub fn new() -> Self {
-        Builder::default()
+        ClientBuilder::default()
             .build()
             .expect("client failed to initialize")
     }
@@ -135,8 +135,8 @@ impl Client {
     }
 
     /// Create a new builder for building a custom client.
-    pub fn builder() -> Builder {
-        Builder::new()
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::new()
     }
 
     /// Sends an HTTP GET request.
@@ -523,5 +523,5 @@ impl EasyExt for curl::easy::Easy2<RequestHandler> {
     }
 }
 
-static_assertions::assert_impl!(builder; Builder, Send);
 static_assertions::assert_impl!(client; Client, Send, Sync);
+static_assertions::assert_impl!(builder; ClientBuilder, Send);

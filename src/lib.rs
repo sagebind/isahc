@@ -160,8 +160,6 @@
 //! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
-#![feature(async_await)]
-
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::future::Future;
@@ -188,7 +186,7 @@ mod wakers;
 pub extern crate http;
 
 pub use crate::body::Body;
-pub use crate::client::Client;
+pub use crate::client::{Client, ClientBuilder};
 pub use crate::error::Error;
 pub use crate::options::*;
 
