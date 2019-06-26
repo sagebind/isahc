@@ -19,8 +19,8 @@ lazy_static! {
     );
 }
 
-/// An HTTP client builder, capable of creating custom
-/// [`Client`](struct.Client.html) instances with customized behavior.
+/// An HTTP client builder, capable of creating custom [`Client`] instances with
+/// customized behavior.
 ///
 /// Example:
 ///
@@ -273,11 +273,10 @@ impl Client {
 
     /// Sends a request and returns the response.
     ///
-    /// The request may include [extensions](../../http/struct.Extensions.html)
-    /// to customize how it is sent. If the request contains an
-    /// [`Options`](chttp::options::Options) struct as an extension, then those
-    /// options will be used instead of the default options this client is
-    /// configured with.
+    /// The request may include [extensions](http::Extensions) to customize how
+    /// it is sent. If the request contains an [`Options`] struct as an
+    /// extension, then those options will be used instead of the default
+    /// options this client is configured with.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
@@ -287,11 +286,10 @@ impl Client {
 
     /// Begin sending a request and return a future of the response.
     ///
-    /// The request may include [extensions](../../http/struct.Extensions.html)
-    /// to customize how it is sent. If the request contains an
-    /// [`Options`](chttp::options::Options) struct as an extension, then those
-    /// options will be used instead of the default options this client is
-    /// configured with.
+    /// The request may include [extensions](http::Extensions) to customize how
+    /// it is sent. If the request contains an [`Options`] struct as an
+    /// extension, then those options will be used instead of the default
+    /// options this client is configured with.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
@@ -328,7 +326,8 @@ impl Client {
                 result.map(move |mut response| {
                     response.extensions_mut().insert(uri);
 
-                    // Apply response middleware, starting with the innermost one.
+                    // Apply response middleware, starting with the innermost
+                    // one.
                     for middleware in middleware.iter() {
                         response = middleware.filter_response(response);
                     }

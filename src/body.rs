@@ -20,7 +20,7 @@ use std::task::*;
 ///
 /// Since the entire request life-cycle in cHTTP is asynchronous, bodies must
 /// also be asynchronous. You can create a body from anything that implements
-/// [`AsyncRead`](futures::io::AsyncRead), which `Body` itself also implements.
+/// [`AsyncRead`], which [`Body`] itself also implements.
 pub struct Body(Inner);
 
 /// All possible body implementations.

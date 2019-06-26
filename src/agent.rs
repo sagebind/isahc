@@ -90,8 +90,8 @@ enum Message {
 
 /// Create an agent that executes multiple curl requests simultaneously.
 ///
-/// The agent maintains a background thread that multiplexes all active
-/// requests using a single "multi" handle.
+/// The agent maintains a background thread that multiplexes all active requests
+/// using a single "multi" handle.
 pub fn new() -> Result<Handle, Error> {
     let create_start = Instant::now();
 

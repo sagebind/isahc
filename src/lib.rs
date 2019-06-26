@@ -15,9 +15,9 @@
 //! # }
 //! ```
 //!
-//! Requests are performed _synchronously_, up until the response headers are
-//! received. The returned response struct includes the response body as an open
-//! stream implementing `Read`.
+//! By default, sending a request will wait for the response, up until the
+//! response headers are received. The returned response struct includes the
+//! response body as an open stream implementing [`Read`](std::io::Read).
 //!
 //! Sending a POST request is also easy, and takes an additional argument for
 //! the request body:
@@ -66,11 +66,10 @@
 //!
 //! ## Request options
 //!
-//! How requests are sent can be customized using the
-//! [`Options`](options/struct.Options.html) struct, which provides various
-//! fields for setting timeouts, proxies, and other connection and protocol
-//! configuration. These options can be included right along your request as an
-//! extension object:
+//! How requests are sent can be customized using the [`Options`] struct, which
+//! provides various fields for setting timeouts, proxies, and other connection
+//! and protocol configuration. These options can be included right along your
+//! request as an extension object:
 //!
 //! ```rust
 //! use chttp::{self, http, Options};
@@ -96,9 +95,8 @@
 //! has its own connection pool and event loop, so separating certain requests
 //! into separate clients can ensure that they are isolated from each other.
 //!
-//! See the documentation for [`Client`](client/struct.Client.html) and
-//! [`ClientBuilder`](client/struct.ClientBuilder.html) for more details on
-//! creating custom clients.
+//! See the documentation for [`Client`] and [`ClientBuilder`] for more details
+//! on creating custom clients.
 //!
 //! ## Asynchronous API and execution
 //!
@@ -271,9 +269,9 @@ where
 
 /// Sends an HTTP request.
 ///
-/// The request may include [extensions](../http/struct.Extensions.html) to
+/// The request may include [extensions](http::Extensions) to
 /// customize how it is sent. You can include an
-/// [`Options`](chttp::options::Options) struct as a request extension to
+/// [`Options`](crate::Options) struct as a request extension to
 /// control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
@@ -283,10 +281,9 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 
 /// Sends an HTTP request asynchronously.
 ///
-/// The request may include [extensions](../http/struct.Extensions.html) to
-/// customize how it is sent. You can include an
-/// [`Options`](chttp::options::Options) struct as a request extension to
-/// control various connection and protocol options.
+/// The request may include [extensions](http::Extensions) to customize how it
+/// is sent. You can include an [`Options`](crate::Options) struct as a request
+/// extension to control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
 pub fn send_async<B: Into<Body>>(
