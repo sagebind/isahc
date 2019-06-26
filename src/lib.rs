@@ -1,8 +1,5 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! cHTTP is an HTTP client that provides a clean and easy-to-use interface
-//! around the venerable [libcurl].
-//!
 //! ## Sending requests
 //!
 //! Sending requests is as easy as calling a single function. Let's make a
@@ -103,6 +100,31 @@
 //! [`ClientBuilder`](client/struct.ClientBuilder.html) for more details on
 //! creating custom clients.
 //!
+//! ## Asynchronous API and execution
+//!
+//! Requests are always executed asynchronously under the hood. This allows a
+//! single client to execute a large number of requests concurrently with
+//! minimal overhead.
+//!
+//! If you are writing an asynchronous application, you can additionally benefit
+//! from the async nature of the client by using the asynchronous methods
+//! available to prevent blocking threads in your code. All request methods have
+//! an asynchronous variant that ends with `_async` in the name. Here is our
+//! first example rewritten to use async/await syntax (nightly only):
+//!
+//! ```rust
+//! # #![feature(async_await)]
+//! use chttp;
+//!
+//! # fn run() -> Result<(), chttp::Error> {
+//! # futures::executor::block_on(async {
+//! let mut response = chttp::get_async("https://example.org").await?;
+//! println!("{}", response.body_mut().text_async().await?);
+//! # Ok(())
+//! # })
+//! # }
+//! ```
+//!
 //! ## Logging
 //!
 //! cHTTP logs quite a bit of useful information at various levels using the
@@ -113,51 +135,6 @@
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
-//! ## Feature flags
-//!
-//! cHTTP is designed to be as "pay-as-you-need" as possible using Cargo feature
-//! flags and optional dependencies. Unstable features are also initially
-//! released behind feature flags until they are stabilized. You can add the
-//! feature names below to your `Cargo.toml` file to enable them:
-//!
-//! ```toml
-//! [dependencies.chttp]
-//! version = "*"
-//! features = ["async-api"]
-//! ```
-//!
-//! Below is a list of all available feature flags and their meanings.
-//!
-//! ### `cookies`
-//!
-//! Enable persistent HTTP cookie support. Enabled by default.
-//!
-//! ### `http2`
-//!
-//! Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
-//!
-//! ### `psl`
-//!
-//! Enable use of the Public Suffix List to filter out potentially malicious
-//! cross-domain cookies. Enabled by default.
-//!
-//! ### `static-curl`
-//!
-//! Use a bundled libcurl version and statically link to it. Enabled by default.
-//!
-//! ### `async-api`
-//!
-//! Enable the async futures-based API. This allows you to take full advantage
-//! of cHTTP's asynchronous core. Currently behind a feature flag until the
-//! futures API stabilizes. This an unstable feature whose interface may change
-//! between patch releases.
-//!
-//! ### `middleware-api`
-//!
-//! Enable the new middleware API. Unstable until the API is finalized. This an
-//! unstable feature whose interface may change between patch releases.
-//!
-//! [libcurl]: https://curl.haxx.se/libcurl/
 //! [log]: https://docs.rs/log
 
 use http::{Request, Response};
