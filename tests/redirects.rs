@@ -1,17 +1,17 @@
+#![feature(async_await)]
+
 use chttp::http::Request;
 use chttp::Options;
-
-mod common;
+use futures::executor::block_on;
+use utilities::rouille;
 
 #[test]
 fn response_301_no_follow() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
-        match request.raw_url() {
-            "/a" => rouille::Response::redirect_301("/b"),
-            _ => rouille::Response::text("ok"),
-        }
+    let server = utilities::server::spawn(|request| match request.raw_url() {
+        "/a" => rouille::Response::redirect_301("/b"),
+        _ => rouille::Response::text("ok"),
     });
 
     let response = chttp::get(&format!("{}/a", &server.endpoint())).unwrap();
@@ -21,44 +21,43 @@ fn response_301_no_follow() {
 
 #[test]
 fn response_301_auto_follow() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
-        match request.raw_url() {
-            "/a" => rouille::Response::redirect_301("/b"),
-            _ => rouille::Response::text("ok"),
-        }
+    let server = utilities::server::spawn(|request| match request.raw_url() {
+        "/a" => rouille::Response::redirect_301("/b"),
+        _ => rouille::Response::text("ok"),
     });
 
     let mut response = Request::get(format!("{}/a", server.endpoint()))
-        .extension(Options::default()
-            .with_redirect_policy(chttp::options::RedirectPolicy::Follow))
+        .extension(Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Follow))
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send)
         .unwrap();
 
-    assert_eq!(response.status(), 200);
-    assert_eq!(response.body_mut().text().unwrap(), "ok");
+    block_on(async {
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.body_mut().text_async().await.unwrap(), "ok");
+    })
 }
 
 #[test]
 fn redirect_limit_is_respected() {
-    common::setup();
+    utilities::logging();
 
-    let server = common::TestServer::spawn(|request| {
+    let server = utilities::server::spawn(|request| {
         let count = request.raw_url()[1..].parse::<u32>().unwrap();
 
         rouille::Response::redirect_301(format!("/{}", count + 1))
     });
 
     let result = Request::get(format!("{}/0", server.endpoint()))
-        .extension(Options::default()
-            .with_redirect_policy(chttp::options::RedirectPolicy::Limit(5)))
+        .extension(
+            Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Limit(5)),
+        )
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send);
-
 
     // Request should error with too many redirects.
     assert!(match result {

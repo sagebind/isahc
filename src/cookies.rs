@@ -2,12 +2,11 @@
 //!
 //! This module provides a cookie jar implementation conforming to RFC 6265.
 
-use chrono::Duration;
-use chrono::prelude::*;
-use crate::{Request, Response};
 use crate::middleware::Middleware;
-use http::Uri;
-use log::*;
+use crate::Body;
+use chrono::prelude::*;
+use chrono::Duration;
+use http::{Request, Response, Uri};
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::RwLock;
@@ -24,21 +23,22 @@ pub struct Cookie {
     path: String,
     /// True if the cookie is marked as secure (limited in scope to HTTPS).
     secure: bool,
-    /// True if the cookie is a host-only cookie (i.e. the request's host must exactly match the domain of the cookie).
+    /// True if the cookie is a host-only cookie (i.e. the request's host must
+    /// exactly match the domain of the cookie).
     host_only: bool,
-    /// Time when this cookie expires. If not present, then this is a session cookie that expires when the current
-    /// client session ends.
+    /// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
     expiration: Option<DateTime<Utc>>,
 }
 
 impl Cookie {
-    /// Parse a cookie from a Set-Cookie header value, within the context of the given URI.
+    /// Parse a cookie from a Set-Cookie header value, within the context of the
+    /// given URI.
     fn parse(header: &str, uri: &Uri) -> Option<Self> {
-        let mut attributes = header.split(";")
+        let mut attributes = header
+            .split(";")
             .map(str::trim)
-            .map(|item| item
-                .splitn(2, "=")
-                .map(str::trim));
+            .map(|item| item.splitn(2, "=").map(str::trim));
 
         let mut first_pair = attributes.next()?;
 
@@ -86,19 +86,29 @@ impl Cookie {
             // The given domain must domain-match the origin.
             // https://tools.ietf.org/html/rfc6265#section-5.3.6
             if !Cookie::domain_matches(uri.host()?, domain) {
-                warn!("cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'", cookie_name, uri.host()?, domain);
+                log::warn!(
+                    "cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'",
+                    cookie_name,
+                    uri.host()?,
+                    domain
+                );
                 return None;
             }
 
             // Check the PSL for bad domain suffixes if available.
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
-            #[cfg(feature = "psl")] {
+            #[cfg(feature = "psl")]
+            {
                 use ::psl::Psl;
                 let list = ::psl::List::new();
 
                 if let Some(suffix) = list.suffix(domain) {
                     if domain == suffix.to_str() {
-                        warn!("cookie '{}' dropped, setting cookies for domain '{}' is not allowed", cookie_name, domain);
+                        log::warn!(
+                            "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
+                            cookie_name,
+                            domain
+                        );
                         return None;
                     }
                 }
@@ -111,12 +121,8 @@ impl Cookie {
             secure: cookie_secure,
             expiration: cookie_expiration,
             host_only: cookie_domain.is_none(),
-            domain: cookie_domain.or_else(|| {
-                uri.host().map(ToOwned::to_owned)
-            })?,
-            path: cookie_path.unwrap_or_else(|| {
-                Cookie::default_path(uri).to_owned()
-            }),
+            domain: cookie_domain.or_else(|| uri.host().map(ToOwned::to_owned))?,
+            path: cookie_path.unwrap_or_else(|| Cookie::default_path(uri).to_owned()),
         })
     }
 
@@ -169,10 +175,10 @@ impl Cookie {
         let string = &string.to_lowercase();
         let domain_string = &domain_string.to_lowercase();
 
-        string.ends_with(domain_string) &&
-            string.as_bytes()[string.len() - domain_string.len() - 1] == b'.' &&
-            string.parse::<Ipv4Addr>().is_err() &&
-            string.parse::<Ipv6Addr>().is_err()
+        string.ends_with(domain_string)
+            && string.as_bytes()[string.len() - domain_string.len() - 1] == b'.'
+            && string.parse::<Ipv4Addr>().is_err()
+            && string.parse::<Ipv6Addr>().is_err()
     }
 
     // http://tools.ietf.org/html/rfc6265#section-5.1.4
@@ -209,16 +215,18 @@ impl Cookie {
     }
 }
 
-/// Provides automatic cookie session management using an in-memory cookie store.
+/// Provides automatic cookie session management using an in-memory cookie
+/// store.
 #[derive(Default)]
 pub struct CookieJar {
-    /// A map of cookies indexed by a string of the format `{domain}.{path}.{name}`.
+    /// A map of cookies indexed by a string of the format
+    /// `{domain}.{path}.{name}`.
     cookies: RwLock<HashMap<String, Cookie>>,
 }
 
 impl CookieJar {
     /// Add all the cookies in the given iterator to the cookie jar.
-    pub fn add(&self, cookies: impl Iterator<Item=Cookie>) {
+    pub fn add(&self, cookies: impl Iterator<Item = Cookie>) {
         let mut jar = self.cookies.write().unwrap();
 
         for cookie in cookies {
@@ -226,19 +234,17 @@ impl CookieJar {
         }
 
         // Clear expired cookies while we have a write lock.
-        jar.retain(|_, cookie| {
-            !cookie.is_expired()
-        });
+        jar.retain(|_, cookie| !cookie.is_expired());
     }
 
     fn get_cookies(&self, uri: &Uri) -> Option<String> {
         let jar = self.cookies.read().unwrap();
 
-        let mut values: Vec<String> = jar.values()
+        let mut values: Vec<String> = jar
+            .values()
             .filter(|cookie| cookie.matches(uri))
             .map(|cookie| format!("{}={}", cookie.name, cookie.value))
             .collect();
-
 
         if values.is_empty() {
             None
@@ -252,27 +258,32 @@ impl CookieJar {
 }
 
 impl Middleware for CookieJar {
-    fn filter_request(&self, mut request: Request) -> Request {
+    fn filter_request(&self, mut request: Request<Body>) -> Request<Body> {
         if let Some(header) = self.get_cookies(request.uri()) {
-            request.headers_mut().insert(http::header::COOKIE, header.parse().unwrap());
+            request
+                .headers_mut()
+                .insert(http::header::COOKIE, header.parse().unwrap());
         }
 
         request
     }
 
     /// Extracts cookies set via the Set-Cookie header.
-    fn filter_response(&self, response: Response) -> Response {
+    fn filter_response(&self, response: Response<Body>) -> Response<Body> {
         if response.headers().contains_key(http::header::SET_COOKIE) {
-            let cookies = response.headers()
+            let cookies = response
+                .headers()
                 .get_all(http::header::SET_COOKIE)
                 .into_iter()
                 .filter_map(|header| {
                     match header.to_str() {
-                        Ok(header) => match Cookie::parse(header, response.extensions().get().unwrap()) {
-                            Some(cookie) => return Some(cookie),
-                            _ => warn!("could not parse Set-Cookie header"),
-                        },
-                        _ => warn!("invalid encoding in Set-Cookie header"),
+                        Ok(header) => {
+                            match Cookie::parse(header, response.extensions().get().unwrap()) {
+                                Some(cookie) => return Some(cookie),
+                                _ => log::warn!("could not parse Set-Cookie header"),
+                            }
+                        }
+                        _ => log::warn!("invalid encoding in Set-Cookie header"),
                     }
                     None
                 });
@@ -291,7 +302,11 @@ mod tests {
     #[test]
     fn parse_set_cookie_header() {
         let uri = "https://baz.com".parse().unwrap();
-        let cookie = Cookie::parse("foo=bar; path=/sub;Secure ; expires =Wed, 21 Oct 2015 07:28:00 GMT", &uri).unwrap();
+        let cookie = Cookie::parse(
+            "foo=bar; path=/sub;Secure ; expires =Wed, 21 Oct 2015 07:28:00 GMT",
+            &uri,
+        )
+        .unwrap();
 
         assert_eq!(cookie.name, "foo");
         assert_eq!(cookie.value, "bar");
@@ -299,7 +314,10 @@ mod tests {
         assert_eq!(cookie.domain, "baz.com");
         assert!(cookie.secure);
         assert!(cookie.host_only);
-        assert_eq!(cookie.expiration.as_ref().map(|t| t.timestamp()), Some(1445412480));
+        assert_eq!(
+            cookie.expiration.as_ref().map(|t| t.timestamp()),
+            Some(1445412480)
+        );
     }
 
     #[test]
@@ -362,17 +380,21 @@ mod tests {
         let uri: Uri = "https://example.com/foo".parse().unwrap();
         let jar = CookieJar::default();
 
-        jar.filter_response(http::Response::builder()
-            .header(http::header::SET_COOKIE, "foo=bar")
-            .header(http::header::SET_COOKIE, "baz=123")
-            .extension(uri.clone())
-            .body(crate::Body::default())
-            .unwrap());
+        jar.filter_response(
+            http::Response::builder()
+                .header(http::header::SET_COOKIE, "foo=bar")
+                .header(http::header::SET_COOKIE, "baz=123")
+                .extension(uri.clone())
+                .body(crate::Body::default())
+                .unwrap(),
+        );
 
-        let request = jar.filter_request(http::Request::builder()
-            .uri(uri)
-            .body(crate::Body::default())
-            .unwrap());
+        let request = jar.filter_request(
+            http::Request::builder()
+                .uri(uri)
+                .body(crate::Body::default())
+                .unwrap(),
+        );
 
         assert_eq!(request.headers()[http::header::COOKIE], "baz=123; foo=bar");
     }

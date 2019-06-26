@@ -9,12 +9,12 @@ workflow "release" {
 }
 
 action "test" {
-  uses = "docker://rust"
+  uses = "docker://rustlang/rust:nightly"
   args = "cargo test"
 }
 
 action "examples" {
-  uses = "docker://rust"
+  uses = "docker://rustlang/rust:nightly"
   args = "cargo run --release --example simple"
 }
 
@@ -25,7 +25,7 @@ action "release-published" {
 
 action "publish" {
   needs = ["release-published"]
-  uses = "docker://rust"
+  uses = "docker://rustlang/rust:nightly"
   args = ".github/publish.sh"
   secrets = ["CARGO_TOKEN"]
 }

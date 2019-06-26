@@ -4,16 +4,15 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 
-
 /// All possible types of errors that can be returned from cHTTP.
 #[derive(Debug)]
 pub enum Error {
+    /// The request was aborted before it could be completed.
+    Aborted,
     /// A problem occurred with the local certificate.
     BadClientCertificate(Option<String>),
     /// The server certificate could not be validated.
     BadServerCertificate(Option<String>),
-    /// The request was canceled before it could be completed.
-    Canceled,
     /// Failed to connect to the server.
     ConnectFailed,
     /// Couldn't resolve host name.
@@ -30,8 +29,6 @@ pub enum Error {
     InvalidCredentials,
     /// Validation error when constructing the request or parsing the response.
     InvalidHttpFormat(http::Error),
-    /// JSON syntax error when constructing or parsing JSON values.
-    InvalidJson,
     /// Invalid UTF-8 string error.
     InvalidUtf8,
     /// An unknown I/O error.
@@ -50,7 +47,8 @@ pub enum Error {
     SSLEngineError(Option<String>),
     /// An ongoing request took longer than the configured timeout time.
     Timeout,
-    /// Returned when making more simultaneous requests would exceed the configured TCP connection limit.
+    /// Returned when making more simultaneous requests would exceed the
+    /// configured TCP connection limit.
     TooManyConnections,
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,
@@ -65,28 +63,28 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match self {
-            &Error::BadClientCertificate(Some(ref e)) => e,
-            &Error::BadServerCertificate(Some(ref e)) => e,
-            &Error::ConnectFailed => "failed to connect to the server",
-            &Error::CouldntResolveHost => "couldn't resolve host name",
-            &Error::CouldntResolveProxy => "couldn't resolve proxy host name",
-            &Error::Curl(ref e) => e,
-            &Error::Internal => "internal error",
-            &Error::InvalidContentEncoding(Some(ref e)) => e,
-            &Error::InvalidCredentials => "credentials were rejected by the server",
-            &Error::InvalidHttpFormat(ref e) => e.description(),
-            &Error::InvalidJson => "body is not valid JSON",
-            &Error::InvalidUtf8 => "bytes are not valid UTF-8",
-            &Error::Io(ref e) => e.description(),
-            &Error::NoResponse => "server did not send a response",
-            &Error::RangeRequestUnsupported => "server does not support or accept range requests",
-            &Error::RequestBodyError(Some(ref e)) => e,
-            &Error::ResponseBodyError(Some(ref e)) => e,
-            &Error::SSLConnectFailed(Some(ref e)) => e,
-            &Error::SSLEngineError(Some(ref e)) => e,
-            &Error::Timeout => "request took longer than the configured timeout",
-            &Error::TooManyConnections => "max connection limit exceeded",
-            &Error::TooManyRedirects => "max redirect limit exceeded",
+            Error::Aborted => "request aborted unexpectedly",
+            Error::BadClientCertificate(Some(ref e)) => e,
+            Error::BadServerCertificate(Some(ref e)) => e,
+            Error::ConnectFailed => "failed to connect to the server",
+            Error::CouldntResolveHost => "couldn't resolve host name",
+            Error::CouldntResolveProxy => "couldn't resolve proxy host name",
+            Error::Curl(ref e) => e,
+            Error::Internal => "internal error",
+            Error::InvalidContentEncoding(Some(ref e)) => e,
+            Error::InvalidCredentials => "credentials were rejected by the server",
+            Error::InvalidHttpFormat(ref e) => e.description(),
+            Error::InvalidUtf8 => "bytes are not valid UTF-8",
+            Error::Io(ref e) => e.description(),
+            Error::NoResponse => "server did not send a response",
+            Error::RangeRequestUnsupported => "server does not support or accept range requests",
+            Error::RequestBodyError(Some(ref e)) => e,
+            Error::ResponseBodyError(Some(ref e)) => e,
+            Error::SSLConnectFailed(Some(ref e)) => e,
+            Error::SSLEngineError(Some(ref e)) => e,
+            Error::Timeout => "request took longer than the configured timeout",
+            Error::TooManyConnections => "max connection limit exceeded",
+            Error::TooManyRedirects => "max redirect limit exceeded",
             _ => "unknown error",
         }
     }
@@ -126,7 +124,10 @@ impl From<curl::Error> for Error {
             Error::ResponseBodyError(error.extra_description().map(str::to_owned))
         } else if error.is_ssl_connect_error() {
             Error::SSLConnectFailed(error.extra_description().map(str::to_owned))
-        } else if error.is_ssl_engine_initfailed() || error.is_ssl_engine_notfound() || error.is_ssl_engine_setfailed() {
+        } else if error.is_ssl_engine_initfailed()
+            || error.is_ssl_engine_notfound()
+            || error.is_ssl_engine_setfailed()
+        {
             Error::SSLEngineError(error.extra_description().map(str::to_owned))
         } else if error.is_operation_timedout() {
             Error::Timeout
@@ -166,7 +167,7 @@ impl From<Error> for io::Error {
             Error::ConnectFailed => io::ErrorKind::ConnectionRefused.into(),
             Error::Io(e) => e,
             Error::Timeout => io::ErrorKind::TimedOut.into(),
-            _ => io::ErrorKind::Other.into()
+            _ => io::ErrorKind::Other.into(),
         }
     }
 }
@@ -180,15 +181,5 @@ impl From<std::string::FromUtf8Error> for Error {
 impl From<std::str::Utf8Error> for Error {
     fn from(_: std::str::Utf8Error) -> Error {
         Error::InvalidUtf8
-    }
-}
-
-#[cfg(feature = "json")]
-impl From<json::Error> for Error {
-    fn from(error: json::Error) -> Error {
-        match error {
-            json::Error::FailedUtf8Parsing => Error::InvalidUtf8,
-            _ => Error::InvalidJson,
-        }
     }
 }
