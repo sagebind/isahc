@@ -1,15 +1,20 @@
 //! The HTTP client implementation.
 
-use crate::handler::*;
+use crate::config::*;
+use crate::handler;
+use crate::handler::RequestHandler;
 use crate::middleware::Middleware;
-use crate::options::*;
 use crate::{agent, Body, Error};
 use futures::executor::block_on;
 use futures::prelude::*;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
-use std::sync::Arc;
+use std::iter::FromIterator;
+use std::net::SocketAddr;
+use std::pin::Pin;
+use std::task::*;
+use std::time::Duration;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -25,15 +30,14 @@ lazy_static! {
 /// Example:
 ///
 /// ```rust
-/// use chttp::{http, Client, Options, RedirectPolicy};
+/// use chttp::{http, Client, RedirectPolicy};
 /// use std::time::Duration;
 ///
 /// # fn run() -> Result<(), chttp::Error> {
 /// let client = Client::builder()
-///     .options(Options::default()
-///         .with_timeout(Some(Duration::from_secs(60)))
-///         .with_redirect_policy(RedirectPolicy::Limit(10))
-///         .with_preferred_http_version(Some(http::Version::HTTP_2)))
+///     .timeout(Duration::from_secs(60))
+///     .redirect_policy(RedirectPolicy::Limit(10))
+///     .preferred_http_version(http::Version::HTTP_2))
 ///     .build()?;
 ///
 /// let mut response = client.get("https://example.org")?;
@@ -42,63 +46,180 @@ lazy_static! {
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Default)]
 pub struct ClientBuilder {
-    default_options: Options,
+    defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
-}
-
-impl Default for ClientBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl ClientBuilder {
     /// Create a new builder for building a custom client.
     pub fn new() -> Self {
-        Self {
-            default_options: Options::default(),
-            middleware: Vec::new(),
-        }
-    }
-
-    /// Set the default connection options to use for each request.
-    ///
-    /// If a request has custom options, then they will override any options
-    /// specified here.
-    pub fn options(mut self, options: Options) -> Self {
-        self.default_options = options;
-        self
+        Self::default()
     }
 
     /// Enable persistent cookie handling using a cookie jar.
     #[cfg(feature = "cookies")]
-    pub fn with_cookies(self) -> Self {
-        self.with_middleware_impl(crate::cookies::CookieJar::default())
+    pub fn cookies(self) -> Self {
+        self.middleware_impl(crate::cookies::CookieJar::default())
     }
 
     /// Add a middleware layer to the client.
     #[cfg(feature = "middleware-api")]
-    pub fn with_middleware(self, middleware: impl Middleware) -> Self {
-        self.with_middleware_impl(middleware)
+    pub fn middleware(self, middleware: impl Middleware) -> Self {
+        self.middleware_impl(middleware)
     }
 
     #[allow(unused)]
-    fn with_middleware_impl(mut self, middleware: impl Middleware) -> Self {
+    fn middleware_impl(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Set a timeout for the maximum time allowed for a request-response cycle.
+    ///
+    /// If not set, no timeout will be enforced.
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.defaults.insert(Timeout(timeout));
+        self
+    }
+
+    /// Set a timeout for the initial connection phase.
+    ///
+    /// If not set, a connect timeout of 300 seconds will be used.
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.defaults.insert(ConnectTimeout(timeout));
+        self
+    }
+
+    /// Set a policy for automatically following server redirects.
+    ///
+    /// The default is to not follow redirects.
+    pub fn redirect_policy(mut self, policy: RedirectPolicy) -> Self {
+        self.defaults.insert(policy);
+        self
+    }
+
+    /// Update the `Referer` header automatically when following redirects.
+    pub fn auto_referer(mut self) -> Self {
+        self.defaults.insert(AutoReferer);
+        self
+    }
+
+    /// Set a preferred HTTP version the client should attempt to use to
+    /// communicate to the server with.
+    ///
+    /// This is treated as a suggestion. A different version may be used if the
+    /// server does not support it or negotiates a different version.
+    pub fn preferred_http_version(&mut self, version: http::Version) -> &mut Self {
+        self.defaults.insert(PreferredHttpVersion(version));
+        self
+    }
+
+    /// Enable TCP keepalive with a given probe interval.
+    pub fn tcp_keepalive(&mut self, interval: Duration) -> &mut Self {
+        self.defaults.insert(TcpKeepAlive(interval));
+        self
+    }
+
+    /// Enables the `TCP_NODELAY` option on connect.
+    pub fn tcp_nodelay(&mut self) -> &mut Self {
+        self.defaults.insert(TcpNoDelay);
+        self
+    }
+
+    /// Set a proxy to use for requests.
+    ///
+    /// The proxy protocol is specified by the URI scheme.
+    ///
+    /// - **`http`**: Proxy. Default when no scheme is specified.
+    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and
+    ///   NSS)
+    /// - **`socks4`**: SOCKS4 Proxy.
+    /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
+    /// - **`socks5`**: SOCKS5 Proxy.
+    /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    pub fn proxy(&mut self, proxy: http::Uri) -> &mut Self {
+        self.defaults.insert(Proxy(proxy));
+        self
+    }
+
+    /// Set a maximum upload speed for the request body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    pub fn max_upload_speed(&mut self, max: u64) -> &mut Self {
+        self.defaults.insert(MaxUploadSpeed(max));
+        self
+    }
+
+    /// Set a maximum download speed for the response body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    pub fn max_download_speed(&mut self, max: u64) -> &mut Self {
+        self.defaults.insert(MaxDownloadSpeed(max));
+        self
+    }
+
+    /// Set a list of specific DNS servers to be used for DNS resolution.
+    ///
+    /// By default this option is not set and the system's built-in DNS resolver
+    /// is used. This option can only be used if libcurl is compiled with
+    /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
+    pub fn dns_servers(&mut self, servers: impl IntoIterator<Item = SocketAddr>) -> &mut Self {
+        self.defaults.insert(DnsServers::from_iter(servers));
+        self
+    }
+
+    /// Set a list of ciphers to use for SSL/TLS connections.
+    ///
+    /// The list of valid cipher names is dependent on the underlying SSL/TLS
+    /// engine in use.
+    ///
+    /// You can find an up-to-date list of potential cipher names at
+    /// <https://curl.haxx.se/docs/ssl-ciphers.html>.
+    ///
+    /// The default is unset and will result in the system defaults being used.
+    pub fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self {
+        self.defaults.insert(SslCiphers::from_iter(servers));
+        self
+    }
+
+    /// Set a custom SSL/TLS client certificate to use for all client
+    /// connections.
+    ///
+    /// If a format is not supported by the underlying SSL/TLS engine, an error
+    /// will be returned when attempting to send a request using the offending
+    /// certificate.
+    ///
+    /// The default value is none.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use chttp::options::*;
+    /// let cert = ClientCertificate::PEM {
+    ///     path: "client.pem".into(),
+    ///     private_key: Some(PrivateKey::PEM {
+    ///         path: "key.pem".into(),
+    ///         password: Some("secret".into()),
+    ///     }),
+    /// };
+    /// let options = Options::default()
+    ///     .with_ssl_client_certificate(Some(cert));
+    /// ```
+    pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
+        self.defaults.insert(certificate);
         self
     }
 
     /// Build an HTTP client using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
-    pub fn build(&mut self) -> Result<Client, Error> {
-        let agent = agent::new()?;
-
+    pub fn build(self) -> Result<Client, Error> {
         Ok(Client {
-            agent: agent,
-            default_options: self.default_options.clone(),
-            middleware: Arc::new(self.middleware.drain(..).collect()),
+            agent: agent::new()?,
+            defaults: self.defaults,
+            middleware: self.middleware,
         })
     }
 }
@@ -110,8 +231,8 @@ impl ClientBuilder {
 /// recreating them.
 pub struct Client {
     agent: agent::Handle,
-    default_options: Options,
-    middleware: Arc<Vec<Box<dyn Middleware>>>,
+    defaults: http::Extensions,
+    middleware: Vec<Box<dyn Middleware>>,
 }
 
 impl Client {
@@ -136,7 +257,7 @@ impl Client {
 
     /// Create a new builder for building a custom client.
     pub fn builder() -> ClientBuilder {
-        ClientBuilder::new()
+        ClientBuilder::default()
     }
 
     /// Sends an HTTP GET request.
@@ -155,7 +276,7 @@ impl Client {
     /// The response body is provided as a stream that may only be consumed
     /// once.
     #[auto_enums::auto_enum(Future)]
-    pub fn get_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+    pub fn get_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
@@ -175,7 +296,7 @@ impl Client {
 
     /// Sends an HTTP HEAD request asynchronously.
     #[auto_enums::auto_enum(Future)]
-    pub fn head_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+    pub fn head_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
@@ -205,7 +326,7 @@ impl Client {
         &self,
         uri: U,
         body: impl Into<Body>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>>
+    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
@@ -235,7 +356,7 @@ impl Client {
         &self,
         uri: U,
         body: impl Into<Body>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>>
+    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
@@ -261,7 +382,7 @@ impl Client {
     /// The response body is provided as a stream that may only be consumed
     /// once.
     #[auto_enums::auto_enum(Future)]
-    pub fn delete_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+    pub fn delete_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
@@ -293,12 +414,8 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn send_async<B: Into<Body>>(
-        &self,
-        request: Request<B>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> {
+    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture {
         let mut request = request.map(Into::into);
-        let uri = request.uri().clone();
 
         // Set default user agent if not specified.
         request
@@ -312,99 +429,93 @@ impl Client {
             request = middleware.filter_request(request);
         }
 
-        let middleware = self.middleware.clone();
-
-        // Create and configure a curl easy handle to fulfil the request.
-        let result = self
-            .create_easy_handle(request)
-            // Send the request to the agent to be executed.
-            .and_then(|(easy, future)| self.agent.submit_request(easy).map(move |_| future));
-
-        future::ready(result)
-            .and_then(|future| future)
-            .map(move |result| {
-                result.map(move |mut response| {
-                    response.extensions_mut().insert(uri);
-
-                    // Apply response middleware, starting with the innermost
-                    // one.
-                    for middleware in middleware.iter() {
-                        response = middleware.filter_response(response);
-                    }
-
-                    response
-                })
-            })
+        ResponseFuture {
+            client: self,
+            request: Some(request),
+            inner: None,
+        }
     }
 
     fn create_easy_handle(
         &self,
-        mut request: Request<Body>,
-    ) -> Result<(curl::easy::Easy2<RequestHandler>, ResponseFuture), Error> {
-        // Extract the request options, or use the default options.
-        let options = request.extensions_mut().remove::<Options>();
-        let options = options.as_ref().unwrap_or(&self.default_options);
-
+        request: Request<Body>,
+    ) -> Result<(curl::easy::Easy2<RequestHandler>, handler::ResponseFuture), Error> {
         // Prepare the request plumbing.
-        let (request_parts, request_body) = request.into_parts();
-        let body_is_empty = request_body.is_empty();
-        let body_size = request_body.len();
-        let (handler, future) = RequestHandler::new(request_body);
+        let (parts, body) = request.into_parts();
+        let body_is_empty = body.is_empty();
+        let body_size = body.len();
+        let (handler, future) = RequestHandler::new(body);
+
+        // Helper for fetching an extension first from the request, then falling
+        // back to client defaults.
+        macro_rules! extension {
+            ($first:expr) => {
+                $first.get()
+            };
+
+            ($first:expr, $($rest:expr),+) => {
+                $first.get().or_else(|| extension!($($rest),*))
+            };
+        }
 
         let mut easy = curl::easy::Easy2::new(handler);
 
         easy.verbose(log::log_enabled!(log::Level::Trace))?;
         easy.signal(false)?;
-        easy.buffer_size(options.buffer_size)?;
 
-        if let Some(timeout) = options.timeout {
-            easy.timeout(timeout)?;
+        if let Some(Timeout(timeout)) = extension!(parts.extensions, self.defaults) {
+            easy.timeout(*timeout)?;
         }
 
-        easy.connect_timeout(options.connect_timeout)?;
+        if let Some(ConnectTimeout(timeout)) = extension!(parts.extensions, self.defaults) {
+            easy.connect_timeout(*timeout)?;
+        }
 
-        easy.tcp_nodelay(options.tcp_nodelay)?;
-        if let Some(interval) = options.tcp_keepalive {
+        if let Some(TcpKeepAlive(interval)) = extension!(parts.extensions, self.defaults) {
             easy.tcp_keepalive(true)?;
-            easy.tcp_keepintvl(interval)?;
-        } else {
-            easy.tcp_keepalive(false)?;
+            easy.tcp_keepintvl(*interval)?;
         }
 
-        match options.redirect_policy {
-            RedirectPolicy::None => {
-                easy.follow_location(false)?;
-            }
-            RedirectPolicy::Follow => {
-                easy.follow_location(true)?;
-            }
-            RedirectPolicy::Limit(max) => {
-                easy.follow_location(true)?;
-                easy.max_redirections(max)?;
+        if let Some(TcpNoDelay) = extension!(parts.extensions, self.defaults) {
+            easy.tcp_nodelay(true)?;
+        }
+
+        if let Some(redirect_policy) = extension!(parts.extensions, self.defaults) {
+            match redirect_policy {
+                RedirectPolicy::Follow => {
+                    easy.follow_location(true)?;
+                }
+                RedirectPolicy::Limit(max) => {
+                    easy.follow_location(true)?;
+                    easy.max_redirections(*max)?;
+                }
+                RedirectPolicy::None => {
+                    easy.follow_location(false)?;
+                }
             }
         }
 
-        if let Some(limit) = options.max_upload_speed {
-            easy.max_send_speed(limit)?;
+        if let Some(MaxUploadSpeed(limit)) = extension!(parts.extensions, self.defaults) {
+            easy.max_send_speed(*limit)?;
         }
 
-        if let Some(limit) = options.max_download_speed {
-            easy.max_recv_speed(limit)?;
+        if let Some(MaxDownloadSpeed(limit)) = extension!(parts.extensions, self.defaults) {
+            easy.max_recv_speed(*limit)?;
         }
 
         // Set a preferred HTTP version to negotiate.
-        easy.http_version(match options.preferred_http_version {
-            Some(http::Version::HTTP_10) => curl::easy::HttpVersion::V10,
-            Some(http::Version::HTTP_11) => curl::easy::HttpVersion::V11,
-            Some(http::Version::HTTP_2) => curl::easy::HttpVersion::V2,
+        easy.http_version(match extension!(parts.extensions, self.defaults) {
+            Some(PreferredHttpVersion(http::Version::HTTP_10)) => curl::easy::HttpVersion::V10,
+            Some(PreferredHttpVersion(http::Version::HTTP_11)) => curl::easy::HttpVersion::V11,
+            Some(PreferredHttpVersion(http::Version::HTTP_2)) => curl::easy::HttpVersion::V2,
             _ => curl::easy::HttpVersion::Any,
         })?;
 
-        if let Some(ref proxy) = options.proxy {
+        if let Some(Proxy(proxy)) = extension!(parts.extensions, self.defaults) {
             easy.proxy(&format!("{}", proxy))?;
         }
 
-        if let Some(addrs) = &options.dns_servers {
+        if let Some(DnsServers(addrs)) = extension!(parts.extensions, self.defaults) {
             let dns_string = addrs
                 .iter()
                 .map(ToString::to_string)
@@ -416,10 +527,11 @@ impl Client {
         }
 
         // Configure SSL options.
-        if let Some(ciphers) = &options.ssl_ciphers {
+        if let Some(SslCiphers(ciphers)) = extension!(parts.extensions, self.defaults) {
             easy.ssl_cipher_list(&ciphers.join(":"))?;
         }
-        if let Some(cert) = &options.ssl_client_certificate {
+
+        if let Some(cert) = extension!(parts.extensions, self.defaults) {
             easy.ssl_client_certificate(cert)?;
         }
 
@@ -427,11 +539,11 @@ impl Client {
         easy.accept_encoding("")?;
 
         // Set the request data according to the request given.
-        easy.custom_request(request_parts.method.as_str())?;
-        easy.url(&request_parts.uri.to_string())?;
+        easy.custom_request(parts.method.as_str())?;
+        easy.url(&parts.uri.to_string())?;
 
         let mut headers = curl::easy::List::new();
-        for (name, value) in request_parts.headers.iter() {
+        for (name, value) in parts.headers.iter() {
             let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
             headers.append(&header)?;
         }
@@ -455,10 +567,7 @@ impl Client {
 
 impl fmt::Debug for Client {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Client")
-            .field("default_options", &self.default_options)
-            .field("middleware", &self.middleware.len())
-            .finish()
+        f.debug_struct("Client").finish()
     }
 }
 
@@ -519,6 +628,52 @@ trait EasyExt {
 impl EasyExt for curl::easy::Easy2<RequestHandler> {
     fn easy(&mut self) -> &mut Self {
         self
+    }
+}
+
+pub struct ResponseFuture<'c> {
+    client: &'c Client,
+    request: Option<Request<Body>>,
+    inner: Option<handler::ResponseFuture>,
+}
+
+impl Future for ResponseFuture<'_> {
+    type Output = Result<Response<Body>, Error>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // Request has not been sent yet.
+        if let Some(request) = self.request.take() {
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = self.client.create_easy_handle(request)?;
+
+            // Send the request to the agent to be executed.
+            self.client.agent.submit_request(easy)?;
+
+            self.inner = Some(future);
+        }
+
+        if let Some(inner) = self.inner.as_mut() {
+            match inner.poll_unpin(cx) {
+                // Buffer isn't full yet.
+                Poll::Pending => Poll::Pending,
+
+                // Read error
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
+
+                // Buffer has been filled, try to parse as UTF-8
+                Poll::Ready(Ok(mut response)) => {
+                    // Apply response middleware, starting with the innermost
+                    // one.
+                    for middleware in self.client.middleware.iter() {
+                        response = middleware.filter_response(response);
+                    }
+
+                    Poll::Ready(Ok(response))
+                }
+            }
+        } else {
+            Poll::Pending
+        }
     }
 }
 

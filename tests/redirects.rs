@@ -1,7 +1,7 @@
 #![feature(async_await)]
 
-use chttp::http::Request;
-use chttp::Options;
+use chttp::config::RedirectPolicy;
+use chttp::prelude::*;
 use futures::executor::block_on;
 use utilities::rouille;
 
@@ -29,7 +29,7 @@ fn response_301_auto_follow() {
     });
 
     let mut response = Request::get(format!("{}/a", server.endpoint()))
-        .extension(Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Follow))
+        .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send)
@@ -37,7 +37,7 @@ fn response_301_auto_follow() {
 
     block_on(async {
         assert_eq!(response.status(), 200);
-        assert_eq!(response.body_mut().text_async().await.unwrap(), "ok");
+        assert_eq!(response.text_async().await.unwrap(), "ok");
     })
 }
 
@@ -52,9 +52,7 @@ fn redirect_limit_is_respected() {
     });
 
     let result = Request::get(format!("{}/0", server.endpoint()))
-        .extension(
-            Options::default().with_redirect_policy(chttp::options::RedirectPolicy::Limit(5)),
-        )
+        .redirect_policy(RedirectPolicy::Limit(5))
         .body(())
         .map_err(Into::into)
         .and_then(chttp::send);
