@@ -6,8 +6,6 @@
 use chttp::prelude::*;
 
 fn main() -> Result<(), chttp::Error> {
-    utilities::logging();
-
     futures::executor::block_on(async {
         let response = Request::get("http://example.org")
             .body(())?
