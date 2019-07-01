@@ -21,6 +21,7 @@ status = "actively-developed"
 default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
+nightly = []
 static-curl = ["curl/static-curl"]
 middleware-api = []
 
