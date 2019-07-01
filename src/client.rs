@@ -30,14 +30,16 @@ lazy_static! {
 /// Example:
 ///
 /// ```rust
-/// use chttp::{http, Client, RedirectPolicy};
+/// use chttp::config::RedirectPolicy;
+/// use chttp::http;
+/// use chttp::prelude::*;
 /// use std::time::Duration;
 ///
 /// # fn run() -> Result<(), chttp::Error> {
 /// let client = Client::builder()
 ///     .timeout(Duration::from_secs(60))
 ///     .redirect_policy(RedirectPolicy::Limit(10))
-///     .preferred_http_version(http::Version::HTTP_2))
+///     .preferred_http_version(http::Version::HTTP_2)
 ///     .build()?;
 ///
 /// let mut response = client.get("https://example.org")?;
@@ -111,19 +113,19 @@ impl ClientBuilder {
     ///
     /// This is treated as a suggestion. A different version may be used if the
     /// server does not support it or negotiates a different version.
-    pub fn preferred_http_version(&mut self, version: http::Version) -> &mut Self {
+    pub fn preferred_http_version(mut self, version: http::Version) -> Self {
         self.defaults.insert(PreferredHttpVersion(version));
         self
     }
 
     /// Enable TCP keepalive with a given probe interval.
-    pub fn tcp_keepalive(&mut self, interval: Duration) -> &mut Self {
+    pub fn tcp_keepalive(mut self, interval: Duration) -> Self {
         self.defaults.insert(TcpKeepAlive(interval));
         self
     }
 
     /// Enables the `TCP_NODELAY` option on connect.
-    pub fn tcp_nodelay(&mut self) -> &mut Self {
+    pub fn tcp_nodelay(mut self) -> Self {
         self.defaults.insert(TcpNoDelay);
         self
     }
@@ -139,7 +141,7 @@ impl ClientBuilder {
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
-    pub fn proxy(&mut self, proxy: http::Uri) -> &mut Self {
+    pub fn proxy(mut self, proxy: http::Uri) -> Self {
         self.defaults.insert(Proxy(proxy));
         self
     }
@@ -147,7 +149,7 @@ impl ClientBuilder {
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
-    pub fn max_upload_speed(&mut self, max: u64) -> &mut Self {
+    pub fn max_upload_speed(mut self, max: u64) -> Self {
         self.defaults.insert(MaxUploadSpeed(max));
         self
     }
@@ -155,7 +157,7 @@ impl ClientBuilder {
     /// Set a maximum download speed for the response body, in bytes per second.
     ///
     /// The default is unlimited.
-    pub fn max_download_speed(&mut self, max: u64) -> &mut Self {
+    pub fn max_download_speed(mut self, max: u64) -> Self {
         self.defaults.insert(MaxDownloadSpeed(max));
         self
     }
@@ -165,7 +167,7 @@ impl ClientBuilder {
     /// By default this option is not set and the system's built-in DNS resolver
     /// is used. This option can only be used if libcurl is compiled with
     /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
-    pub fn dns_servers(&mut self, servers: impl IntoIterator<Item = SocketAddr>) -> &mut Self {
+    pub fn dns_servers(mut self, servers: impl IntoIterator<Item = SocketAddr>) -> Self {
         self.defaults.insert(DnsServers::from_iter(servers));
         self
     }
@@ -179,7 +181,7 @@ impl ClientBuilder {
     /// <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in the system defaults being used.
-    pub fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self {
+    pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
         self.defaults.insert(SslCiphers::from_iter(servers));
         self
     }
@@ -196,16 +198,21 @@ impl ClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use chttp::options::*;
-    /// let cert = ClientCertificate::PEM {
-    ///     path: "client.pem".into(),
-    ///     private_key: Some(PrivateKey::PEM {
-    ///         path: "key.pem".into(),
-    ///         password: Some("secret".into()),
-    ///     }),
-    /// };
-    /// let options = Options::default()
-    ///     .with_ssl_client_certificate(Some(cert));
+    /// # use chttp::config::*;
+    /// # use chttp::prelude::*;
+    /// #
+    /// # fn run() -> Result<(), chttp::Error> {
+    /// let client = Client::builder()
+    ///     .ssl_client_certificate(ClientCertificate::PEM {
+    ///         path: "client.pem".into(),
+    ///         private_key: Some(PrivateKey::PEM {
+    ///             path: "key.pem".into(),
+    ///             password: Some("secret".into()),
+    ///         }),
+    ///     })
+    ///     .build()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
         self.defaults.insert(certificate);

@@ -90,21 +90,6 @@ pub trait RequestBuilderExt {
     /// certificate.
     ///
     /// The default value is none.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use chttp::options::*;
-    /// let cert = ClientCertificate::PEM {
-    ///     path: "client.pem".into(),
-    ///     private_key: Some(PrivateKey::PEM {
-    ///         path: "key.pem".into(),
-    ///         password: Some("secret".into()),
-    ///     }),
-    /// };
-    /// let options = Options::default()
-    ///     .with_ssl_client_certificate(Some(cert));
-    /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
 }
 

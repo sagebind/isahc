@@ -6,6 +6,8 @@
 //! simple GET request to an example website:
 //!
 //! ```rust
+//! use chttp::prelude::*;
+//!
 //! # fn run() -> Result<(), chttp::Error> {
 //! let mut response = chttp::get("https://example.org")?;
 //! println!("{}", response.text()?);
@@ -104,6 +106,8 @@
 //!
 //! ```rust
 //! # #![feature(async_await)]
+//! # use chttp::prelude::*;
+//! #
 //! # fn run() -> Result<(), chttp::Error> {
 //! # futures::executor::block_on(async {
 //! let mut response = chttp::get_async("https://example.org").await?;
