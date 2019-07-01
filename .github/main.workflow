@@ -15,7 +15,7 @@ action "test-stable" {
 
 action "test-nightly" {
   uses = "docker://rustlang/rust:nightly"
-  args = "cargo test"
+  args = "cargo test --features nightly"
 }
 
 action "examples" {
