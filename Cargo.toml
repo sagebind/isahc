@@ -26,6 +26,7 @@ middleware-api = []
 bytes = "0.4"
 crossbeam = "0.7"
 curl = "^0.4.20"
+curl-sys = "^0.4.20"
 futures-preview = "0.2.2"
 http = "0.1"
 lazy_static = "1"
