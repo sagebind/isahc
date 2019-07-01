@@ -175,10 +175,8 @@ impl ClientBuilder {
     /// Set a list of ciphers to use for SSL/TLS connections.
     ///
     /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use.
-    ///
-    /// You can find an up-to-date list of potential cipher names at
-    /// <https://curl.haxx.se/docs/ssl-ciphers.html>.
+    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in the system defaults being used.
     pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {

@@ -60,12 +60,13 @@
 //! # }
 //! ```
 //!
-//! ## Request options
+//! ## Request configuration
 //!
-//! How requests are sent can be customized using the [`Options`] struct, which
-//! provides various fields for setting timeouts, proxies, and other connection
-//! and protocol configuration. These options can be included right along your
-//! request as an extension object:
+//! There are a number of options involved in request execution that can be
+//! configured for a request, such as timeouts, proxies, and other connection
+//! and protocol configuration . These can be customized by using extension
+//! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
+//! trait:
 //!
 //! ```rust
 //! use chttp::prelude::*;
@@ -79,6 +80,9 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! Configuration related to sending requests is stored inside the request
+//! struct using [`http::Extensions`].
 //!
 //! ## Custom clients
 //!
