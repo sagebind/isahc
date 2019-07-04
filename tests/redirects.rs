@@ -1,3 +1,4 @@
+#![cfg(feature = "nightly")]
 #![feature(async_await)]
 
 use chttp::config::RedirectPolicy;

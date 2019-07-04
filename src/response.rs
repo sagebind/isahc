@@ -1,6 +1,8 @@
 use crate::Error;
-use futures::prelude::*;
+use futures::future::FutureExt;
+use futures::io::{AsyncRead, AsyncReadExt};
 use http::Response;
+use std::future::Future;
 use std::io::Read;
 use std::pin::Pin;
 use std::task::*;

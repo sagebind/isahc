@@ -6,10 +6,10 @@ use std::net::{SocketAddr, UdpSocket};
 use std::sync::Arc;
 
 /// Create a waker from a closure.
-fn waker_fn(f: impl Fn() + 'static) -> Waker {
+fn waker_fn(f: impl Fn() + Send + Sync + 'static) -> Waker {
     struct Impl<F>(F);
 
-    impl<F: Fn() + 'static> ArcWake for Impl<F> {
+    impl<F: Fn() + Send + Sync + 'static> ArcWake for Impl<F> {
         fn wake_by_ref(arc_self: &Arc<Self>) {
             (&arc_self.0)()
         }
@@ -22,11 +22,11 @@ fn waker_fn(f: impl Fn() + 'static) -> Waker {
 pub trait WakerExt {
     /// Create a new waker from a closure that accepts this waker as an
     /// argument.
-    fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker;
+    fn chain(&self, f: impl Fn(&Waker) + Send + Sync + 'static) -> Waker;
 }
 
 impl WakerExt for Waker {
-    fn chain(&self, f: impl Fn(&Waker) + 'static) -> Waker {
+    fn chain(&self, f: impl Fn(&Waker) + Send + Sync + 'static) -> Waker {
         let inner = self.clone();
         waker_fn(move || (f)(&inner))
     }

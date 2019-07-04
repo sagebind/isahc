@@ -1,6 +1,6 @@
 [package]
 name = "chttp"
-version = "0.4.4"
+version = "0.5.0-alpha.1"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -29,6 +29,7 @@ auto_enums = "0.5"
 bytes = "0.4"
 crossbeam-channel = "0.3"
 curl = "^0.4.20"
+futures-preview = "=0.3.0-alpha.17"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
@@ -36,10 +37,6 @@ regex = "1.1"
 slab = "0.4"
 sluice = "0.4.0-alpha.2"
 static_assertions = "0.3"
-withers_derive = "0.2"
-
-[dependencies.futures-preview]
-version = "0.3.0-alpha.16"
 
 [dependencies.chrono]
 version = "0.4"
@@ -60,6 +57,10 @@ path = "utilities"
 [[bench]]
 name = "download"
 harness = false
+
+[[example]]
+name = "async"
+required-features = ["nightly"]
 
 [workspace]
 members = ["utilities"]

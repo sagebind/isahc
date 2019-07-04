@@ -109,9 +109,10 @@
 //! first example rewritten to use async/await syntax (nightly only):
 //!
 //! ```rust
-//! # #![feature(async_await)]
+//! # #![cfg_attr(feature = "nightly", feature(async_await))]
 //! # use chttp::prelude::*;
 //! #
+//! # #[cfg(feature = "nightly")]
 //! # fn run() -> Result<(), chttp::Error> {
 //! # futures::executor::block_on(async {
 //! let mut response = chttp::get_async("https://example.org").await?;

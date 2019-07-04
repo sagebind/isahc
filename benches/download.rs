@@ -1,7 +1,5 @@
 //! Benchmark for downloading files over localhost.
 
-#![feature(async_await)]
-
 use criterion::*;
 use utilities::server;
 

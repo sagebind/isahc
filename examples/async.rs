@@ -1,5 +1,6 @@
 //! This example demonstrates the use of `send_async()` (incubating) to make a
 //! request asynchronously using the unstable futures API.
+#![cfg(feature = "nightly")]
 #![feature(async_await)]
 
 use chttp::prelude::*;

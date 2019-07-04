@@ -3,6 +3,7 @@
 use crate::Error;
 use bytes::Bytes;
 use futures::executor::block_on;
+use futures::io::AsyncReadExt;
 use futures::prelude::*;
 use std::fmt;
 use std::io::{self, Cursor, Read};
