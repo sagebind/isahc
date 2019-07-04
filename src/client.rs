@@ -240,6 +240,14 @@ pub struct Client {
     middleware: Vec<Box<dyn Middleware>>,
 }
 
+impl Default for Client {
+    fn default() -> Self {
+        ClientBuilder::default()
+            .build()
+            .expect("client failed to initialize")
+    }
+}
+
 impl Client {
     /// Create a new HTTP client using the default configuration.
     ///
@@ -247,9 +255,7 @@ impl Client {
     /// This might occur if creating a socket fails, spawning a thread fails, or
     /// if something else goes wrong.
     pub fn new() -> Self {
-        ClientBuilder::default()
-            .build()
-            .expect("client failed to initialize")
+        Self::default()
     }
 
     /// Get a reference to a global client instance.
@@ -663,7 +669,7 @@ impl Future for ResponseFuture<'_> {
                 Poll::Pending => Poll::Pending,
 
                 // Read error
-                Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
 
                 // Buffer has been filled, try to parse as UTF-8
                 Poll::Ready(Ok(mut response)) => {

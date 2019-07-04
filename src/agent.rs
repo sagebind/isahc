@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-const AGENT_THREAD_NAME: &'static str = "curl agent";
+const AGENT_THREAD_NAME: &str = "curl agent";
 const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
@@ -338,11 +338,8 @@ impl AgentThread {
     fn waker_drain(&self) -> bool {
         let mut woke = false;
 
-        loop {
-            match self.wake_socket.recv_from(&mut [0; 32]) {
-                Ok(_) => woke = true,
-                Err(_) => break,
-            }
+        while let Ok(_) = self.wake_socket.recv_from(&mut [0; 32]) {
+            woke = true;
         }
 
         woke

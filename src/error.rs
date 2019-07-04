@@ -91,8 +91,8 @@ impl StdError for Error {
 
     fn cause(&self) -> Option<&dyn StdError> {
         match self {
-            &Error::InvalidHttpFormat(ref e) => Some(e),
-            &Error::Io(ref e) => Some(e),
+            Error::InvalidHttpFormat(e) => Some(e),
+            Error::Io(e) => Some(e),
             _ => None,
         }
     }

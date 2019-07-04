@@ -94,7 +94,7 @@ impl Body {
         match &self.0 {
             Inner::Empty => Some(0),
             Inner::Bytes(bytes) => Some(bytes.get_ref().len()),
-            Inner::AsyncRead(_, len) => len.clone(),
+            Inner::AsyncRead(_, len) => *len,
         }
     }
 

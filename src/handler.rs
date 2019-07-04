@@ -91,9 +91,10 @@ impl RequestHandler {
     /// Get the current state of the handler.
     pub fn state(&self) -> ResponseState {
         match self.sender.as_ref() {
-            Some(sender) => match sender.is_canceled() {
-                true => ResponseState::Canceled,
-                false => ResponseState::Active,
+            Some(sender) => if sender.is_canceled() {
+                ResponseState::Canceled
+            } else {
+                ResponseState::Active
             },
             None => ResponseState::Completed,
         }
@@ -298,7 +299,7 @@ impl curl::easy::Handler for RequestHandler {
                     .flat_map(|byte| ascii::escape_default(*byte))
                     .collect(),
             )
-            .unwrap_or(String::from("<binary>"))
+            .unwrap_or_else(|_| String::from("<binary>"))
         }
 
         match kind {

@@ -36,9 +36,9 @@ impl Cookie {
     /// given URI.
     fn parse(header: &str, uri: &Uri) -> Option<Self> {
         let mut attributes = header
-            .split(";")
+            .split(';')
             .map(str::trim)
-            .map(|item| item.splitn(2, "=").map(str::trim));
+            .map(|item| item.splitn(2, '=').map(str::trim));
 
         let mut first_pair = attributes.next()?;
 
@@ -66,7 +66,7 @@ impl Cookie {
                 }
             } else if name.eq_ignore_ascii_case("Domain") {
                 cookie_domain = value
-                    .map(|s| s.trim_start_matches("."))
+                    .map(|s| s.trim_start_matches('.'))
                     .map(str::to_lowercase);
             } else if name.eq_ignore_ascii_case("Max-Age") {
                 if let Some(value) = value {
@@ -149,10 +149,8 @@ impl Cookie {
             if !self.domain.eq_ignore_ascii_case(request_host) {
                 return false;
             }
-        } else {
-            if !Cookie::domain_matches(request_host, &self.domain) {
-                return false;
-            }
+        } else if !Cookie::domain_matches(request_host, &self.domain) {
+            return false;
         }
 
         if !Cookie::path_matches(uri.path(), &self.path) {
@@ -188,7 +186,7 @@ impl Cookie {
         }
 
         if request_path.starts_with(cookie_path) {
-            if cookie_path.ends_with("/") || request_path[cookie_path.len()..].starts_with("/") {
+            if cookie_path.ends_with('/') || request_path[cookie_path.len()..].starts_with('/') {
                 return true;
             }
         }
@@ -199,12 +197,12 @@ impl Cookie {
     // http://tools.ietf.org/html/rfc6265#section-5.1.4
     fn default_path(uri: &Uri) -> &str {
         // Step 2
-        if uri.path().chars().next() != Some('/') {
+        if !uri.path().starts_with('/') {
             return "/";
         }
 
         // Step 3
-        let rightmost_slash_idx = uri.path().rfind("/").unwrap();
+        let rightmost_slash_idx = uri.path().rfind('/').unwrap();
         if rightmost_slash_idx == 0 {
             // There's only one slash; it's the first character.
             return "/";
