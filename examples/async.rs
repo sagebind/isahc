@@ -1,24 +1,21 @@
 //! This example demonstrates the use of `send_async()` (incubating) to make a
 //! request asynchronously using the unstable futures API.
-use chttp::http::Request;
-use chttp::Client;
-use futures::executor;
-use futures::prelude::*;
+#![feature(async_await)]
+
+use chttp::prelude::*;
 
 fn main() -> Result<(), chttp::Error> {
-    env_logger::init();
-    let client = Client::new();
+    utilities::logging();
 
-    let future = client
-        .send_async(Request::get("http://example.org").body(())?)
-        .map(|response| {
-            println!("Status: {}", response.status());
-            println!("Headers:\n{:?}", response.headers());
+    futures::executor::block_on(async {
+        let response = Request::get("http://example.org")
+            .body(())?
+            .send_async()
+            .await?;
 
-            response
-        });
+        println!("Status: {}", response.status());
+        println!("Headers:\n{:?}", response.headers());
 
-    executor::block_on(future)?;
-
-    Ok(())
+        Ok(())
+    })
 }

@@ -61,9 +61,5 @@ path = "utilities"
 name = "download"
 harness = false
 
-[[example]]
-name = "async"
-required-features = ["async-api"]
-
 [workspace]
 members = ["utilities"]

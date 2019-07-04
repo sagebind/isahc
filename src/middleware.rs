@@ -7,6 +7,7 @@
 
 use crate::Body;
 use http::{Request, Response};
+use std::convert::identity;
 
 /// Create a new _request_ middleware from a function.
 #[allow(unused)]
@@ -63,9 +64,4 @@ pub trait Middleware: Send + Sync + 'static {
     fn filter_response(&self, response: Response<Body>) -> Response<Body> {
         response
     }
-}
-
-/// The identity function. Here for convenience.
-const fn identity<T>(t: T) -> T {
-    t
 }

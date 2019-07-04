@@ -6,11 +6,11 @@
 //! simple GET request to an example website:
 //!
 //! ```rust
-//! use chttp;
+//! use chttp::prelude::*;
 //!
 //! # fn run() -> Result<(), chttp::Error> {
 //! let mut response = chttp::get("https://example.org")?;
-//! println!("{}", response.body_mut().text()?);
+//! println!("{}", response.text()?);
 //! # Ok(())
 //! # }
 //! ```
@@ -23,8 +23,6 @@
 //! the request body:
 //!
 //! ```rust
-//! use chttp;
-//!
 //! # fn run() -> Result<(), chttp::Error> {
 //! let response = chttp::post("https://example.org", "make me a salad")?;
 //! # Ok(())
@@ -34,8 +32,6 @@
 //! cHTTP provides several other simple functions for common HTTP request types:
 //!
 //! ```rust
-//! # use chttp;
-//! #
 //! # fn run() -> Result<(), chttp::Error> {
 //! chttp::put("https://example.org", "have a salad")?;
 //! chttp::head("https://example.org")?;
@@ -50,41 +46,43 @@
 //! creating your own `Request` object and then `send`ing that.
 //!
 //! ```rust
-//! use chttp::{self, http};
+//! use chttp::prelude::*;
 //!
 //! # fn run() -> Result<(), chttp::Error> {
-//! let request = http::Request::post("https://example.org")
+//! let response = Request::post("https://example.org")
 //!     .header("Content-Type", "application/json")
 //!     .body(r#"{
 //!         "speed": "fast",
 //!         "cool_name": true
-//!     }"#)?;
-//! let response = chttp::send(request)?;
+//!     }"#)?
+//!     .send()?;
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! ## Request options
+//! ## Request configuration
 //!
-//! How requests are sent can be customized using the [`Options`] struct, which
-//! provides various fields for setting timeouts, proxies, and other connection
-//! and protocol configuration. These options can be included right along your
-//! request as an extension object:
+//! There are a number of options involved in request execution that can be
+//! configured for a request, such as timeouts, proxies, and other connection
+//! and protocol configuration . These can be customized by using extension
+//! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
+//! trait:
 //!
 //! ```rust
-//! use chttp::{self, http, Options};
+//! use chttp::prelude::*;
 //! use std::time::Duration;
 //!
 //! # fn run() -> Result<(), chttp::Error> {
-//! let request = http::Request::get("https://example.org")
-//!     .extension(Options::default()
-//!         // Set a 5 second timeout.
-//!         .with_timeout(Some(Duration::from_secs(5))))
-//!     .body(())?;
-//! let response = chttp::send(request)?;
+//! let response = Request::get("https://example.org")
+//!     .timeout(Duration::from_secs(5))
+//!     .body(())?
+//!     .send()?;
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! Configuration related to sending requests is stored inside the request
+//! struct using [`http::Extensions`].
 //!
 //! ## Custom clients
 //!
@@ -112,12 +110,12 @@
 //!
 //! ```rust
 //! # #![feature(async_await)]
-//! use chttp;
-//!
+//! # use chttp::prelude::*;
+//! #
 //! # fn run() -> Result<(), chttp::Error> {
 //! # futures::executor::block_on(async {
 //! let mut response = chttp::get_async("https://example.org").await?;
-//! println!("{}", response.body_mut().text_async().await?);
+//! println!("{}", response.text_async().await?);
 //! # Ok(())
 //! # })
 //! # }
@@ -139,9 +137,6 @@ use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::future::Future;
 
-pub mod client;
-pub mod options;
-
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
@@ -152,9 +147,13 @@ mod middleware;
 
 mod agent;
 mod body;
+mod client;
+pub mod config;
 mod error;
 mod handler;
 mod parse;
+mod request;
+mod response;
 mod wakers;
 
 /// Re-export of the standard HTTP types.
@@ -163,7 +162,14 @@ pub extern crate http;
 pub use crate::body::Body;
 pub use crate::client::{Client, ClientBuilder};
 pub use crate::error::Error;
-pub use crate::options::*;
+
+pub mod prelude {
+    pub use crate::body::Body;
+    pub use crate::client::{Client, ClientBuilder};
+    pub use crate::request::{RequestExt, RequestBuilderExt};
+    pub use crate::response::ResponseExt;
+    pub use http::{Request, Response};
+}
 
 /// Sends an HTTP GET request.
 ///
@@ -286,9 +292,7 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 /// extension to control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn send_async<B: Into<Body>>(
-    request: Request<B>,
-) -> impl Future<Output = Result<Response<Body>, Error>> {
+pub fn send_async<B: Into<Body>>(request: Request<B>) -> client::ResponseFuture<'static> {
     Client::shared().send_async(request)
 }
 

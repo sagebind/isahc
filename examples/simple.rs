@@ -1,3 +1,5 @@
+use chttp::prelude::*;
+
 fn main() -> Result<(), chttp::Error> {
     utilities::logging();
 
@@ -8,7 +10,8 @@ fn main() -> Result<(), chttp::Error> {
     println!("Headers:\n{:?}", response.headers());
 
     // Copy the response body directly to stdout.
-    std::io::copy(response.body_mut(), &mut std::io::stdout())?;
+    // std::io::copy(response.body_mut(), &mut std::io::stdout())?;
+    print!("{}", response.text()?);
 
     Ok(())
 }
