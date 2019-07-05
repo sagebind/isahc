@@ -48,16 +48,13 @@ version = "0.4"
 optional = true
 
 [dev-dependencies]
-criterion = "0.2"
 env_logger = "0.6"
 rayon = "1"
-reqwest = "0.9"
 rouille = "3"
-
-[[bench]]
-name = "download"
-harness = false
 
 [[example]]
 name = "async"
 required-features = ["nightly"]
+
+[workspace]
+members = ["benchmarks"]

@@ -1,0 +1,18 @@
+[package]
+name = "chttp-benchmarks"
+version = "0.0.1"
+edition = "2018"
+
+[dependencies.chttp]
+path = ".."
+
+[dev-dependencies]
+criterion = "0.2"
+env_logger = "0.6"
+rayon = "1"
+reqwest = "0.9"
+rouille = "3"
+
+[[bench]]
+name = "download"
+harness = false
