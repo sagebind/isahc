@@ -1,6 +1,6 @@
 workflow "main" {
   on = "push"
-  resolves = ["test", "examples"]
+  resolves = ["test-stable", "test-nightly", "examples"]
 }
 
 workflow "release" {
@@ -8,13 +8,18 @@ workflow "release" {
   resolves = ["publish"]
 }
 
-action "test" {
-  uses = "docker://rustlang/rust:nightly"
+action "test-stable" {
+  uses = "docker://rust:1.36"
   args = "cargo test"
 }
 
-action "examples" {
+action "test-nightly" {
   uses = "docker://rustlang/rust:nightly"
+  args = "cargo test --features nightly"
+}
+
+action "examples" {
+  uses = "docker://rust:1.36"
   args = "cargo run --release --example simple"
 }
 
@@ -25,7 +30,7 @@ action "release-published" {
 
 action "publish" {
   needs = ["release-published"]
-  uses = "docker://rustlang/rust:nightly"
+  uses = "docker://rust:1.36"
   args = ".github/publish.sh"
   secrets = ["CARGO_TOKEN"]
 }
