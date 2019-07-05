@@ -1,8 +1,6 @@
 use chttp::prelude::*;
 
 fn main() -> Result<(), chttp::Error> {
-    utilities::logging();
-
     let client = chttp::Client::new();
     let mut response = client.get("http://example.org")?;
 

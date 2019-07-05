@@ -2,6 +2,8 @@ use chttp::config::RedirectPolicy;
 use chttp::prelude::*;
 use utilities::rouille;
 
+mod utilities;
+
 #[test]
 fn response_301_no_follow() {
     utilities::logging();

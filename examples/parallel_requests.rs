@@ -9,8 +9,6 @@ use std::env;
 use std::time::Instant;
 
 fn main() -> Result<(), chttp::Error> {
-    utilities::logging();
-
     let count = env::args()
         .nth(1)
         .and_then(|s| s.parse::<u32>().ok())

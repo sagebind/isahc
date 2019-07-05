@@ -1,8 +1,0 @@
-[package]
-name = "utilities"
-version = "0.4.2"
-edition = "2018"
-
-[dependencies]
-env_logger = "0.6"
-rouille = "3"

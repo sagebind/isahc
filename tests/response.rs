@@ -1,5 +1,7 @@
 use utilities::rouille;
 
+mod utilities;
+
 #[test]
 fn simple_response_body() {
     utilities::logging();

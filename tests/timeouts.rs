@@ -3,6 +3,8 @@ use std::thread;
 use std::time::Duration;
 use utilities::rouille;
 
+mod utilities;
+
 /// Issue #3
 #[test]
 fn request_errors_if_read_timeout_is_reached() {
