@@ -152,6 +152,7 @@ mod client;
 pub mod config;
 mod error;
 mod handler;
+mod io;
 mod parse;
 mod request;
 mod response;

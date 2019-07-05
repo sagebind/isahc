@@ -1,9 +1,5 @@
-#![cfg(feature = "nightly")]
-#![feature(async_await)]
-
 use chttp::config::RedirectPolicy;
 use chttp::prelude::*;
-use futures::executor::block_on;
 use utilities::rouille;
 
 #[test]
@@ -36,10 +32,8 @@ fn response_301_auto_follow() {
         .and_then(chttp::send)
         .unwrap();
 
-    block_on(async {
-        assert_eq!(response.status(), 200);
-        assert_eq!(response.text_async().await.unwrap(), "ok");
-    })
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.text().unwrap(), "ok");
 }
 
 #[test]

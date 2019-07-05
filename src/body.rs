@@ -1,13 +1,11 @@
 //! Provides types for working with request and response bodies.
 
-use crate::Error;
+use crate::io::Text;
 use bytes::Bytes;
-use futures::executor::block_on;
 use futures::io::AsyncReadExt;
 use futures::prelude::*;
 use std::fmt;
 use std::io::{self, Cursor, Read};
-use std::mem;
 use std::pin::Pin;
 use std::str;
 use std::task::*;
@@ -117,8 +115,10 @@ impl Body {
     /// this method will return an empty string next call. If this body supports
     /// seeking, you can seek to the beginning of the body if you need to call
     /// this method again later.
-    pub fn text(&mut self) -> Result<String, Error> {
-        block_on(self.text_async())
+    pub fn text(&mut self) -> Result<String, io::Error> {
+        let mut s = String::default();
+        self.read_to_string(&mut s)?;
+        Ok(s)
     }
 
     /// Get the response body as a string asynchronously.
@@ -127,64 +127,8 @@ impl Body {
     /// this method will return an empty string next call. If this body supports
     /// seeking, you can seek to the beginning of the body if you need to call
     /// this method again later.
-    pub fn text_async(&mut self) -> impl Future<Output = Result<String, Error>> + '_ {
-        // Due to lifetime constraints and the API of `read_to_end`, we have to
-        // resort to a little unsafe code until we can use async/await (which
-        // solves this lifetime problem well). To read to the end, we must set
-        // up a buffer, and then borrow both it and `self` for a time until
-        // reading completes.
-        //
-        // There is currently no way for our future to both _own_ the buffer
-        // _and_ a future that borrows it, so we go down the approach of boxing
-        // the buffer to give it a stable location in memory, transmuting a
-        // reference into a 'static reference, and then cleaning up our mess at
-        // the end by being sure to erase the static lifetime before dropping
-        // the buffer.
-
-        struct TextFuture {
-            bytes: Option<Box<Vec<u8>>>,
-            inner: Option<futures::io::ReadToEnd<'static, Body>>,
-        }
-
-        impl Future for TextFuture {
-            type Output = Result<String, Error>;
-
-            fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                match self.inner.as_mut().unwrap().poll_unpin(cx) {
-                    Poll::Pending => return Poll::Pending,
-                    Poll::Ready(Err(e)) => return Poll::Ready(Err(e.into())),
-                    Poll::Ready(Ok(())) => {
-                        // fall through, so that we stop borrowing `inner`...
-                    }
-                }
-
-                // We're done with the inner future, clean it up.
-                if let Some(inner) = self.inner.take() {
-                    mem::forget(inner);
-                }
-
-                match String::from_utf8(*self.bytes.take().unwrap()) {
-                    Ok(string) => Poll::Ready(Ok(string)),
-                    Err(e) => Poll::Ready(Err(e.into())),
-                }
-            }
-        }
-
-        impl Drop for TextFuture {
-            fn drop(&mut self) {
-                if let Some(inner) = self.inner.take() {
-                    mem::forget(inner);
-                }
-            }
-        }
-
-        let mut bytes = Box::new(Vec::new());
-        let inner = unsafe { mem::transmute(AsyncReadExt::read_to_end(self, &mut *bytes)) };
-
-        TextFuture {
-            bytes: Some(bytes),
-            inner: Some(inner),
-        }
+    pub fn text_async(&mut self) -> Text<Body> {
+        Text::new(self)
     }
 }
 
