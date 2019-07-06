@@ -26,7 +26,6 @@ static-curl = ["curl/static-curl"]
 middleware-api = []
 
 [dependencies]
-auto_enums = "0.5"
 bytes = "0.4"
 crossbeam-channel = "0.3"
 curl = "^0.4.20"
@@ -38,7 +37,6 @@ log = "0.4"
 regex = "1.1"
 slab = "0.4"
 sluice = "0.4.0-alpha.2"
-static_assertions = "0.3"
 
 [dependencies.chrono]
 version = "0.4"

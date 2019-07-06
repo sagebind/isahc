@@ -380,3 +380,19 @@ impl AgentThread {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() {}
+    fn is_sync<T: Sync>() {}
+
+    #[test]
+    fn traits() {
+        is_send::<Handle>();
+        is_sync::<Handle>();
+
+        is_send::<Message>();
+    }
+}

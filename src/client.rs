@@ -286,14 +286,13 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    #[auto_enums::auto_enum(Future)]
     pub fn get_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
         match http::Request::get(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request),
-            Err(e) => future::err(e.into()),
+            Ok(request) => self.send_async(request).left_future(),
+            Err(e) => future::err(e.into()).right_future(),
         }
     }
 
@@ -306,14 +305,13 @@ impl Client {
     }
 
     /// Sends an HTTP HEAD request asynchronously.
-    #[auto_enums::auto_enum(Future)]
     pub fn head_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
         match http::Request::head(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request),
-            Err(e) => future::err(e.into()),
+            Ok(request) => self.send_async(request).left_future(),
+            Err(e) => future::err(e.into()).right_future(),
         }
     }
 
@@ -332,7 +330,6 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    #[auto_enums::auto_enum(Future)]
     pub fn post_async<U>(
         &self,
         uri: U,
@@ -342,8 +339,8 @@ impl Client {
         http::Uri: http::HttpTryFrom<U>,
     {
         match http::Request::post(uri).body(body) {
-            Ok(request) => self.send_async(request),
-            Err(e) => future::err(e.into()),
+            Ok(request) => self.send_async(request).left_future(),
+            Err(e) => future::err(e.into()).right_future(),
         }
     }
 
@@ -362,7 +359,6 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    #[auto_enums::auto_enum(Future)]
     pub fn put_async<U>(
         &self,
         uri: U,
@@ -372,8 +368,8 @@ impl Client {
         http::Uri: http::HttpTryFrom<U>,
     {
         match http::Request::put(uri).body(body) {
-            Ok(request) => self.send_async(request),
-            Err(e) => future::err(e.into()),
+            Ok(request) => self.send_async(request).left_future(),
+            Err(e) => future::err(e.into()).right_future(),
         }
     }
 
@@ -392,14 +388,13 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    #[auto_enums::auto_enum(Future)]
     pub fn delete_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {
         match http::Request::delete(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request),
-            Err(e) => future::err(e.into()),
+            Ok(request) => self.send_async(request).left_future(),
+            Err(e) => future::err(e.into()).right_future(),
         }
     }
 
@@ -688,5 +683,18 @@ impl Future for ResponseFuture<'_> {
     }
 }
 
-static_assertions::assert_impl!(client; Client, Send, Sync);
-static_assertions::assert_impl!(builder; ClientBuilder, Send);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() {}
+    fn is_sync<T: Sync>() {}
+
+    #[test]
+    fn traits() {
+        is_send::<Client>();
+        is_sync::<Client>();
+
+        is_send::<ClientBuilder>();
+    }
+}
