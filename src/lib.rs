@@ -158,6 +158,9 @@ mod request;
 mod response;
 mod wakers;
 
+#[cfg(feature = "psl")]
+mod psl;
+
 /// Re-export of the standard HTTP types.
 pub extern crate http;
 

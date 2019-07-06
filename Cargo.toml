@@ -18,10 +18,11 @@ all-features = true
 status = "actively-developed"
 
 [features]
-default = ["cookies", "http2", "static-curl"]
+default = ["cookies", "http2", "psl", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 nightly = []
+psl = ["publicsuffix"]
 static-curl = ["curl/static-curl"]
 middleware-api = []
 
@@ -41,8 +42,9 @@ sluice = "0.4.0-alpha.2"
 version = "0.4"
 optional = true
 
-[dependencies.psl]
-version = "0.4"
+[dependencies.publicsuffix]
+version = "1.5"
+default-features = false
 optional = true
 
 [dev-dependencies]

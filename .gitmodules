@@ -1,0 +1,3 @@
+[submodule "src/psl/list"]
+	path = src/psl/list
+	url = git@github.com:publicsuffix/list.git

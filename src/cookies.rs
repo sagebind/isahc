@@ -99,18 +99,13 @@ impl Cookie {
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
             #[cfg(feature = "psl")]
             {
-                use ::psl::Psl;
-                let list = ::psl::List::new();
-
-                if let Some(suffix) = list.suffix(domain) {
-                    if domain == suffix.to_str() {
-                        log::warn!(
-                            "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
-                            cookie_name,
-                            domain
-                        );
-                        return None;
-                    }
+                if crate::psl::is_public_suffix(domain) {
+                    log::warn!(
+                        "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
+                        cookie_name,
+                        domain
+                    );
+                    return None;
                 }
             }
         }
@@ -327,6 +322,7 @@ mod tests {
         assert!(Cookie::parse("foo=bar; domain=baz.com", &uri).is_some());
         assert!(Cookie::parse("foo=bar; domain=www.bar.baz.com", &uri).is_none());
 
+        // If the public suffix list is enabled, also exercise that validation.
         if cfg!(feature = "psl") {
             assert!(Cookie::parse("foo=bar; domain=com", &uri).is_none());
             assert!(Cookie::parse("foo=bar; domain=.com", &uri).is_none());
