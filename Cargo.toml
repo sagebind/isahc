@@ -34,7 +34,6 @@ futures-preview = "=0.3.0-alpha.17"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
-regex = "1.1"
 slab = "0.4"
 sluice = "0.4.0-alpha.2"
 
