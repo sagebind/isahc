@@ -64,7 +64,7 @@
 //!
 //! There are a number of options involved in request execution that can be
 //! configured for a request, such as timeouts, proxies, and other connection
-//! and protocol configuration . These can be customized by using extension
+//! and protocol configuration. These can be customized by using extension
 //! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
 //! trait:
 //!
