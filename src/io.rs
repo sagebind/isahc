@@ -42,8 +42,11 @@ impl<'r, R: AsyncRead + Unpin> Future for Text<'r, R> {
             // Buffer has been filled, try to parse as UTF-8
             Poll::Ready(Ok(())) => match String::from_utf8(*self.buffer.take().unwrap()) {
                 Ok(string) => Poll::Ready(Ok(string)),
-                Err(_) => Poll::Ready(Err(Error::new(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))),
-            }
+                Err(_) => Poll::Ready(Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "stream did not contain valid UTF-8",
+                ))),
+            },
         }
     }
 }

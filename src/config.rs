@@ -106,7 +106,7 @@ pub(crate) struct MaxDownloadSpeed(pub u64);
 pub(crate) struct DnsServers(pub Vec<SocketAddr>);
 
 impl FromIterator<SocketAddr> for DnsServers {
-    fn from_iter<I: IntoIterator<Item=SocketAddr>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
         DnsServers(Vec::from_iter(iter))
     }
 }
@@ -118,7 +118,7 @@ pub(crate) struct Proxy(pub http::Uri);
 pub(crate) struct SslCiphers(pub Vec<String>);
 
 impl FromIterator<String> for SslCiphers {
-    fn from_iter<I: IntoIterator<Item=String>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
         SslCiphers(Vec::from_iter(iter))
     }
 }

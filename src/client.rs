@@ -388,7 +388,10 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn delete_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn delete_async<U>(
+        &self,
+        uri: U,
+    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
     where
         http::Uri: http::HttpTryFrom<U>,
     {

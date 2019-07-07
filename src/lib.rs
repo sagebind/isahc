@@ -168,7 +168,7 @@ pub use crate::error::Error;
 pub mod prelude {
     pub use crate::body::Body;
     pub use crate::client::{Client, ClientBuilder};
-    pub use crate::request::{RequestExt, RequestBuilderExt};
+    pub use crate::request::{RequestBuilderExt, RequestExt};
     pub use crate::response::ResponseExt;
     pub use http::{Request, Response};
 }

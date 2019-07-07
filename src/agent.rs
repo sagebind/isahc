@@ -12,7 +12,6 @@ use crate::wakers::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
-use futures::task::ArcWake;
 use futures::task::*;
 use slab::Slab;
 use std::net::UdpSocket;

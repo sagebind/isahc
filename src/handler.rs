@@ -91,11 +91,13 @@ impl RequestHandler {
     /// Get the current state of the handler.
     pub fn state(&self) -> ResponseState {
         match self.sender.as_ref() {
-            Some(sender) => if sender.is_canceled() {
-                ResponseState::Canceled
-            } else {
-                ResponseState::Active
-            },
+            Some(sender) => {
+                if sender.is_canceled() {
+                    ResponseState::Canceled
+                } else {
+                    ResponseState::Active
+                }
+            }
             None => ResponseState::Completed,
         }
     }

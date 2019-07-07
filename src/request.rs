@@ -1,6 +1,6 @@
-use crate::{Body, Error};
 use crate::client::ResponseFuture;
 use crate::config::*;
+use crate::{Body, Error};
 use http::{Request, Response};
 use std::iter::FromIterator;
 use std::net::SocketAddr;
@@ -151,21 +151,31 @@ pub trait RequestExt<T> {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    fn send(self) -> Result<Response<Body>, Error> where T: Into<Body>;
+    fn send(self) -> Result<Response<Body>, Error>
+    where
+        T: Into<Body>;
 
     /// Sends the HTTP request asynchronously using the default client.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    fn send_async(self) -> ResponseFuture<'static> where T: Into<Body>;
+    fn send_async(self) -> ResponseFuture<'static>
+    where
+        T: Into<Body>;
 }
 
 impl<T> RequestExt<T> for Request<T> {
-    fn send(self) -> Result<Response<Body>, Error> where T: Into<Body> {
+    fn send(self) -> Result<Response<Body>, Error>
+    where
+        T: Into<Body>,
+    {
         crate::send(self)
     }
 
-    fn send_async(self) -> ResponseFuture<'static> where T: Into<Body> {
+    fn send_async(self) -> ResponseFuture<'static>
+    where
+        T: Into<Body>,
+    {
         crate::send_async(self)
     }
 }

@@ -9,14 +9,17 @@ pub fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
         b"HTTP/1.1" => Version::HTTP_11,
         b"HTTP/1.0" => Version::HTTP_10,
         b"HTTP/0.9" => Version::HTTP_09,
-        bytes => if bytes.starts_with(b"HTTP/") {
-            Version::default()
-        } else {
-            return None;
-        },
+        bytes => {
+            if bytes.starts_with(b"HTTP/") {
+                Version::default()
+            } else {
+                return None;
+            }
+        }
     };
 
-    let status_code = parts.skip_while(|s| s.is_empty())
+    let status_code = parts
+        .skip_while(|s| s.is_empty())
         .next()
         .map(StatusCode::from_bytes)?
         .ok()?;
@@ -27,11 +30,10 @@ pub fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
 pub fn parse_header(line: &[u8]) -> Option<(HeaderName, HeaderValue)> {
     let mut parts = line.split(|byte| *byte == b':');
 
-    let name = parts.next()
-        .map(HeaderName::from_bytes)?
-        .ok()?;
+    let name = parts.next().map(HeaderName::from_bytes)?.ok()?;
 
-    let value = parts.next()
+    let value = parts
+        .next()
         // Trim whitespace
         .map(|mut part| {
             while let Some((byte, right)) = part.split_first() {
@@ -64,22 +66,22 @@ mod tests {
 
     #[test]
     fn parse_valid_status_line() {
-        assert_eq!(parse_status_line(b"HTTP/0.9  200  \r\n"), Some((
-            Version::HTTP_09,
-            StatusCode::OK,
-        )));
-        assert_eq!(parse_status_line(b"HTTP/1.0 500 Internal Server Error\r\n"), Some((
-            Version::HTTP_10,
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )));
-        assert_eq!(parse_status_line(b"HTTP/1.1 404 not found \r\n"), Some((
-            Version::HTTP_11,
-            StatusCode::NOT_FOUND,
-        )));
-        assert_eq!(parse_status_line(b"HTTP/2 200\r\n"), Some((
-            Version::HTTP_2,
-            StatusCode::OK,
-        )));
+        assert_eq!(
+            parse_status_line(b"HTTP/0.9  200  \r\n"),
+            Some((Version::HTTP_09, StatusCode::OK,))
+        );
+        assert_eq!(
+            parse_status_line(b"HTTP/1.0 500 Internal Server Error\r\n"),
+            Some((Version::HTTP_10, StatusCode::INTERNAL_SERVER_ERROR,))
+        );
+        assert_eq!(
+            parse_status_line(b"HTTP/1.1 404 not found \r\n"),
+            Some((Version::HTTP_11, StatusCode::NOT_FOUND,))
+        );
+        assert_eq!(
+            parse_status_line(b"HTTP/2 200\r\n"),
+            Some((Version::HTTP_2, StatusCode::OK,))
+        );
     }
 
     #[test]
@@ -88,27 +90,30 @@ mod tests {
         assert_eq!(parse_status_line(b" \r\n"), None);
         assert_eq!(parse_status_line(b"HTP/foo bar baz\r\n"), None);
         assert_eq!(parse_status_line(b"a-header: bar\r\n"), None);
-        assert_eq!(parse_status_line(b" HTTP/1.1 500 Internal Server Error\r\n"), None);
+        assert_eq!(
+            parse_status_line(b" HTTP/1.1 500 Internal Server Error\r\n"),
+            None
+        );
     }
 
     #[test]
     fn parse_valid_headers() {
-        assert_eq!(parse_header(b"Empty:"), Some((
-            "empty".parse().unwrap(),
-            "".parse().unwrap(),
-        )));
-        assert_eq!(parse_header(b"CONTENT-LENGTH:20\r\n"), Some((
-            "content-length".parse().unwrap(),
-            "20".parse().unwrap(),
-        )));
-        assert_eq!(parse_header(b"x-Server:     Rust \r"), Some((
-            "x-server".parse().unwrap(),
-            "Rust".parse().unwrap(),
-        )));
-        assert_eq!(parse_header(b"X-val: Hello World\r"), Some((
-            "x-val".parse().unwrap(),
-            "Hello World".parse().unwrap(),
-        )));
+        assert_eq!(
+            parse_header(b"Empty:"),
+            Some(("empty".parse().unwrap(), "".parse().unwrap(),))
+        );
+        assert_eq!(
+            parse_header(b"CONTENT-LENGTH:20\r\n"),
+            Some(("content-length".parse().unwrap(), "20".parse().unwrap(),))
+        );
+        assert_eq!(
+            parse_header(b"x-Server:     Rust \r"),
+            Some(("x-server".parse().unwrap(), "Rust".parse().unwrap(),))
+        );
+        assert_eq!(
+            parse_header(b"X-val: Hello World\r"),
+            Some(("x-val".parse().unwrap(), "Hello World".parse().unwrap(),))
+        );
     }
 
     #[test]
