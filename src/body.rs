@@ -212,4 +212,14 @@ impl fmt::Debug for Body {
     }
 }
 
-static_assertions::assert_impl!(body; Body, Send);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() {}
+
+    #[test]
+    fn traits() {
+        is_send::<Body>();
+    }
+}

@@ -386,4 +386,14 @@ impl Drop for ResponseFuture {
     }
 }
 
-static_assertions::assert_impl!(f; ResponseFuture, Send);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() {}
+
+    #[test]
+    fn traits() {
+        is_send::<ResponseFuture>();
+    }
+}
