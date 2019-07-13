@@ -84,7 +84,7 @@ pub fn is_public_suffix(domain: impl AsRef<str>) -> bool {
 /// Refresh the cached Public Suffix List synchronously. A new suffix list will
 /// be downloaded from the official location at
 /// <https://publicsuffix.org/list/public_suffix_list.dat>.
-pub fn refresh() -> Result<(), Box<Error>> {
+pub fn refresh() -> Result<(), Box<dyn Error>> {
     let (ref mut list, ref mut last_updated) = *LIST.write().unwrap();
 
     let mut request = http::Request::get(publicsuffix::LIST_URL);
