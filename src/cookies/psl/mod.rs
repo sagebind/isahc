@@ -37,6 +37,7 @@ lazy_static! {
 
 struct ListCache {
     list: List,
+    last_refreshed: Option<DateTime<Utc>>,
     last_updated: Option<DateTime<Utc>>,
 }
 
@@ -51,6 +52,9 @@ impl Default for ListCache {
             list: List::from_str(include_str!("list/public_suffix_list.dat"))
                 .expect("could not parse bundled public suffix list"),
 
+            // Refresh the list right away.
+            last_refreshed: None,
+
             // Assume the bundled list is always out of date.
             last_updated: None,
         }
@@ -59,13 +63,19 @@ impl Default for ListCache {
 
 impl ListCache {
     fn needs_refreshed(&self) -> bool {
-        match self.last_updated {
-            Some(last_updated) => Utc::now() - last_updated > *TTL,
+        match self.last_refreshed {
+            Some(last_refreshed) => Utc::now() - last_refreshed > *TTL,
             None => true,
         }
     }
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
+        let result = self.try_refresh();
+        self.last_refreshed = Some(Utc::now());
+        result
+    }
+
+    fn try_refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
@@ -83,13 +93,14 @@ impl ListCache {
             }
 
             http::StatusCode::NOT_MODIFIED => {
-                // List hasn't changed, check again after TTL.
+                // List hasn't changed and is still new.
                 self.last_updated = Some(Utc::now());
             }
 
-            status => {
-                log::warn!("could not update public suffix list, got status code {}", status);
-            }
+            status => log::warn!(
+                "could not update public suffix list, got status code {}",
+                status,
+            ),
         }
 
         Ok(())
