@@ -22,7 +22,7 @@ default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 nightly = []
-psl = ["publicsuffix"]
+psl = ["parking_lot", "publicsuffix"]
 static-curl = ["curl/static-curl"]
 middleware-api = []
 
@@ -40,6 +40,10 @@ sluice = "0.4.0-alpha.2"
 
 [dependencies.chrono]
 version = "0.4"
+optional = true
+
+[dependencies.parking_lot]
+version = "0.8"
 optional = true
 
 [dependencies.publicsuffix]

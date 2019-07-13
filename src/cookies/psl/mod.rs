@@ -23,28 +23,77 @@ use crate::request::RequestExt;
 use chrono::prelude::*;
 use chrono::Duration;
 use lazy_static::lazy_static;
+use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::List;
 use std::error::Error;
-use std::sync::RwLock;
-use std::thread;
-
-/// This is a bundled version of the list. We bundle using a Git submodule
-/// instead of downloading it from the Internet during the build, because that
-/// would force you to have an active Internet connection in order to compile.
-/// And that would be really annoying, especially if you are on a slow
-/// connection.
-static BUNDLED_LIST: &str = include_str!("list/public_suffix_list.dat");
 
 lazy_static! {
     /// How long should we use a cached list before refreshing?
     static ref TTL: Duration = Duration::hours(24);
 
-    // Use a read/write lock because we are just reading 99.99% of the time.
-    static ref LIST: RwLock<(List, Option<DateTime<Utc>>)> = RwLock::new((
-        List::from_str(BUNDLED_LIST).expect("could not parse bundled public suffix list"),
-        // Assume the bundled list is always out of date.
-        None,
-    ));
+    /// Global in-memory PSL cache.
+    static ref CACHE: RwLock<ListCache> = Default::default();
+}
+
+struct ListCache {
+    list: List,
+    last_updated: Option<DateTime<Utc>>,
+}
+
+impl Default for ListCache {
+    fn default() -> Self {
+        Self {
+            // Use a bundled version of the list. We bundle using a Git
+            // submodule instead of downloading it from the Internet during the
+            // build, because that would force you to have an active Internet
+            // connection in order to compile. And that would be really
+            // annoying, especially if you are on a slow connection.
+            list: List::from_str(include_str!("list/public_suffix_list.dat"))
+                .expect("could not parse bundled public suffix list"),
+
+            // Assume the bundled list is always out of date.
+            last_updated: None,
+        }
+    }
+}
+
+impl ListCache {
+    fn needs_refreshed(&self) -> bool {
+        match self.last_updated {
+            Some(last_updated) => Utc::now() - last_updated > *TTL,
+            None => true,
+        }
+    }
+
+    fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut request = http::Request::get(publicsuffix::LIST_URL);
+
+        if let Some(last_updated) = self.last_updated {
+            request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
+        }
+
+        let mut response = request.body(())?.send()?;
+
+        match response.status() {
+            http::StatusCode::OK => {
+                // Parse the suffix list.
+                self.list = List::from_reader(response.body_mut())?;
+                self.last_updated = Some(Utc::now());
+                log::debug!("public suffix list updated");
+            }
+
+            http::StatusCode::NOT_MODIFIED => {
+                // List hasn't changed, check again after TTL.
+                self.last_updated = Some(Utc::now());
+            }
+
+            status => {
+                log::warn!("could not update public suffix list, got status code {}", status);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Determine if the given domain is a public suffix.
@@ -53,65 +102,36 @@ lazy_static! {
 /// triggered. The current data will be used to respond to this query.
 pub fn is_public_suffix(domain: impl AsRef<str>) -> bool {
     let domain = domain.as_ref();
-    let (ref list, ref last_updated) = *LIST.read().unwrap();
 
-    // First check if the list needs to be refreshed.
-    let needs_refreshed = match last_updated {
-        Some(last_updated) => Utc::now() - *last_updated > *TTL,
-        None => true,
-    };
-
-    // TODO: Prevent multiple threads spawning at a time.
-    // TODO: Retry timeout if refreshing fails.
-    if needs_refreshed {
-        // Refresh the list in a background thread.
-        if let Err(e) = thread::Builder::new().name("psl-refresh".into()).spawn(|| {
-            if let Err(e) = refresh() {
-                log::warn!("could not refresh public suffix list: {}", e);
-            }
-        }) {
-            log::error!("error refreshing public suffix list: {}", e);
-        }
-    }
-
-    // Check if the given domain is a public suffix.
-    list.parse_domain(domain)
-        .ok()
-        .and_then(|d| d.suffix().map(|d| d == domain))
-        .unwrap_or(false)
+    with_cache(|cache| {
+        // Check if the given domain is a public suffix.
+        cache.list.parse_domain(domain)
+            .ok()
+            .and_then(|d| d.suffix().map(|d| d == domain))
+            .unwrap_or(false)
+    })
 }
 
-/// Refresh the cached Public Suffix List synchronously. A new suffix list will
-/// be downloaded from the official location at
-/// <https://publicsuffix.org/list/public_suffix_list.dat>.
-pub fn refresh() -> Result<(), Box<dyn Error>> {
-    let (ref mut list, ref mut last_updated) = *LIST.write().unwrap();
+/// Execute a given closure with a reference to the list cache. If the list is
+/// out of date, attempt to refresh it first before continuing.
+fn with_cache<T>(f: impl FnOnce(&ListCache) -> T) -> T {
+    let cache = CACHE.upgradable_read();
 
-    let mut request = http::Request::get(publicsuffix::LIST_URL);
+    // First check if the list needs to be refreshed.
+    if cache.needs_refreshed() {
+        // Upgrade our lock to gain write access.
+        let mut cache = RwLockUpgradableReadGuard::upgrade(cache);
 
-    if let Some(last_updated) = last_updated {
-        request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
+        // If there was contention then the cache might not need refreshed any
+        // more.
+        if cache.needs_refreshed() {
+            if let Err(e) = cache.refresh() {
+                log::warn!("could not refresh public suffix list: {}", e);
+            }
+        }
+
+        f(&*cache)
+    } else {
+        f(&*cache)
     }
-
-    let mut response = request.body(())?.send()?;
-
-    match response.status() {
-        http::StatusCode::OK => {
-            // Parse the suffix list.
-            *list = List::from_reader(response.body_mut())?;
-            *last_updated = Some(Utc::now());
-            log::debug!("public suffix list updated");
-        }
-
-        http::StatusCode::NOT_MODIFIED => {
-            // List hasn't changed, check again after TTL.
-            *last_updated = Some(Utc::now());
-        }
-
-        status => {
-            log::warn!("could not update public suffix list, got status code {}", status);
-        }
-    }
-
-    Ok(())
 }
