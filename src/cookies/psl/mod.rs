@@ -39,7 +39,7 @@ lazy_static! {
     /// How long should we use a cached list before refreshing?
     static ref TTL: Duration = Duration::hours(24);
 
-    // Use a read/write lock because we are reading only 99.99% of the time.
+    // Use a read/write lock because we are just reading 99.99% of the time.
     static ref LIST: RwLock<(List, Option<DateTime<Utc>>)> = RwLock::new((
         List::from_str(BUNDLED_LIST).expect("could not parse bundled public suffix list"),
         // Assume the bundled list is always out of date.
