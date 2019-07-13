@@ -18,7 +18,7 @@ all-features = true
 status = "actively-developed"
 
 [features]
-default = ["cookies", "http2", "psl", "static-curl"]
+default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 nightly = []
