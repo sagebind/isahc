@@ -11,6 +11,9 @@ use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::RwLock;
 
+#[cfg(feature = "psl")]
+mod psl;
+
 /// Information stored about an HTTP cookie.
 pub struct Cookie {
     /// The name of the cookie.
@@ -99,7 +102,7 @@ impl Cookie {
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
             #[cfg(feature = "psl")]
             {
-                if crate::psl::is_public_suffix(domain) {
+                if psl::is_public_suffix(domain) {
                     log::warn!(
                         "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                         cookie_name,
