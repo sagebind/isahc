@@ -11,6 +11,9 @@ use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::RwLock;
 
+#[cfg(feature = "psl")]
+mod psl;
+
 /// Information stored about an HTTP cookie.
 pub struct Cookie {
     /// The name of the cookie.
@@ -95,22 +98,27 @@ impl Cookie {
                 return None;
             }
 
+            // Drop cookies for top-level domains.
+            if !domain.contains('.') {
+                log::warn!(
+                    "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
+                    cookie_name,
+                    domain
+                );
+                return None;
+            }
+
             // Check the PSL for bad domain suffixes if available.
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
             #[cfg(feature = "psl")]
             {
-                use ::psl::Psl;
-                let list = ::psl::List::new();
-
-                if let Some(suffix) = list.suffix(domain) {
-                    if domain == suffix.to_str() {
-                        log::warn!(
-                            "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
-                            cookie_name,
-                            domain
-                        );
-                        return None;
-                    }
+                if psl::is_public_suffix(domain) {
+                    log::warn!(
+                        "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
+                        cookie_name,
+                        domain
+                    );
+                    return None;
                 }
             }
         }
@@ -273,17 +281,15 @@ impl Middleware for CookieJar {
                 .headers()
                 .get_all(http::header::SET_COOKIE)
                 .into_iter()
-                .filter_map(|header| {
-                    match header.to_str() {
-                        Ok(header) => {
-                            match Cookie::parse(header, response.extensions().get().unwrap()) {
-                                Some(cookie) => return Some(cookie),
-                                _ => log::warn!("could not parse Set-Cookie header"),
-                            }
-                        }
-                        _ => log::warn!("invalid encoding in Set-Cookie header"),
-                    }
+                .filter_map(|header| header.to_str().ok().or_else(|| {
+                    log::warn!("invalid encoding in Set-Cookie header");
                     None
+                }))
+                .filter_map(|header| {
+                    Cookie::parse(header, response.extensions().get().unwrap()).or_else(|| {
+                        log::warn!("could not parse Set-Cookie header");
+                        None
+                    })
                 });
 
             self.add(cookies);
@@ -297,12 +303,15 @@ impl Middleware for CookieJar {
 mod tests {
     use super::*;
 
+    fn parse_cookie(header: &str, uri: &str) -> Option<Cookie> {
+        Cookie::parse(header, &uri.parse().unwrap())
+    }
+
     #[test]
     fn parse_set_cookie_header() {
-        let uri = "https://baz.com".parse().unwrap();
-        let cookie = Cookie::parse(
+        let cookie = parse_cookie(
             "foo=bar; path=/sub;Secure ; expires =Wed, 21 Oct 2015 07:28:00 GMT",
-            &uri,
+            "https://baz.com",
         )
         .unwrap();
 
@@ -320,18 +329,19 @@ mod tests {
 
     #[test]
     fn cookie_domain_not_allowed() {
-        let uri = "https://bar.baz.com".parse().unwrap();
+        assert!(parse_cookie("foo=bar", "https://bar.baz.com").is_some());
+        assert!(parse_cookie("foo=bar; domain=bar.baz.com", "https://bar.baz.com").is_some());
+        assert!(parse_cookie("foo=bar; domain=baz.com", "https://bar.baz.com").is_some());
+        assert!(parse_cookie("foo=bar; domain=www.bar.baz.com", "https://bar.baz.com").is_none());
 
-        assert!(Cookie::parse("foo=bar", &uri).is_some());
-        assert!(Cookie::parse("foo=bar; domain=bar.baz.com", &uri).is_some());
-        assert!(Cookie::parse("foo=bar; domain=baz.com", &uri).is_some());
-        assert!(Cookie::parse("foo=bar; domain=www.bar.baz.com", &uri).is_none());
+        // TLDs are not allowed.
+        assert!(parse_cookie("foo=bar; domain=com", "https://bar.baz.com").is_none());
+        assert!(parse_cookie("foo=bar; domain=.com", "https://bar.baz.com").is_none());
 
+        // If the public suffix list is enabled, also exercise that validation.
         if cfg!(feature = "psl") {
-            assert!(Cookie::parse("foo=bar; domain=com", &uri).is_none());
-            assert!(Cookie::parse("foo=bar; domain=.com", &uri).is_none());
-        } else {
-            assert!(Cookie::parse("foo=bar; domain=com", &uri).is_some());
+            // wi.us is a public suffix
+            assert!(parse_cookie("foo=bar; domain=wi.us", "https://www.state.wi.us").is_none());
         }
     }
 

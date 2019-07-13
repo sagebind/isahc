@@ -1,0 +1,3 @@
+[submodule "psl"]
+	path = src/cookies/psl/list
+	url = https://github.com/publicsuffix/list.git
