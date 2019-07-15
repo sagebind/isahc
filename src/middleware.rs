@@ -10,7 +10,6 @@ use http::{Request, Response};
 use std::convert::identity;
 
 /// Create a new _request_ middleware from a function.
-#[allow(unused)]
 pub fn before(
     f: impl Fn(Request<Body>) -> Request<Body> + Send + Sync + 'static,
 ) -> impl Middleware {
@@ -18,7 +17,6 @@ pub fn before(
 }
 
 /// Create a new _response_ middleware from a function.
-#[allow(unused)]
 pub fn after(
     f: impl Fn(Response<Body>) -> Response<Body> + Send + Sync + 'static,
 ) -> impl Middleware {

@@ -155,6 +155,7 @@ pub mod cookies;
 #[cfg(feature = "middleware-api")]
 pub mod middleware;
 #[cfg(not(feature = "middleware-api"))]
+#[allow(unreachable_pub, unused)]
 mod middleware;
 
 mod agent;
