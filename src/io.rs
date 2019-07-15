@@ -6,13 +6,16 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// A future that produces a string from an [`AsyncRead`] reader.
+#[derive(Debug)]
 pub struct Text<'r, R: Unpin> {
+    #[allow(clippy::box_vec)]
     buffer: Option<Box<Vec<u8>>>,
     inner: Option<futures::io::ReadToEnd<'r, R>>,
 }
 
 impl<'r, R: AsyncRead + Unpin> Text<'r, R> {
     /// Create a new future from a given reader.
+    #[allow(unsafe_code)]
     pub(crate) fn new(reader: &'r mut R) -> Self {
         // We can't split the borrow on the buffer safely, so we heap-allocate
         // it and pretend that it has the lifetime 'r, carefully making sure
@@ -37,7 +40,7 @@ impl<'r, R: AsyncRead + Unpin> Future for Text<'r, R> {
             Poll::Pending => Poll::Pending,
 
             // Read error
-            Poll::Ready(Err(e)) => Poll::Ready(Err(e.into())),
+            Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
 
             // Buffer has been filled, try to parse as UTF-8
             Poll::Ready(Ok(())) => match String::from_utf8(*self.buffer.take().unwrap()) {

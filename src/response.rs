@@ -18,7 +18,7 @@ pub trait ResponseExt<T> {
     ///
     /// This method consumes the entire response body stream and can only be
     /// called once, unless you can rewind this response body.
-    fn text_async(&mut self) -> Text<T>
+    fn text_async(&mut self) -> Text<'_, T>
     where
         T: AsyncRead + Unpin;
 }
@@ -33,7 +33,7 @@ impl<T> ResponseExt<T> for Response<T> {
         Ok(s)
     }
 
-    fn text_async(&mut self) -> Text<T>
+    fn text_async(&mut self) -> Text<'_, T>
     where
         T: AsyncRead + Unpin,
     {

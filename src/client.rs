@@ -229,6 +229,12 @@ impl ClientBuilder {
     }
 }
 
+impl fmt::Debug for ClientBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ClientBuilder").finish()
+    }
+}
+
 /// An HTTP client for making requests.
 ///
 /// The client maintains a connection pool internally and is expensive to
@@ -423,7 +429,7 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture {
+    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let mut request = request.map(Into::into);
 
         // Set default user agent if not specified.
@@ -575,7 +581,7 @@ impl Client {
 }
 
 impl fmt::Debug for Client {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Client").finish()
     }
 }
@@ -640,6 +646,7 @@ impl EasyExt for curl::easy::Easy2<RequestHandler> {
     }
 }
 
+#[derive(Debug)]
 pub struct ResponseFuture<'c> {
     client: &'c Client,
     request: Option<Request<Body>>,

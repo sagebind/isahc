@@ -27,7 +27,7 @@ type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// A handle to an active agent running in a background thread.
 #[derive(Debug)]
-pub struct Handle {
+pub(crate) struct Handle {
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
 
@@ -91,7 +91,7 @@ enum Message {
 ///
 /// The agent maintains a background thread that multiplexes all active requests
 /// using a single "multi" handle.
-pub fn new() -> Result<Handle, Error> {
+pub(crate) fn new() -> Result<Handle, Error> {
     let create_start = Instant::now();
 
     // Create an UDP socket for the agent thread to listen for wakeups on.
@@ -131,7 +131,7 @@ pub fn new() -> Result<Handle, Error> {
 
 impl Handle {
     /// Begin executing a request with this agent.
-    pub fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
+    pub(crate) fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
         self.send_message(Message::Execute(request))
     }
 

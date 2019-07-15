@@ -24,7 +24,7 @@ use std::task::*;
 ///
 /// If dropped before the response is finished, the associated future will be
 /// completed with an `Aborted` error.
-pub struct RequestHandler {
+pub(crate) struct RequestHandler {
     /// The ID of the request that this handler is managing. Assigned by the
     /// request agent.
     id: Option<usize>,
@@ -57,7 +57,7 @@ pub struct RequestHandler {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub enum ResponseState {
+pub(crate) enum ResponseState {
     Active,
     Canceled,
     Completed,
@@ -65,7 +65,7 @@ pub enum ResponseState {
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
-    pub fn new(request_body: Body) -> (Self, ResponseFuture) {
+    pub(crate) fn new(request_body: Body) -> (Self, ResponseFuture) {
         let (sender, receiver) = oneshot::channel();
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
@@ -89,7 +89,7 @@ impl RequestHandler {
     }
 
     /// Get the current state of the handler.
-    pub fn state(&self) -> ResponseState {
+    pub(crate) fn state(&self) -> ResponseState {
         match self.sender.as_ref() {
             Some(sender) => {
                 if sender.is_canceled() {
@@ -107,7 +107,7 @@ impl RequestHandler {
     /// This is called from within the agent thread when it registers the
     /// request handled by this handler with the multi handle and begins the
     /// request's execution.
-    pub fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
+    pub(crate) fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
         // Init should not be called more than once.
         debug_assert!(self.id.is_none());
         debug_assert!(self.request_body_waker.is_none());
@@ -121,7 +121,7 @@ impl RequestHandler {
 
     /// Finishes building the response with a given body and completes the
     /// associated future with the response.
-    pub fn complete(&mut self) {
+    pub(crate) fn complete(&mut self) {
         if let Some(sender) = self.sender.take() {
             let mut builder = http::Response::builder();
 
@@ -147,7 +147,7 @@ impl RequestHandler {
     }
 
     /// Complete the associated future with an error.
-    pub fn complete_with_error(&mut self, error: impl Into<Error>) {
+    pub(crate) fn complete_with_error(&mut self, error: impl Into<Error>) {
         if let Some(sender) = self.sender.take() {
             match sender.send(Err(error.into())) {
                 Ok(()) => log::warn!("request completed with error [id={:?}]", self.id),
@@ -320,13 +320,14 @@ impl curl::easy::Handler for RequestHandler {
 }
 
 impl fmt::Debug for RequestHandler {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "RequestHandler({:?})", self.id)
     }
 }
 
 // A future for a response.
-pub struct ResponseFuture {
+#[derive(Debug)]
+pub(crate) struct ResponseFuture {
     receiver: oneshot::Receiver<Result<http::response::Builder, Error>>,
 
     /// Reading end of the pipe where the response body is written.
@@ -340,7 +341,7 @@ pub struct ResponseFuture {
 impl Future for ResponseFuture {
     type Output = Result<Response<Body>, Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let inner = Pin::new(&mut self.receiver);
 
         match inner.poll(cx) {

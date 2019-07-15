@@ -62,6 +62,7 @@ pub enum ClientCertificate {
 /// A private key file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PrivateKey {
+    /// A PEM-encoded private key file.
     PEM {
         /// Path to the key file.
         path: PathBuf,
@@ -69,6 +70,7 @@ pub enum PrivateKey {
         /// Password to decrypt the key file.
         password: Option<String>,
     },
+    /// A DER-encoded private key file.
     DER {
         /// Path to the key file.
         path: PathBuf,
@@ -79,16 +81,16 @@ pub enum PrivateKey {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Timeout(pub Duration);
+pub(crate) struct Timeout(pub(crate) Duration);
 
 #[derive(Clone, Debug)]
-pub(crate) struct ConnectTimeout(pub Duration);
+pub(crate) struct ConnectTimeout(pub(crate) Duration);
 
 #[derive(Clone, Debug)]
-pub(crate) struct TcpKeepAlive(pub Duration);
+pub(crate) struct TcpKeepAlive(pub(crate) Duration);
 
 #[derive(Clone, Debug)]
-pub(crate) struct PreferredHttpVersion(pub http::Version);
+pub(crate) struct PreferredHttpVersion(pub(crate) http::Version);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct TcpNoDelay;
@@ -97,13 +99,13 @@ pub(crate) struct TcpNoDelay;
 pub(crate) struct AutoReferer;
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct MaxUploadSpeed(pub u64);
+pub(crate) struct MaxUploadSpeed(pub(crate) u64);
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct MaxDownloadSpeed(pub u64);
+pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
 
 #[derive(Clone, Debug)]
-pub(crate) struct DnsServers(pub Vec<SocketAddr>);
+pub(crate) struct DnsServers(pub(crate) Vec<SocketAddr>);
 
 impl FromIterator<SocketAddr> for DnsServers {
     fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
@@ -112,10 +114,10 @@ impl FromIterator<SocketAddr> for DnsServers {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Proxy(pub http::Uri);
+pub(crate) struct Proxy(pub(crate) http::Uri);
 
 #[derive(Clone, Debug)]
-pub(crate) struct SslCiphers(pub Vec<String>);
+pub(crate) struct SslCiphers(pub(crate) Vec<String>);
 
 impl FromIterator<String> for SslCiphers {
     fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {

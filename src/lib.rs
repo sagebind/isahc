@@ -134,6 +134,17 @@
 //!
 //! [log]: https://docs.rs/log
 
+#![deny(unsafe_code)]
+#![warn(
+    future_incompatible,
+    missing_debug_implementations,
+    missing_docs,
+    rust_2018_idioms,
+    unreachable_pub,
+    unused,
+    clippy::all,
+)]
+
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::future::Future;
@@ -165,6 +176,7 @@ pub use crate::body::Body;
 pub use crate::client::{Client, ClientBuilder};
 pub use crate::error::Error;
 
+/// A "prelude" for importing common cHTTP types.
 pub mod prelude {
     pub use crate::body::Body;
     pub use crate::client::{Client, ClientBuilder};

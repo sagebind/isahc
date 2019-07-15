@@ -15,6 +15,7 @@ use std::sync::RwLock;
 mod psl;
 
 /// Information stored about an HTTP cookie.
+#[derive(Debug)]
 pub struct Cookie {
     /// The name of the cookie.
     name: String,
@@ -193,10 +194,10 @@ impl Cookie {
             return true;
         }
 
-        if request_path.starts_with(cookie_path) {
-            if cookie_path.ends_with('/') || request_path[cookie_path.len()..].starts_with('/') {
-                return true;
-            }
+        if request_path.starts_with(cookie_path)
+            && (cookie_path.ends_with('/') || request_path[cookie_path.len()..].starts_with('/'))
+        {
+            return true;
         }
 
         false
@@ -223,7 +224,7 @@ impl Cookie {
 
 /// Provides automatic cookie session management using an in-memory cookie
 /// store.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct CookieJar {
     /// A map of cookies indexed by a string of the format
     /// `{domain}.{path}.{name}`.
@@ -281,10 +282,12 @@ impl Middleware for CookieJar {
                 .headers()
                 .get_all(http::header::SET_COOKIE)
                 .into_iter()
-                .filter_map(|header| header.to_str().ok().or_else(|| {
-                    log::warn!("invalid encoding in Set-Cookie header");
-                    None
-                }))
+                .filter_map(|header| {
+                    header.to_str().ok().or_else(|| {
+                        log::warn!("invalid encoding in Set-Cookie header");
+                        None
+                    })
+                })
                 .filter_map(|header| {
                     Cookie::parse(header, response.extensions().get().unwrap()).or_else(|| {
                         log::warn!("could not parse Set-Cookie header");
@@ -323,7 +326,7 @@ mod tests {
         assert!(cookie.host_only);
         assert_eq!(
             cookie.expiration.as_ref().map(|t| t.timestamp()),
-            Some(1445412480)
+            Some(1_445_412_480)
         );
     }
 

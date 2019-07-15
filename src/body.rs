@@ -127,7 +127,7 @@ impl Body {
     /// this method will return an empty string next call. If this body supports
     /// seeking, you can seek to the beginning of the body if you need to call
     /// this method again later.
-    pub fn text_async(&mut self) -> Text<Body> {
+    pub fn text_async(&mut self) -> Text<'_, Body> {
         Text::new(self)
     }
 }
@@ -141,7 +141,7 @@ impl Read for Body {
 impl AsyncRead for Body {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context,
+        cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         match &mut self.0 {
@@ -204,7 +204,7 @@ impl<T: Into<Body>> From<Option<T>> for Body {
 }
 
 impl fmt::Debug for Body {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.len() {
             Some(len) => write!(f, "Body({})", len),
             None => write!(f, "Body(?)"),

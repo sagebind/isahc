@@ -1,7 +1,7 @@
 use http::header::{HeaderName, HeaderValue};
 use http::{StatusCode, Version};
 
-pub fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
+pub(crate) fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
     let mut parts = line.split(u8::is_ascii_whitespace);
 
     let version = match parts.next()? {
@@ -27,7 +27,7 @@ pub fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
     Some((version, status_code))
 }
 
-pub fn parse_header(line: &[u8]) -> Option<(HeaderName, HeaderValue)> {
+pub(crate) fn parse_header(line: &[u8]) -> Option<(HeaderName, HeaderValue)> {
     let mut parts = line.split(|byte| *byte == b':');
 
     let name = parts.next().map(HeaderName::from_bytes)?.ok()?;

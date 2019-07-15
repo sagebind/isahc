@@ -19,7 +19,7 @@ fn waker_fn(f: impl Fn() + Send + Sync + 'static) -> Waker {
 }
 
 /// Helper methods for working with wakers.
-pub trait WakerExt {
+pub(crate) trait WakerExt {
     /// Create a new waker from a closure that accepts this waker as an
     /// argument.
     fn chain(&self, f: impl Fn(&Waker) + Send + Sync + 'static) -> Waker;
@@ -37,13 +37,13 @@ impl WakerExt for Waker {
 /// This kind of waker is used to wake up agent threads while they are polling.
 /// Each agent listens on a unique loopback address, which is chosen randomly
 /// when the agent is created.
-pub struct UdpWaker {
+pub(crate) struct UdpWaker {
     socket: UdpSocket,
 }
 
 impl UdpWaker {
     /// Create a waker by connecting to the wake address of an UDP server.
-    pub fn connect(addr: SocketAddr) -> Result<Self, Error> {
+    pub(crate) fn connect(addr: SocketAddr) -> Result<Self, Error> {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.connect(addr)?;
 
