@@ -169,19 +169,25 @@ mod request;
 mod response;
 mod wakers;
 
-/// Re-export of the standard HTTP types.
-pub extern crate http;
+pub use crate::{
+    body::Body,
+    client::{Client, ClientBuilder, ResponseFuture},
+    error::Error,
+};
 
-pub use crate::body::Body;
-pub use crate::client::{Client, ClientBuilder, ResponseFuture};
-pub use crate::error::Error;
+/// Re-export of the standard HTTP types.
+pub use http;
 
 /// A "prelude" for importing common cHTTP types.
 pub mod prelude {
-    pub use crate::body::Body;
-    pub use crate::client::{Client, ClientBuilder};
-    pub use crate::request::{RequestBuilderExt, RequestExt};
-    pub use crate::response::ResponseExt;
+    pub use crate::{
+        body::Body,
+        client::{Client, ClientBuilder, ResponseFuture},
+        error::Error,
+        request::{RequestBuilderExt, RequestExt},
+        response::ResponseExt,
+    };
+
     pub use http::{Request, Response};
 }
 
@@ -283,23 +289,19 @@ where
 
 /// Sends an HTTP request.
 ///
-/// The request may include [extensions](http::Extensions) to
-/// customize how it is sent. You can include an
-/// [`Options`](crate::Options) struct as a request extension to
-/// control various connection and protocol options.
-///
 /// The response body is provided as a stream that may only be consumed once.
+///
+/// This client's configuration can be overridden for this request by
+/// configuring the request using methods provided by the
+/// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
 pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
     Client::shared().send(request)
 }
 
 /// Sends an HTTP request asynchronously.
 ///
-/// The request may include [extensions](http::Extensions) to customize how it
-/// is sent. You can include an [`Options`](crate::Options) struct as a request
-/// extension to control various connection and protocol options.
-///
-/// The response body is provided as a stream that may only be consumed once.
+/// This function uses a globally allocated [Client] instance. See
+/// [`Client::send_async`] for more details and examples.
 pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
     Client::shared().send_async(request)
 }
@@ -310,7 +312,7 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
 /// This function can be helpful when troubleshooting issues in cHTTP or one of
 /// its dependencies.
 pub fn version() -> &'static str {
-    static FEATURES_STRING: &'static str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
+    static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
 
     lazy_static! {
         static ref VERSION_STRING: String = format!(

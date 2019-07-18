@@ -198,7 +198,6 @@ impl ClientBuilder {
     /// # use chttp::config::*;
     /// # use chttp::prelude::*;
     /// #
-    /// # fn run() -> Result<(), chttp::Error> {
     /// let client = Client::builder()
     ///     .ssl_client_certificate(ClientCertificate::PEM {
     ///         path: "client.pem".into(),
@@ -208,8 +207,7 @@ impl ClientBuilder {
     ///         }),
     ///     })
     ///     .build()?;
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), chttp::Error>(())
     /// ```
     pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
         self.defaults.insert(certificate);
@@ -276,10 +274,12 @@ impl Client {
         ClientBuilder::default()
     }
 
-    /// Sends an HTTP GET request.
+    /// Send a GET request to the given URI.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -287,10 +287,12 @@ impl Client {
         block_on(self.get_async(uri))
     }
 
-    /// Sends an HTTP GET request asynchronously.
+    /// Send a GET request to the given URI asynchronously.an HTTP
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
     pub fn get_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -298,7 +300,9 @@ impl Client {
         self.send_builder_async(http::Request::get(uri), Body::empty())
     }
 
-    /// Sends an HTTP HEAD request.
+    /// Send a HEAD request to the given URI.
+    ///
+    /// See also [`Client::send_async`].
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -306,7 +310,9 @@ impl Client {
         block_on(self.head_async(uri))
     }
 
-    /// Sends an HTTP HEAD request asynchronously.
+    /// Send a HEAD request to the given URI asynchronously.
+    ///
+    /// See also [`Client::send_async`].
     pub fn head_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -314,10 +320,23 @@ impl Client {
         self.send_builder_async(http::Request::head(uri), Body::empty())
     }
 
-    /// Sends an HTTP POST request.
+    /// Send a POST request to the given URI with a given request body.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// let client = chttp::Client::new();
+    ///
+    /// let response = client.post("https://httpbin.org/post", r#"{
+    ///     "speed": "fast",
+    ///     "cool_name": true
+    /// }"#)?;
+    /// # Ok::<(), chttp::Error>(())
     pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -325,10 +344,13 @@ impl Client {
         block_on(self.post_async(uri, body))
     }
 
-    /// Sends an HTTP POST request asynchronously.
+    /// Send a POST request to the given URI asynchronously with a given request
+    /// body.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
     pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -336,10 +358,25 @@ impl Client {
         self.send_builder_async(http::Request::post(uri), body)
     }
 
-    /// Sends an HTTP PUT request.
+    /// Send a PUT request to the given URI with a given request body.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// To customize the request further, see [`Client::send`]. To send the
+    /// request asynchronously, see [`Client::put_async`].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// let client = chttp::Client::new();
+    ///
+    /// let response = client.put("https://httpbin.org/put", r#"{
+    ///     "speed": "fast",
+    ///     "cool_name": true
+    /// }"#)?;
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -347,10 +384,10 @@ impl Client {
         block_on(self.put_async(uri, body))
     }
 
-    /// Sends an HTTP PUT request asynchronously.
+    /// Send a PUT request to the given URI asynchronously with a given request
+    /// body.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// See [`Client::put`] for more details.
     pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -358,10 +395,12 @@ impl Client {
         self.send_builder_async(http::Request::put(uri), body)
     }
 
-    /// Sends an HTTP DELETE request.
+    /// Send a DELETE request to the given URI.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
     pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -369,10 +408,12 @@ impl Client {
         block_on(self.delete_async(uri))
     }
 
-    /// Sends an HTTP DELETE request asynchronously.
+    /// Send a DELETE request to the given URI asynchronously.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// See also [`Client::send_async`].
     pub fn delete_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -380,28 +421,45 @@ impl Client {
         self.send_builder_async(http::Request::delete(uri), Body::empty())
     }
 
-    /// Sends a request and returns the response.
-    ///
-    /// The request may include [extensions](http::Extensions) to customize how
-    /// it is sent. If the request contains an [`Options`] struct as an
-    /// extension, then those options will be used instead of the default
-    /// options this client is configured with.
+    /// Send an HTTP request and return the HTTP response.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the
+    /// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
+    ///
+    /// See also [`Client::send_async`].
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
         block_on(self.send_async(request))
     }
 
-    /// Begin sending a request and return a future of the response.
-    ///
-    /// The request may include [extensions](http::Extensions) to customize how
-    /// it is sent. If the request contains an [`Options`] struct as an
-    /// extension, then those options will be used instead of the default
-    /// options this client is configured with.
+    /// Send an HTTP request and return the HTTP response asynchronously.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the
+    /// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use chttp::prelude::*;
+    ///
+    /// # fn run() -> Result<(), chttp::Error> {
+    /// let response = Request::post("https://example.org")
+    ///     .header("Content-Type", "application/json")
+    ///     .body(r#"{
+    ///         "speed": "fast",
+    ///         "cool_name": true
+    ///     }"#)?
+    ///     .send()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let mut request = request.map(Into::into);
 
@@ -632,6 +690,7 @@ impl EasyExt for curl::easy::Easy2<RequestHandler> {
     }
 }
 
+/// A future for a request being executed.
 #[derive(Debug)]
 pub struct ResponseFuture<'c> {
     /// The client this future is associated with.
