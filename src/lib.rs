@@ -5,14 +5,12 @@
 //! Sending requests is as easy as calling a single function. Let's make a
 //! simple GET request to an example website:
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
 //! let mut response = chttp::get("https://example.org")?;
 //! println!("{}", response.text()?);
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! By default, sending a request will wait for the response, up until the
@@ -22,22 +20,18 @@
 //! Sending a POST request is also easy, and takes an additional argument for
 //! the request body:
 //!
-//! ```rust
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = chttp::post("https://example.org", "make me a salad")?;
-//! # Ok(())
-//! # }
+//! ```
+//! let response = chttp::post("https://httpbin.org/post", "make me a salad")?;
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! cHTTP provides several other simple functions for common HTTP request types:
 //!
-//! ```rust
-//! # fn run() -> Result<(), chttp::Error> {
-//! chttp::put("https://example.org", "have a salad")?;
-//! chttp::head("https://example.org")?;
-//! chttp::delete("https://example.org")?;
-//! # Ok(())
-//! # }
+//! ```
+//! chttp::put("https://httpbin.org/put", "have a salad")?;
+//! chttp::head("https://httpbin.org/get")?;
+//! chttp::delete("https://httpbin.org/delete")?;
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! ## Custom requests
@@ -45,19 +39,17 @@
 //! cHTTP is not limited to canned HTTP verbs; you can customize requests by
 //! creating your own `Request` object and then `send`ing that.
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = Request::post("https://example.org")
+//! let response = Request::post("https://httpbin.org/post")
 //!     .header("Content-Type", "application/json")
 //!     .body(r#"{
 //!         "speed": "fast",
 //!         "cool_name": true
 //!     }"#)?
 //!     .send()?;
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! ## Request configuration
@@ -68,17 +60,15 @@
 //! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
 //! trait:
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //! use std::time::Duration;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = Request::get("https://example.org")
+//! let response = Request::get("https://httpbin.org/get")
 //!     .timeout(Duration::from_secs(5))
 //!     .body(())?
 //!     .send()?;
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! Configuration related to sending requests is stored inside the request
@@ -108,14 +98,14 @@
 //! an asynchronous variant that ends with `_async` in the name. Here is our
 //! first example rewritten to use async/await syntax (nightly only):
 //!
-//! ```rust
+//! ```
 //! # #![cfg_attr(feature = "nightly", feature(async_await))]
 //! # use chttp::prelude::*;
 //! #
 //! # #[cfg(feature = "nightly")]
 //! # fn run() -> Result<(), chttp::Error> {
 //! # futures::executor::block_on(async {
-//! let mut response = chttp::get_async("https://example.org").await?;
+//! let mut response = chttp::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
 //! # Ok(())
 //! # })
