@@ -28,7 +28,7 @@ lazy_static! {
 ///
 /// Example:
 ///
-/// ```rust
+/// ```
 /// use chttp::config::RedirectPolicy;
 /// use chttp::http;
 /// use chttp::prelude::*;
@@ -598,7 +598,17 @@ impl Client {
         easy.accept_encoding("")?;
 
         // Set the request data according to the request given.
-        easy.custom_request(parts.method.as_str())?;
+        match parts.method {
+            http::Method::GET => easy.get(true)?,
+            http::Method::HEAD => {
+                easy.nobody(true)?;
+                easy.custom_request("HEAD")?;
+            },
+            http::Method::POST => easy.post(true)?,
+            http::Method::PUT => easy.put(true)?,
+            method => easy.custom_request(method.as_str())?,
+        }
+
         easy.url(&parts.uri.to_string())?;
 
         let mut headers = curl::easy::List::new();

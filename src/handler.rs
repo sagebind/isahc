@@ -56,7 +56,7 @@ pub(crate) struct RequestHandler {
     response_body_waker: Option<Waker>,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ResponseState {
     Active,
     Canceled,
@@ -277,7 +277,11 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Pending => Err(WriteError::Pause),
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
-                    log::error!("error writing response body to buffer: {}", e);
+                    if e.kind() == io::ErrorKind::BrokenPipe {
+                        log::warn!("failed to write response body because the response reader was dropped");
+                    } else {
+                        log::error!("error writing response body to buffer: {}", e);
+                    }
                     Ok(0)
                 }
             }
