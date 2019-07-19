@@ -182,8 +182,7 @@ pub use http;
 pub mod prelude {
     pub use crate::{
         body::Body,
-        client::{Client, ClientBuilder, ResponseFuture},
-        error::Error,
+        client::Client,
         request::{RequestBuilderExt, RequestExt},
         response::ResponseExt,
     };
