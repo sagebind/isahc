@@ -1,8 +1,7 @@
 //! The HTTP client implementation.
 
 use crate::config::*;
-use crate::handler;
-use crate::handler::RequestHandler;
+use crate::handler::*;
 use crate::middleware::Middleware;
 use crate::{agent, Body, Error};
 use futures::executor::block_on;
@@ -292,14 +291,11 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn get_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn get_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        match http::Request::get(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request).left_future(),
-            Err(e) => future::err(e.into()).right_future(),
-        }
+        self.send_builder_async(http::Request::get(uri), Body::empty())
     }
 
     /// Sends an HTTP HEAD request.
@@ -311,14 +307,11 @@ impl Client {
     }
 
     /// Sends an HTTP HEAD request asynchronously.
-    pub fn head_async<U>(&self, uri: U) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn head_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        match http::Request::head(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request).left_future(),
-            Err(e) => future::err(e.into()).right_future(),
-        }
+        self.send_builder_async(http::Request::head(uri), Body::empty())
     }
 
     /// Sends an HTTP POST request.
@@ -336,18 +329,11 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn post_async<U>(
-        &self,
-        uri: U,
-        body: impl Into<Body>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        match http::Request::post(uri).body(body) {
-            Ok(request) => self.send_async(request).left_future(),
-            Err(e) => future::err(e.into()).right_future(),
-        }
+        self.send_builder_async(http::Request::post(uri), body)
     }
 
     /// Sends an HTTP PUT request.
@@ -365,18 +351,11 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn put_async<U>(
-        &self,
-        uri: U,
-        body: impl Into<Body>,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        match http::Request::put(uri).body(body) {
-            Ok(request) => self.send_async(request).left_future(),
-            Err(e) => future::err(e.into()).right_future(),
-        }
+        self.send_builder_async(http::Request::put(uri), body)
     }
 
     /// Sends an HTTP DELETE request.
@@ -394,17 +373,11 @@ impl Client {
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
-    pub fn delete_async<U>(
-        &self,
-        uri: U,
-    ) -> impl Future<Output = Result<Response<Body>, Error>> + '_
+    pub fn delete_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        match http::Request::delete(uri).body(Body::empty()) {
-            Ok(request) => self.send_async(request).left_future(),
-            Err(e) => future::err(e.into()).right_future(),
-        }
+        self.send_builder_async(http::Request::delete(uri), Body::empty())
     }
 
     /// Sends a request and returns the response.
@@ -446,15 +419,28 @@ impl Client {
 
         ResponseFuture {
             client: self,
+            error: None,
             request: Some(request),
             inner: None,
+        }
+    }
+
+    fn send_builder_async(&self, mut builder: http::request::Builder, body: impl Into<Body>) -> ResponseFuture<'_> {
+        match builder.body(body.into()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture {
+                client: self,
+                error: Some(e.into()),
+                request: None,
+                inner: None,
+            },
         }
     }
 
     fn create_easy_handle(
         &self,
         request: Request<Body>,
-    ) -> Result<(curl::easy::Easy2<RequestHandler>, handler::ResponseFuture), Error> {
+    ) -> Result<(curl::easy::Easy2<RequestHandler>, RequestHandlerFuture), Error> {
         // Prepare the request plumbing.
         let (parts, body) = request.into_parts();
         let body_is_empty = body.is_empty();
@@ -648,15 +634,25 @@ impl EasyExt for curl::easy::Easy2<RequestHandler> {
 
 #[derive(Debug)]
 pub struct ResponseFuture<'c> {
+    /// The client this future is associated with.
     client: &'c Client,
+    /// A pre-filled error to return.
+    error: Option<Error>,
+    /// The request to send.
     request: Option<Request<Body>>,
-    inner: Option<handler::ResponseFuture>,
+    /// The inner future for actual execution.
+    inner: Option<RequestHandlerFuture>,
 }
 
 impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // If the future has a pre-filled error, return that.
+        if let Some(e) = self.error.take() {
+            return Poll::Ready(Err(e));
+        }
+
         // Request has not been sent yet.
         if let Some(request) = self.request.take() {
             // Create and configure a curl easy handle to fulfil the request.
@@ -670,13 +666,6 @@ impl Future for ResponseFuture<'_> {
 
         if let Some(inner) = self.inner.as_mut() {
             match inner.poll_unpin(cx) {
-                // Buffer isn't full yet.
-                Poll::Pending => Poll::Pending,
-
-                // Read error
-                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
-
-                // Buffer has been filled, try to parse as UTF-8
                 Poll::Ready(Ok(mut response)) => {
                     // Apply response middleware, starting with the innermost
                     // one.
@@ -686,8 +675,11 @@ impl Future for ResponseFuture<'_> {
 
                     Poll::Ready(Ok(response))
                 }
+
+                poll => poll,
             }
         } else {
+            // Invalid state (called poll() after ready), just return pending...
             Poll::Pending
         }
     }

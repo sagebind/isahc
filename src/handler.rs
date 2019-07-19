@@ -65,7 +65,7 @@ pub(crate) enum ResponseState {
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
-    pub(crate) fn new(request_body: Body) -> (Self, ResponseFuture) {
+    pub(crate) fn new(request_body: Body) -> (Self, RequestHandlerFuture) {
         let (sender, receiver) = oneshot::channel();
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
@@ -81,7 +81,7 @@ impl RequestHandler {
                 response_body_writer,
                 response_body_waker: None,
             },
-            ResponseFuture {
+            RequestHandlerFuture {
                 receiver,
                 response_body_reader: Some(response_body_reader),
             },
@@ -325,9 +325,9 @@ impl fmt::Debug for RequestHandler {
     }
 }
 
-// A future for a response.
+// A future for a response produced by a request handler.
 #[derive(Debug)]
-pub(crate) struct ResponseFuture {
+pub(crate) struct RequestHandlerFuture {
     receiver: oneshot::Receiver<Result<http::response::Builder, Error>>,
 
     /// Reading end of the pipe where the response body is written.
@@ -338,7 +338,7 @@ pub(crate) struct ResponseFuture {
     response_body_reader: Option<pipe::PipeReader>,
 }
 
-impl Future for ResponseFuture {
+impl Future for RequestHandlerFuture {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -383,7 +383,7 @@ impl Future for ResponseFuture {
     }
 }
 
-impl Drop for ResponseFuture {
+impl Drop for RequestHandlerFuture {
     fn drop(&mut self) {
         self.receiver.close();
     }
@@ -397,6 +397,6 @@ mod tests {
 
     #[test]
     fn traits() {
-        is_send::<ResponseFuture>();
+        is_send::<RequestHandlerFuture>();
     }
 }

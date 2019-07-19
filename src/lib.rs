@@ -147,7 +147,6 @@
 
 use http::{Request, Response};
 use lazy_static::lazy_static;
-use std::future::Future;
 
 #[cfg(feature = "cookies")]
 pub mod cookies;
@@ -174,7 +173,7 @@ mod wakers;
 pub extern crate http;
 
 pub use crate::body::Body;
-pub use crate::client::{Client, ClientBuilder};
+pub use crate::client::{Client, ClientBuilder, ResponseFuture};
 pub use crate::error::Error;
 
 /// A "prelude" for importing common cHTTP types.
@@ -199,7 +198,7 @@ where
 /// Sends an HTTP GET request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn get_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
@@ -215,7 +214,7 @@ where
 }
 
 /// Sends an HTTP HEAD request asynchronously.
-pub fn head_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
@@ -235,10 +234,7 @@ where
 /// Sends an HTTP POST request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn post_async<U>(
-    uri: U,
-    body: impl Into<Body>,
-) -> impl Future<Output = Result<Response<Body>, Error>>
+pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
@@ -258,10 +254,7 @@ where
 /// Sends an HTTP PUT request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn put_async<U>(
-    uri: U,
-    body: impl Into<Body>,
-) -> impl Future<Output = Result<Response<Body>, Error>>
+pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
@@ -281,7 +274,7 @@ where
 /// Sends an HTTP DELETE request asynchronously.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn delete_async<U>(uri: U) -> impl Future<Output = Result<Response<Body>, Error>>
+pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
@@ -307,7 +300,7 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 /// extension to control various connection and protocol options.
 ///
 /// The response body is provided as a stream that may only be consumed once.
-pub fn send_async<B: Into<Body>>(request: Request<B>) -> client::ResponseFuture<'static> {
+pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
     Client::shared().send_async(request)
 }
 
