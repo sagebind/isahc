@@ -21,6 +21,7 @@ status = "actively-developed"
 default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
+json = ["serde", "serde_json"]
 nightly = []
 psl = ["parking_lot", "publicsuffix"]
 static-curl = ["curl/static-curl"]
@@ -49,6 +50,14 @@ optional = true
 [dependencies.publicsuffix]
 version = "1.5"
 default-features = false
+optional = true
+
+[dependencies.serde]
+version = "1.0"
+optional = true
+
+[dependencies.serde_json]
+version = "1.0"
 optional = true
 
 [dev-dependencies]

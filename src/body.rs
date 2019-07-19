@@ -130,6 +130,12 @@ impl Body {
     pub fn text_async(&mut self) -> Text<'_, Body> {
         Text::new(self)
     }
+
+    /// Deserialize the response body as JSON into a given type.
+    #[cfg(feature = "json")]
+    pub fn json<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, serde_json::Error> {
+        serde_json::from_reader(self)
+    }
 }
 
 impl Read for Body {
