@@ -64,6 +64,7 @@ Below is a list of all available feature flags and their meanings.
 
 - `cookies`: Enable persistent HTTP cookie support. Enabled by default.
 - `http2`: Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
+- `json`: Additional serialization and deserialization of JSON bodies via [serde]. Disabled by default.
 - `psl`: Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Disabled by default.
 - `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
 - `async-api`: Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently behind a feature flag until the futures API stabilizes. This an unstable feature whose interface may change between patch releases.
@@ -93,3 +94,4 @@ This library is licensed under the MIT license. See the [LICENSE](LICENSE) file 
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
+[serde]: https://serde.rs
