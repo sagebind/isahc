@@ -1,10 +1,6 @@
 use std::env;
 use std::sync::Once;
 
-pub use rouille;
-
-pub mod server;
-
 pub fn logging() {
     static ONCE: Once = Once::new();
 

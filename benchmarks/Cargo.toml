@@ -1,7 +1,8 @@
 [package]
 name = "chttp-benchmarks"
-version = "0.0.1"
+version = "0.0.0"
 edition = "2018"
+publish = false
 
 [dependencies.chttp]
 path = ".."

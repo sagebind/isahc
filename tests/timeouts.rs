@@ -1,31 +1,38 @@
 use chttp::prelude::*;
-use std::thread;
+use mockito::{mock, server_url};
+use std::thread::sleep;
 use std::time::Duration;
-use utilities::rouille;
 
-mod utilities;
+mod utils;
 
-/// Issue #3
-#[test]
-fn request_errors_if_read_timeout_is_reached() {
-    utilities::logging();
+speculate::speculate! {
+    before {
+        utils::logging();
+    }
 
-    // Spawn a slow server.
-    let server = utilities::server::spawn(|_| {
-        thread::sleep(Duration::from_secs(3));
-        rouille::Response::text("hello world")
-    });
+    /// Issue #3
+    test "request errors if read timeout is reached" {
+        // Spawn a slow server.
+        let m = mock("POST", "/")
+            .with_body_from_fn(|_| {
+                sleep(Duration::from_millis(500));
+                Ok(())
+            })
+            .create();
 
-    // Send a request with a timeout.
-    let result = Request::post(server.endpoint())
-        .timeout(Duration::from_secs(2))
-        .body("hello world")
-        .map_err(Into::into)
-        .and_then(chttp::send);
+        // Send a request with a timeout.
+        let result = Request::post(server_url())
+            .timeout(Duration::from_millis(100))
+            .body("hello world")
+            .unwrap()
+            .send();
 
-    // Client should time-out.
-    assert!(match result {
-        Err(chttp::Error::Timeout) => true,
-        _ => false,
-    });
+        // Client should time-out.
+        assert!(match result {
+            Err(chttp::Error::Timeout) => true,
+            _ => false,
+        });
+
+        m.assert();
+    }
 }

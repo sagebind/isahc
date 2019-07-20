@@ -1,26 +1,35 @@
-use utilities::rouille;
+use mockito::{mock, server_url};
 
-mod utilities;
+mod utils;
 
-#[test]
-fn simple_response_body() {
-    utilities::logging();
+speculate::speculate! {
+    before {
+        utils::logging();
+    }
 
-    let server = utilities::server::spawn(|_| rouille::Response::text("hello world"));
+    test "simple response body" {
+        let mock = mock("GET", "/")
+            .with_body("hello world")
+            .create();
 
-    let mut response = chttp::get(server.endpoint()).unwrap();
-    let response_text = response.body_mut().text().unwrap();
-    assert_eq!(response_text, "hello world");
-}
+        let mut response = chttp::get(server_url()).unwrap();
+        let response_text = response.body_mut().text().unwrap();
+        assert_eq!(response_text, "hello world");
 
-#[test]
-fn large_response_body() {
-    utilities::logging();
+        mock.assert();
+    }
 
-    let server =
-        utilities::server::spawn(|_| rouille::Response::text("wow so large ".repeat(1000)));
+    test "large response body" {
+        let body = "wow so large ".repeat(1000);
 
-    let mut response = chttp::get(server.endpoint()).unwrap();
-    let response_text = response.body_mut().text().unwrap();
-    assert_eq!(response_text, "wow so large ".repeat(1000));
+        let mock = mock("GET", "/")
+            .with_body(&body)
+            .create();
+
+        let mut response = chttp::get(server_url()).unwrap();
+        let response_text = response.body_mut().text().unwrap();
+        assert_eq!(response_text, body);
+
+        mock.assert();
+    }
 }

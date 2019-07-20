@@ -62,8 +62,9 @@ optional = true
 
 [dev-dependencies]
 env_logger = "0.6"
+mockito = "0.19"
 rayon = "1"
-rouille = "3"
+speculate = "0.1"
 
 [[example]]
 name = "async"

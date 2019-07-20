@@ -1,62 +1,77 @@
 use chttp::config::RedirectPolicy;
 use chttp::prelude::*;
-use utilities::rouille;
+use mockito::{mock, server_url};
 
-mod utilities;
+mod utils;
 
-#[test]
-fn response_301_no_follow() {
-    utilities::logging();
+speculate::speculate! {
+    before {
+        utils::logging();
+    }
 
-    let server = utilities::server::spawn(|request| match request.raw_url() {
-        "/a" => rouille::Response::redirect_301("/b"),
-        _ => rouille::Response::text("ok"),
-    });
+    test "response 301 no follow" {
+        let m = mock("GET", "/")
+            .with_status(301)
+            .with_header("Location", "/b")
+            .create();
 
-    let response = chttp::get(&format!("{}/a", &server.endpoint())).unwrap();
+        let response = chttp::get(server_url()).unwrap();
 
-    assert_eq!(response.status(), 301);
-}
+        assert_eq!(response.status(), 301);
+        assert_eq!(response.headers()["Location"], "/b");
+        m.assert();
+    }
 
-#[test]
-fn response_301_auto_follow() {
-    utilities::logging();
+    test "response 301 auto follow" {
+        let m1 = mock("GET", "/")
+            .with_status(301)
+            .with_header("Location", "/b")
+            .create();
 
-    let server = utilities::server::spawn(|request| match request.raw_url() {
-        "/a" => rouille::Response::redirect_301("/b"),
-        _ => rouille::Response::text("ok"),
-    });
+        let m2 = mock("GET", "/b")
+            .with_status(200)
+            .with_body("ok")
+            .create();
 
-    let mut response = Request::get(format!("{}/a", server.endpoint()))
-        .redirect_policy(RedirectPolicy::Follow)
-        .body(())
-        .map_err(Into::into)
-        .and_then(chttp::send)
-        .unwrap();
+        let mut response = Request::get(server_url())
+            .redirect_policy(RedirectPolicy::Follow)
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
 
-    assert_eq!(response.status(), 200);
-    assert_eq!(response.text().unwrap(), "ok");
-}
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.text().unwrap(), "ok");
 
-#[test]
-fn redirect_limit_is_respected() {
-    utilities::logging();
+        m1.assert();
+        m2.assert();
+    }
 
-    let server = utilities::server::spawn(|request| {
-        let count = request.raw_url()[1..].parse::<u32>().unwrap();
+    test "redirect limit is respected" {
+        let m1 = mock("GET", "/")
+            .with_status(301)
+            .with_header("Location", "/b")
+            .create();
 
-        rouille::Response::redirect_301(format!("/{}", count + 1))
-    });
+        let m2 = mock("GET", "/b")
+            .with_status(301)
+            .with_header("Location", "/")
+            .create();
 
-    let result = Request::get(format!("{}/0", server.endpoint()))
-        .redirect_policy(RedirectPolicy::Limit(5))
-        .body(())
-        .map_err(Into::into)
-        .and_then(chttp::send);
+        let result = Request::get(server_url())
+            .redirect_policy(RedirectPolicy::Limit(5))
+            .body(())
+            .unwrap()
+            .send();
 
-    // Request should error with too many redirects.
-    assert!(match result {
-        Err(chttp::Error::TooManyRedirects) => true,
-        _ => false,
-    });
+        // Request should error with too many redirects.
+        assert!(match result {
+            Err(chttp::Error::TooManyRedirects) => true,
+            _ => false,
+        });
+
+        // After request (limit + 1) that returns a redirect should error.
+        m1.expect(3);
+        m2.expect(3);
+    }
 }
