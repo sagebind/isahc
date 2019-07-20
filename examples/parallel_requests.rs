@@ -3,7 +3,7 @@
 //! same thread, or from different threads as in this example.
 //!
 //! We're using Rayon here to make parallelism easy.
-use chttp::Client;
+use chttp::prelude::*;
 use rayon::prelude::*;
 use std::env;
 use std::time::Instant;
@@ -17,7 +17,7 @@ fn main() -> Result<(), chttp::Error> {
     let urls: Vec<String> = (0..count)
         .map(|i| format!("https://httpbin.org/anything/{:03}", i))
         .collect();
-    let client = Client::new();
+    let client = HttpClient::new();
 
     let start = Instant::now();
 

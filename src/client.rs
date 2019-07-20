@@ -1,9 +1,10 @@
 //! The HTTP client implementation.
 
+use crate::agent;
 use crate::config::*;
-use crate::handler::*;
+use crate::handler::{RequestHandler, RequestHandlerFuture};
 use crate::middleware::Middleware;
-use crate::{agent, Body, Error};
+use crate::{Body, Error};
 use futures::executor::block_on;
 use futures::prelude::*;
 use http::{Request, Response};
@@ -12,7 +13,7 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::task::*;
+use std::task::{Context, Poll};
 use std::time::Duration;
 
 lazy_static! {
@@ -23,8 +24,8 @@ lazy_static! {
     );
 }
 
-/// An HTTP client builder, capable of creating custom [`Client`] instances with
-/// customized behavior.
+/// An HTTP client builder, capable of creating custom [`HttpClient`] instances
+/// with customized behavior.
 ///
 /// Example:
 ///
@@ -34,8 +35,7 @@ lazy_static! {
 /// use chttp::prelude::*;
 /// use std::time::Duration;
 ///
-/// # fn run() -> Result<(), chttp::Error> {
-/// let client = Client::builder()
+/// let client = HttpClient::builder()
 ///     .timeout(Duration::from_secs(60))
 ///     .redirect_policy(RedirectPolicy::Limit(10))
 ///     .preferred_http_version(http::Version::HTTP_2)
@@ -44,16 +44,15 @@ lazy_static! {
 /// let mut response = client.get("https://example.org")?;
 /// let body = response.body_mut().text()?;
 /// println!("{}", body);
-/// # Ok(())
-/// # }
+/// # Ok::<(), chttp::Error>(())
 /// ```
 #[derive(Default)]
-pub struct ClientBuilder {
+pub struct HttpClientBuilder {
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
 }
 
-impl ClientBuilder {
+impl HttpClientBuilder {
     /// Create a new builder for building a custom client.
     pub fn new() -> Self {
         Self::default()
@@ -140,6 +139,9 @@ impl ClientBuilder {
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    ///
+    /// By default no proxy will be used, unless one is specified in either the
+    /// `http_proxy` or `https_proxy` environment variables.
     pub fn proxy(mut self, proxy: http::Uri) -> Self {
         self.defaults.insert(Proxy(proxy));
         self
@@ -198,8 +200,7 @@ impl ClientBuilder {
     /// # use chttp::config::*;
     /// # use chttp::prelude::*;
     /// #
-    /// # fn run() -> Result<(), chttp::Error> {
-    /// let client = Client::builder()
+    /// let client = HttpClient::builder()
     ///     .ssl_client_certificate(ClientCertificate::PEM {
     ///         path: "client.pem".into(),
     ///         private_key: Some(PrivateKey::PEM {
@@ -208,19 +209,18 @@ impl ClientBuilder {
     ///         }),
     ///     })
     ///     .build()?;
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), chttp::Error>(())
     /// ```
     pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
         self.defaults.insert(certificate);
         self
     }
 
-    /// Build an HTTP client using the configured options.
+    /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
-    pub fn build(self) -> Result<Client, Error> {
-        Ok(Client {
+    pub fn build(self) -> Result<HttpClient, Error> {
+        Ok(HttpClient {
             agent: agent::new()?,
             defaults: self.defaults,
             middleware: self.middleware,
@@ -228,58 +228,126 @@ impl ClientBuilder {
     }
 }
 
-impl fmt::Debug for ClientBuilder {
+impl fmt::Debug for HttpClientBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ClientBuilder").finish()
+        f.debug_struct("HttpClientBuilder").finish()
     }
 }
 
 /// An HTTP client for making requests.
 ///
-/// The client maintains a connection pool internally and is expensive to
-/// create, so we recommend re-using your clients instead of discarding and
-/// recreating them.
-pub struct Client {
+/// An [`HttpClient`] instance acts as a session for executing one or more HTTP
+/// requests, and also allows you to set common protocol settings that should be
+/// applied to all requests made with the client.
+///
+/// [`HttpClient`] is entirely thread-safe, and implements both [`Send`] and
+/// [`Sync`]. You are free to create clients outside the context of the "main"
+/// thread, or move them between threads. You can even invoke many requests
+/// simultaneously from multiple threads, since doing so doesn't need a mutable
+/// reference to the client. This is fairly cheap to do as well, since
+/// internally requests use lock-free message passing to get things going.
+///
+/// The client maintains a connection pool internally and is not cheap to
+/// create, so we recommend creating a client once and re-using it throughout
+/// your code. Creating a new client for every request would decrease
+/// performance significantly, and might cause errors to occur under high
+/// workloads, caused by creating too many system resources like sockets or
+/// threads.
+///
+/// It is not universally true that you should use exactly one client instance
+/// in an application. All HTTP requests made with the same client will share
+/// any session-wide state, like cookies or persistent connections. It may be
+/// the case that it is better to create separate clients for separate areas of
+/// an application if they have separate concerns or are making calls to
+/// different servers. If you are creating an API client library, that might be
+/// a good place to maintain your own internal client.
+///
+/// ## Examples
+///
+/// ```
+/// use chttp::prelude::*;
+///
+/// // Create a new client using reasonable defaults.
+/// let client = HttpClient::default();
+///
+/// // Make some requests.
+/// let mut response = client.get("https://example.org")?;
+/// assert!(response.status().is_success());
+///
+/// println!("Response:\n{}", response.text()?);
+/// # Ok::<(), chttp::Error>(())
+/// ```
+///
+/// Customizing the client configuration:
+///
+/// ```
+/// use chttp::{config::RedirectPolicy, prelude::*};
+/// use std::time::Duration;
+///
+/// let client = HttpClient::builder()
+///     .preferred_http_version(http::Version::HTTP_11)
+///     .redirect_policy(RedirectPolicy::Limit(10))
+///     .timeout(Duration::from_secs(20))
+///     // May return an error if there's something wrong with our configuration
+///     // or if the client failed to start up.
+///     .build()?;
+///
+/// let response = client.get("https://example.org")?;
+/// assert!(response.status().is_success());
+/// # Ok::<(), chttp::Error>(())
+/// ```
+///
+/// See the documentation on [`HttpClientBuilder`] for a comprehensive look at
+/// what can be configured.
+pub struct HttpClient {
+    /// This is how we talk to our background agent thread.
     agent: agent::Handle,
+    /// Map of config values that should be used to configure execution if not
+    /// specified in a request.
     defaults: http::Extensions,
+    /// Any middleware implementations that requests should pass through.
     middleware: Vec<Box<dyn Middleware>>,
 }
 
-impl Default for Client {
+impl Default for HttpClient {
     fn default() -> Self {
-        ClientBuilder::default()
+        HttpClientBuilder::default()
             .build()
             .expect("client failed to initialize")
     }
 }
 
-impl Client {
+impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
-    /// Panics if any internal systems failed to initialize during creation.
-    /// This might occur if creating a socket fails, spawning a thread fails, or
-    /// if something else goes wrong.
+    /// Panics if any required internal systems fail to initialize. This might
+    /// occur if creating a socket fails, spawning a thread fails, or if
+    /// something else goes wrong.
+    ///
+    /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Get a reference to a global client instance.
+    ///
+    /// TODO: Stabilize.
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
-            static ref CLIENT: Client = Client::new();
+            static ref SHARED: HttpClient = HttpClient::new();
         }
-        &CLIENT
+        &SHARED
     }
 
-    /// Create a new builder for building a custom client.
-    pub fn builder() -> ClientBuilder {
-        ClientBuilder::default()
+    /// Create a new [`HttpClientBuilder`] for building a custom client.
+    pub fn builder() -> HttpClientBuilder {
+        HttpClientBuilder::default()
     }
 
-    /// Sends an HTTP GET request.
+    /// Send a GET request to the given URI.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send`]. To execute
+    /// the request asynchronously, see [`HttpClient::get_async`].
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -287,10 +355,10 @@ impl Client {
         block_on(self.get_async(uri))
     }
 
-    /// Sends an HTTP GET request asynchronously.
+    /// Send a GET request to the given URI asynchronously.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send_async`]. To
+    /// execute the request synchronously, see [`HttpClient::get`].
     pub fn get_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -298,7 +366,10 @@ impl Client {
         self.send_builder_async(http::Request::get(uri), Body::empty())
     }
 
-    /// Sends an HTTP HEAD request.
+    /// Send a HEAD request to the given URI.
+    ///
+    /// To customize the request further, see [`HttpClient::send`]. To execute
+    /// the request asynchronously, see [`HttpClient::head_async`].
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -306,7 +377,10 @@ impl Client {
         block_on(self.head_async(uri))
     }
 
-    /// Sends an HTTP HEAD request asynchronously.
+    /// Send a HEAD request to the given URI asynchronously.
+    ///
+    /// To customize the request further, see [`HttpClient::send_async`]. To
+    /// execute the request synchronously, see [`HttpClient::head`].
     pub fn head_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -314,10 +388,23 @@ impl Client {
         self.send_builder_async(http::Request::head(uri), Body::empty())
     }
 
-    /// Sends an HTTP POST request.
+    /// Send a POST request to the given URI with a given request body.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send`]. To execute
+    /// the request asynchronously, see [`HttpClient::post_async`].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use chttp::prelude::*;
+    ///
+    /// let client = HttpClient::default();
+    ///
+    /// let response = client.post("https://httpbin.org/post", r#"{
+    ///     "speed": "fast",
+    ///     "cool_name": true
+    /// }"#)?;
+    /// # Ok::<(), chttp::Error>(())
     pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -325,10 +412,11 @@ impl Client {
         block_on(self.post_async(uri, body))
     }
 
-    /// Sends an HTTP POST request asynchronously.
+    /// Send a POST request to the given URI asynchronously with a given request
+    /// body.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send_async`]. To
+    /// execute the request synchronously, see [`HttpClient::post`].
     pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -336,10 +424,24 @@ impl Client {
         self.send_builder_async(http::Request::post(uri), body)
     }
 
-    /// Sends an HTTP PUT request.
+    /// Send a PUT request to the given URI with a given request body.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send`]. To execute
+    /// the request asynchronously, see [`HttpClient::put_async`].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use chttp::prelude::*;
+    ///
+    /// let client = HttpClient::default();
+    ///
+    /// let response = client.put("https://httpbin.org/put", r#"{
+    ///     "speed": "fast",
+    ///     "cool_name": true
+    /// }"#)?;
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -347,10 +449,11 @@ impl Client {
         block_on(self.put_async(uri, body))
     }
 
-    /// Sends an HTTP PUT request asynchronously.
+    /// Send a PUT request to the given URI asynchronously with a given request
+    /// body.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send_async`]. To
+    /// execute the request synchronously, see [`HttpClient::put`].
     pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -358,10 +461,10 @@ impl Client {
         self.send_builder_async(http::Request::put(uri), body)
     }
 
-    /// Sends an HTTP DELETE request.
+    /// Send a DELETE request to the given URI.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send`]. To execute
+    /// the request asynchronously, see [`HttpClient::delete_async`].
     pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -369,10 +472,10 @@ impl Client {
         block_on(self.delete_async(uri))
     }
 
-    /// Sends an HTTP DELETE request asynchronously.
+    /// Send a DELETE request to the given URI asynchronously.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// To customize the request further, see [`HttpClient::send_async`]. To
+    /// execute the request synchronously, see [`HttpClient::delete`].
     pub fn delete_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -380,28 +483,57 @@ impl Client {
         self.send_builder_async(http::Request::delete(uri), Body::empty())
     }
 
-    /// Sends a request and returns the response.
-    ///
-    /// The request may include [extensions](http::Extensions) to customize how
-    /// it is sent. If the request contains an [`Options`] struct as an
-    /// extension, then those options will be used instead of the default
-    /// options this client is configured with.
+    /// Send an HTTP request and return the HTTP response.
     ///
     /// The response body is provided as a stream that may only be consumed
     /// once.
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the
+    /// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
+    ///
+    /// Upon success, will return a [`Response`] containing the status code,
+    /// response headers, and response body from the server. The [`Response`] is
+    /// returned as soon as the HTTP response headers are received; the
+    /// connection will remain open to stream the response body in real time.
+    /// Dropping the response body without fully consume it will close the
+    /// connection early without downloading the rest of the response body.
+    ///
+    /// _Note that the actual underlying socket connection isn't necessarily
+    /// closed on drop. It may remain open to be reused if pipelining is being
+    /// used, the connection is configured as `keep-alive`, and so on._
+    ///
+    /// Since the response body is streamed from the server, it may only be
+    /// consumed once. If you need to inspect the response body more than once,
+    /// you will have to either read it into memory or write it to a file.
+    ///
+    /// To execute the request asynchronously, see [`HttpClient::send_async`].
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use chttp::prelude::*;
+    ///
+    /// let client = HttpClient::default();
+    ///
+    /// let request = Request::post("https://httpbin.org/post")
+    ///     .header("Content-Type", "application/json")
+    ///     .body(r#"{
+    ///         "speed": "fast",
+    ///         "cool_name": true
+    ///     }"#)?;
+    ///
+    /// let response = client.send(request)?;
+    /// assert!(response.status().is_success());
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
         block_on(self.send_async(request))
     }
 
-    /// Begin sending a request and return a future of the response.
+    /// Send an HTTP request and return the HTTP response asynchronously.
     ///
-    /// The request may include [extensions](http::Extensions) to customize how
-    /// it is sent. If the request contains an [`Options`] struct as an
-    /// extension, then those options will be used instead of the default
-    /// options this client is configured with.
-    ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// See [`HttpClient::send`] for details.
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let mut request = request.map(Into::into);
 
@@ -425,7 +557,11 @@ impl Client {
         }
     }
 
-    fn send_builder_async(&self, mut builder: http::request::Builder, body: impl Into<Body>) -> ResponseFuture<'_> {
+    fn send_builder_async(
+        &self,
+        mut builder: http::request::Builder,
+        body: impl Into<Body>,
+    ) -> ResponseFuture<'_> {
         match builder.body(body.into()) {
             Ok(request) => self.send_async(request),
             Err(e) => ResponseFuture {
@@ -540,15 +676,10 @@ impl Client {
         easy.accept_encoding("")?;
 
         // Set the request data according to the request given.
-        match parts.method {
-            http::Method::GET => easy.get(true)?,
-            http::Method::HEAD => {
-                easy.nobody(true)?;
-                easy.custom_request("HEAD")?;
-            },
-            http::Method::POST => easy.post(true)?,
-            http::Method::PUT => easy.put(true)?,
-            method => easy.custom_request(method.as_str())?,
+        easy.custom_request(parts.method.as_str())?;
+        // Curl handles HEAD requests differently.
+        if parts.method == http::Method::HEAD {
+            easy.nobody(true)?;
         }
 
         easy.url(&parts.uri.to_string())?;
@@ -576,9 +707,9 @@ impl Client {
     }
 }
 
-impl fmt::Debug for Client {
+impl fmt::Debug for HttpClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Client").finish()
+        f.debug_struct("HttpClient").finish()
     }
 }
 
@@ -642,10 +773,11 @@ impl EasyExt for curl::easy::Easy2<RequestHandler> {
     }
 }
 
+/// A future for a request being executed.
 #[derive(Debug)]
 pub struct ResponseFuture<'c> {
     /// The client this future is associated with.
-    client: &'c Client,
+    client: &'c HttpClient,
     /// A pre-filled error to return.
     error: Option<Error>,
     /// The request to send.
@@ -704,9 +836,9 @@ mod tests {
 
     #[test]
     fn traits() {
-        is_send::<Client>();
-        is_sync::<Client>();
+        is_send::<HttpClient>();
+        is_sync::<HttpClient>();
 
-        is_send::<ClientBuilder>();
+        is_send::<HttpClientBuilder>();
     }
 }

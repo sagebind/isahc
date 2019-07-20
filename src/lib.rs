@@ -5,14 +5,12 @@
 //! Sending requests is as easy as calling a single function. Let's make a
 //! simple GET request to an example website:
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
 //! let mut response = chttp::get("https://example.org")?;
 //! println!("{}", response.text()?);
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! By default, sending a request will wait for the response, up until the
@@ -22,22 +20,18 @@
 //! Sending a POST request is also easy, and takes an additional argument for
 //! the request body:
 //!
-//! ```rust
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = chttp::post("https://example.org", "make me a salad")?;
-//! # Ok(())
-//! # }
+//! ```
+//! let response = chttp::post("https://httpbin.org/post", "make me a salad")?;
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! cHTTP provides several other simple functions for common HTTP request types:
 //!
-//! ```rust
-//! # fn run() -> Result<(), chttp::Error> {
-//! chttp::put("https://example.org", "have a salad")?;
-//! chttp::head("https://example.org")?;
-//! chttp::delete("https://example.org")?;
-//! # Ok(())
-//! # }
+//! ```
+//! chttp::put("https://httpbin.org/put", "have a salad")?;
+//! chttp::head("https://httpbin.org/get")?;
+//! chttp::delete("https://httpbin.org/delete")?;
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! ## Custom requests
@@ -45,19 +39,17 @@
 //! cHTTP is not limited to canned HTTP verbs; you can customize requests by
 //! creating your own `Request` object and then `send`ing that.
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = Request::post("https://example.org")
+//! let response = Request::post("https://httpbin.org/post")
 //!     .header("Content-Type", "application/json")
 //!     .body(r#"{
 //!         "speed": "fast",
 //!         "cool_name": true
 //!     }"#)?
 //!     .send()?;
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! ## Request configuration
@@ -68,17 +60,15 @@
 //! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
 //! trait:
 //!
-//! ```rust
+//! ```
 //! use chttp::prelude::*;
 //! use std::time::Duration;
 //!
-//! # fn run() -> Result<(), chttp::Error> {
-//! let response = Request::get("https://example.org")
+//! let response = Request::get("https://httpbin.org/get")
 //!     .timeout(Duration::from_secs(5))
 //!     .body(())?
 //!     .send()?;
-//! # Ok(())
-//! # }
+//! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! Configuration related to sending requests is stored inside the request
@@ -93,8 +83,8 @@
 //! has its own connection pool and event loop, so separating certain requests
 //! into separate clients can ensure that they are isolated from each other.
 //!
-//! See the documentation for [`Client`] and [`ClientBuilder`] for more details
-//! on creating custom clients.
+//! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more
+//! details on creating custom clients.
 //!
 //! ## Asynchronous API and execution
 //!
@@ -108,14 +98,14 @@
 //! an asynchronous variant that ends with `_async` in the name. Here is our
 //! first example rewritten to use async/await syntax (nightly only):
 //!
-//! ```rust
+//! ```
 //! # #![cfg_attr(feature = "nightly", feature(async_await))]
 //! # use chttp::prelude::*;
 //! #
 //! # #[cfg(feature = "nightly")]
 //! # fn run() -> Result<(), chttp::Error> {
 //! # futures::executor::block_on(async {
-//! let mut response = chttp::get_async("https://example.org").await?;
+//! let mut response = chttp::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
 //! # Ok(())
 //! # })
@@ -169,19 +159,24 @@ mod request;
 mod response;
 mod wakers;
 
-/// Re-export of the standard HTTP types.
-pub extern crate http;
+pub use crate::{
+    body::Body,
+    client::{HttpClient, HttpClientBuilder, ResponseFuture},
+    error::Error,
+};
 
-pub use crate::body::Body;
-pub use crate::client::{Client, ClientBuilder, ResponseFuture};
-pub use crate::error::Error;
+/// Re-export of the standard HTTP types.
+pub use http;
 
 /// A "prelude" for importing common cHTTP types.
 pub mod prelude {
-    pub use crate::body::Body;
-    pub use crate::client::{Client, ClientBuilder};
-    pub use crate::request::{RequestBuilderExt, RequestExt};
-    pub use crate::response::ResponseExt;
+    pub use crate::{
+        Body,
+        HttpClient,
+        request::{RequestBuilderExt, RequestExt},
+        response::ResponseExt,
+    };
+
     pub use http::{Request, Response};
 }
 
@@ -192,7 +187,7 @@ pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().get(uri)
+    HttpClient::shared().get(uri)
 }
 
 /// Sends an HTTP GET request asynchronously.
@@ -202,7 +197,7 @@ pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().get_async(uri)
+    HttpClient::shared().get_async(uri)
 }
 
 /// Sends an HTTP HEAD request.
@@ -210,7 +205,7 @@ pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().head(uri)
+    HttpClient::shared().head(uri)
 }
 
 /// Sends an HTTP HEAD request asynchronously.
@@ -218,7 +213,7 @@ pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().head_async(uri)
+    HttpClient::shared().head_async(uri)
 }
 
 /// Sends an HTTP POST request.
@@ -228,7 +223,7 @@ pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().post(uri, body)
+    HttpClient::shared().post(uri, body)
 }
 
 /// Sends an HTTP POST request asynchronously.
@@ -238,7 +233,7 @@ pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().post_async(uri, body)
+    HttpClient::shared().post_async(uri, body)
 }
 
 /// Sends an HTTP PUT request.
@@ -248,7 +243,7 @@ pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().put(uri, body)
+    HttpClient::shared().put(uri, body)
 }
 
 /// Sends an HTTP PUT request asynchronously.
@@ -258,7 +253,7 @@ pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().put_async(uri, body)
+    HttpClient::shared().put_async(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
@@ -268,7 +263,7 @@ pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().delete(uri)
+    HttpClient::shared().delete(uri)
 }
 
 /// Sends an HTTP DELETE request asynchronously.
@@ -278,30 +273,26 @@ pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().delete_async(uri)
+    HttpClient::shared().delete_async(uri)
 }
 
 /// Sends an HTTP request.
 ///
-/// The request may include [extensions](http::Extensions) to
-/// customize how it is sent. You can include an
-/// [`Options`](crate::Options) struct as a request extension to
-/// control various connection and protocol options.
-///
 /// The response body is provided as a stream that may only be consumed once.
+///
+/// This client's configuration can be overridden for this request by
+/// configuring the request using methods provided by the
+/// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
 pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
-    Client::shared().send(request)
+    HttpClient::shared().send(request)
 }
 
 /// Sends an HTTP request asynchronously.
 ///
-/// The request may include [extensions](http::Extensions) to customize how it
-/// is sent. You can include an [`Options`](crate::Options) struct as a request
-/// extension to control various connection and protocol options.
-///
-/// The response body is provided as a stream that may only be consumed once.
+/// This function uses a globally allocated [`HttpClient`] instance. See
+/// [`HttpClient::send_async`] for more details and examples.
 pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
-    Client::shared().send_async(request)
+    HttpClient::shared().send_async(request)
 }
 
 /// Gets a human-readable string with the version number of cHTTP and its
@@ -310,7 +301,7 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
 /// This function can be helpful when troubleshooting issues in cHTTP or one of
 /// its dependencies.
 pub fn version() -> &'static str {
-    static FEATURES_STRING: &'static str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
+    static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
 
     lazy_static! {
         static ref VERSION_STRING: String = format!(
