@@ -56,8 +56,8 @@ feature names below to your `Cargo.toml` file to enable them:
 
 ```toml
 [dependencies.chttp]
-version = "*"
-features = ["async-api"]
+version = "0.4"
+features = ["psl"]
 ```
 
 Below is a list of all available feature flags and their meanings.
@@ -67,7 +67,6 @@ Below is a list of all available feature flags and their meanings.
 - `json`: Additional serialization and deserialization of JSON bodies via [serde]. Disabled by default.
 - `psl`: Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Disabled by default.
 - `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
-- `async-api`: Enable the async futures-based API. This allows you to take full advantage of cHTTP's asynchronous core. Currently behind a feature flag until the futures API stabilizes. This an unstable feature whose interface may change between patch releases.
 - `middleware-api`: Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may change between patch releases.
 
 ## [Documentation]
