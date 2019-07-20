@@ -575,7 +575,7 @@ impl HttpClient {
     ) -> Result<(curl::easy::Easy2<RequestHandler>, RequestHandlerFuture), Error> {
         // Prepare the request plumbing.
         let (parts, body) = request.into_parts();
-        let body_is_empty = body.is_empty();
+        let has_body = !body.is_empty();
         let body_size = body.len();
         let (handler, future) = RequestHandler::new(body);
 
@@ -671,11 +671,32 @@ impl HttpClient {
         // Enable automatic response decompression.
         easy.accept_encoding("")?;
 
-        // Set the request data according to the request given.
-        easy.custom_request(parts.method.as_str())?;
-        // Curl handles HEAD requests differently.
-        if parts.method == http::Method::HEAD {
-            easy.nobody(true)?;
+        // Set the HTTP method to use. Curl ties in behavior with the request
+        // method, so we need to configure this carefully.
+        match (parts.method, has_body) {
+            // Normal GET request.
+            (http::Method::GET, false) => {
+                easy.get(true)?;
+            }
+            // HEAD requests do not wait for a response payload.
+            (http::Method::HEAD, has_body) => {
+                easy.custom_request("HEAD")?;
+                easy.nobody(true)?;
+                easy.upload(has_body)?;
+            }
+            // POST requests have special redirect behavior.
+            (http::Method::POST, _) => {
+                easy.post(true)?;
+            }
+            // Normal PUT request.
+            (http::Method::PUT, _) => {
+                easy.upload(true)?;
+            }
+            // Default case is to either treat request like a GET or PUT.
+            (method, has_body) => {
+                easy.custom_request(method.as_str())?;
+                easy.upload(has_body)?;
+            }
         }
 
         easy.url(&parts.uri.to_string())?;
@@ -687,16 +708,10 @@ impl HttpClient {
         }
         easy.http_headers(headers)?;
 
-        // If the request body is non-empty, tell curl that we are going to
-        // upload something.
-        if !body_is_empty {
-            easy.upload(true)?;
-
-            if let Some(len) = body_size {
-                // If we know the size of the request body up front, tell curl
-                // about it.
-                easy.in_filesize(len as u64)?;
-            }
+        // If we know the size of the request body up front, tell curl
+        // about it.
+        if let Some(len) = body_size {
+            easy.in_filesize(len as u64)?;
         }
 
         Ok((easy, future))

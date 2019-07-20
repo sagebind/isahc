@@ -74,6 +74,26 @@ speculate::speculate! {
         m2.assert();
     }
 
+    test "303 redirect changes POST to GET" {
+        let m1 = mock("POST", "/")
+            .with_status(303)
+            .with_header("Location", "/2")
+            .create();
+
+        let m2 = mock("GET", "/2").create();
+
+        let response = Request::post(server_url())
+            .redirect_policy(RedirectPolicy::Follow)
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        m1.assert();
+        m2.assert();
+    }
+
     test "redirect limit is respected" {
         let m1 = mock("GET", "/")
             .with_status(301)

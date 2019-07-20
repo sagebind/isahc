@@ -13,7 +13,7 @@ speculate::speculate! {
         // Spawn a slow server.
         let m = mock("POST", "/")
             .with_body_from_fn(|_| {
-                sleep(Duration::from_millis(500));
+                sleep(Duration::from_secs(1));
                 Ok(())
             })
             .create();
@@ -26,10 +26,12 @@ speculate::speculate! {
             .send();
 
         // Client should time-out.
-        assert!(match result {
-            Err(chttp::Error::Timeout) => true,
-            _ => false,
-        });
+        match result {
+            Err(chttp::Error::Timeout) => {}
+            e => {
+                panic!("expected timout error, got {:?}", e);
+            }
+        }
 
         m.assert();
     }
