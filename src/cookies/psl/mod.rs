@@ -111,7 +111,7 @@ impl ListCache {
 ///
 /// If the current list information is stale, a background refresh will be
 /// triggered. The current data will be used to respond to this query.
-pub fn is_public_suffix(domain: impl AsRef<str>) -> bool {
+pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
     let domain = domain.as_ref();
 
     with_cache(|cache| {
