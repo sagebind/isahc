@@ -139,6 +139,9 @@ impl HttpClientBuilder {
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    ///
+    /// By default no proxy will be used, unless one is specified in either the
+    /// `http_proxy` or `https_proxy` environment variables.
     pub fn proxy(mut self, proxy: http::Uri) -> Self {
         self.defaults.insert(Proxy(proxy));
         self
