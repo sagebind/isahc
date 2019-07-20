@@ -676,15 +676,10 @@ impl HttpClient {
         easy.accept_encoding("")?;
 
         // Set the request data according to the request given.
-        match parts.method {
-            http::Method::GET => easy.get(true)?,
-            http::Method::HEAD => {
-                easy.nobody(true)?;
-                easy.custom_request("HEAD")?;
-            }
-            http::Method::POST => easy.post(true)?,
-            http::Method::PUT => easy.put(true)?,
-            method => easy.custom_request(method.as_str())?,
+        easy.custom_request(parts.method.as_str())?;
+        // Curl handles HEAD requests differently.
+        if parts.method == http::Method::HEAD {
+            easy.nobody(true)?;
         }
 
         easy.url(&parts.uri.to_string())?;
