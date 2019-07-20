@@ -2,33 +2,31 @@ use chttp::config::RedirectPolicy;
 use chttp::prelude::*;
 use mockito::{mock, server_url};
 
-mod utils;
-
 speculate::speculate! {
     before {
-        utils::logging();
+        env_logger::try_init().ok();
     }
 
     test "response 301 no follow" {
         let m = mock("GET", "/")
             .with_status(301)
-            .with_header("Location", "/b")
+            .with_header("Location", "/2")
             .create();
 
         let response = chttp::get(server_url()).unwrap();
 
         assert_eq!(response.status(), 301);
-        assert_eq!(response.headers()["Location"], "/b");
+        assert_eq!(response.headers()["Location"], "/2");
         m.assert();
     }
 
     test "response 301 auto follow" {
         let m1 = mock("GET", "/")
             .with_status(301)
-            .with_header("Location", "/b")
+            .with_header("Location", "/2")
             .create();
 
-        let m2 = mock("GET", "/b")
+        let m2 = mock("GET", "/2")
             .with_status(200)
             .with_body("ok")
             .create();
@@ -47,13 +45,42 @@ speculate::speculate! {
         m2.assert();
     }
 
-    test "redirect limit is respected" {
+    test "headers are reset every redirect" {
         let m1 = mock("GET", "/")
             .with_status(301)
             .with_header("Location", "/b")
+            .with_header("X-Foo", "aaa")
+            .with_header("X-Bar", "zzz")
             .create();
 
         let m2 = mock("GET", "/b")
+            .with_header("X-Foo", "bbb")
+            .with_header("X-Baz", "zzz")
+            .create();
+
+        let response = Request::get(server_url())
+            .redirect_policy(RedirectPolicy::Follow)
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.headers()["X-Foo"], "bbb");
+        assert_eq!(response.headers()["X-Baz"], "zzz");
+        assert!(!response.headers().contains_key("X-Bar"));
+
+        m1.assert();
+        m2.assert();
+    }
+
+    test "redirect limit is respected" {
+        let m1 = mock("GET", "/")
+            .with_status(301)
+            .with_header("Location", "/2")
+            .create();
+
+        let m2 = mock("GET", "/2")
             .with_status(301)
             .with_header("Location", "/")
             .create();

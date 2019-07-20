@@ -15,19 +15,31 @@ action "checkout-submodules" {
 action "test-stable" {
   needs = ["checkout-submodules"]
   uses = "docker://rust:1.36"
-  args = "cargo test --features psl"
+  args = "cargo test --features psl -- --test-threads=8"
+  env = {
+    RUST_BACKTRACE = "1"
+    RUST_LOG = "warn"
+  }
 }
 
 action "test-nightly" {
   needs = ["checkout-submodules"]
   uses = "docker://rustlang/rust:nightly"
-  args = "cargo test --features psl,nightly"
+  args = "cargo test --features psl,nightly -- --test-threads=8"
+  env = {
+    RUST_BACKTRACE = "1"
+    RUST_LOG = "warn"
+  }
 }
 
 action "examples" {
   needs = ["checkout-submodules"]
   uses = "docker://rust:1.36"
   args = "cargo run --release --example simple"
+  env = {
+    RUST_BACKTRACE = "1"
+    RUST_LOG = "warn"
+  }
 }
 
 action "release-published" {

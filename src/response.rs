@@ -24,7 +24,7 @@ pub trait ResponseExt<T> {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```no_run
     /// # use chttp::prelude::*;
     /// chttp::get("https://httpbin.org/image/jpeg")?
     ///     .copy_to_file("image.jpg")?;

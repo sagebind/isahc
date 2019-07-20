@@ -5,7 +5,7 @@
 //! Sending requests is as easy as calling a single function. Let's make a
 //! simple GET request to an example website:
 //!
-//! ```
+//! ```no_run
 //! use chttp::prelude::*;
 //!
 //! let mut response = chttp::get("https://example.org")?;
@@ -20,14 +20,14 @@
 //! Sending a POST request is also easy, and takes an additional argument for
 //! the request body:
 //!
-//! ```
+//! ```no_run
 //! let response = chttp::post("https://httpbin.org/post", "make me a salad")?;
 //! # Ok::<(), chttp::Error>(())
 //! ```
 //!
 //! cHTTP provides several other simple functions for common HTTP request types:
 //!
-//! ```
+//! ```no_run
 //! chttp::put("https://httpbin.org/put", "have a salad")?;
 //! chttp::head("https://httpbin.org/get")?;
 //! chttp::delete("https://httpbin.org/delete")?;
@@ -39,7 +39,7 @@
 //! cHTTP is not limited to canned HTTP verbs; you can customize requests by
 //! creating your own `Request` object and then `send`ing that.
 //!
-//! ```
+//! ```no_run
 //! use chttp::prelude::*;
 //!
 //! let response = Request::post("https://httpbin.org/post")
@@ -60,7 +60,7 @@
 //! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
 //! trait:
 //!
-//! ```
+//! ```no_run
 //! use chttp::prelude::*;
 //! use std::time::Duration;
 //!
@@ -98,7 +98,7 @@
 //! an asynchronous variant that ends with `_async` in the name. Here is our
 //! first example rewritten to use async/await syntax (nightly only):
 //!
-//! ```
+//! ```no_run
 //! # #![cfg_attr(feature = "nightly", feature(async_await))]
 //! # use chttp::prelude::*;
 //! #

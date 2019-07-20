@@ -40,10 +40,6 @@ lazy_static! {
 ///     .redirect_policy(RedirectPolicy::Limit(10))
 ///     .preferred_http_version(http::Version::HTTP_2)
 ///     .build()?;
-///
-/// let mut response = client.get("https://example.org")?;
-/// let body = response.body_mut().text()?;
-/// println!("{}", body);
 /// # Ok::<(), chttp::Error>(())
 /// ```
 #[derive(Default)]
@@ -264,7 +260,7 @@ impl fmt::Debug for HttpClientBuilder {
 ///
 /// ## Examples
 ///
-/// ```
+/// ```no_run
 /// use chttp::prelude::*;
 ///
 /// // Create a new client using reasonable defaults.
@@ -280,7 +276,7 @@ impl fmt::Debug for HttpClientBuilder {
 ///
 /// Customizing the client configuration:
 ///
-/// ```
+/// ```no_run
 /// use chttp::{config::RedirectPolicy, prelude::*};
 /// use std::time::Duration;
 ///
@@ -395,7 +391,7 @@ impl HttpClient {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```no_run
     /// use chttp::prelude::*;
     ///
     /// let client = HttpClient::default();
@@ -431,7 +427,7 @@ impl HttpClient {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```no_run
     /// use chttp::prelude::*;
     ///
     /// let client = HttpClient::default();
@@ -511,7 +507,7 @@ impl HttpClient {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```no_run
     /// use chttp::prelude::*;
     ///
     /// let client = HttpClient::default();

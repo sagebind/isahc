@@ -3,11 +3,9 @@ use mockito::{mock, server_url};
 use std::thread::sleep;
 use std::time::Duration;
 
-mod utils;
-
 speculate::speculate! {
     before {
-        utils::logging();
+        env_logger::try_init().ok();
     }
 
     /// Issue #3
