@@ -1,7 +1,7 @@
 use chttp::prelude::*;
 
 fn main() -> Result<(), chttp::Error> {
-    let client = chttp::Client::new();
+    let client = HttpClient::new();
     let mut response = client.get("http://example.org")?;
 
     println!("Status: {}", response.status());

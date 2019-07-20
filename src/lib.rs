@@ -83,8 +83,8 @@
 //! has its own connection pool and event loop, so separating certain requests
 //! into separate clients can ensure that they are isolated from each other.
 //!
-//! See the documentation for [`Client`] and [`ClientBuilder`] for more details
-//! on creating custom clients.
+//! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more
+//! details on creating custom clients.
 //!
 //! ## Asynchronous API and execution
 //!
@@ -161,7 +161,7 @@ mod wakers;
 
 pub use crate::{
     body::Body,
-    client::{Client, ClientBuilder, ResponseFuture},
+    client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
 };
 
@@ -171,8 +171,8 @@ pub use http;
 /// A "prelude" for importing common cHTTP types.
 pub mod prelude {
     pub use crate::{
-        body::Body,
-        client::Client,
+        Body,
+        HttpClient,
         request::{RequestBuilderExt, RequestExt},
         response::ResponseExt,
     };
@@ -187,7 +187,7 @@ pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().get(uri)
+    HttpClient::shared().get(uri)
 }
 
 /// Sends an HTTP GET request asynchronously.
@@ -197,7 +197,7 @@ pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().get_async(uri)
+    HttpClient::shared().get_async(uri)
 }
 
 /// Sends an HTTP HEAD request.
@@ -205,7 +205,7 @@ pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().head(uri)
+    HttpClient::shared().head(uri)
 }
 
 /// Sends an HTTP HEAD request asynchronously.
@@ -213,7 +213,7 @@ pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().head_async(uri)
+    HttpClient::shared().head_async(uri)
 }
 
 /// Sends an HTTP POST request.
@@ -223,7 +223,7 @@ pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().post(uri, body)
+    HttpClient::shared().post(uri, body)
 }
 
 /// Sends an HTTP POST request asynchronously.
@@ -233,7 +233,7 @@ pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().post_async(uri, body)
+    HttpClient::shared().post_async(uri, body)
 }
 
 /// Sends an HTTP PUT request.
@@ -243,7 +243,7 @@ pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().put(uri, body)
+    HttpClient::shared().put(uri, body)
 }
 
 /// Sends an HTTP PUT request asynchronously.
@@ -253,7 +253,7 @@ pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().put_async(uri, body)
+    HttpClient::shared().put_async(uri, body)
 }
 
 /// Sends an HTTP DELETE request.
@@ -263,7 +263,7 @@ pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().delete(uri)
+    HttpClient::shared().delete(uri)
 }
 
 /// Sends an HTTP DELETE request asynchronously.
@@ -273,7 +273,7 @@ pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
 {
-    Client::shared().delete_async(uri)
+    HttpClient::shared().delete_async(uri)
 }
 
 /// Sends an HTTP request.
@@ -284,15 +284,15 @@ where
 /// configuring the request using methods provided by the
 /// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
 pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
-    Client::shared().send(request)
+    HttpClient::shared().send(request)
 }
 
 /// Sends an HTTP request asynchronously.
 ///
-/// This function uses a globally allocated [Client] instance. See
-/// [`Client::send_async`] for more details and examples.
+/// This function uses a globally allocated [`HttpClient`] instance. See
+/// [`HttpClient::send_async`] for more details and examples.
 pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
-    Client::shared().send_async(request)
+    HttpClient::shared().send_async(request)
 }
 
 /// Gets a human-readable string with the version number of cHTTP and its
