@@ -180,9 +180,10 @@ pub mod prelude {
     pub use http::{Request, Response};
 }
 
-/// Sends an HTTP GET request.
+/// Send a GET request to the given URI.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::get`] for details.
 pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -190,9 +191,10 @@ where
     HttpClient::shared().get(uri)
 }
 
-/// Sends an HTTP GET request asynchronously.
+/// Send a GET request to the given URI asynchronously.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::get_async`] for details.
 pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -200,7 +202,10 @@ where
     HttpClient::shared().get_async(uri)
 }
 
-/// Sends an HTTP HEAD request.
+/// Send a HEAD request to the given URI.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::head`] for details.
 pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -208,7 +213,10 @@ where
     HttpClient::shared().head(uri)
 }
 
-/// Sends an HTTP HEAD request asynchronously.
+/// Send a HEAD request to the given URI asynchronously.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::head_async`] for details.
 pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -216,9 +224,10 @@ where
     HttpClient::shared().head_async(uri)
 }
 
-/// Sends an HTTP POST request.
+/// Send a POST request to the given URI with a given request body.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::post`] for details.
 pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -226,9 +235,11 @@ where
     HttpClient::shared().post(uri, body)
 }
 
-/// Sends an HTTP POST request asynchronously.
+/// Send a POST request to the given URI asynchronously with a given request
+/// body.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::post_async`] for details.
 pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -236,9 +247,10 @@ where
     HttpClient::shared().post_async(uri, body)
 }
 
-/// Sends an HTTP PUT request.
+/// Send a PUT request to the given URI with a given request body.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::put`] for details.
 pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -246,9 +258,11 @@ where
     HttpClient::shared().put(uri, body)
 }
 
-/// Sends an HTTP PUT request asynchronously.
+/// Send a PUT request to the given URI asynchronously with a given request
+/// body.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::put_async`] for details.
 pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -256,9 +270,10 @@ where
     HttpClient::shared().put_async(uri, body)
 }
 
-/// Sends an HTTP DELETE request.
+/// Send a DELETE request to the given URI.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::delete`] for details.
 pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -266,9 +281,10 @@ where
     HttpClient::shared().delete(uri)
 }
 
-/// Sends an HTTP DELETE request asynchronously.
+/// Send a DELETE request to the given URI asynchronously.
 ///
-/// The response body is provided as a stream that may only be consumed once.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::delete_async`] for details.
 pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
 where
     http::Uri: http::HttpTryFrom<U>,
@@ -276,21 +292,18 @@ where
     HttpClient::shared().delete_async(uri)
 }
 
-/// Sends an HTTP request.
+/// Send an HTTP request and return the HTTP response.
 ///
-/// The response body is provided as a stream that may only be consumed once.
-///
-/// This client's configuration can be overridden for this request by
-/// configuring the request using methods provided by the
-/// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::send`] for details.
 pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
     HttpClient::shared().send(request)
 }
 
-/// Sends an HTTP request asynchronously.
+/// Send an HTTP request and return the HTTP response asynchronously.
 ///
-/// This function uses a globally allocated [`HttpClient`] instance. See
-/// [`HttpClient::send_async`] for more details and examples.
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::send_async`] for details.
 pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
     HttpClient::shared().send_async(request)
 }

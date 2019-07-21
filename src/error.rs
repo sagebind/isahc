@@ -98,6 +98,7 @@ impl StdError for Error {
     }
 }
 
+#[doc(hidden)]
 impl From<curl::Error> for Error {
     fn from(error: curl::Error) -> Error {
         if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
@@ -139,18 +140,21 @@ impl From<curl::Error> for Error {
     }
 }
 
+#[doc(hidden)]
 impl From<curl::MultiError> for Error {
     fn from(error: curl::MultiError) -> Error {
         Error::Curl(error.description().to_owned())
     }
 }
 
+#[doc(hidden)]
 impl From<http::Error> for Error {
     fn from(error: http::Error) -> Error {
         Error::InvalidHttpFormat(error)
     }
 }
 
+#[doc(hidden)]
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         match error.kind() {
@@ -161,6 +165,7 @@ impl From<io::Error> for Error {
     }
 }
 
+#[doc(hidden)]
 impl From<Error> for io::Error {
     fn from(error: Error) -> io::Error {
         match error {
@@ -172,12 +177,14 @@ impl From<Error> for io::Error {
     }
 }
 
+#[doc(hidden)]
 impl From<std::string::FromUtf8Error> for Error {
     fn from(_: std::string::FromUtf8Error) -> Error {
         Error::InvalidUtf8
     }
 }
 
+#[doc(hidden)]
 impl From<std::str::Utf8Error> for Error {
     fn from(_: std::str::Utf8Error) -> Error {
         Error::InvalidUtf8

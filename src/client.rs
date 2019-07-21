@@ -353,6 +353,17 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::get_async`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::prelude::*;
+    ///
+    /// # let client = HttpClient::default();
+    /// let mut response = client.get("https://example.org")?;
+    /// println!("{}", response.text()?);
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
@@ -375,6 +386,16 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::head_async`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use chttp::prelude::*;
+    /// # let client = HttpClient::default();
+    /// let response = client.head("https://example.org")?;
+    /// println!("Page size: {:?}", response.headers()["content-length"]);
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
