@@ -1,6 +1,6 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! ## Sending requests
+//! # Sending requests
 //!
 //! Sending requests is as easy as calling a single function. Let's make a
 //! simple GET request to an example website:
@@ -34,7 +34,7 @@
 //! # Ok::<(), chttp::Error>(())
 //! ```
 //!
-//! ## Custom requests
+//! # Custom requests
 //!
 //! cHTTP is not limited to canned HTTP verbs; you can customize requests by
 //! creating your own `Request` object and then `send`ing that.
@@ -52,7 +52,7 @@
 //! # Ok::<(), chttp::Error>(())
 //! ```
 //!
-//! ## Request configuration
+//! # Request configuration
 //!
 //! There are a number of options involved in request execution that can be
 //! configured for a request, such as timeouts, proxies, and other connection
@@ -74,7 +74,7 @@
 //! Configuration related to sending requests is stored inside the request
 //! struct using [`http::Extensions`].
 //!
-//! ## Custom clients
+//! # Custom clients
 //!
 //! The free-standing functions for sending request delegate to a shared client
 //! instance that is lazily instantiated with the default options. You can also
@@ -86,7 +86,7 @@
 //! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more
 //! details on creating custom clients.
 //!
-//! ## Asynchronous API and execution
+//! # Asynchronous API and execution
 //!
 //! Requests are always executed asynchronously under the hood. This allows a
 //! single client to execute a large number of requests concurrently with
@@ -112,7 +112,7 @@
 //! # }
 //! ```
 //!
-//! ## Logging
+//! # Logging
 //!
 //! cHTTP logs quite a bit of useful information at various levels using the
 //! [log] crate.

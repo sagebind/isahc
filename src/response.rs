@@ -22,7 +22,7 @@ pub trait ResponseExt<T> {
     ///
     /// Returns the number of bytes that were written.
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```no_run
     /// # use chttp::prelude::*;

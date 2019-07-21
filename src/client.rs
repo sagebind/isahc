@@ -27,7 +27,7 @@ lazy_static! {
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
 ///
-/// Example:
+/// # Examples
 ///
 /// ```
 /// use chttp::config::RedirectPolicy;
@@ -49,7 +49,10 @@ pub struct HttpClientBuilder {
 }
 
 impl HttpClientBuilder {
-    /// Create a new builder for building a custom client.
+    /// Create a new builder for building a custom client. All configuration
+    /// will start out with the default values.
+    ///
+    /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
         Self::default()
     }
@@ -258,7 +261,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// different servers. If you are creating an API client library, that might be
 /// a good place to maintain your own internal client.
 ///
-/// ## Examples
+/// # Examples
 ///
 /// ```no_run
 /// use chttp::prelude::*;
@@ -316,11 +319,17 @@ impl Default for HttpClient {
 impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
+    /// This is equivalent to the [`Default`] implementation.
+    ///
+    /// # Panics
+    ///
     /// Panics if any required internal systems fail to initialize. This might
     /// occur if creating a socket fails, spawning a thread fails, or if
     /// something else goes wrong.
     ///
-    /// This is equivalent to the [`Default`] implementation.
+    /// Generally such a panic indicates an internal bug or an issue with system
+    /// configuration. If you need to catch these errors, you can use
+    /// [`HttpClientBuilder::build`] instead.
     pub fn new() -> Self {
         Self::default()
     }
@@ -389,7 +398,7 @@ impl HttpClient {
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::post_async`].
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```no_run
     /// use chttp::prelude::*;
@@ -425,7 +434,7 @@ impl HttpClient {
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::put_async`].
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```no_run
     /// use chttp::prelude::*;
@@ -505,7 +514,7 @@ impl HttpClient {
     ///
     /// To execute the request asynchronously, see [`HttpClient::send_async`].
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```no_run
     /// use chttp::prelude::*;

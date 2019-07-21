@@ -23,6 +23,27 @@ pub trait RequestBuilderExt {
     /// Set a policy for automatically following server redirects.
     ///
     /// The default is to not follow redirects.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::config::RedirectPolicy;
+    /// use chttp::prelude::*;
+    ///
+    /// // This URL redirects us to where we want to go.
+    /// let response = Request::get("https://httpbin.org/redirect/1")
+    ///     .redirect_policy(RedirectPolicy::Follow)
+    ///     .body(())?
+    ///     .send()?;
+    ///
+    /// // This URL redirects too much!
+    /// let error = Request::get("https://httpbin.org/redirect/10")
+    ///     .redirect_policy(RedirectPolicy::Limit(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err("too many redirects");
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     fn redirect_policy(&mut self, policy: RedirectPolicy) -> &mut Self;
 
     /// Update the `Referer` header automatically when following redirects.
@@ -52,6 +73,9 @@ pub trait RequestBuilderExt {
     /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    ///
+    /// By default no proxy will be used, unless one is specified in either the
+    /// `http_proxy` or `https_proxy` environment variables.
     fn proxy(&mut self, proxy: http::Uri) -> &mut Self;
 
     /// Set a maximum upload speed for the request body, in bytes per second.
@@ -88,6 +112,25 @@ pub trait RequestBuilderExt {
     /// certificate.
     ///
     /// The default value is none.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::config::{ClientCertificate, PrivateKey};
+    /// use chttp::prelude::*;
+    ///
+    /// let response = Request::get("localhost:3999")
+    ///     .ssl_client_certificate(ClientCertificate::PEM {
+    ///         path: "client.pem".into(),
+    ///         private_key: Some(PrivateKey::PEM {
+    ///             path: "key.pem".into(),
+    ///             password: Some("secret".into()),
+    ///         }),
+    ///     })
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
 }
 
@@ -149,16 +192,16 @@ impl RequestBuilderExt for http::request::Builder {
 pub trait RequestExt<T> {
     /// Send the HTTP request synchronously using the default client.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// This is a convenience method that is equivalent to
+    /// [`send`](crate::send).
     fn send(self) -> Result<Response<Body>, Error>
     where
         T: Into<Body>;
 
     /// Sends the HTTP request asynchronously using the default client.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
+    /// This is a convenience method that is equivalent to
+    /// [`send_async`](crate::send_async).
     fn send_async(self) -> ResponseFuture<'static>
     where
         T: Into<Body>;
