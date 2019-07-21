@@ -96,20 +96,13 @@
 //! from the async nature of the client by using the asynchronous methods
 //! available to prevent blocking threads in your code. All request methods have
 //! an asynchronous variant that ends with `_async` in the name. Here is our
-//! first example rewritten to use async/await syntax (nightly only):
+//! first example rewritten to use async/await syntax (nightly Rust only):
 //!
-//! ```no_run
-//! # #![cfg_attr(feature = "nightly", feature(async_await))]
-//! # use chttp::prelude::*;
-//! #
-//! # #[cfg(feature = "nightly")]
-//! # fn run() -> Result<(), chttp::Error> {
-//! # futures::executor::block_on(async {
+//! ```ignore
+//! use chttp::prelude::*;
+//!
 //! let mut response = chttp::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
-//! # Ok(())
-//! # })
-//! # }
 //! ```
 //!
 //! # Logging

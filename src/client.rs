@@ -559,7 +559,25 @@ impl HttpClient {
 
     /// Send an HTTP request and return the HTTP response asynchronously.
     ///
-    /// See [`HttpClient::send`] for details.
+    /// See [`HttpClient::send`] for further details.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use chttp::prelude::*;
+    ///
+    /// let client = HttpClient::default();
+    ///
+    /// let request = Request::post("https://httpbin.org/post")
+    ///     .header("Content-Type", "application/json")
+    ///     .body(r#"{
+    ///         "speed": "fast",
+    ///         "cool_name": true
+    ///     }"#)?;
+    ///
+    /// let response = client.send_async(request).await?;
+    /// assert!(response.status().is_success());
+    /// ```
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let mut request = request.map(Into::into);
 

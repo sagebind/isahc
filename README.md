@@ -11,7 +11,7 @@ The practical HTTP client that is fun to use.
 - Full support for HTTP/1.1 and HTTP/2.
 - Configurable request timeouts.
 - Fully asynchronous core, with asynchronous and incremental reading and writing of request and response bodies.
-- Offers an ergonomic synchronous API as well as an asynchronous API (with support for [async/await] coming soon).
+- Offers an ergonomic synchronous API as well as an asynchronous API with support for [async/await].
 - Optional automatic redirect following.
 - Sessions and cookie persistence.
 - Request cancellation on drop.
@@ -38,10 +38,8 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-chttp = "0.4"
+chttp = "0.5"
 ```
-
-The current release series is `0.4`. Pre-releases of the `0.5` series are also available, which offers first-class support for [async/await] in addition to the traditional synchronous API. Version `0.5` requires Rust 1.36 or newer.
 
 ### Supported Rust versions
 
@@ -56,7 +54,7 @@ feature names below to your `Cargo.toml` file to enable them:
 
 ```toml
 [dependencies.chttp]
-version = "0.4"
+version = "0.5"
 features = ["psl"]
 ```
 
