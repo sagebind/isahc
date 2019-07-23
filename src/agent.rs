@@ -317,14 +317,7 @@ impl AgentThread {
                 Ok((token, result)) => {
                     let handle = self.requests.remove(token);
                     let mut handle = self.multi.remove2(handle)?;
-
-                    match result {
-                        Ok(()) => handle.get_mut().complete(),
-                        Err(e) => {
-                            log::debug!("curl error: {}", e);
-                            handle.get_mut().complete_with_error(e);
-                        }
-                    }
+                    handle.get_mut().on_result(result);
                 }
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),

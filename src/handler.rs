@@ -1,13 +1,15 @@
 use crate::{parse, Body, Error};
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
-use futures::channel::oneshot;
 use futures::prelude::*;
+use futures::task::AtomicWaker;
 use http::Response;
 use sluice::pipe;
 use std::ascii;
 use std::fmt;
 use std::io;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::*;
 
 /// Manages the state of a single request/response life cycle.
@@ -30,7 +32,10 @@ pub(crate) struct RequestHandler {
     id: Option<usize>,
 
     /// Sender for the associated future.
-    sender: Option<oneshot::Sender<Result<http::response::Builder, Error>>>,
+    sender: Option<Sender<Result<http::response::Builder, Error>>>,
+
+    /// State shared by the handler and its future.
+    shared: Arc<Shared>,
 
     /// The body to be sent in the request.
     request_body: Body,
@@ -56,23 +61,25 @@ pub(crate) struct RequestHandler {
     response_body_waker: Option<Waker>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ResponseState {
-    Active,
-    Canceled,
-    Completed,
+/// State shared by the handler and its future.
+#[derive(Debug, Default)]
+struct Shared {
+    /// A waker used by the handler to wake up the associated future.
+    waker: AtomicWaker,
 }
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
     pub(crate) fn new(request_body: Body) -> (Self, RequestHandlerFuture) {
-        let (sender, receiver) = oneshot::channel();
+        let (sender, receiver) = crossbeam_channel::bounded(1);
+        let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         (
             Self {
                 id: None,
                 sender: Some(sender),
+                shared: shared.clone(),
                 request_body,
                 request_body_waker: None,
                 response_status_code: None,
@@ -83,23 +90,15 @@ impl RequestHandler {
             },
             RequestHandlerFuture {
                 receiver,
+                shared,
                 response_body_reader: Some(response_body_reader),
             },
         )
     }
 
-    /// Get the current state of the handler.
-    pub(crate) fn state(&self) -> ResponseState {
-        match self.sender.as_ref() {
-            Some(sender) => {
-                if sender.is_canceled() {
-                    ResponseState::Canceled
-                } else {
-                    ResponseState::Active
-                }
-            }
-            None => ResponseState::Completed,
-        }
+    /// Determine if the associated has been dropped.
+    fn is_disconnected(&self) -> bool {
+        Arc::strong_count(&self.shared) == 1
     }
 
     /// Initialize the handler and prepare it for the request to begin.
@@ -119,10 +118,21 @@ impl RequestHandler {
         self.response_body_waker = Some(response_waker);
     }
 
-    /// Finishes building the response with a given body and completes the
-    /// associated future with the response.
-    pub(crate) fn complete(&mut self) {
-        if let Some(sender) = self.sender.take() {
+    /// Handle a result produced by curl for this handler's current transfer.
+    pub(crate) fn on_result(&mut self, result: Result<(), curl::Error>) {
+        match result {
+            Ok(()) => self.flush_response_headers(),
+            Err(e) => {
+                log::debug!("curl error: {}", e);
+                self.complete(Err(e.into()));
+            }
+        }
+    }
+
+    /// Mark the future as completed successfully with the response headers
+    /// received so far.
+    fn flush_response_headers(&mut self) {
+        if self.sender.is_some() {
             let mut builder = http::Response::builder();
 
             if let Some(status) = self.response_status_code.take() {
@@ -139,19 +149,21 @@ impl RequestHandler {
                 }
             }
 
-            match sender.send(Ok(builder)) {
-                Ok(()) => log::debug!("request completed [id={:?}]", self.id),
-                Err(_) => log::debug!("request canceled by user [id={:?}]", self.id),
-            }
+            self.complete(Ok(builder));
         }
     }
 
-    /// Complete the associated future with an error.
-    pub(crate) fn complete_with_error(&mut self, error: impl Into<Error>) {
+    /// Complete the associated future with a result.
+    fn complete(&mut self, result: Result<http::response::Builder, Error>) {
         if let Some(sender) = self.sender.take() {
-            match sender.send(Err(error.into())) {
-                Ok(()) => log::warn!("request completed with error [id={:?}]", self.id),
-                Err(_) => log::debug!("request canceled by user [id={:?}]", self.id),
+            match sender.send(result) {
+                Ok(()) => {
+                    self.shared.waker.wake();
+                    log::warn!("request completed with error [id={:?}]", self.id);
+                }
+                Err(_) => {
+                    log::debug!("request canceled by user [id={:?}]", self.id);
+                }
             }
         }
     }
@@ -160,8 +172,8 @@ impl RequestHandler {
 impl curl::easy::Handler for RequestHandler {
     /// Gets called by curl for each line of data in the HTTP response header.
     fn header(&mut self, data: &[u8]) -> bool {
-        // Don't bother if the request is canceled.
-        if self.state() != ResponseState::Active {
+        // Abort the request if it has been canceled.
+        if self.is_disconnected() {
             return false;
         }
 
@@ -207,8 +219,8 @@ impl curl::easy::Handler for RequestHandler {
 
     /// Gets called by curl when attempting to send bytes of the request body.
     fn read(&mut self, data: &mut [u8]) -> Result<usize, ReadError> {
-        // Don't bother if the request is canceled.
-        if self.state() != ResponseState::Active {
+        // Abort the request if it has been canceled.
+        if self.is_disconnected() {
             return Err(ReadError::Abort);
         }
 
@@ -258,15 +270,9 @@ impl curl::easy::Handler for RequestHandler {
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         log::trace!("received {} bytes of data", data.len());
 
-        // Don't bother if the request is canceled.
-        if self.state() == ResponseState::Canceled {
-            log::debug!("aborting write, request was canceled");
-            return Ok(0);
-        }
-
         // Now that we've started receiving the response body, we know no more
         // redirects can happen and we can complete the future safely.
-        self.complete();
+        self.flush_response_headers();
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous write.
@@ -278,7 +284,9 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        log::warn!("failed to write response body because the response reader was dropped");
+                        log::warn!(
+                            "failed to write response body because the response reader was dropped"
+                        );
                     } else {
                         log::error!("error writing response body to buffer: {}", e);
                     }
@@ -332,7 +340,11 @@ impl fmt::Debug for RequestHandler {
 // A future for a response produced by a request handler.
 #[derive(Debug)]
 pub(crate) struct RequestHandlerFuture {
-    receiver: oneshot::Receiver<Result<http::response::Builder, Error>>,
+    /// Receiving end of a channel that the handler sends its result over.
+    receiver: Receiver<Result<http::response::Builder, Error>>,
+
+    /// State shared by the handler and its future.
+    shared: Arc<Shared>,
 
     /// Reading end of the pipe where the response body is written.
     ///
@@ -342,54 +354,60 @@ pub(crate) struct RequestHandlerFuture {
     response_body_reader: Option<pipe::PipeReader>,
 }
 
-impl Future for RequestHandlerFuture {
-    type Output = Result<Response<Body>, Error>;
+impl RequestHandlerFuture {
+    pub(crate) fn join(mut self) -> Result<Response<Body>, Error> {
+        match self.receiver.recv() {
+            Ok(Ok(builder)) => self.complete(builder),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(Error::Aborted),
+        }
+    }
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let inner = Pin::new(&mut self.receiver);
+    fn complete(&mut self, mut builder: http::response::Builder) -> Result<Response<Body>, Error> {
+        // Since we only take the reader here, we are allowed to panic
+        // if someone tries to poll us again after the end of this call.
+        let reader = self.response_body_reader.take().unwrap();
 
-        match inner.poll(cx) {
-            // Response headers are still pending.
-            Poll::Pending => Poll::Pending,
+        // If a Content-Length header is present, include that
+        // information in the body as well.
+        let content_length = builder
+            .headers_ref()
+            .unwrap()
+            .get(http::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok());
 
-            // Response headers have been fully received.
-            Poll::Ready(Ok(Ok(mut builder))) => {
-                // Since we only take the reader here, we are allowed to panic
-                // if someone tries to poll us again after the end of this call.
-                let reader = self.response_body_reader.take().unwrap();
+        let body = match content_length {
+            Some(len) => Body::reader_sized(reader, len),
+            None => Body::reader(reader),
+        };
 
-                // If a Content-Length header is present, include that
-                // information in the body as well.
-                let content_length = builder
-                    .headers_ref()
-                    .unwrap()
-                    .get(http::header::CONTENT_LENGTH)
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|v| v.parse().ok());
-
-                let body = match content_length {
-                    Some(len) => Body::reader_sized(reader, len),
-                    None => Body::reader(reader),
-                };
-
-                Poll::Ready(match builder.body(body) {
-                    Ok(response) => Ok(response),
-                    Err(e) => Err(Error::InvalidHttpFormat(e)),
-                })
-            }
-
-            // The request handler produced an error.
-            Poll::Ready(Ok(Err(e))) => Poll::Ready(Err(e)),
-
-            // The request handler was dropped abnormally.
-            Poll::Ready(Err(oneshot::Canceled)) => Poll::Ready(Err(Error::Aborted)),
+        match builder.body(body) {
+            Ok(response) => Ok(response),
+            Err(e) => Err(Error::InvalidHttpFormat(e)),
         }
     }
 }
 
-impl Drop for RequestHandlerFuture {
-    fn drop(&mut self) {
-        self.receiver.close();
+impl Future for RequestHandlerFuture {
+    type Output = Result<Response<Body>, Error>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.shared.waker.register(cx.waker());
+
+        match self.receiver.try_recv() {
+            // Response headers are still pending.
+            Err(TryRecvError::Empty) => Poll::Pending,
+
+            // Response headers have been fully received.
+            Ok(Ok(builder)) => Poll::Ready(self.complete(builder)),
+
+            // The request handler produced an error.
+            Ok(Err(e)) => Poll::Ready(Err(e)),
+
+            // The request handler was dropped abnormally.
+            Err(TryRecvError::Disconnected) => Poll::Ready(Err(Error::Aborted)),
+        }
     }
 }
 
