@@ -1,8 +1,8 @@
 //! Provides types for working with request and response bodies.
 
 use crate::io::Text;
+use crate::task::Join;
 use bytes::Bytes;
-use futures_executor::block_on;
 use futures_io::AsyncRead;
 use futures_util::io::AsyncReadExt;
 use std::fmt;
@@ -141,7 +141,7 @@ impl Body {
 
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        block_on(AsyncReadExt::read(self, buf))
+        AsyncReadExt::read(self, buf).join()
     }
 }
 

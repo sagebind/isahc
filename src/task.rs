@@ -1,10 +1,44 @@
-//! Task waker implementations.
+//! Helpers for working with tasks and futures.
 
 use crate::Error;
 use futures_util::task::ArcWake;
+use std::future::Future;
 use std::net::{SocketAddr, UdpSocket};
+use std::pin::Pin;
 use std::sync::Arc;
-use std::task::Waker;
+use std::task::{Context, Poll, Waker};
+use std::thread::{self, Thread};
+
+/// Extension trait for efficiently blocking on a future.
+pub(crate) trait Join: Future {
+    fn join(self) -> <Self as Future>::Output;
+}
+
+impl<F: Future> Join for F {
+    fn join(mut self) -> <Self as Future>::Output {
+        struct ThreadWaker(Thread);
+
+        impl ArcWake for ThreadWaker {
+            fn wake_by_ref(arc_self: &Arc<Self>) {
+                arc_self.0.unpark();
+            }
+        }
+
+        #[allow(unsafe_code)]
+        let mut future = unsafe {
+            Pin::new_unchecked(&mut self)
+        };
+        let waker = Arc::new(ThreadWaker(thread::current())).into_waker();
+        let mut context = Context::from_waker(&waker);
+
+        loop {
+            match future.as_mut().poll(&mut context) {
+                Poll::Ready(output) => return output,
+                Poll::Pending => thread::park(),
+            }
+        }
+    }
+}
 
 /// Create a waker from a closure.
 fn waker_fn(f: impl Fn() + Send + Sync + 'static) -> Waker {

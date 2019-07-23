@@ -8,7 +8,7 @@
 //! a specialized task executor for tasks related to requests.
 
 use crate::handler::RequestHandler;
-use crate::wakers::{UdpWaker, WakerExt};
+use crate::task::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;

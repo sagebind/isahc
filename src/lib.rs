@@ -165,7 +165,7 @@ mod io;
 mod parse;
 mod request;
 mod response;
-mod wakers;
+mod task;
 
 pub use crate::{
     body::Body,
