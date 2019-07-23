@@ -1,6 +1,17 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! # Sending requests
+//! Here are some of cHTTP's key features:
+//!
+//! - Full support for HTTP/1.1 and HTTP/2.
+//! - Configurable request timeouts.
+//! - Fully asynchronous core, with asynchronous and incremental reading and
+//!   writing of request and response bodies.
+//! - Offers an ergonomic synchronous API as well as an asynchronous API with
+//!   support for async/await.
+//! - Optional automatic redirect following.
+//! - Sessions and cookie persistence.
+//!
+//! # Getting started
 //!
 //! Sending requests is as easy as calling a single function. Let's make a
 //! simple GET request to an example website:
@@ -34,16 +45,18 @@
 //! # Ok::<(), chttp::Error>(())
 //! ```
 //!
-//! # Custom requests
-//!
-//! cHTTP is not limited to canned HTTP verbs; you can customize requests by
-//! creating your own `Request` object and then `send`ing that.
+//! If you want to customize the request by adding headers, setting timeouts,
+//! etc, then you can create a [`Request`][prelude::Request] using a
+//! builder-style fluent interface, then finishing it off with a
+//! [`send`][RequestExt::send]:
 //!
 //! ```no_run
 //! use chttp::prelude::*;
+//! use std::time::Duration;
 //!
 //! let response = Request::post("https://httpbin.org/post")
 //!     .header("Content-Type", "application/json")
+//!     .timeout(Duration::from_secs(5))
 //!     .body(r#"{
 //!         "speed": "fast",
 //!         "cool_name": true
@@ -52,41 +65,42 @@
 //! # Ok::<(), chttp::Error>(())
 //! ```
 //!
-//! # Request configuration
+//! Check out the [examples] directory in the project sources for even more
+//! examples.
 //!
-//! There are a number of options involved in request execution that can be
-//! configured for a request, such as timeouts, proxies, and other connection
-//! and protocol configuration. These can be customized by using extension
-//! methods provided by the [`RequestBuilderExt`](prelude::RequestBuilderExt)
-//! trait:
+//! # Feature tour
 //!
-//! ```no_run
-//! use chttp::prelude::*;
-//! use std::time::Duration;
+//! Below is a brief overview of some notable features of cHTTP. Check out the
+//! rest of the documentation for even more guides and examples.
 //!
-//! let response = Request::get("https://httpbin.org/get")
-//!     .timeout(Duration::from_secs(5))
-//!     .body(())?
-//!     .send()?;
-//! # Ok::<(), chttp::Error>(())
-//! ```
+//! ## Easy request functions
 //!
-//! Configuration related to sending requests is stored inside the request
-//! struct using [`http::Extensions`].
+//! You can start sending requests without any configuration by using the global
+//! functions in this module, including [`get`], [`post`], and [`send`]. These
+//! use a shared HTTP client instance with sane defaults, so it is easy to get
+//! up and running. They should work perfectly fine for many use-cases, so don't
+//! about graduating to more complex APIs if you don't need them.
 //!
-//! # Custom clients
+//! ## Request and response traits
 //!
-//! The free-standing functions for sending request delegate to a shared client
-//! instance that is lazily instantiated with the default options. You can also
-//! create custom client instances of your own, which allows you to set default
-//! options for all requests and group related connections together. Each client
-//! has its own connection pool and event loop, so separating certain requests
-//! into separate clients can ensure that they are isolated from each other.
+//! cHTTP includes a number of traits in the [`prelude`] module that extend the
+//! [`Request`] and [`Response`] types with a plethora of extra methods that
+//! make common tasks convenient and allow you to make more advanced
+//! configuration.
+//!
+//! Some key traits to read about include [`RequestExt`], [`RequestBuilderExt`],
+//! and [`ResponseExt`].
+//!
+//! ## Custom clients
+//!
+//! The free-standing functions for sending requests use a shared [`HttpClient`]
+//! instance, but you can also create your own client instances, which allows
+//! you to customize the default behavior for requests that use it.
 //!
 //! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more
-//! details on creating custom clients.
+//! information on creating custom clients.
 //!
-//! # Asynchronous API and execution
+//! ## Asynchronous requests
 //!
 //! Requests are always executed asynchronously under the hood. This allows a
 //! single client to execute a large number of requests concurrently with
@@ -115,6 +129,7 @@
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
+//! [examples]: https://github.com/sagebind/chttp/tree/master/examples
 //! [log]: https://docs.rs/log
 
 #![deny(unsafe_code)]
@@ -156,6 +171,8 @@ pub use crate::{
     body::Body,
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
+    request::{RequestBuilderExt, RequestExt},
+    response::ResponseExt,
 };
 
 /// Re-export of the standard HTTP types.
@@ -166,8 +183,9 @@ pub mod prelude {
     pub use crate::{
         Body,
         HttpClient,
-        request::{RequestBuilderExt, RequestExt},
-        response::ResponseExt,
+        RequestExt,
+        RequestBuilderExt,
+        ResponseExt,
     };
 
     pub use http::{Request, Response};

@@ -13,6 +13,21 @@ pub trait RequestBuilderExt {
     /// being aborted.
     ///
     /// If not set, no timeout will be enforced.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::prelude::*;
+    /// use std::time::Duration;
+    ///
+    /// // This page is too slow and won't respond in time.
+    /// let response = Request::get("https://httpbin.org/delay/10")
+    ///     .timeout(Duration::from_secs(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err("page should time out");
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     fn timeout(&mut self, timeout: Duration) -> &mut Self;
 
     /// Set a timeout for the initial connection phase.
@@ -194,6 +209,21 @@ pub trait RequestExt<T> {
     ///
     /// This is a convenience method that is equivalent to
     /// [`send`](crate::send).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::prelude::*;
+    ///
+    /// let response = Request::post("https://httpbin.org/post")
+    ///     .header("Content-Type", "application/json")
+    ///     .body(r#"{
+    ///         "speed": "fast",
+    ///         "cool_name": true
+    ///     }"#)?
+    ///     .send()?;
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     fn send(self) -> Result<Response<Body>, Error>
     where
         T: Into<Body>;

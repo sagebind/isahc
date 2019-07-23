@@ -25,14 +25,15 @@ pub trait ResponseExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// # use chttp::prelude::*;
+    /// use chttp::prelude::*;
+    ///
     /// chttp::get("https://httpbin.org/image/jpeg")?
-    ///     .copy_to_file("image.jpg")?;
+    ///     .copy_to_file("myimage.jpg")?;
     /// # Ok::<(), chttp::Error>(())
     /// ```
     fn copy_to_file(&mut self, path: impl AsRef<Path>) -> io::Result<u64>
     where
-        T: Read
+        T: Read,
     {
         File::create(path).and_then(|f| self.copy_to(f))
     }
@@ -41,6 +42,16 @@ pub trait ResponseExt<T> {
     ///
     /// This method consumes the entire response body stream and can only be
     /// called once, unless you can rewind this response body.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::prelude::*;
+    ///
+    /// let text = chttp::get("https://example.org")?.text()?;
+    /// println!("{}", text);
+    /// # Ok::<(), chttp::Error>(())
+    /// ```
     fn text(&mut self) -> Result<String, Error>
     where
         T: Read;
@@ -52,6 +63,24 @@ pub trait ResponseExt<T> {
     fn text_async(&mut self) -> Text<'_, T>
     where
         T: AsyncRead + Unpin;
+
+    /// Deserialize the response body as JSON into a given type.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use chttp::prelude::*;
+    /// use serde_json::Value;
+    ///
+    /// let json: Value = chttp::get("https://httpbin.org/json")?.json()?;
+    /// println!("author: {}", json["slideshow"]["author"]);
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[cfg(feature = "json")]
+    fn json<D>(&mut self) -> Result<D, serde_json::Error>
+    where
+        D: serde::de::DeserializeOwned,
+        T: Read;
 }
 
 impl<T> ResponseExt<T> for Response<T> {
@@ -76,5 +105,14 @@ impl<T> ResponseExt<T> for Response<T> {
         T: AsyncRead + Unpin,
     {
         Text::new(self.body_mut())
+    }
+
+    #[cfg(feature = "json")]
+    fn json<D>(&mut self) -> Result<D, serde_json::Error>
+    where
+        D: serde::de::DeserializeOwned,
+        T: Read,
+    {
+        serde_json::from_reader(self.body_mut())
     }
 }
