@@ -1,16 +1,17 @@
 use crate::{parse, Body, Error};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
-use futures::prelude::*;
-use futures::task::AtomicWaker;
+use futures_io::{AsyncRead, AsyncWrite};
+use futures_util::task::AtomicWaker;
 use http::Response;
 use sluice::pipe;
 use std::ascii;
 use std::fmt;
+use std::future::Future;
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::*;
+use std::task::{Context, Poll, Waker};
 
 /// Manages the state of a single request/response life cycle.
 ///

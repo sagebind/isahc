@@ -5,10 +5,10 @@ use crate::config::*;
 use crate::handler::{RequestHandler, RequestHandlerFuture};
 use crate::middleware::Middleware;
 use crate::{Body, Error};
-use futures::prelude::*;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
+use std::future::Future;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -903,7 +903,7 @@ impl Future for ResponseFuture<'_> {
         self.maybe_initialize()?;
 
         if let Some(inner) = self.inner.as_mut() {
-            inner.poll_unpin(cx).map(|result| self.complete(result))
+            Pin::new(inner).poll(cx).map(|result| self.complete(result))
         } else {
             // Invalid state (called poll() after ready), just return pending...
             Poll::Pending

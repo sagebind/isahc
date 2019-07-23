@@ -2,13 +2,14 @@
 
 use crate::io::Text;
 use bytes::Bytes;
-use futures::io::AsyncReadExt;
-use futures::prelude::*;
+use futures_executor::block_on;
+use futures_io::AsyncRead;
+use futures_util::io::AsyncReadExt;
 use std::fmt;
 use std::io::{self, Cursor, Read};
 use std::pin::Pin;
 use std::str;
-use std::task::*;
+use std::task::{Context, Poll};
 
 /// Contains the body of an HTTP request or response.
 ///
@@ -140,7 +141,7 @@ impl Body {
 
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        futures::executor::block_on(AsyncReadExt::read(self, buf))
+        block_on(AsyncReadExt::read(self, buf))
     }
 }
 

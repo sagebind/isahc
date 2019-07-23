@@ -12,10 +12,11 @@ use crate::wakers::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
-use futures::task::*;
+use futures_util::task::ArcWake;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::Arc;
+use std::task::Waker;
 use std::thread;
 use std::time::{Duration, Instant};
 

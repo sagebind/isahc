@@ -1,6 +1,6 @@
 use crate::io::Text;
 use crate::Error;
-use futures::io::AsyncRead;
+use futures_io::AsyncRead;
 use http::Response;
 use std::fs::File;
 use std::io::{self, Read, Write};
