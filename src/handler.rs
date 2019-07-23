@@ -97,7 +97,7 @@ impl RequestHandler {
         )
     }
 
-    /// Determine if the associated has been dropped.
+    /// Determine if the associated future has been dropped.
     fn is_disconnected(&self) -> bool {
         Arc::strong_count(&self.shared) == 1
     }
