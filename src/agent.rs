@@ -12,10 +12,11 @@ use crate::wakers::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
-use futures::task::*;
+use futures_util::task::ArcWake;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::Arc;
+use std::task::Waker;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -317,14 +318,7 @@ impl AgentThread {
                 Ok((token, result)) => {
                     let handle = self.requests.remove(token);
                     let mut handle = self.multi.remove2(handle)?;
-
-                    match result {
-                        Ok(()) => handle.get_mut().complete(),
-                        Err(e) => {
-                            log::debug!("curl error: {}", e);
-                            handle.get_mut().complete_with_error(e);
-                        }
-                    }
+                    handle.get_mut().on_result(result);
                 }
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),

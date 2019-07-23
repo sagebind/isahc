@@ -1,9 +1,10 @@
 //! Task waker implementations.
 
 use crate::Error;
-use futures::task::*;
+use futures_util::task::ArcWake;
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::Arc;
+use std::task::Waker;
 
 /// Create a waker from a closure.
 fn waker_fn(f: impl Fn() + Send + Sync + 'static) -> Waker {

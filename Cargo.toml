@@ -32,7 +32,9 @@ bytes = "0.4"
 crossbeam-channel = "0.3"
 curl = "^0.4.20"
 curl-sys = "^0.4.20"
-futures-preview = "=0.3.0-alpha.17"
+futures-executor-preview = "0.3.0-alpha.17"
+futures-io-preview = "0.3.0-alpha.17"
+futures-util-preview = "0.3.0-alpha.17"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
@@ -62,6 +64,7 @@ optional = true
 
 [dev-dependencies]
 env_logger = "0.6"
+futures-preview = "0.3.0-alpha.17"
 mockito = "0.19"
 rayon = "1"
 speculate = "0.1"

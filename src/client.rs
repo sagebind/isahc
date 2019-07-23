@@ -5,11 +5,10 @@ use crate::config::*;
 use crate::handler::{RequestHandler, RequestHandlerFuture};
 use crate::middleware::Middleware;
 use crate::{Body, Error};
-use futures::executor::block_on;
-use futures::prelude::*;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
+use std::future::Future;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -364,11 +363,12 @@ impl HttpClient {
     /// println!("{}", response.text()?);
     /// # Ok::<(), chttp::Error>(())
     /// ```
+    #[inline]
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        block_on(self.get_async(uri))
+        self.get_async(uri).join()
     }
 
     /// Send a GET request to the given URI asynchronously.
@@ -396,11 +396,12 @@ impl HttpClient {
     /// println!("Page size: {:?}", response.headers()["content-length"]);
     /// # Ok::<(), chttp::Error>(())
     /// ```
+    #[inline]
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        block_on(self.head_async(uri))
+        self.head_async(uri).join()
     }
 
     /// Send a HEAD request to the given URI asynchronously.
@@ -431,11 +432,12 @@ impl HttpClient {
     ///     "cool_name": true
     /// }"#)?;
     /// # Ok::<(), chttp::Error>(())
+    #[inline]
     pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        block_on(self.post_async(uri, body))
+        self.post_async(uri, body).join()
     }
 
     /// Send a POST request to the given URI asynchronously with a given request
@@ -468,11 +470,12 @@ impl HttpClient {
     /// }"#)?;
     /// # Ok::<(), chttp::Error>(())
     /// ```
+    #[inline]
     pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        block_on(self.put_async(uri, body))
+        self.put_async(uri, body).join()
     }
 
     /// Send a PUT request to the given URI asynchronously with a given request
@@ -491,11 +494,12 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::delete_async`].
+    #[inline]
     pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: http::HttpTryFrom<U>,
     {
-        block_on(self.delete_async(uri))
+        self.delete_async(uri).join()
     }
 
     /// Send a DELETE request to the given URI asynchronously.
@@ -553,8 +557,9 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// # Ok::<(), chttp::Error>(())
     /// ```
+    #[inline]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        block_on(self.send_async(request))
+        self.send_async(request).join()
     }
 
     /// Send an HTTP request and return the HTTP response asynchronously.
@@ -845,13 +850,11 @@ pub struct ResponseFuture<'c> {
     inner: Option<RequestHandlerFuture>,
 }
 
-impl Future for ResponseFuture<'_> {
-    type Output = Result<Response<Body>, Error>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+impl<'c> ResponseFuture<'c> {
+    fn maybe_initialize(&mut self) -> Result<(), Error> {
         // If the future has a pre-filled error, return that.
         if let Some(e) = self.error.take() {
-            return Poll::Ready(Err(e));
+            return Err(e);
         }
 
         // Request has not been sent yet.
@@ -865,20 +868,42 @@ impl Future for ResponseFuture<'_> {
             self.inner = Some(future);
         }
 
-        if let Some(inner) = self.inner.as_mut() {
-            match inner.poll_unpin(cx) {
-                Poll::Ready(Ok(mut response)) => {
-                    // Apply response middleware, starting with the innermost
-                    // one.
-                    for middleware in self.client.middleware.iter() {
-                        response = middleware.filter_response(response);
-                    }
+        Ok(())
+    }
 
-                    Poll::Ready(Ok(response))
-                }
-
-                poll => poll,
+    fn complete(&self, output: <Self as Future>::Output) -> <Self as Future>::Output {
+        output.map(|mut response| {
+            // Apply response middleware, starting with the innermost
+            // one.
+            for middleware in self.client.middleware.iter() {
+                response = middleware.filter_response(response);
             }
+
+            response
+        })
+    }
+
+    /// Block the current thread until the request is completed or aborted. This
+    /// effectively turns the asynchronous request into a synchronous one.
+    fn join(mut self) -> Result<Response<Body>, Error> {
+        self.maybe_initialize()?;
+
+        if let Some(inner) = self.inner.take() {
+            self.complete(inner.join())
+        } else {
+            panic!("join called after poll");
+        }
+    }
+}
+
+impl Future for ResponseFuture<'_> {
+    type Output = Result<Response<Body>, Error>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.maybe_initialize()?;
+
+        if let Some(inner) = self.inner.as_mut() {
+            Pin::new(inner).poll(cx).map(|result| self.complete(result))
         } else {
             // Invalid state (called poll() after ready), just return pending...
             Poll::Pending

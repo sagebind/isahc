@@ -1,5 +1,6 @@
-use futures::future::FutureExt;
-use futures::io::{AsyncRead, AsyncReadExt};
+use futures_io::AsyncRead;
+use futures_util::future::FutureExt;
+use futures_util::io::{AsyncReadExt, ReadToEnd};
 use std::future::Future;
 use std::io::{Error, ErrorKind};
 use std::pin::Pin;
@@ -10,7 +11,7 @@ use std::task::{Context, Poll};
 pub struct Text<'r, R: Unpin> {
     #[allow(clippy::box_vec)]
     buffer: Option<Box<Vec<u8>>>,
-    inner: Option<futures::io::ReadToEnd<'r, R>>,
+    inner: Option<ReadToEnd<'r, R>>,
 }
 
 impl<'r, R: AsyncRead + Unpin> Text<'r, R> {
