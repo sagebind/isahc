@@ -1,10 +1,9 @@
 //! Helpers for working with tasks and futures.
 
 use crate::Error;
-use futures_util::task::ArcWake;
+use futures_util::{pin_mut, task::ArcWake};
 use std::future::Future;
 use std::net::{SocketAddr, UdpSocket};
-use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use std::thread::{self, Thread};
@@ -15,7 +14,7 @@ pub(crate) trait Join: Future {
 }
 
 impl<F: Future> Join for F {
-    fn join(mut self) -> <Self as Future>::Output {
+    fn join(self) -> <Self as Future>::Output {
         struct ThreadWaker(Thread);
 
         impl ArcWake for ThreadWaker {
@@ -24,10 +23,8 @@ impl<F: Future> Join for F {
             }
         }
 
-        #[allow(unsafe_code)]
-        let mut future = unsafe {
-            Pin::new_unchecked(&mut self)
-        };
+        let future = self;
+        pin_mut!(future);
         let waker = Arc::new(ThreadWaker(thread::current())).into_waker();
         let mut context = Context::from_waker(&waker);
 
