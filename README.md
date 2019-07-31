@@ -23,13 +23,13 @@ Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is 
 
 ## What is Isahc?
 
-Isahc is an acronym that stands for _Incredible Streaming Asynchronous Http Client_, and as the name implies, is an asynchronous HTTP client for the [Rust] language. It uses [libcurl] as an HTTP engine inside, and provides an easy-to-use API on top that integrates with Rust idioms.
+Isahc is an acronym that stands for **I**ncredible **S**treaming **A**synchronous **H**TTP **C**lient, and as the name implies, is an asynchronous HTTP client for the [Rust] language. It uses [libcurl] as an HTTP engine inside, and provides an easy-to-use API on top that integrates with Rust idioms.
 
 ## No, _who_ is Isahc?
 
-Oh, _that_ Isahc! That's Isahc the dog! He's an adorable little Siberian husky who loves to play fetch with webservers and has a very cURLy tail. He shares a name with the project and acts as the project's mascot.
+Oh, you mean Isahc the dog! He's an adorable little Siberian husky who loves to play fetch with webservers every day and has a very _cURLy_ tail. He shares a name with the project and acts as the project's mascot.
 
-You can pet him all you like and he won't mind, though he prefers if you pet him in a standards-conforming way!
+You can pet him all day if you like, he doesn't mind. Though, he prefers it if you pet him in a standards-compliant way!
 
 ## Why use Isahc and not X?
 
