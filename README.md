@@ -87,7 +87,7 @@ To get you started, here is a really simple example that spits out the response 
 
 ```rust
 // Send a GET request and wait for the response.
-let mut response = Isahc::get("https://example.org")?
+let mut response = isahc::get("https://example.org")?
 // Read the response body into a string and print it to standard output.
 let body = response.body_mut().text()?;
 println!("{}", body);
