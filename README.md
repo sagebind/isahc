@@ -1,6 +1,6 @@
 # Isahc (formerly cHTTP)
 
-Say hello to Isahc (pronounced like _Isaac_), the is a practical HTTP client that is fun to use.
+Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is fun to use.
 
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
@@ -95,7 +95,9 @@ println!("{}", body);
 
 ## License
 
-This library is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
+This project's source code and documentation is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
+
+The "Isahc" logo and mascot may only be used as required for reasonable and customary use in describing the Isahc project and in redistribution of the project.
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
