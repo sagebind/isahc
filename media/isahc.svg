@@ -16,7 +16,10 @@
    id="svg8"
    inkscape:version="0.92.3 (2405546, 2018-03-11)"
    sodipodi:docname="isahc.svg"
-   enable-background="new">
+   enable-background="new"
+   inkscape:export-filename="/home/stephen/src/chttp/media/isahc.svg.png"
+   inkscape:export-xdpi="24.000002"
+   inkscape:export-ydpi="24.000002">
   <title
      id="title10">Isahc</title>
   <defs
@@ -74,11 +77,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.98994949"
-     inkscape:cx="499.49805"
-     inkscape:cy="343.66355"
+     inkscape:zoom="0.49497475"
+     inkscape:cx="168.23191"
+     inkscape:cy="803.37178"
      inkscape:document-units="mm"
-     inkscape:current-layer="g4796"
+     inkscape:current-layer="svg8"
      showgrid="false"
      units="px"
      inkscape:snap-page="true"
@@ -163,7 +166,7 @@
   <g
      id="g842"
      inkscape:label="head"
-     transform="matrix(0.95859487,0,0,0.95859487,8.88366,10.996893)">
+     transform="matrix(0.95859487,0,0,0.95859487,8.5967062,10.996893)">
     <path
        style="opacity:1;fill:#808289;fill-opacity:1;stroke:none;stroke-width:8.08122063;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="m 854.20446,153.49691 c 5.19616,-27.34181 16.7832,-66.353939 29.39473,-81.045128 3.9441,19.807337 1.18866,60.310988 -1.1144,93.199008 -8.18416,-5.86273 -19.33922,-9.84677 -28.28033,-12.15388 z"
@@ -184,7 +187,7 @@
        inkscape:label="head outline"
        inkscape:connector-curvature="0"
        id="path25"
-       d="m 163.85268,77.976486 c -0.47277,40.489014 105.45764,46.617694 101.41991,29.713164 -17.63352,5.031 -37.7524,0.63099 -42.14256,-9.661842 4.23519,10.127092 25.94325,15.941712 45.51655,8.485882 5.25839,-6.09488 4.72195,-13.952013 1.63729,-23.245538 -5.82126,0.265201 -17.27102,-0.422491 -18.55173,-8.126486 -6.67089,-40.128011 -17.7873,-41.746432 -32.88393,-44.79018 -29.18558,-5.884329 -48.47021,19.809316 -54.99553,47.625 z"
+       d="m 163.85268,77.976486 c -0.47277,40.489014 105.45764,46.617694 101.41991,29.713164 -17.63352,5.031 -37.7524,0.63099 -42.14256,-9.661842 4.23519,10.127092 25.94325,15.941712 45.51655,8.485882 5.04928,-3.93407 4.79166,-21.479987 1.63729,-23.245538 -2.05727,-1.407682 -16.99221,1.389799 -18.55173,-8.126486 -6.57865,-40.143236 -17.7873,-41.746432 -32.88393,-44.79018 -29.18558,-5.884329 -48.47021,19.809316 -54.99553,47.625 z"
        style="display:inline;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:2.20809317;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <path
        style="display:inline;fill:none;stroke:#000000;stroke-width:2.20809317;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -205,7 +208,7 @@
        inkscape:label="booper"
        inkscape:connector-curvature="0"
        id="path834"
-       d="m 269.27405,83.844663 c -4.12854,-1.433756 -9.56109,0.500038 -10.02262,4.34313 0.15048,4.686455 5.00494,10.950946 12.56167,10.623963 0.96841,-5.089851 -0.31281,-10.054723 -2.53905,-14.967093 z"
+       d="m 269.69227,83.356739 c -4.12854,-1.433756 -9.97931,0.987962 -10.44084,4.831054 0.15048,4.686455 5.00494,10.950946 12.56167,10.623963 0.96841,-5.089851 0.59333,-12.773158 -2.12083,-15.455017 z"
        style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
        inkscape:label="right eye"

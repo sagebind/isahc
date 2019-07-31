@@ -19,7 +19,7 @@ Say hello to Isahc (pronounced like _Isaac_), the is a practical HTTP client tha
 - Network socket configuration.
 - Uses the [http] crate as an interface for requests and responses.
 
-<img src="media/isahc.svg.png" align="right">
+<img src="media/isahc.svg.png" width="256" align="right">
 
 ## What is Isahc?
 
