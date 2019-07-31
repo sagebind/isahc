@@ -33,14 +33,14 @@ fn benchmark(c: &mut Criterion) {
         )
     });
 
-    c.bench_function("download 64K: chttp", move |b| {
+    c.bench_function("download 64K: isahc", move |b| {
         use std::io::Read;
 
         let server = server::spawn(|_| server::static_response(&DATA));
         let endpoint = server.endpoint();
 
         b.iter_batched(
-            || chttp::Client::new(),
+            || isahc::Client::new(),
             |client| {
                 let mut body = Vec::new();
 

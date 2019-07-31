@@ -11,7 +11,7 @@ speculate::speculate! {
                 .with_status(*status as usize)
                 .create();
 
-            let response = chttp::get(server_url()).unwrap();
+            let response = isahc::get(server_url()).unwrap();
 
             assert_eq!(response.status(), *status);
             m.assert();

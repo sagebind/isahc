@@ -17,7 +17,7 @@ use std::time::Duration;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
-        "curl/{} chttp/{}",
+        "curl/{} isahc/{}",
         curl::Version::get().version(),
         env!("CARGO_PKG_VERSION")
     );
@@ -29,9 +29,9 @@ lazy_static! {
 /// # Examples
 ///
 /// ```
-/// use chttp::config::RedirectPolicy;
-/// use chttp::http;
-/// use chttp::prelude::*;
+/// use isahc::config::RedirectPolicy;
+/// use isahc::http;
+/// use isahc::prelude::*;
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
@@ -39,7 +39,7 @@ lazy_static! {
 ///     .redirect_policy(RedirectPolicy::Limit(10))
 ///     .preferred_http_version(http::Version::HTTP_2)
 ///     .build()?;
-/// # Ok::<(), chttp::Error>(())
+/// # Ok::<(), isahc::Error>(())
 /// ```
 #[derive(Default)]
 pub struct HttpClientBuilder {
@@ -195,8 +195,8 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use chttp::config::*;
-    /// # use chttp::prelude::*;
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
     ///     .ssl_client_certificate(ClientCertificate::PEM {
@@ -207,7 +207,7 @@ impl HttpClientBuilder {
     ///         }),
     ///     })
     ///     .build()?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
         self.defaults.insert(certificate);
@@ -263,7 +263,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// # Examples
 ///
 /// ```no_run
-/// use chttp::prelude::*;
+/// use isahc::prelude::*;
 ///
 /// // Create a new client using reasonable defaults.
 /// let client = HttpClient::default();
@@ -273,13 +273,13 @@ impl fmt::Debug for HttpClientBuilder {
 /// assert!(response.status().is_success());
 ///
 /// println!("Response:\n{}", response.text()?);
-/// # Ok::<(), chttp::Error>(())
+/// # Ok::<(), isahc::Error>(())
 /// ```
 ///
 /// Customizing the client configuration:
 ///
 /// ```no_run
-/// use chttp::{config::RedirectPolicy, prelude::*};
+/// use isahc::{config::RedirectPolicy, prelude::*};
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
@@ -292,7 +292,7 @@ impl fmt::Debug for HttpClientBuilder {
 ///
 /// let response = client.get("https://example.org")?;
 /// assert!(response.status().is_success());
-/// # Ok::<(), chttp::Error>(())
+/// # Ok::<(), isahc::Error>(())
 /// ```
 ///
 /// See the documentation on [`HttpClientBuilder`] for a comprehensive look at
@@ -356,12 +356,12 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// # let client = HttpClient::default();
     /// let mut response = client.get("https://example.org")?;
     /// println!("{}", response.text()?);
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
@@ -390,11 +390,11 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// # use chttp::prelude::*;
+    /// # use isahc::prelude::*;
     /// # let client = HttpClient::default();
     /// let response = client.head("https://example.org")?;
     /// println!("Page size: {:?}", response.headers()["content-length"]);
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
@@ -423,7 +423,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::default();
     ///
@@ -431,7 +431,7 @@ impl HttpClient {
     ///     "speed": "fast",
     ///     "cool_name": true
     /// }"#)?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     #[inline]
     pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
@@ -460,7 +460,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::default();
     ///
@@ -468,7 +468,7 @@ impl HttpClient {
     ///     "speed": "fast",
     ///     "cool_name": true
     /// }"#)?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
     pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
@@ -542,7 +542,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::default();
     ///
@@ -555,7 +555,7 @@ impl HttpClient {
     ///
     /// let response = client.send(request)?;
     /// assert!(response.status().is_success());
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
@@ -569,7 +569,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```ignore
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::default();
     ///

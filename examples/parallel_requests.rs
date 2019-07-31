@@ -3,12 +3,12 @@
 //! same thread, or from different threads as in this example.
 //!
 //! We're using Rayon here to make parallelism easy.
-use chttp::prelude::*;
+use isahc::prelude::*;
 use rayon::prelude::*;
 use std::env;
 use std::time::Instant;
 
-fn main() -> Result<(), chttp::Error> {
+fn main() -> Result<(), isahc::Error> {
     let count = env::args()
         .nth(1)
         .and_then(|s| s.parse::<u32>().ok())

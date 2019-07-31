@@ -10,7 +10,7 @@ speculate::speculate! {
             .with_body("hello world")
             .create();
 
-        let mut response = chttp::get(server_url()).unwrap();
+        let mut response = isahc::get(server_url()).unwrap();
         let response_text = response.body_mut().text().unwrap();
 
         assert_eq!(response_text, "hello world");
@@ -24,7 +24,7 @@ speculate::speculate! {
             .with_body(&body)
             .create();
 
-        let mut response = chttp::get(server_url()).unwrap();
+        let mut response = isahc::get(server_url()).unwrap();
         let response_text = response.body_mut().text().unwrap();
 
         assert_eq!(response_text, body);

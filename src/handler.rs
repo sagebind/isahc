@@ -318,13 +318,13 @@ impl curl::easy::Handler for RequestHandler {
 
         match kind {
             InfoType::Text => {
-                log::debug!(target: "chttp::curl", "{}", String::from_utf8_lossy(data).trim_end())
+                log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
             }
             InfoType::HeaderIn | InfoType::DataIn => {
-                log::trace!(target: "chttp::wire", "<< {}", format_byte_string(data))
+                log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data))
             }
             InfoType::HeaderOut | InfoType::DataOut => {
-                log::trace!(target: "chttp::wire", ">> {}", format_byte_string(data))
+                log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data))
             }
             _ => (),
         }

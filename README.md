@@ -1,9 +1,9 @@
-# cHTTP
+# Isahc (formerly cHTTP)
 
-The practical HTTP client that is fun to use.
+Say hello to Isahc (pronounced like _Isaac_), the is a practical HTTP client that is fun to use.
 
-[![Crates.io](https://img.shields.io/crates/v/chttp.svg)](https://crates.io/crates/chttp)
-[![Documentation](https://docs.rs/chttp/badge.svg)][documentation]
+[![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
+[![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## Key features
@@ -19,18 +19,30 @@ The practical HTTP client that is fun to use.
 - Network socket configuration.
 - Uses the [http] crate as an interface for requests and responses.
 
-## Why cHTTP and not X?
+<img src="media/isahc.svg.png" align="right">
 
-cHTTP provides an easy-to-use, flexible, and idiomatic Rust API that makes sending HTTP requests a breeze. The goal of cHTTP is to make the easy way _also_ provide excellent performance and correctness for common use cases.
+## What is Isahc?
 
-cHTTP uses [libcurl] under the hood to handle the HTTP protocol and networking. Using curl as an engine for an HTTP client is a great choice for a few reasons:
+Isahc is an acronym that stands for _Incredible Streaming Asynchronous Http Client_, and as the name implies, is an asynchronous HTTP client for the [Rust] language. It uses [libcurl] as an HTTP engine inside, and provides an easy-to-use API on top that integrates with Rust idioms.
+
+## No, _who_ is Isahc?
+
+Oh, _that_ Isahc! That's Isahc the dog! He's an adorable little Siberian husky who loves to play fetch with webservers and has a very cURLy tail. He shares a name with the project and acts as the project's mascot.
+
+You can pet him all you like and he won't mind, though he prefers if you pet him in a standards-conforming way!
+
+## Why use Isahc and not X?
+
+Isahc provides an easy-to-use, flexible, and idiomatic Rust API that makes sending HTTP requests a breeze. The goal of Isahc is to make the easy way _also_ provide excellent performance and correctness for common use cases.
+
+Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. Using curl as an engine for an HTTP client is a great choice for a few reasons:
 
 - It is a stable, actively developed, and very popular library.
 - It is well-supported on a diverse list of platforms.
 - The HTTP protocol has a lot of unexpected gotchas across different servers, and curl has been around the block long enough to handle many of them.
 - It is well optimized and offers the ability to implement asynchronous requests.
 
-Safe Rust bindings to libcurl are provided by the [curl](https://crates.io/crates/curl) crate, which you can use yourself if you want to use curl directly. cHTTP delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
+Safe Rust bindings to libcurl are provided by the [curl](https://crates.io/crates/curl) crate, which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
 
 ## Installation
 
@@ -38,22 +50,22 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-chttp = "0.5"
+isahc = "0.5"
 ```
 
 ### Supported Rust versions
 
-The current release is only guaranteed to work with the latest stable Rust compiler. When cHTTP reaches version `1.0`, a more conservative policy will be adopted.
+The current release is only guaranteed to work with the latest stable Rust compiler. When Isahc reaches version `1.0`, a more conservative policy will be adopted.
 
 ### Feature flags
 
-cHTTP is designed to be as "pay-as-you-need" as possible using Cargo feature
+Isahc is designed to be as "pay-as-you-need" as possible using Cargo feature
 flags and optional dependencies. Unstable features are also initially
 released behind feature flags until they are stabilized. You can add the
 feature names below to your `Cargo.toml` file to enable them:
 
 ```toml
-[dependencies.chttp]
+[dependencies.isahc]
 version = "0.5"
 features = ["psl"]
 ```
@@ -69,13 +81,13 @@ Below is a list of all available feature flags and their meanings.
 
 ## [Documentation]
 
-Please check out the [documentation] for details on what cHTTP can do and how to use it.
+Please check out the [documentation] for details on what Isahc can do and how to use it.
 
 To get you started, here is a really simple example that spits out the response body from https://example.org:
 
 ```rust
 // Send a GET request and wait for the response.
-let mut response = chttp::get("https://example.org")?
+let mut response = Isahc::get("https://example.org")?
 // Read the response body into a string and print it to standard output.
 let body = response.body_mut().text()?;
 println!("{}", body);
@@ -87,8 +99,9 @@ This library is licensed under the MIT license. See the [LICENSE](LICENSE) file 
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-[documentation]: https://docs.rs/chttp
+[documentation]: https://docs.rs/Isahc
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
+[rust]: https://www.rustlang.org
 [serde]: https://serde.rs

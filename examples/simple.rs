@@ -1,6 +1,6 @@
-use chttp::prelude::*;
+use isahc::prelude::*;
 
-fn main() -> Result<(), chttp::Error> {
+fn main() -> Result<(), isahc::Error> {
     let client = HttpClient::new();
     let mut response = client.get("http://example.org")?;
 

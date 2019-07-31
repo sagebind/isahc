@@ -17,11 +17,11 @@
 //! simple GET request to an example website:
 //!
 //! ```no_run
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //!
-//! let mut response = chttp::get("https://example.org")?;
+//! let mut response = isahc::get("https://example.org")?;
 //! println!("{}", response.text()?);
-//! # Ok::<(), chttp::Error>(())
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! By default, sending a request will wait for the response, up until the
@@ -32,17 +32,17 @@
 //! the request body:
 //!
 //! ```no_run
-//! let response = chttp::post("https://httpbin.org/post", "make me a salad")?;
-//! # Ok::<(), chttp::Error>(())
+//! let response = isahc::post("https://httpbin.org/post", "make me a salad")?;
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! cHTTP provides several other simple functions for common HTTP request types:
 //!
 //! ```no_run
-//! chttp::put("https://httpbin.org/put", "have a salad")?;
-//! chttp::head("https://httpbin.org/get")?;
-//! chttp::delete("https://httpbin.org/delete")?;
-//! # Ok::<(), chttp::Error>(())
+//! isahc::put("https://httpbin.org/put", "have a salad")?;
+//! isahc::head("https://httpbin.org/get")?;
+//! isahc::delete("https://httpbin.org/delete")?;
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
@@ -51,7 +51,7 @@
 //! [`send`][RequestExt::send]:
 //!
 //! ```no_run
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //! use std::time::Duration;
 //!
 //! let response = Request::post("https://httpbin.org/post")
@@ -62,7 +62,7 @@
 //!         "cool_name": true
 //!     }"#)?
 //!     .send()?;
-//! # Ok::<(), chttp::Error>(())
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! Check out the [examples] directory in the project sources for even more
@@ -113,9 +113,9 @@
 //! first example rewritten to use async/await syntax (nightly Rust only):
 //!
 //! ```ignore
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //!
-//! let mut response = chttp::get_async("https://httpbin.org/get").await?;
+//! let mut response = isahc::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
 //! ```
 //!
@@ -124,12 +124,12 @@
 //! cHTTP logs quite a bit of useful information at various levels using the
 //! [log] crate.
 //!
-//! If you set the log level to `Trace` for the `chttp::wire` target, cHTTP will
+//! If you set the log level to `Trace` for the `isahc::wire` target, cHTTP will
 //! also log all incoming and outgoing data while in flight. This may come in
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
-//! [examples]: https://github.com/sagebind/chttp/tree/master/examples
+//! [examples]: https://github.com/sagebind/isahc/tree/master/examples
 //! [log]: https://docs.rs/log
 
 #![deny(unsafe_code)]
@@ -329,7 +329,7 @@ pub fn version() -> &'static str {
 
     lazy_static! {
         static ref VERSION_STRING: String = format!(
-            "chttp/{} (features:{}) {}",
+            "isahc/{} (features:{}) {}",
             env!("CARGO_PKG_VERSION"),
             FEATURES_STRING,
             curl::Version::num(),
