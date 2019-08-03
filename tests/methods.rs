@@ -1,4 +1,4 @@
-use chttp::prelude::*;
+use isahc::prelude::*;
 use mockito::{mock, server_url};
 
 speculate::speculate! {
@@ -9,7 +9,7 @@ speculate::speculate! {
     test "GET request" {
         let m = mock("GET", "/").create();
 
-        chttp::get(server_url()).unwrap();
+        isahc::get(server_url()).unwrap();
 
         m.assert();
     }
@@ -17,7 +17,7 @@ speculate::speculate! {
     test "HEAD request" {
         let m = mock("HEAD", "/").create();
 
-        chttp::head(server_url()).unwrap();
+        isahc::head(server_url()).unwrap();
 
         m.assert();
     }
@@ -25,7 +25,7 @@ speculate::speculate! {
     test "POST request" {
         let m = mock("POST", "/").create();
 
-        chttp::post(server_url(), ()).unwrap();
+        isahc::post(server_url(), ()).unwrap();
 
         m.assert();
     }
@@ -33,7 +33,7 @@ speculate::speculate! {
     test "PUT request" {
         let m = mock("PUT", "/").create();
 
-        chttp::put(server_url(), ()).unwrap();
+        isahc::put(server_url(), ()).unwrap();
 
         m.assert();
     }
@@ -41,7 +41,7 @@ speculate::speculate! {
     test "DELETE request" {
         let m = mock("DELETE", "/").create();
 
-        chttp::delete(server_url()).unwrap();
+        isahc::delete(server_url()).unwrap();
 
         m.assert();
     }

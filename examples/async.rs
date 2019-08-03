@@ -3,9 +3,9 @@
 #![cfg(feature = "nightly")]
 #![feature(async_await)]
 
-use chttp::prelude::*;
+use isahc::prelude::*;
 
-fn main() -> Result<(), chttp::Error> {
+fn main() -> Result<(), isahc::Error> {
     futures::executor::block_on(async {
         let mut response = Request::get("http://example.org")
             .body(())?

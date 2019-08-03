@@ -17,7 +17,7 @@ pub trait RequestBuilderExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     /// use std::time::Duration;
     ///
     /// // This page is too slow and won't respond in time.
@@ -26,7 +26,7 @@ pub trait RequestBuilderExt {
     ///     .body(())?
     ///     .send()
     ///     .expect_err("page should time out");
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn timeout(&mut self, timeout: Duration) -> &mut Self;
 
@@ -42,8 +42,8 @@ pub trait RequestBuilderExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::config::RedirectPolicy;
-    /// use chttp::prelude::*;
+    /// use isahc::config::RedirectPolicy;
+    /// use isahc::prelude::*;
     ///
     /// // This URL redirects us to where we want to go.
     /// let response = Request::get("https://httpbin.org/redirect/1")
@@ -57,7 +57,7 @@ pub trait RequestBuilderExt {
     ///     .body(())?
     ///     .send()
     ///     .expect_err("too many redirects");
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn redirect_policy(&mut self, policy: RedirectPolicy) -> &mut Self;
 
@@ -131,8 +131,8 @@ pub trait RequestBuilderExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::config::{ClientCertificate, PrivateKey};
-    /// use chttp::prelude::*;
+    /// use isahc::config::{ClientCertificate, PrivateKey};
+    /// use isahc::prelude::*;
     ///
     /// let response = Request::get("localhost:3999")
     ///     .ssl_client_certificate(ClientCertificate::PEM {
@@ -144,7 +144,7 @@ pub trait RequestBuilderExt {
     ///     })
     ///     .body(())?
     ///     .send()?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
 }
@@ -213,7 +213,7 @@ pub trait RequestExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
     /// let response = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")
@@ -222,7 +222,7 @@ pub trait RequestExt<T> {
     ///         "cool_name": true
     ///     }"#)?
     ///     .send()?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn send(self) -> Result<Response<Body>, Error>
     where

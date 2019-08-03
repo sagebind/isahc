@@ -11,17 +11,17 @@ speculate::speculate! {
             .match_header("accept-encoding", "deflate, gzip")
             .create();
 
-        chttp::get(server_url()).unwrap();
+        isahc::get(server_url()).unwrap();
 
         m.assert();
     }
 
     test "user agent contains expected format" {
         let m = mock("GET", "/")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ chttp/\S+$".into()))
+            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
             .create();
 
-        chttp::get(server_url()).unwrap();
+        isahc::get(server_url()).unwrap();
 
         m.assert();
     }

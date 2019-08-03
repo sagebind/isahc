@@ -1,6 +1,6 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! Here are some of cHTTP's key features:
+//! Here are some of Isahc's key features:
 //!
 //! - Full support for HTTP/1.1 and HTTP/2.
 //! - Configurable request timeouts.
@@ -17,11 +17,11 @@
 //! simple GET request to an example website:
 //!
 //! ```no_run
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //!
-//! let mut response = chttp::get("https://example.org")?;
+//! let mut response = isahc::get("https://example.org")?;
 //! println!("{}", response.text()?);
-//! # Ok::<(), chttp::Error>(())
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! By default, sending a request will wait for the response, up until the
@@ -32,17 +32,17 @@
 //! the request body:
 //!
 //! ```no_run
-//! let response = chttp::post("https://httpbin.org/post", "make me a salad")?;
-//! # Ok::<(), chttp::Error>(())
+//! let response = isahc::post("https://httpbin.org/post", "make me a salad")?;
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
-//! cHTTP provides several other simple functions for common HTTP request types:
+//! Isahc provides several other simple functions for common HTTP request types:
 //!
 //! ```no_run
-//! chttp::put("https://httpbin.org/put", "have a salad")?;
-//! chttp::head("https://httpbin.org/get")?;
-//! chttp::delete("https://httpbin.org/delete")?;
-//! # Ok::<(), chttp::Error>(())
+//! isahc::put("https://httpbin.org/put", "have a salad")?;
+//! isahc::head("https://httpbin.org/get")?;
+//! isahc::delete("https://httpbin.org/delete")?;
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
@@ -51,7 +51,7 @@
 //! [`send`][RequestExt::send]:
 //!
 //! ```no_run
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //! use std::time::Duration;
 //!
 //! let response = Request::post("https://httpbin.org/post")
@@ -62,7 +62,7 @@
 //!         "cool_name": true
 //!     }"#)?
 //!     .send()?;
-//! # Ok::<(), chttp::Error>(())
+//! # Ok::<(), isahc::Error>(())
 //! ```
 //!
 //! Check out the [examples] directory in the project sources for even more
@@ -70,7 +70,7 @@
 //!
 //! # Feature tour
 //!
-//! Below is a brief overview of some notable features of cHTTP. Check out the
+//! Below is a brief overview of some notable features of Isahc. Check out the
 //! rest of the documentation for even more guides and examples.
 //!
 //! ## Easy request functions
@@ -83,7 +83,7 @@
 //!
 //! ## Request and response traits
 //!
-//! cHTTP includes a number of traits in the [`prelude`] module that extend the
+//! Isahc includes a number of traits in the [`prelude`] module that extend the
 //! [`Request`] and [`Response`] types with a plethora of extra methods that
 //! make common tasks convenient and allow you to make more advanced
 //! configuration.
@@ -113,23 +113,23 @@
 //! first example rewritten to use async/await syntax (nightly Rust only):
 //!
 //! ```ignore
-//! use chttp::prelude::*;
+//! use isahc::prelude::*;
 //!
-//! let mut response = chttp::get_async("https://httpbin.org/get").await?;
+//! let mut response = isahc::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
 //! ```
 //!
 //! # Logging
 //!
-//! cHTTP logs quite a bit of useful information at various levels using the
+//! Isahc logs quite a bit of useful information at various levels using the
 //! [log] crate.
 //!
-//! If you set the log level to `Trace` for the `chttp::wire` target, cHTTP will
+//! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
-//! [examples]: https://github.com/sagebind/chttp/tree/master/examples
+//! [examples]: https://github.com/sagebind/isahc/tree/master/examples
 //! [log]: https://docs.rs/log
 
 #![deny(unsafe_code)]
@@ -178,7 +178,7 @@ pub use crate::{
 /// Re-export of the standard HTTP types.
 pub use http;
 
-/// A "prelude" for importing common cHTTP types.
+/// A "prelude" for importing common Isahc types.
 pub mod prelude {
     pub use crate::{
         Body,
@@ -319,17 +319,17 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
     HttpClient::shared().send_async(request)
 }
 
-/// Gets a human-readable string with the version number of cHTTP and its
+/// Gets a human-readable string with the version number of Isahc and its
 /// dependencies.
 ///
-/// This function can be helpful when troubleshooting issues in cHTTP or one of
+/// This function can be helpful when troubleshooting issues in Isahc or one of
 /// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
 
     lazy_static! {
         static ref VERSION_STRING: String = format!(
-            "chttp/{} (features:{}) {}",
+            "isahc/{} (features:{}) {}",
             env!("CARGO_PKG_VERSION"),
             FEATURES_STRING,
             curl::Version::num(),

@@ -1,5 +1,5 @@
-use chttp::config::RedirectPolicy;
-use chttp::prelude::*;
+use isahc::config::RedirectPolicy;
+use isahc::prelude::*;
 use mockito::{mock, server_url};
 
 speculate::speculate! {
@@ -13,7 +13,7 @@ speculate::speculate! {
             .with_header("Location", "/2")
             .create();
 
-        let response = chttp::get(server_url()).unwrap();
+        let response = isahc::get(server_url()).unwrap();
 
         assert_eq!(response.status(), 301);
         assert_eq!(response.headers()["Location"], "/2");
@@ -113,7 +113,7 @@ speculate::speculate! {
 
         // Request should error with too many redirects.
         assert!(match result {
-            Err(chttp::Error::TooManyRedirects) => true,
+            Err(isahc::Error::TooManyRedirects) => true,
             _ => false,
         });
 

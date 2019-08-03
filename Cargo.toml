@@ -1,13 +1,13 @@
 [package]
-name = "chttp"
-version = "0.5.4"
+name = "isahc"
+version = "0.6.0"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
 keywords = ["http", "request", "client", "async", "curl"]
 categories = ["web-programming::http-client"]
-repository = "https://github.com/sagebind/chttp"
-documentation = "https://docs.rs/chttp/"
+repository = "https://github.com/sagebind/isahc"
+documentation = "https://docs.rs/isahc/"
 readme = "README.md"
 edition = "2018"
 

@@ -25,11 +25,11 @@ pub trait ResponseExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
-    /// chttp::get("https://httpbin.org/image/jpeg")?
+    /// isahc::get("https://httpbin.org/image/jpeg")?
     ///     .copy_to_file("myimage.jpg")?;
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn copy_to_file(&mut self, path: impl AsRef<Path>) -> io::Result<u64>
     where
@@ -46,11 +46,11 @@ pub trait ResponseExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     ///
-    /// let text = chttp::get("https://example.org")?.text()?;
+    /// let text = isahc::get("https://example.org")?.text()?;
     /// println!("{}", text);
-    /// # Ok::<(), chttp::Error>(())
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn text(&mut self) -> Result<String, Error>
     where
@@ -69,10 +69,10 @@ pub trait ResponseExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use chttp::prelude::*;
+    /// use isahc::prelude::*;
     /// use serde_json::Value;
     ///
-    /// let json: Value = chttp::get("https://httpbin.org/json")?.json()?;
+    /// let json: Value = isahc::get("https://httpbin.org/json")?.json()?;
     /// println!("author: {}", json["slideshow"]["author"]);
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

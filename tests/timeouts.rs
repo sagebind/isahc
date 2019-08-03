@@ -1,4 +1,4 @@
-use chttp::prelude::*;
+use isahc::prelude::*;
 use mockito::{mock, server_url};
 use std::thread::sleep;
 use std::time::Duration;
@@ -27,7 +27,7 @@ speculate::speculate! {
 
         // Client should time-out.
         match result {
-            Err(chttp::Error::Timeout) => {}
+            Err(isahc::Error::Timeout) => {}
             e => {
                 panic!("expected timeout error, got {:?}", e);
             }
