@@ -1,9 +1,11 @@
-# cHTTP
+# [Isahc] (formerly cHTTP)
 
 The practical HTTP client that is fun to use.
 
-[![Crates.io](https://img.shields.io/crates/v/chttp.svg)](https://crates.io/crates/chttp)
-[![Documentation](https://docs.rs/chttp/badge.svg)][documentation]
+**Note: cHTTP has been renamed to [Isahc]. Check out the latest and greatest versions under the new name!**
+
+[![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
+[![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## Key features
@@ -87,8 +89,9 @@ This library is licensed under the MIT license. See the [LICENSE](LICENSE) file 
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-[documentation]: https://docs.rs/chttp
+[documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
+[isahc]: https://crates.io/crates/isahc
 [libcurl]: https://curl.haxx.se/libcurl/
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
 [serde]: https://serde.rs
