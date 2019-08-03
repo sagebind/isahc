@@ -627,9 +627,9 @@ impl HttpClient {
         request: Request<Body>,
     ) -> Result<(curl::easy::Easy2<RequestHandler>, RequestHandlerFuture), Error> {
         // Prepare the request plumbing.
-        let (parts, body) = request.into_parts();
+        let (mut parts, body) = request.into_parts();
         let has_body = !body.is_empty();
-        let body_size = body.len();
+        let body_length = body.len();
         let (handler, future) = RequestHandler::new(body);
 
         // Helper for fetching an extension first from the request, then falling
@@ -726,46 +726,69 @@ impl HttpClient {
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
-        match (parts.method, has_body) {
+        match (&parts.method, has_body) {
             // Normal GET request.
-            (http::Method::GET, false) => {
+            (&http::Method::GET, false) => {
                 easy.get(true)?;
             }
             // HEAD requests do not wait for a response payload.
-            (http::Method::HEAD, has_body) => {
-                easy.custom_request("HEAD")?;
-                easy.nobody(true)?;
+            (&http::Method::HEAD, has_body) => {
                 easy.upload(has_body)?;
+                easy.nobody(true)?;
+                easy.custom_request("HEAD")?;
             }
             // POST requests have special redirect behavior.
-            (http::Method::POST, _) => {
+            (&http::Method::POST, _) => {
                 easy.post(true)?;
             }
             // Normal PUT request.
-            (http::Method::PUT, _) => {
+            (&http::Method::PUT, _) => {
                 easy.upload(true)?;
             }
             // Default case is to either treat request like a GET or PUT.
             (method, has_body) => {
-                easy.custom_request(method.as_str())?;
                 easy.upload(has_body)?;
+                easy.custom_request(method.as_str())?;
             }
         }
 
         easy.url(&parts.uri.to_string())?;
 
+        // If the request has a body, then we either need to tell curl how large
+        // the body is if we know it, or tell curl to use chunked encoding. If
+        // we do neither, curl will simply not send the body without warning.
+        if has_body {
+            // Use length given in Content-Length header, or the size defined by
+            // the body itself.
+            let body_length = parts.headers.get("Content-Length")
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse().ok())
+                .or(body_length);
+
+            if let Some(len) = body_length {
+                if parts.method == http::Method::POST {
+                    easy.post_field_size(len as u64)?;
+                } else {
+                    easy.in_filesize(len as u64)?;
+                }
+            } else {
+                // Set the Transfer-Encoding header to instruct curl to use
+                // chunked encoding. Replaces any existing values that may be
+                // incorrect.
+                parts.headers.insert(
+                    "Transfer-Encoding",
+                    http::header::HeaderValue::from_static("chunked"),
+                );
+            }
+        }
+
+        // Prepare header list to give to curl.
         let mut headers = curl::easy::List::new();
         for (name, value) in parts.headers.iter() {
             let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
             headers.append(&header)?;
         }
         easy.http_headers(headers)?;
-
-        // If we know the size of the request body up front, tell curl
-        // about it.
-        if let Some(len) = body_size {
-            easy.in_filesize(len as u64)?;
-        }
 
         Ok((easy, future))
     }
