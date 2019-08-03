@@ -1,6 +1,6 @@
 //! The practical HTTP client that is fun to use.
 //!
-//! Here are some of cHTTP's key features:
+//! Here are some of Isahc's key features:
 //!
 //! - Full support for HTTP/1.1 and HTTP/2.
 //! - Configurable request timeouts.
@@ -36,7 +36,7 @@
 //! # Ok::<(), isahc::Error>(())
 //! ```
 //!
-//! cHTTP provides several other simple functions for common HTTP request types:
+//! Isahc provides several other simple functions for common HTTP request types:
 //!
 //! ```no_run
 //! isahc::put("https://httpbin.org/put", "have a salad")?;
@@ -70,7 +70,7 @@
 //!
 //! # Feature tour
 //!
-//! Below is a brief overview of some notable features of cHTTP. Check out the
+//! Below is a brief overview of some notable features of Isahc. Check out the
 //! rest of the documentation for even more guides and examples.
 //!
 //! ## Easy request functions
@@ -83,7 +83,7 @@
 //!
 //! ## Request and response traits
 //!
-//! cHTTP includes a number of traits in the [`prelude`] module that extend the
+//! Isahc includes a number of traits in the [`prelude`] module that extend the
 //! [`Request`] and [`Response`] types with a plethora of extra methods that
 //! make common tasks convenient and allow you to make more advanced
 //! configuration.
@@ -121,10 +121,10 @@
 //!
 //! # Logging
 //!
-//! cHTTP logs quite a bit of useful information at various levels using the
+//! Isahc logs quite a bit of useful information at various levels using the
 //! [log] crate.
 //!
-//! If you set the log level to `Trace` for the `isahc::wire` target, cHTTP will
+//! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
@@ -178,7 +178,7 @@ pub use crate::{
 /// Re-export of the standard HTTP types.
 pub use http;
 
-/// A "prelude" for importing common cHTTP types.
+/// A "prelude" for importing common Isahc types.
 pub mod prelude {
     pub use crate::{
         Body,
@@ -319,10 +319,10 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
     HttpClient::shared().send_async(request)
 }
 
-/// Gets a human-readable string with the version number of cHTTP and its
+/// Gets a human-readable string with the version number of Isahc and its
 /// dependencies.
 ///
-/// This function can be helpful when troubleshooting issues in cHTTP or one of
+/// This function can be helpful when troubleshooting issues in Isahc or one of
 /// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));

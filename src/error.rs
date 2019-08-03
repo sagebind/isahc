@@ -4,7 +4,7 @@ use std::error::Error as StdError;
 use std::fmt;
 use std::io;
 
-/// All possible types of errors that can be returned from cHTTP.
+/// All possible types of errors that can be returned from Isahc.
 #[derive(Debug)]
 pub enum Error {
     /// The request was aborted before it could be completed.

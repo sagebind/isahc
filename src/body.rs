@@ -18,7 +18,7 @@ use std::task::{Context, Poll};
 /// types of sources using the [`Into`](std::convert::Into) trait or one of its
 /// constructor functions.
 ///
-/// Since the entire request life-cycle in cHTTP is asynchronous, bodies must
+/// Since the entire request life-cycle in Isahc is asynchronous, bodies must
 /// also be asynchronous. You can create a body from anything that implements
 /// [`AsyncRead`], which [`Body`] itself also implements.
 pub struct Body(Inner);
