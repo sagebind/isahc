@@ -32,7 +32,7 @@ enum Inner {
     Bytes(Cursor<Bytes>),
 
     /// An asynchronous reader.
-    AsyncRead(Pin<Box<dyn AsyncRead + Send>>, Option<usize>),
+    AsyncRead(Pin<Box<dyn AsyncRead + Send>>, Option<u64>),
 }
 
 impl Body {
@@ -67,7 +67,7 @@ impl Body {
     /// Giving a value for `length` that doesn't actually match how much data
     /// the reader will produce may result in errors when sending the body in a
     /// request.
-    pub fn reader_sized(read: impl AsyncRead + Send + 'static, length: usize) -> Self {
+    pub fn reader_sized(read: impl AsyncRead + Send + 'static, length: u64) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), Some(length)))
     }
 
@@ -89,10 +89,10 @@ impl Body {
     /// Since the length may be determined totally separately from the actual
     /// bytes, even if a value is returned it should not be relied on as always
     /// being accurate, and should be treated as a "hint".
-    pub fn len(&self) -> Option<usize> {
+    pub fn len(&self) -> Option<u64> {
         match &self.0 {
             Inner::Empty => Some(0),
-            Inner::Bytes(bytes) => Some(bytes.get_ref().len()),
+            Inner::Bytes(bytes) => Some(bytes.get_ref().len() as u64),
             Inner::AsyncRead(_, len) => *len,
         }
     }

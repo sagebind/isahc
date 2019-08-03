@@ -767,9 +767,9 @@ impl HttpClient {
 
             if let Some(len) = body_length {
                 if parts.method == http::Method::POST {
-                    easy.post_field_size(len as u64)?;
+                    easy.post_field_size(len)?;
                 } else {
-                    easy.in_filesize(len as u64)?;
+                    easy.in_filesize(len)?;
                 }
             } else {
                 // Set the Transfer-Encoding header to instruct curl to use

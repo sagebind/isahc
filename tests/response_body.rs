@@ -30,4 +30,26 @@ speculate::speculate! {
         assert_eq!(response_text, body);
         m.assert();
     }
+
+    test "response body with Content-Length knows its size" {
+        let m = mock("GET", "/")
+            .with_body("hello world")
+            .create();
+
+        let response = chttp::get(server_url()).unwrap();
+
+        assert_eq!(response.body().len(), Some(11));
+        m.assert();
+    }
+
+    test "response body with chunked encoding has unknown size" {
+        let m = mock("GET", "/")
+            .with_body_from_fn(|w| w.write_all(b"hello world"))
+            .create();
+
+        let response = chttp::get(server_url()).unwrap();
+
+        assert_eq!(response.body().len(), None);
+        m.assert();
+    }
 }

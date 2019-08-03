@@ -29,7 +29,7 @@ speculate::speculate! {
         match result {
             Err(chttp::Error::Timeout) => {}
             e => {
-                panic!("expected timout error, got {:?}", e);
+                panic!("expected timeout error, got {:?}", e);
             }
         }
 
