@@ -157,10 +157,13 @@ impl RequestHandler {
     /// Complete the associated future with a result.
     fn complete(&mut self, result: Result<http::response::Builder, Error>) {
         if let Some(sender) = self.sender.take() {
+            if let Err(e) = result.as_ref() {
+                log::warn!("request completed with error [id={:?}]: {}", self.id, e);
+            }
+
             match sender.send(result) {
                 Ok(()) => {
                     self.shared.waker.wake();
-                    log::warn!("request completed with error [id={:?}]", self.id);
                 }
                 Err(_) => {
                     log::debug!("request canceled by user [id={:?}]", self.id);
@@ -252,18 +255,14 @@ impl curl::easy::Handler for RequestHandler {
     /// seek, we can't do any async operations in this callback. That's why we
     /// only support trivial types of seeking.
     fn seek(&mut self, whence: io::SeekFrom) -> SeekResult {
-        match whence {
-            // If curl wants to seek to the beginning, there's a chance that we
-            // can do that.
-            io::SeekFrom::Start(0) => {
-                if self.request_body.reset() {
-                    SeekResult::Ok
-                } else {
-                    SeekResult::CantSeek
-                }
-            }
+        // If curl wants to seek to the beginning, there's a chance that we
+        // can do that.
+        if whence == io::SeekFrom::Start(0) && self.request_body.reset() {
+            SeekResult::Ok
+        } else {
+            log::warn!("seek requested for request body, but it is not supported");
             // We can't do any other type of seek, sorry :(
-            _ => SeekResult::CantSeek,
+            SeekResult::CantSeek
         }
     }
 
