@@ -146,9 +146,8 @@ impl Handle {
                 self.waker.wake_by_ref();
                 Ok(())
             }
-            Err(_) => {
-                log::error!("agent thread terminated prematurely");
-                Err(Error::Internal)
+            Err(crossbeam_channel::SendError(_)) => {
+                panic!("agent thread terminated prematurely");
             }
         }
     }

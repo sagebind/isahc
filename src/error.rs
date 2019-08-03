@@ -21,8 +21,6 @@ pub enum Error {
     CouldntResolveProxy,
     /// An unrecognized error thrown by curl.
     Curl(String),
-    /// An internal error occurred in the client.
-    Internal,
     /// Unrecognized or bad content encoding returned by the server.
     InvalidContentEncoding(Option<String>),
     /// Provided credentials were rejected by the server.
@@ -47,9 +45,6 @@ pub enum Error {
     SSLEngineError(Option<String>),
     /// An ongoing request took longer than the configured timeout time.
     Timeout,
-    /// Returned when making more simultaneous requests would exceed the
-    /// configured TCP connection limit.
-    TooManyConnections,
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,
 }
@@ -70,7 +65,6 @@ impl StdError for Error {
             Error::CouldntResolveHost => "couldn't resolve host name",
             Error::CouldntResolveProxy => "couldn't resolve proxy host name",
             Error::Curl(ref e) => e,
-            Error::Internal => "internal error",
             Error::InvalidContentEncoding(Some(ref e)) => e,
             Error::InvalidCredentials => "credentials were rejected by the server",
             Error::InvalidHttpFormat(ref e) => e.description(),
@@ -83,7 +77,6 @@ impl StdError for Error {
             Error::SSLConnectFailed(Some(ref e)) => e,
             Error::SSLEngineError(Some(ref e)) => e,
             Error::Timeout => "request took longer than the configured timeout",
-            Error::TooManyConnections => "max connection limit exceeded",
             Error::TooManyRedirects => "max redirect limit exceeded",
             _ => "unknown error",
         }
