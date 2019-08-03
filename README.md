@@ -101,7 +101,7 @@ The "Isahc" logo and mascot may only be used as required for reasonable and cust
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
-[documentation]: https://docs.rs/Isahc
+[documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
