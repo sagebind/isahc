@@ -36,7 +36,7 @@ speculate::speculate! {
             .with_body("hello world")
             .create();
 
-        let response = chttp::get(server_url()).unwrap();
+        let response = isahc::get(server_url()).unwrap();
 
         assert_eq!(response.body().len(), Some(11));
         m.assert();
@@ -47,7 +47,7 @@ speculate::speculate! {
             .with_body_from_fn(|w| w.write_all(b"hello world"))
             .create();
 
-        let response = chttp::get(server_url()).unwrap();
+        let response = isahc::get(server_url()).unwrap();
 
         assert_eq!(response.body().len(), None);
         m.assert();

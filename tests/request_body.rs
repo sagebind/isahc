@@ -1,5 +1,5 @@
-use chttp::prelude::*;
-use chttp::Body;
+use isahc::prelude::*;
+use isahc::Body;
 use mockito::{mock, server_url};
 
 speculate::speculate! {
