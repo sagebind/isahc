@@ -112,6 +112,14 @@
             <dc:title>Stephen M. Coakley</dc:title>
           </cc:Agent>
         </dc:creator>
+        <dc:description>Mascot for the Isahc project.</dc:description>
+        <cc:license
+           rdf:resource="" />
+        <dc:rights>
+          <cc:Agent>
+            <dc:title>(c) Stephen M. Coakley</dc:title>
+          </cc:Agent>
+        </dc:rights>
       </cc:Work>
     </rdf:RDF>
   </metadata>
