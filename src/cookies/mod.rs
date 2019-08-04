@@ -1,6 +1,8 @@
 //! Cookie state management.
 //!
 //! This module provides a cookie jar implementation conforming to RFC 6265.
+//!
+//! Everything in this module requires the `cookies` feature to be enabled.
 
 use crate::middleware::Middleware;
 use crate::Body;

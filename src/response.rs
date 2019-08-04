@@ -66,6 +66,8 @@ pub trait ResponseExt<T> {
 
     /// Deserialize the response body as JSON into a given type.
     ///
+    /// This method requires the `json` feature to be enabled.
+    ///
     /// # Examples
     ///
     /// ```no_run

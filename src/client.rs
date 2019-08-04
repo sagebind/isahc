@@ -57,12 +57,16 @@ impl HttpClientBuilder {
     }
 
     /// Enable persistent cookie handling using a cookie jar.
+    ///
+    /// This method requires the `cookies` feature to be enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
         self.middleware_impl(crate::cookies::CookieJar::default())
     }
 
     /// Add a middleware layer to the client.
+    ///
+    /// This method requires the `middleware-api` feature to be enabled.
     #[cfg(feature = "middleware-api")]
     pub fn middleware(self, middleware: impl Middleware) -> Self {
         self.middleware_impl(middleware)

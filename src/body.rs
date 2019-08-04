@@ -133,6 +133,8 @@ impl Body {
     }
 
     /// Deserialize the response body as JSON into a given type.
+    ///
+    /// This method requires the `json` feature to be enabled.
     #[cfg(feature = "json")]
     pub fn json<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, serde_json::Error> {
         serde_json::from_reader(self)
