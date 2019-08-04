@@ -66,6 +66,7 @@ optional = true
 
 [dev-dependencies]
 env_logger = "0.6"
+flate2 = "1.0"
 futures-preview = "=0.3.0-alpha.17"
 mockito = "0.20"
 rayon = "1"

@@ -721,8 +721,13 @@ impl HttpClient {
             easy.ssl_client_certificate(cert)?;
         }
 
-        // Enable automatic response decompression.
-        easy.accept_encoding("")?;
+        // Enable automatic response decoding, unless overridden by the user via
+        // a custom Accept-Encoding value.
+        easy.accept_encoding(parts.headers
+            .get("Accept-Encoding")
+            .and_then(|value| value.to_str().ok())
+            // Empty string tells curl to fill in all supported encodings.
+            .unwrap_or(""))?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
