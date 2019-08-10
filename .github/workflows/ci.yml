@@ -16,7 +16,9 @@ jobs:
           submodules: true
 
       - name: Install Rust (macOS)
-        run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
+          echo "$HOME/.cargo/bin" >> /etc/paths
         if: runner.os == 'macOS'
 
       - run: |
