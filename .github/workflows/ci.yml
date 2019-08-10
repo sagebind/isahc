@@ -15,12 +15,13 @@ jobs:
         with:
           submodules: true
 
-      - name: Dump runner context
-        env:
-          RUNNER_CONTEXT: ${{ toJson(runner) }}
-        run: echo "$RUNNER_CONTEXT"
+      - name: Install Rust (macOS)
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
+          source $HOME/.cargo/env
+        if: runner.os == 'macOS'
 
-      - run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
+      - run: rustup default 1.36.0
 
       - run: cargo test --features psl -- --test-threads=8
         env:
