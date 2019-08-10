@@ -19,6 +19,8 @@ jobs:
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
           source $HOME/.cargo/env
+          cat ~/.profile
+          cat ~/.bash_profile
         if: runner.os == 'macOS'
 
       - run: rustup default 1.36.0
