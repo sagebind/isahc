@@ -15,7 +15,7 @@ jobs:
         with:
           submodules: true
 
-      - run: rustup default 1.36.0
+      - run: curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.36.0
 
       - run: cargo test --features psl -- --test-threads=8
         env:
