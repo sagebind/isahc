@@ -19,14 +19,17 @@ jobs:
         run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
         if: runner.os == 'macOS'
 
-      - run: $HOME/.cargo/bin/rustup default 1.36.0
+      - run: rustup default 1.36.0
+        shell: "bash eo pipefail {0}"
 
-      - run: $HOME/.cargo/bin/cargo test --features psl -- --test-threads=8
+      - run: cargo test --features psl -- --test-threads=8
+        shell: "bash eo pipefail {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
 
-      - run: $HOME/.cargo/bin/cargo run --release --example simple
+      - run: cargo run --release --example simple
+        shell: "bash eo pipefail {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
