@@ -18,20 +18,20 @@ jobs:
       - name: Install Rust (macOS)
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
-          echo "source $HOME/.cargo/env" >> $HOME/.bash_profile
+          echo "source $HOME/.cargo/env" >> $HOME/.bashrc
         if: runner.os == 'macOS'
 
       - run: rustup default 1.36.0
-        shell: "bash -eo pipefail {0}"
+        shell: "bash {0}"
 
       - run: cargo test --features psl -- --test-threads=8
-        shell: "bash -eo pipefail {0}"
+        shell: "bash {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
 
       - run: cargo run --release --example simple
-        shell: "bash -eo pipefail {0}"
+        shell: "bash {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
