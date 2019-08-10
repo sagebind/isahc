@@ -31,7 +31,8 @@ jobs:
         with:
           submodules: true
 
-      - uses: docker://rustlang/rust:nightly
+      - name: cargo test
+        uses: docker://rustlang/rust:nightly
         args: cargo test --features psl,nightly -- --test-threads=8
         env:
           RUST_BACKTRACE: 1
