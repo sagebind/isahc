@@ -18,8 +18,7 @@ jobs:
       - name: Install Rust (macOS)
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
-          source $HOME/.cargo/env
-          cat ~/.bashrc
+          echo "source $HOME/.cargo/env" >> $HOME/.bashrc
         if: runner.os == 'macOS'
 
       - run: rustup default 1.36.0
