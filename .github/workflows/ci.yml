@@ -26,14 +26,13 @@ jobs:
 
   test-nightly:
     runs-on: ubuntu-latest
+    container: rustlang/rust:nightly
     steps:
       - uses: actions/checkout@master
         with:
           submodules: true
 
-      - name: cargo test
-        uses: docker://rustlang/rust:nightly
-        args: cargo test --features psl,nightly -- --test-threads=8
+      - run: cargo test --features psl,nightly -- --test-threads=8
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
