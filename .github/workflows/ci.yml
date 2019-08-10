@@ -15,6 +15,11 @@ jobs:
         with:
           submodules: true
 
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+
       - run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
 
       - run: cargo test --features psl -- --test-threads=8
