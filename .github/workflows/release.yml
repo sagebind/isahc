@@ -1,0 +1,14 @@
+on: release
+
+jobs:
+  publish:
+    if: github.event.action == 'published'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          submodules: true
+      - run: echo ${CARGO_TOKEN} | cargo login
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+      - run: cargo publish
