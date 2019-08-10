@@ -20,16 +20,16 @@ jobs:
         if: runner.os == 'macOS'
 
       - run: rustup default 1.36.0
-        shell: "bash eo pipefail {0}"
+        shell: "bash -eo pipefail {0}"
 
       - run: cargo test --features psl -- --test-threads=8
-        shell: "bash eo pipefail {0}"
+        shell: "bash -eo pipefail {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
 
       - run: cargo run --release --example simple
-        shell: "bash eo pipefail {0}"
+        shell: "bash -eo pipefail {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
