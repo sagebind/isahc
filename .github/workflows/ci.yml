@@ -19,14 +19,14 @@ jobs:
         run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
         if: runner.os == 'macOS'
 
-      - run: ~/.cargo/bin/rustup default 1.36.0
+      - run: $HOME/.cargo/bin/rustup default 1.36.0
 
-      - run: ~/.cargo/bin/cargo test --features psl -- --test-threads=8
+      - run: $HOME/.cargo/bin/cargo test --features psl -- --test-threads=8
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
 
-      - run: ~/.cargo/bin/cargo run --release --example simple
+      - run: $HOME/.cargo/bin/cargo run --release --example simple
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
