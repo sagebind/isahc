@@ -10,7 +10,6 @@ jobs:
           - macos-latest
           - windows-latest
     runs-on: ${{ matrix.platform }}
-    fail-fast: false
     steps:
       - uses: actions/checkout@master
         with:
