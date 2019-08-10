@@ -16,19 +16,23 @@ jobs:
           submodules: true
 
       - name: Install Rust (macOS)
-        run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
-          echo $PATH
+        run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
         if: runner.os == 'macOS'
 
-      - run: rustup default 1.36.0
+      - run: |
+          source $HOME/.cargo/env
+          rustup default 1.36.0
 
-      - run: cargo test --features psl -- --test-threads=8
+      - run: |
+          source $HOME/.cargo/env
+          cargo test --features psl -- --test-threads=8
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
 
-      - run: cargo run --release --example simple
+      - run: |
+          source $HOME/.cargo/env
+          cargo run --release --example simple
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: warn
