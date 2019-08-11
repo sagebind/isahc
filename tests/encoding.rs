@@ -18,7 +18,7 @@ speculate::speculate! {
             .unwrap();
 
         let m = mock("GET", "/")
-            .match_header("Accept-Encoding", "gzip, deflate")
+            .match_header("Accept-Encoding", "deflate, gzip")
             .with_header("Content-Encoding", "gzip")
             .with_body(&body_encoded)
             .create();
@@ -38,7 +38,7 @@ speculate::speculate! {
             .unwrap();
 
         let m = mock("GET", "/")
-            .match_header("Accept-Encoding", "gzip, deflate")
+            .match_header("Accept-Encoding", "deflate, gzip")
             .with_header("Content-Encoding", "deflate")
             .with_body(&body_encoded)
             .create();
