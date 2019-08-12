@@ -44,7 +44,7 @@ version = "0.4"
 optional = true
 
 [dependencies.futures-util-preview]
-version = "=0.3.0-alpha.17"
+version = "=0.3.0-alpha.18"
 features = ["io"]
 
 [dependencies.parking_lot]
