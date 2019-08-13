@@ -12,7 +12,6 @@ use crate::task::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
 use curl::multi::WaitFd;
-use futures_util::task::ArcWake;
 use slab::Slab;
 use std::net::UdpSocket;
 use std::sync::Arc;
@@ -99,7 +98,7 @@ pub(crate) fn new() -> Result<Handle, Error> {
     let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
     wake_socket.set_nonblocking(true)?;
     let wake_addr = wake_socket.local_addr()?;
-    let waker = Arc::new(UdpWaker::connect(wake_addr)?).into_waker();
+    let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
     log::debug!("agent waker listening on {}", wake_addr);
 
     let (message_tx, message_rx) = crossbeam_channel::unbounded();

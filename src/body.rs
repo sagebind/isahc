@@ -118,7 +118,7 @@ impl Body {
     /// this method again later.
     pub fn text(&mut self) -> Result<String, io::Error> {
         let mut s = String::default();
-        self.read_to_string(&mut s)?;
+        Read::read_to_string(self, &mut s)?;
         Ok(s)
     }
 
