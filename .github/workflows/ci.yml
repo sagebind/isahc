@@ -9,6 +9,9 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
+        features:
+          - ""
+          - "mesalink"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@master
@@ -22,13 +25,13 @@ jobs:
       - run: rustup default 1.36.0
         shell: "bash -l {0}"
 
-      - run: cargo test --features psl -- --test-threads=8
+      - run: cargo test --features 'psl ${{ matrix.features }}' -- --test-threads=8
         shell: "bash -l {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: isahc=debug
 
-      - run: cargo run --release --example simple
+      - run: cargo run --features 'psl ${{ matrix.features }}' --release --example simple
         shell: "bash -l {0}"
         env:
           RUST_BACKTRACE: 1
