@@ -76,5 +76,9 @@ speculate = "0.1"
 name = "async"
 required-features = ["nightly"]
 
+[[example]]
+name = "json"
+required-features = ["json", "serde/derive"]
+
 [workspace]
 members = ["benchmarks"]
