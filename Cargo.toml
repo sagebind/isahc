@@ -18,10 +18,11 @@ all-features = true
 status = "actively-developed"
 
 [features]
-default = ["cookies", "http2", "static-curl"]
+default = ["cookies", "http2", "static-curl", "curl/mesalink"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
+mesalink = ["curl/mesalink", "curl-sys/mesalink"]
 nightly = []
 psl = ["parking_lot", "publicsuffix"]
 static-curl = ["curl/static-curl"]
@@ -30,8 +31,6 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.3"
-curl = "^0.4.20"
-curl-sys = "^0.4.20"
 futures-io-preview = "=0.3.0-alpha.17"
 http = "0.1"
 lazy_static = "1"
@@ -42,6 +41,16 @@ sluice = "0.4"
 [dependencies.chrono]
 version = "0.4"
 optional = true
+
+[dependencies.curl]
+version = "^0.4.20"
+git = "https://github.com/sagebind/curl-rust"
+branch = "mesalink-ssl"
+
+[dependencies.curl-sys]
+version = "^0.4.20"
+git = "https://github.com/sagebind/curl-rust"
+branch = "mesalink-ssl"
 
 [dependencies.futures-util-preview]
 version = "=0.3.0-alpha.17"
