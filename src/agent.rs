@@ -216,6 +216,34 @@ impl AgentThread {
         Ok(())
     }
 
+    fn complete_request(&mut self, token: usize, result: Result<(), curl::Error>) -> Result<(), Error> {
+        let handle = self.requests.remove(token);
+        let mut handle = self.multi.remove2(handle)?;
+
+        match handle.effective_url() {
+            Ok(Some(url)) => match url.parse() {
+                Ok(uri) => handle.get_ref().stat().set_effective_uri(uri),
+                Err(e) => log::warn!("malformed effective URI: {}", e),
+            }
+            Ok(None) => {}
+            Err(e) => log::warn!("error getting effective url: {}", e),
+        }
+
+        match handle.redirect_count() {
+            Ok(count) => handle.get_mut().stat().set_redirect_count(count as usize),
+            Err(e) => log::warn!("error getting redirect count: {}", e),
+        }
+
+        match handle.pretransfer_time() {
+            Ok(duration) => handle.get_mut().stat().set_header_time(duration),
+            Err(e) => log::warn!("error getting pretransfer time: {}", e),
+        }
+
+        handle.get_mut().on_result(result);
+
+        Ok(())
+    }
+
     fn get_wait_fds(&self) -> [WaitFd; 1] {
         let mut fd = WaitFd::new();
 
@@ -314,11 +342,7 @@ impl AgentThread {
         loop {
             match self.multi_messages.1.try_recv() {
                 // A request completed.
-                Ok((token, result)) => {
-                    let handle = self.requests.remove(token);
-                    let mut handle = self.multi.remove2(handle)?;
-                    handle.get_mut().on_result(result);
-                }
+                Ok((token, result)) => self.complete_request(token, result)?,
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
                 Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
             }

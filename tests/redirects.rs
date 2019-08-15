@@ -17,6 +17,9 @@ speculate::speculate! {
 
         assert_eq!(response.status(), 301);
         assert_eq!(response.headers()["Location"], "/2");
+        assert_eq!(response.effective_uri().unwrap().path(), "/");
+        assert_eq!(response.redirect_count(), 0);
+
         m.assert();
     }
 
@@ -40,6 +43,8 @@ speculate::speculate! {
 
         assert_eq!(response.status(), 200);
         assert_eq!(response.text().unwrap(), "ok");
+        assert_eq!(response.effective_uri().unwrap().path(), "/2");
+        assert_eq!(response.redirect_count(), 1);
 
         m1.assert();
         m2.assert();
@@ -90,6 +95,9 @@ speculate::speculate! {
             .unwrap();
 
         assert_eq!(response.status(), 200);
+        assert_eq!(response.effective_uri().unwrap().path(), "/2");
+        assert_eq!(response.redirect_count(), 1);
+
         m1.assert();
         m2.assert();
     }

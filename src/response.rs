@@ -1,13 +1,23 @@
 use crate::io::Text;
 use crate::Error;
+use crate::stat::Stat;
 use futures_io::AsyncRead;
-use http::Response;
+use http::{Response, Uri};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
+use std::time::Duration;
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
+    /// Get the last used URL
+    fn effective_uri(&self) -> Option<&Uri>;
+
+    /// Get the number of times that a redirect was followed.
+    fn redirect_count(&self) -> usize;
+
+    fn header_time(&self) -> Option<Duration>;
+
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
@@ -86,6 +96,25 @@ pub trait ResponseExt<T> {
 }
 
 impl<T> ResponseExt<T> for Response<T> {
+    fn effective_uri(&self) -> Option<&Uri> {
+        self.extensions()
+            .get::<Stat>()
+            .and_then(Stat::effective_uri)
+    }
+
+    fn redirect_count(&self) -> usize {
+        self.extensions()
+            .get::<Stat>()
+            .map(Stat::redirect_count)
+            .unwrap_or(0)
+    }
+
+    fn header_time(&self) -> Option<Duration> {
+        self.extensions()
+            .get::<Stat>()
+            .and_then(Stat::header_time)
+    }
+
     fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>
     where
         T: Read,

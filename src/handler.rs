@@ -1,4 +1,5 @@
 use crate::{parse, Body, Error};
+use crate::stat::Stat;
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use futures_io::{AsyncRead, AsyncWrite};
@@ -67,6 +68,8 @@ pub(crate) struct RequestHandler {
 struct Shared {
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
+
+    stat: Stat,
 }
 
 impl RequestHandler {
@@ -95,6 +98,11 @@ impl RequestHandler {
                 response_body_reader: Some(response_body_reader),
             },
         )
+    }
+
+    /// Get this handler's stat object.
+    pub(crate) fn stat(&self) -> &Stat {
+        &self.shared.stat
     }
 
     /// Determine if the associated future has been dropped.
@@ -300,6 +308,23 @@ impl curl::easy::Handler for RequestHandler {
         }
     }
 
+    /// Capture transfer progress updates from curl.
+    fn progress(
+        &mut self,
+        dltotal: f64,
+        dlnow: f64,
+        ultotal: f64,
+        ulnow: f64,
+    ) -> bool {
+        self.shared.stat.post_progress(
+            ulnow as u64,
+            ultotal as u64,
+            dlnow as u64,
+            dltotal as u64,
+        );
+        true
+    }
+
     /// Gets called by curl whenever it wishes to log a debug message.
     ///
     /// Since we're using the log crate, this callback normalizes the debug info
@@ -367,6 +392,9 @@ impl RequestHandlerFuture {
         // Since we only take the reader here, we are allowed to panic
         // if someone tries to poll us again after the end of this call.
         let reader = self.response_body_reader.take().unwrap();
+
+        // Send stat object along for the ride.
+        builder.extension(self.shared.stat.clone());
 
         // If a Content-Length header is present, include that
         // information in the body as well.

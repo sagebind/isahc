@@ -165,6 +165,7 @@ mod io;
 mod parse;
 mod request;
 mod response;
+mod stat;
 mod task;
 
 pub use crate::{
