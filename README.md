@@ -90,6 +90,18 @@ Below is a list of all available feature flags and their meanings.
 - `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
 - `middleware-api`: Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may change between patch releases.
 
+## Project goals
+
+- Create an ergonomic and innovative HTTP client API that is easy for beginners to use, and flexible for advanced uses.
+- Provide a high-level wrapper around libcurl.
+- Maintain a lightweight dependency tree and small binary footprint.
+- Provide additional client features that may be optionally compiled in.
+
+Non-goals:
+
+- Support for protocols other than HTTP.
+- Alternative engines besides libcurl. Other projects are better suited for this.
+
 ## License
 
 This project's source code and documentation is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
