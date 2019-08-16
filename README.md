@@ -42,7 +42,18 @@ Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. 
 - The HTTP protocol has a lot of unexpected gotchas across different servers, and curl has been around the block long enough to handle many of them.
 - It is well optimized and offers the ability to implement asynchronous requests.
 
-Safe Rust bindings to libcurl are provided by the [curl](https://crates.io/crates/curl) crate, which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
+Safe Rust bindings to libcurl are provided by the [curl crate], which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
+
+## [Documentation]
+
+Please check out the [documentation] for details on what Isahc can do and how to use it. To get you started, here is a really simple example that spits out the response body from https://example.org:
+
+```rust
+// Send a GET request and wait for the response headers.
+let mut response = isahc::get("https://example.org")?
+// Read the response body into a string and print it to standard output.
+println!("{}", response.text()?);
+```
 
 ## Installation
 
@@ -79,20 +90,6 @@ Below is a list of all available feature flags and their meanings.
 - `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
 - `middleware-api`: Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may change between patch releases.
 
-## [Documentation]
-
-Please check out the [documentation] for details on what Isahc can do and how to use it.
-
-To get you started, here is a really simple example that spits out the response body from https://example.org:
-
-```rust
-// Send a GET request and wait for the response.
-let mut response = isahc::get("https://example.org")?
-// Read the response body into a string and print it to standard output.
-let body = response.body_mut().text()?;
-println!("{}", body);
-```
-
 ## License
 
 This project's source code and documentation is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
@@ -101,6 +98,7 @@ The "Isahc" logo and mascot may only be used as required for reasonable and cust
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+[curl crate]: https://crates.io/crates/curl
 [documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/
