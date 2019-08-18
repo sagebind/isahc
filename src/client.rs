@@ -2,16 +2,20 @@
 
 use crate::agent;
 use crate::config::*;
-use crate::handler::{RequestHandler, RequestHandlerFuture};
+use crate::handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader};
 use crate::middleware::Middleware;
 use crate::{Body, Error};
+use futures_io::AsyncRead;
+use futures_util::pin_mut;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
 use std::future::Future;
+use std::io;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -223,7 +227,7 @@ impl HttpClientBuilder {
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
         Ok(HttpClient {
-            agent: agent::new()?,
+            agent: Arc::new(agent::new()?),
             defaults: self.defaults,
             middleware: self.middleware,
         })
@@ -303,7 +307,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// what can be configured.
 pub struct HttpClient {
     /// This is how we talk to our background agent thread.
-    agent: agent::Handle,
+    agent: Arc<agent::Handle>,
     /// Map of config values that should be used to configure execution if not
     /// specified in a request.
     defaults: http::Extensions,
@@ -903,8 +907,23 @@ impl<'c> ResponseFuture<'c> {
         Ok(())
     }
 
-    fn complete(&self, output: <Self as Future>::Output) -> <Self as Future>::Output {
-        output.map(|mut response| {
+    fn complete(&self, result: Result<Response<ResponseBodyReader>, Error>) -> Result<Response<Body>, Error> {
+        result.map(|response| {
+            // Convert the reader into an opaque Body.
+            let mut response = response.map(|reader| {
+                let body = ResponseBody {
+                    inner: reader,
+                    // Extend the lifetime of the agent by including a reference
+                    // to its handle in the response body.
+                    agent: self.client.agent.clone(),
+                };
+
+                match body.inner.len() {
+                    Some(len) => Body::reader_sized(body, len),
+                    None => Body::reader(body),
+                }
+            });
+
             // Apply response middleware, starting with the innermost
             // one.
             for middleware in self.client.middleware.iter() {
@@ -940,6 +959,22 @@ impl Future for ResponseFuture<'_> {
             // Invalid state (called poll() after ready), just return pending...
             Poll::Pending
         }
+    }
+}
+
+/// Response body stream. Holds a reference to the agent to ensure it is kept
+/// alive until at least this transfer is complete.
+#[derive(Debug)]
+struct ResponseBody {
+    inner: ResponseBodyReader,
+    agent: Arc<agent::Handle>,
+}
+
+impl AsyncRead for ResponseBody {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        let inner = &mut self.inner;
+        pin_mut!(inner);
+        inner.poll_read(cx, buf)
     }
 }
 

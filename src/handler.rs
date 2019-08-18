@@ -369,7 +369,7 @@ pub(crate) struct RequestHandlerFuture {
 }
 
 impl RequestHandlerFuture {
-    pub(crate) fn join(mut self) -> Result<Response<Body>, Error> {
+    pub(crate) fn join(mut self) -> Result<Response<ResponseBodyReader>, Error> {
         match self.receiver.recv() {
             Ok(Ok(builder)) => self.complete(builder),
             Ok(Err(e)) => Err(e),
@@ -377,26 +377,21 @@ impl RequestHandlerFuture {
         }
     }
 
-    fn complete(&mut self, mut builder: http::response::Builder) -> Result<Response<Body>, Error> {
-        let reader = ResponseBodyReader {
+    fn complete(&mut self, mut builder: http::response::Builder) -> Result<Response<ResponseBodyReader>, Error> {
+        let body = ResponseBodyReader {
             // Since we only take the reader here, we are allowed to panic
             // if someone tries to poll us again after the end of this call.
             inner: self.response_body_reader.take().unwrap(),
             shared: self.shared.clone(),
-        };
 
-        // If a Content-Length header is present, include that
-        // information in the body as well.
-        let content_length = builder
-            .headers_ref()
-            .unwrap()
-            .get(http::header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse().ok());
-
-        let body = match content_length {
-            Some(len) => Body::reader_sized(reader, len),
-            None => Body::reader(reader),
+            // If a Content-Length header is present, include that
+            // information in the body as well.
+            content_length: builder
+                .headers_ref()
+                .unwrap()
+                .get(http::header::CONTENT_LENGTH)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse().ok()),
         };
 
         match builder.body(body) {
@@ -407,7 +402,7 @@ impl RequestHandlerFuture {
 }
 
 impl Future for RequestHandlerFuture {
-    type Output = Result<Response<Body>, Error>;
+    type Output = Result<Response<ResponseBodyReader>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.shared.waker.register(cx.waker());
@@ -443,9 +438,16 @@ impl Drop for RequestHandlerFuture {
 /// Wrapper around a pipe reader that returns an error that tracks transfer
 /// cancellation.
 #[derive(Debug)]
-struct ResponseBodyReader {
+pub(crate) struct ResponseBodyReader {
     inner: pipe::PipeReader,
     shared: Arc<Shared>,
+    content_length: Option<u64>,
+}
+
+impl ResponseBodyReader {
+    pub(crate) fn len(&self) -> Option<u64> {
+        self.content_length
+    }
 }
 
 impl AsyncRead for ResponseBodyReader {
