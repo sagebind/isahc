@@ -52,4 +52,18 @@ speculate::speculate! {
         assert_eq!(response.body().len(), None);
         m.assert();
     }
+
+    test "dropping client does not abort response transfer" {
+        let body = "hello world\n".repeat(8192);
+        let m = mock("GET", "/")
+            .with_body(&body)
+            .create();
+
+        let client = isahc::HttpClient::new();
+        let mut response = client.get(server_url()).unwrap();
+        drop(client);
+
+        assert_eq!(response.body_mut().text().unwrap().len(), body.len());
+        m.assert();
+    }
 }
