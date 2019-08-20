@@ -11,6 +11,7 @@ use crate::handler::RequestHandler;
 use crate::task::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
+use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use futures_util::task::ArcWake;
 use slab::Slab;
@@ -107,7 +108,10 @@ pub(crate) fn new() -> Result<Handle, Error> {
 
     let (message_tx, message_rx) = crossbeam_channel::unbounded();
 
-    Ok(Handle {
+    let wait_group = WaitGroup::new();
+    let wait_group_thread = wait_group.clone();
+
+    let handle = Handle {
         message_tx: message_tx.clone(),
         waker: waker.clone(),
         join_handle: Some(
@@ -125,12 +129,17 @@ pub(crate) fn new() -> Result<Handle, Error> {
                         waker,
                     };
 
+                    drop(wait_group_thread);
                     log::debug!("agent took {:?} to start up", create_start.elapsed());
 
                     agent.run()
                 })?,
         ),
-    })
+    };
+
+    wait_group.wait();
+
+    Ok(handle)
 }
 
 impl Handle {
