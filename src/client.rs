@@ -274,7 +274,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// use isahc::prelude::*;
 ///
 /// // Create a new client using reasonable defaults.
-/// let client = HttpClient::default();
+/// let client = HttpClient::new()?;
 ///
 /// // Make some requests.
 /// let mut response = client.get("https://example.org")?;
@@ -315,30 +315,12 @@ pub struct HttpClient {
     middleware: Vec<Box<dyn Middleware>>,
 }
 
-impl Default for HttpClient {
-    fn default() -> Self {
-        HttpClientBuilder::default()
-            .build()
-            .expect("client failed to initialize")
-    }
-}
-
 impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
-    /// This is equivalent to the [`Default`] implementation.
-    ///
-    /// # Panics
-    ///
-    /// Panics if any required internal systems fail to initialize. This might
-    /// occur if creating a socket fails, spawning a thread fails, or if
-    /// something else goes wrong.
-    ///
-    /// Generally such a panic indicates an internal bug or an issue with system
-    /// configuration. If you need to catch these errors, you can use
-    /// [`HttpClientBuilder::build`] instead.
-    pub fn new() -> Self {
-        Self::default()
+    /// If the client fails to initialize, an error will be returned.
+    pub fn new() -> Result<Self, Error> {
+        HttpClientBuilder::default().build()
     }
 
     /// Get a reference to a global client instance.
@@ -346,7 +328,8 @@ impl HttpClient {
     /// TODO: Stabilize.
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
-            static ref SHARED: HttpClient = HttpClient::new();
+            static ref SHARED: HttpClient = HttpClient::new()
+                .expect("shared client failed to initialize");
         }
         &SHARED
     }
@@ -366,7 +349,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// # let client = HttpClient::default();
+    /// # let client = HttpClient::new()?;
     /// let mut response = client.get("https://example.org")?;
     /// println!("{}", response.text()?);
     /// # Ok::<(), isahc::Error>(())
@@ -399,7 +382,7 @@ impl HttpClient {
     ///
     /// ```no_run
     /// # use isahc::prelude::*;
-    /// # let client = HttpClient::default();
+    /// # let client = HttpClient::new()?;
     /// let response = client.head("https://example.org")?;
     /// println!("Page size: {:?}", response.headers()["content-length"]);
     /// # Ok::<(), isahc::Error>(())
@@ -433,7 +416,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let response = client.post("https://httpbin.org/post", r#"{
     ///     "speed": "fast",
@@ -470,7 +453,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let response = client.put("https://httpbin.org/put", r#"{
     ///     "speed": "fast",
@@ -552,7 +535,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let request = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")
@@ -579,7 +562,7 @@ impl HttpClient {
     /// ```ignore
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let request = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")

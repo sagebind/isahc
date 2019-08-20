@@ -17,7 +17,7 @@ fn main() -> Result<(), isahc::Error> {
     let urls: Vec<String> = (0..count)
         .map(|i| format!("https://httpbin.org/anything/{:03}", i))
         .collect();
-    let client = HttpClient::new();
+    let client = HttpClient::new()?;
 
     let start = Instant::now();
 

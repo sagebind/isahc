@@ -1,7 +1,7 @@
 use isahc::prelude::*;
 
 fn main() -> Result<(), isahc::Error> {
-    let client = HttpClient::new();
+    let client = HttpClient::new()?;
     let mut response = client.get("http://example.org")?;
 
     println!("Status: {}", response.status());

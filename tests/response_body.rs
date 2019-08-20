@@ -59,7 +59,7 @@ speculate::speculate! {
             .with_body(&body)
             .create();
 
-        let client = isahc::HttpClient::new();
+        let client = isahc::HttpClient::new().unwrap();
         let mut response = client.get(server_url()).unwrap();
         drop(client);
 
