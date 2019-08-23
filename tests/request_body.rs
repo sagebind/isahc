@@ -52,24 +52,24 @@ speculate::speculate! {
         }
     }
 
-    test "Content-Length header takes precedence over body object's length" {
-        for method in &["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "FOOBAR"] {
-            let m = mock(method, "/")
-                .match_header("content-length", "3")
-                .match_body("abc") // Truncated to 3 bytes
-                .create();
+    // test "Content-Length header takes precedence over body object's length" {
+    //     for method in &["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "FOOBAR"] {
+    //         let m = mock(method, "/")
+    //             .match_header("content-length", "3")
+    //             .match_body("abc") // Truncated to 3 bytes
+    //             .create();
 
-            Request::builder()
-                .method(*method)
-                .uri(server_url())
-                // Override given body's length
-                .header("content-length", "3")
-                .body("abc123")
-                .unwrap()
-                .send()
-                .unwrap();
+    //         Request::builder()
+    //             .method(*method)
+    //             .uri(server_url())
+    //             // Override given body's length
+    //             .header("content-length", "3")
+    //             .body("abc123")
+    //             .unwrap()
+    //             .send()
+    //             .unwrap();
 
-            m.assert();
-        }
-    }
+    //         m.assert();
+    //     }
+    // }
 }

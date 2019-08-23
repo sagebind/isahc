@@ -2,16 +2,20 @@
 
 use crate::agent;
 use crate::config::*;
-use crate::handler::{RequestHandler, RequestHandlerFuture};
+use crate::handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader};
 use crate::middleware::Middleware;
 use crate::{Body, Error};
+use futures_io::AsyncRead;
+use futures_util::pin_mut;
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::fmt;
 use std::future::Future;
+use std::io;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -223,7 +227,7 @@ impl HttpClientBuilder {
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
         Ok(HttpClient {
-            agent: agent::new()?,
+            agent: Arc::new(agent::new()?),
             defaults: self.defaults,
             middleware: self.middleware,
         })
@@ -270,7 +274,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// use isahc::prelude::*;
 ///
 /// // Create a new client using reasonable defaults.
-/// let client = HttpClient::default();
+/// let client = HttpClient::new()?;
 ///
 /// // Make some requests.
 /// let mut response = client.get("https://example.org")?;
@@ -303,7 +307,7 @@ impl fmt::Debug for HttpClientBuilder {
 /// what can be configured.
 pub struct HttpClient {
     /// This is how we talk to our background agent thread.
-    agent: agent::Handle,
+    agent: Arc<agent::Handle>,
     /// Map of config values that should be used to configure execution if not
     /// specified in a request.
     defaults: http::Extensions,
@@ -311,30 +315,12 @@ pub struct HttpClient {
     middleware: Vec<Box<dyn Middleware>>,
 }
 
-impl Default for HttpClient {
-    fn default() -> Self {
-        HttpClientBuilder::default()
-            .build()
-            .expect("client failed to initialize")
-    }
-}
-
 impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
-    /// This is equivalent to the [`Default`] implementation.
-    ///
-    /// # Panics
-    ///
-    /// Panics if any required internal systems fail to initialize. This might
-    /// occur if creating a socket fails, spawning a thread fails, or if
-    /// something else goes wrong.
-    ///
-    /// Generally such a panic indicates an internal bug or an issue with system
-    /// configuration. If you need to catch these errors, you can use
-    /// [`HttpClientBuilder::build`] instead.
-    pub fn new() -> Self {
-        Self::default()
+    /// If the client fails to initialize, an error will be returned.
+    pub fn new() -> Result<Self, Error> {
+        HttpClientBuilder::default().build()
     }
 
     /// Get a reference to a global client instance.
@@ -342,7 +328,8 @@ impl HttpClient {
     /// TODO: Stabilize.
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
-            static ref SHARED: HttpClient = HttpClient::new();
+            static ref SHARED: HttpClient = HttpClient::new()
+                .expect("shared client failed to initialize");
         }
         &SHARED
     }
@@ -362,7 +349,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// # let client = HttpClient::default();
+    /// # let client = HttpClient::new()?;
     /// let mut response = client.get("https://example.org")?;
     /// println!("{}", response.text()?);
     /// # Ok::<(), isahc::Error>(())
@@ -395,7 +382,7 @@ impl HttpClient {
     ///
     /// ```no_run
     /// # use isahc::prelude::*;
-    /// # let client = HttpClient::default();
+    /// # let client = HttpClient::new()?;
     /// let response = client.head("https://example.org")?;
     /// println!("Page size: {:?}", response.headers()["content-length"]);
     /// # Ok::<(), isahc::Error>(())
@@ -429,7 +416,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let response = client.post("https://httpbin.org/post", r#"{
     ///     "speed": "fast",
@@ -466,7 +453,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let response = client.put("https://httpbin.org/put", r#"{
     ///     "speed": "fast",
@@ -548,7 +535,7 @@ impl HttpClient {
     /// ```no_run
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let request = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")
@@ -575,7 +562,7 @@ impl HttpClient {
     /// ```ignore
     /// use isahc::prelude::*;
     ///
-    /// let client = HttpClient::default();
+    /// let client = HttpClient::new()?;
     ///
     /// let request = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")
@@ -903,8 +890,23 @@ impl<'c> ResponseFuture<'c> {
         Ok(())
     }
 
-    fn complete(&self, output: <Self as Future>::Output) -> <Self as Future>::Output {
-        output.map(|mut response| {
+    fn complete(&self, result: Result<Response<ResponseBodyReader>, Error>) -> Result<Response<Body>, Error> {
+        result.map(|response| {
+            // Convert the reader into an opaque Body.
+            let mut response = response.map(|reader| {
+                let body = ResponseBody {
+                    inner: reader,
+                    // Extend the lifetime of the agent by including a reference
+                    // to its handle in the response body.
+                    agent: self.client.agent.clone(),
+                };
+
+                match body.inner.len() {
+                    Some(len) => Body::reader_sized(body, len),
+                    None => Body::reader(body),
+                }
+            });
+
             // Apply response middleware, starting with the innermost
             // one.
             for middleware in self.client.middleware.iter() {
@@ -940,6 +942,22 @@ impl Future for ResponseFuture<'_> {
             // Invalid state (called poll() after ready), just return pending...
             Poll::Pending
         }
+    }
+}
+
+/// Response body stream. Holds a reference to the agent to ensure it is kept
+/// alive until at least this transfer is complete.
+#[derive(Debug)]
+struct ResponseBody {
+    inner: ResponseBodyReader,
+    agent: Arc<agent::Handle>,
+}
+
+impl AsyncRead for ResponseBody {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+        let inner = &mut self.inner;
+        pin_mut!(inner);
+        inner.poll_read(cx, buf)
     }
 }
 

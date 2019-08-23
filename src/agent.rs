@@ -11,6 +11,7 @@ use crate::handler::RequestHandler;
 use crate::task::{UdpWaker, WakerExt};
 use crate::Error;
 use crossbeam_channel::{Receiver, Sender};
+use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use slab::Slab;
 use std::net::UdpSocket;
@@ -26,6 +27,9 @@ type EasyHandle = curl::easy::Easy2<RequestHandler>;
 type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// A handle to an active agent running in a background thread.
+///
+/// Dropping the handle will cause the agent thread to shut down and abort any
+/// pending transfers.
 #[derive(Debug)]
 pub(crate) struct Handle {
     /// Used to send messages to the agent thread.
@@ -103,12 +107,15 @@ pub(crate) fn new() -> Result<Handle, Error> {
 
     let (message_tx, message_rx) = crossbeam_channel::unbounded();
 
-    Ok(Handle {
+    let wait_group = WaitGroup::new();
+    let wait_group_thread = wait_group.clone();
+
+    let handle = Handle {
         message_tx: message_tx.clone(),
         waker: waker.clone(),
         join_handle: Some(
             thread::Builder::new()
-                .name(String::from(AGENT_THREAD_NAME))
+                .name(AGENT_THREAD_NAME.into())
                 .spawn(move || {
                     let agent = AgentThread {
                         multi: curl::multi::Multi::new(),
@@ -121,12 +128,17 @@ pub(crate) fn new() -> Result<Handle, Error> {
                         waker,
                     };
 
+                    drop(wait_group_thread);
                     log::debug!("agent took {:?} to start up", create_start.elapsed());
 
                     agent.run()
                 })?,
         ),
-    })
+    };
+
+    wait_group.wait();
+
+    Ok(handle)
 }
 
 impl Handle {
@@ -240,8 +252,8 @@ impl AgentThread {
     /// If there are no active requests right now, this function will block
     /// until a message is received.
     fn poll_messages(&mut self) -> Result<(), Error> {
-        loop {
-            if !self.close_requested && self.requests.is_empty() {
+        while !self.close_requested {
+            if self.requests.is_empty() {
                 match self.message_rx.recv() {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
@@ -346,12 +358,12 @@ impl AgentThread {
         loop {
             self.poll_messages()?;
 
-            // Perform any pending reads or writes and handle any state changes.
-            self.dispatch()?;
-
             if self.close_requested {
                 break;
             }
+
+            // Perform any pending reads or writes and handle any state changes.
+            self.dispatch()?;
 
             // Block until activity is detected or the timeout passes.
             self.multi.wait(&mut wait_fds, WAIT_TIMEOUT)?;

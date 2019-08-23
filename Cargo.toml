@@ -1,6 +1,6 @@
 [package]
 name = "isahc"
-version = "0.6.0"
+version = "0.7.0"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -30,6 +30,7 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.3"
+crossbeam-utils = "0.6"
 curl = "^0.4.20"
 curl-sys = "^0.4.20"
 futures-io-preview = "0.3.0-alpha.18"
@@ -75,6 +76,10 @@ speculate = "0.1"
 [[example]]
 name = "async"
 required-features = ["nightly"]
+
+[[example]]
+name = "json"
+required-features = ["json", "serde/derive"]
 
 [workspace]
 members = ["benchmarks"]
