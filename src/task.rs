@@ -25,7 +25,7 @@ impl<F: Future> Join for F {
 
         let future = self;
         pin_mut!(future);
-        let waker = Arc::new(ThreadWaker(thread::current())).into_waker();
+        let waker = futures_util::task::waker(Arc::new(ThreadWaker(thread::current())));
         let mut context = Context::from_waker(&waker);
 
         loop {
@@ -47,7 +47,7 @@ fn waker_fn(f: impl Fn() + Send + Sync + 'static) -> Waker {
         }
     }
 
-    Arc::new(Impl(f)).into_waker()
+    futures_util::task::waker(Arc::new(Impl(f)))
 }
 
 /// Helper methods for working with wakers.
