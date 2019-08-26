@@ -5,7 +5,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-criterion = "0.2"
+criterion = "0.3"
 curl = "0.4"
 rayon = "1"
 reqwest = "0.9"
