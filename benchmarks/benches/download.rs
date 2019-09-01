@@ -2,7 +2,7 @@
 
 use criterion::*;
 use isahc_benchmarks::TestServer;
-use std::io::{Write, sink};
+use std::io::{sink, Write};
 
 static DATA: [u8; 0x10000] = [1; 0x10000]; // 64K
 
@@ -43,10 +43,7 @@ fn benchmark(c: &mut Criterion) {
         b.iter_batched(
             || isahc::HttpClient::new().unwrap(),
             |client| {
-                client.get(&endpoint)
-                    .unwrap()
-                    .copy_to(sink())
-                    .unwrap();
+                client.get(&endpoint).unwrap().copy_to(sink()).unwrap();
             },
             BatchSize::SmallInput,
         )

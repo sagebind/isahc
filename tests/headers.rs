@@ -1,4 +1,4 @@
-use mockito::{Matcher, mock, server_url};
+use mockito::{mock, server_url, Matcher};
 
 speculate::speculate! {
     before {

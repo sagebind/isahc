@@ -1,7 +1,7 @@
 use rouille::{Request, Response};
 use std::net::SocketAddr;
-use std::thread;
 use std::sync::Arc;
+use std::thread;
 
 pub struct TestServer {
     addr: SocketAddr,

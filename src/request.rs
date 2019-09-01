@@ -147,6 +147,18 @@ pub trait RequestBuilderExt {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
+    /// Controls the use of certificate validation.
+    ///
+    /// Defaults to `false` as per libcurl's default
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. If
+    /// invalid certificates are trusted, *any* certificate for *any* site
+    /// will be trusted for use. This includes expired certificates. This
+    /// introduces significant vulnerabilities, and should only be used
+    /// as a last resort.
+    fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self;
 }
 
 impl RequestBuilderExt for http::request::Builder {
@@ -200,6 +212,9 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self {
         self.extension(certificate)
+    }
+    fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self {
+        self.extension(AllowUnsafeSSL(no_verify))
     }
 }
 

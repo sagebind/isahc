@@ -1,5 +1,5 @@
-use flate2::Compression;
 use flate2::read::{DeflateEncoder, GzEncoder};
+use flate2::Compression;
 use isahc::prelude::*;
 use mockito::{mock, server_url};
 use std::io::Read;

@@ -221,6 +221,21 @@ impl HttpClientBuilder {
         self.defaults.insert(certificate);
         self
     }
+    /// Controls the use of certificate validation.
+    ///
+    /// Defaults to `false` as per libcurl's default
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. If
+    /// invalid certificates are trusted, *any* certificate for *any* site
+    /// will be trusted for use. This includes expired certificates. This
+    /// introduces significant vulnerabilities, and should only be used
+    /// as a last resort.
+    pub fn danger_allow_unsafe_ssl(mut self, no_verify: bool) -> Self {
+        self.defaults.insert(AllowUnsafeSSL(no_verify));
+        self
+    }
 
     /// Build an [`HttpClient`] using the configured options.
     ///
@@ -328,8 +343,8 @@ impl HttpClient {
     /// TODO: Stabilize.
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
-            static ref SHARED: HttpClient = HttpClient::new()
-                .expect("shared client failed to initialize");
+            static ref SHARED: HttpClient =
+                HttpClient::new().expect("shared client failed to initialize");
         }
         &SHARED
     }
@@ -712,13 +727,22 @@ impl HttpClient {
             easy.ssl_client_certificate(cert)?;
         }
 
+        if let Some(AllowUnsafeSSL(allow_unsafe_ssl)) = extension!(parts.extensions, self.defaults)
+        {
+            easy.ssl_verify_peer(*allow_unsafe_ssl)?;
+            easy.ssl_verify_host(*allow_unsafe_ssl)?;
+        }
+
         // Enable automatic response decoding, unless overridden by the user via
         // a custom Accept-Encoding value.
-        easy.accept_encoding(parts.headers
-            .get("Accept-Encoding")
-            .and_then(|value| value.to_str().ok())
-            // Empty string tells curl to fill in all supported encodings.
-            .unwrap_or(""))?;
+        easy.accept_encoding(
+            parts
+                .headers
+                .get("Accept-Encoding")
+                .and_then(|value| value.to_str().ok())
+                // Empty string tells curl to fill in all supported encodings.
+                .unwrap_or(""),
+        )?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -756,7 +780,9 @@ impl HttpClient {
         if has_body {
             // Use length given in Content-Length header, or the size defined by
             // the body itself.
-            let body_length = parts.headers.get("Content-Length")
+            let body_length = parts
+                .headers
+                .get("Content-Length")
                 .and_then(|value| value.to_str().ok())
                 .and_then(|value| value.parse().ok())
                 .or(body_length);
@@ -890,7 +916,10 @@ impl<'c> ResponseFuture<'c> {
         Ok(())
     }
 
-    fn complete(&self, result: Result<Response<ResponseBodyReader>, Error>) -> Result<Response<Body>, Error> {
+    fn complete(
+        &self,
+        result: Result<Response<ResponseBodyReader>, Error>,
+    ) -> Result<Response<Body>, Error> {
         result.map(|response| {
             // Convert the reader into an opaque Body.
             let mut response = response.map(|reader| {
@@ -954,7 +983,11 @@ struct ResponseBody {
 }
 
 impl AsyncRead for ResponseBody {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         let inner = &mut self.inner;
         pin_mut!(inner);
         inner.poll_read(cx, buf)
