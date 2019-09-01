@@ -1,10 +1,8 @@
 use isahc::prelude::*;
 
 fn main() -> Result<(), isahc::Error> {
-    let client = HttpClient::builder()
-        .danger_allow_unsafe_ssl(true)
-        .build()?;
-    let mut response = client.get("https://www.iep.utm.edu/desert/")?;
+    let client = HttpClient::new()?;
+    let mut response = client.get("http://example.org")?;
 
     println!("Status: {}", response.status());
     println!("Headers:\n{:?}", response.headers());

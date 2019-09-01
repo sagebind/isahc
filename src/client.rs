@@ -232,8 +232,8 @@ impl HttpClientBuilder {
     /// will be trusted for use. This includes expired certificates. This
     /// introduces significant vulnerabilities, and should only be used
     /// as a last resort.
-    pub fn danger_allow_unsafe_ssl(mut self, no_verify: bool) -> Self {
-        self.defaults.insert(AllowUnsafeSSL(no_verify));
+    pub fn danger_allow_unsafe_ssl(mut self, allow_unsafe: bool) -> Self {
+        self.defaults.insert(AllowUnsafeSSL(allow_unsafe));
         self
     }
 
@@ -729,8 +729,8 @@ impl HttpClient {
 
         if let Some(AllowUnsafeSSL(allow_unsafe_ssl)) = extension!(parts.extensions, self.defaults)
         {
-            easy.ssl_verify_peer(*allow_unsafe_ssl)?;
-            easy.ssl_verify_host(*allow_unsafe_ssl)?;
+            easy.ssl_verify_peer(!*allow_unsafe_ssl)?;
+            easy.ssl_verify_host(!*allow_unsafe_ssl)?;
         }
 
         // Enable automatic response decoding, unless overridden by the user via
