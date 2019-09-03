@@ -168,7 +168,11 @@ impl RequestHandler {
     fn complete(&mut self, result: Result<http::response::Builder, Error>) {
         if let Some(sender) = self.sender.take() {
             if let Err(e) = result.as_ref() {
-                log::warn!("request completed with error [id={:?}]: {}", self.shared.id, e);
+                log::warn!(
+                    "request completed with error [id={:?}]: {}",
+                    self.shared.id,
+                    e
+                );
             }
 
             match sender.send(result) {
@@ -377,7 +381,10 @@ impl RequestHandlerFuture {
         }
     }
 
-    fn complete(&mut self, mut builder: http::response::Builder) -> Result<Response<ResponseBodyReader>, Error> {
+    fn complete(
+        &mut self,
+        mut builder: http::response::Builder,
+    ) -> Result<Response<ResponseBodyReader>, Error> {
         let body = ResponseBodyReader {
             // Since we only take the reader here, we are allowed to panic
             // if someone tries to poll us again after the end of this call.
@@ -451,7 +458,11 @@ impl ResponseBodyReader {
 }
 
 impl AsyncRead for ResponseBodyReader {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut [u8]) -> Poll<io::Result<usize>> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut [u8],
+    ) -> Poll<io::Result<usize>> {
         let inner = &mut self.inner;
         pin_mut!(inner);
 

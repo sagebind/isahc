@@ -116,7 +116,9 @@ pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
 
     with_cache(|cache| {
         // Check if the given domain is a public suffix.
-        cache.list.parse_domain(domain)
+        cache
+            .list
+            .parse_domain(domain)
             .ok()
             .and_then(|d| d.suffix().map(|d| d == domain))
             .unwrap_or(false)
