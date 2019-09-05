@@ -53,6 +53,7 @@ speculate::speculate! {
         m.assert();
     }
 
+    // See issue #64.
     test "dropping client does not abort response transfer" {
         let body = "hello world\n".repeat(8192);
         let m = mock("GET", "/")
@@ -65,5 +66,27 @@ speculate::speculate! {
 
         assert_eq!(response.body_mut().text().unwrap().len(), body.len());
         m.assert();
+    }
+
+    // See issue #72.
+    test "reading from response body after EOF continues to return EOF" {
+        use std::{io, io::Read};
+
+        let m = mock("GET", "/")
+            .with_body("hello world")
+            .create();
+
+        let mut response = isahc::get(server_url()).unwrap();
+        let mut body = response.body_mut();
+
+        // Read until EOF
+        io::copy(&mut body, &mut io::sink()).unwrap();
+        m.assert();
+
+        // Read after already receiving EOF
+        let mut buf = [0; 1024];
+        for _ in 0..3 {
+            assert_eq!(body.read(&mut buf).unwrap(), 0);
+        }
     }
 }
