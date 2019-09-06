@@ -652,7 +652,7 @@ impl HttpClient {
 
         let mut easy = curl::easy::Easy2::new(handler);
 
-        easy.verbose(log::log_enabled!(log::Level::Trace))?;
+        easy.verbose(log::log_enabled!(log::Level::Debug))?;
         easy.signal(false)?;
 
         if let Some(Timeout(timeout)) = extension!(parts.extensions, self.defaults) {

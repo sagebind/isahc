@@ -187,10 +187,12 @@ impl AgentThread {
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();
         let id = entry.key();
+        let handle = request.raw();
 
         // Initialize the handler.
         request.get_mut().init(
             id,
+            handle,
             {
                 let tx = self.message_tx.clone();
 

@@ -4,8 +4,11 @@
 //!
 //! Everything in this module requires the `cookies` feature to be enabled.
 
-use crate::middleware::Middleware;
-use crate::Body;
+use crate::{
+    middleware::Middleware,
+    response::ResponseExt,
+    Body,
+};
 use chrono::prelude::*;
 use chrono::Duration;
 use http::{Request, Response, Uri};
@@ -291,10 +294,13 @@ impl Middleware for CookieJar {
                     })
                 })
                 .filter_map(|header| {
-                    Cookie::parse(header, response.extensions().get().unwrap()).or_else(|| {
-                        log::warn!("could not parse Set-Cookie header");
-                        None
-                    })
+                    response
+                        .effective_uri()
+                        .and_then(|uri| Cookie::parse(header, uri))
+                        .or_else(|| {
+                            log::warn!("could not parse Set-Cookie header");
+                            None
+                        })
                 });
 
             self.add(cookies);
@@ -397,7 +403,7 @@ mod tests {
             http::Response::builder()
                 .header(http::header::SET_COOKIE, "foo=bar")
                 .header(http::header::SET_COOKIE, "baz=123")
-                .extension(uri.clone())
+                .extension(crate::response::EffectiveUri(uri.clone()))
                 .body(crate::Body::default())
                 .unwrap(),
         );

@@ -1,13 +1,21 @@
 use crate::io::Text;
 use crate::Error;
 use futures_io::AsyncRead;
-use http::Response;
+use http::{Response, Uri};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
+    /// Get the effective URI of this response. This value differs from the
+    /// original URI provided when making the request if at least one redirect
+    /// was followed.
+    ///
+    /// This information is only available if populated by the HTTP client that
+    /// produced the response.
+    fn effective_uri(&self) -> Option<&Uri>;
+
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
@@ -86,6 +94,10 @@ pub trait ResponseExt<T> {
 }
 
 impl<T> ResponseExt<T> for Response<T> {
+    fn effective_uri(&self) -> Option<&Uri> {
+        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
+    }
+
     fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>
     where
         T: Read,
@@ -118,3 +130,5 @@ impl<T> ResponseExt<T> for Response<T> {
         serde_json::from_reader(self.body_mut())
     }
 }
+
+pub(crate) struct EffectiveUri(pub(crate) Uri);
