@@ -1,17 +1,21 @@
-use crate::{parse, Body, Error};
+use crate::{parse, response::EffectiveUri, Body, Error};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
+use curl_sys::CURL;
 use futures_io::{AsyncRead, AsyncWrite};
 use futures_util::pin_mut;
 use futures_util::task::AtomicWaker;
-use http::Response;
+use http::{Response, Uri};
 use sluice::pipe;
 use std::ascii;
+use std::ffi::CStr;
 use std::fmt;
 use std::future::Future;
 use std::io;
+use std::os::raw::c_char;
 use std::pin::Pin;
+use std::ptr;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
@@ -58,7 +62,24 @@ pub(crate) struct RequestHandler {
     /// A waker used with writing the response body asynchronously. Populated by
     /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
+
+    /// Raw pointer to the associated curl easy handle. The pointer is not owned
+    /// by this struct, but the parent struct to this one, so we know it will be
+    /// valid at least for the lifetime of this struct (assuming all other
+    /// invariants are upheld).
+    handle_raw: Option<UnsafeSend<*mut CURL>>,
 }
+
+struct UnsafeSend<T>(T);
+
+impl<T: Clone> Clone for UnsafeSend<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+#[allow(unsafe_code)]
+unsafe impl<T> Send for UnsafeSend<T> {}
 
 /// State shared by the handler and its future.
 ///
@@ -101,6 +122,7 @@ impl RequestHandler {
                 response_headers: http::HeaderMap::new(),
                 response_body_writer,
                 response_body_waker: None,
+                handle_raw: None,
             },
             RequestHandlerFuture {
                 receiver,
@@ -115,7 +137,13 @@ impl RequestHandler {
     /// This is called from within the agent thread when it registers the
     /// request handled by this handler with the multi handle and begins the
     /// request's execution.
-    pub(crate) fn init(&mut self, id: usize, request_waker: Waker, response_waker: Waker) {
+    pub(crate) fn init(
+        &mut self,
+        id: usize,
+        handle: *mut CURL,
+        request_waker: Waker,
+        response_waker: Waker,
+    ) {
         // Init should not be called more than once.
         debug_assert!(self.shared.id.load() == usize::max_value());
         debug_assert!(self.request_body_waker.is_none());
@@ -123,6 +151,7 @@ impl RequestHandler {
 
         log::debug!("initializing handler for request [id={}]", id);
         self.shared.id.store(id);
+        self.handle_raw = Some(UnsafeSend(handle));
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);
     }
@@ -160,6 +189,10 @@ impl RequestHandler {
                 }
             }
 
+            if let Some(uri) = self.get_effective_uri() {
+                builder.extension(EffectiveUri(uri));
+            }
+
             self.complete(Ok(builder));
         }
     }
@@ -184,6 +217,27 @@ impl RequestHandler {
                 }
             }
         }
+    }
+
+    #[allow(unsafe_code)]
+    fn get_effective_uri(&mut self) -> Option<Uri> {
+        self.handle_raw
+            .clone()
+            .and_then(|UnsafeSend(handle)| unsafe {
+                let mut ptr = ptr::null::<c_char>();
+
+                if curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
+                    != curl_sys::CURLE_OK
+                {
+                    None
+                } else {
+                    Some(ptr)
+                }
+            })
+            .filter(|ptr| !ptr.is_null())
+            .map(|ptr| unsafe { CStr::from_ptr(ptr) })
+            .and_then(|cstr| cstr.to_str().ok())
+            .and_then(|s| s.parse().ok())
     }
 }
 
@@ -336,15 +390,9 @@ impl curl::easy::Handler for RequestHandler {
         }
 
         match kind {
-            InfoType::Text => {
-                log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
-            }
-            InfoType::HeaderIn | InfoType::DataIn => {
-                log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data))
-            }
-            InfoType::HeaderOut | InfoType::DataOut => {
-                log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data))
-            }
+            InfoType::Text => log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end()),
+            InfoType::HeaderIn | InfoType::DataIn => log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data)),
+            InfoType::HeaderOut | InfoType::DataOut => log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data)),
             _ => (),
         }
     }
