@@ -107,6 +107,9 @@ pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
 #[derive(Clone, Debug)]
 pub(crate) struct DnsServers(pub(crate) Vec<SocketAddr>);
 
+#[derive(Clone, Debug)]
+pub(crate) struct AllowUnsafeSSL(pub(crate) bool);
+
 impl FromIterator<SocketAddr> for DnsServers {
     fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
         DnsServers(Vec::from_iter(iter))

@@ -10,13 +10,18 @@ use std::time::Duration;
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
-    /// Get the last used URL
-    fn effective_uri(&self) -> Option<&Uri>;
-
     /// Get the number of times that a redirect was followed.
     fn redirect_count(&self) -> usize;
 
     fn header_time(&self) -> Option<Duration>;
+
+    /// Get the effective URI of this response. This value differs from the
+    /// original URI provided when making the request if at least one redirect
+    /// was followed.
+    ///
+    /// This information is only available if populated by the HTTP client that
+    /// produced the response.
+    fn effective_uri(&self) -> Option<&Uri>;
 
     /// Copy the response body into a writer.
     ///
@@ -97,9 +102,7 @@ pub trait ResponseExt<T> {
 
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
-        self.extensions()
-            .get::<Stat>()
-            .and_then(Stat::effective_uri)
+        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
     }
 
     fn redirect_count(&self) -> usize {
@@ -147,3 +150,5 @@ impl<T> ResponseExt<T> for Response<T> {
         serde_json::from_reader(self.body_mut())
     }
 }
+
+pub(crate) struct EffectiveUri(pub(crate) Uri);

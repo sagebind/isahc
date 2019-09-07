@@ -140,7 +140,7 @@
     rust_2018_idioms,
     unreachable_pub,
     unused,
-    clippy::all,
+    clippy::all
 )]
 
 use http::{Request, Response};
@@ -181,13 +181,7 @@ pub use http;
 
 /// A "prelude" for importing common Isahc types.
 pub mod prelude {
-    pub use crate::{
-        Body,
-        HttpClient,
-        RequestExt,
-        RequestBuilderExt,
-        ResponseExt,
-    };
+    pub use crate::{Body, HttpClient, RequestBuilderExt, RequestExt, ResponseExt};
 
     pub use http::{Request, Response};
 }
