@@ -10,8 +10,6 @@ fn main() -> Result<(), isahc::Error> {
     // Copy the response body directly to stdout.
     // std::io::copy(response.body_mut(), &mut std::io::stdout())?;
     print!("{}", response.text()?);
-    println!("Header time: {:?}", response.header_time());
-
 
     Ok(())
 }

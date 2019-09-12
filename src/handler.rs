@@ -139,11 +139,6 @@ impl RequestHandler {
         &self.shared.stat
     }
 
-    /// Determine if the associated future has been dropped.
-    fn is_disconnected(&self) -> bool {
-        Arc::strong_count(&self.shared) == 1
-    }
-
     /// Initialize the handler and prepare it for the request to begin.
     ///
     /// This is called from within the agent thread when it registers the

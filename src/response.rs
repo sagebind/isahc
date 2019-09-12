@@ -6,15 +6,9 @@ use http::{Response, Uri};
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
-use std::time::Duration;
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
-    /// Get the number of times that a redirect was followed.
-    fn redirect_count(&self) -> usize;
-
-    fn header_time(&self) -> Option<Duration>;
-
     /// Get the effective URI of this response. This value differs from the
     /// original URI provided when making the request if at least one redirect
     /// was followed.
@@ -103,19 +97,6 @@ pub trait ResponseExt<T> {
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
-    }
-
-    fn redirect_count(&self) -> usize {
-        self.extensions()
-            .get::<Stat>()
-            .map(Stat::redirect_count)
-            .unwrap_or(0)
-    }
-
-    fn header_time(&self) -> Option<Duration> {
-        self.extensions()
-            .get::<Stat>()
-            .and_then(Stat::header_time)
     }
 
     fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>

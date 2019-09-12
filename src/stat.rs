@@ -1,8 +1,6 @@
 //! Inter-thread communication on the current (or final) state and statistics of
 //! a particular request.
 
-use http::Uri;
-use lazycell::AtomicLazyCell;
 use std::sync::{
     atomic::{
         AtomicU64,
@@ -11,7 +9,6 @@ use std::sync::{
     },
     Arc,
 };
-use std::time::Duration;
 
 /// An object that holds status updates and progress statistics on a particular
 /// request. A [`Stat`] can be shared between threads, which allows an agent
@@ -26,9 +23,6 @@ pub(crate) struct Stat {
 
 #[derive(Debug, Default)]
 struct Inner {
-    effective_uri: AtomicLazyCell<Uri>,
-    redirect_count: AtomicUsize,
-    header_time: AtomicLazyCell<Duration>,
     upload_progress: AtomicU64,
     upload_total: AtomicU64,
     download_progress: AtomicU64,
@@ -36,30 +30,6 @@ struct Inner {
 }
 
 impl Stat {
-    pub(crate) fn effective_uri(&self) -> Option<&Uri> {
-        self.inner.effective_uri.borrow()
-    }
-
-    pub(crate) fn set_effective_uri(&self, uri: Uri) {
-        self.inner.effective_uri.fill(uri).ok();
-    }
-
-    pub(crate) fn redirect_count(&self) -> usize {
-        self.inner.redirect_count.load(Ordering::Relaxed)
-    }
-
-    pub(crate) fn set_redirect_count(&self, count: usize) {
-        self.inner.redirect_count.store(count, Ordering::Relaxed);
-    }
-
-    pub(crate) fn header_time(&self) -> Option<Duration> {
-        self.inner.header_time.get()
-    }
-
-    pub(crate) fn set_header_time(&self, time: Duration) {
-        self.inner.header_time.fill(time).ok();
-    }
-
     pub(crate) fn post_progress(
         &self,
         upload_progress: u64,

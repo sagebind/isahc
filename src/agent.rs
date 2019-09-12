@@ -233,25 +233,6 @@ impl AgentThread {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
 
-        match handle.effective_url() {
-            Ok(Some(url)) => match url.parse() {
-                Ok(uri) => handle.get_ref().stat().set_effective_uri(uri),
-                Err(e) => log::warn!("malformed effective URI: {}", e),
-            }
-            Ok(None) => {}
-            Err(e) => log::warn!("error getting effective url: {}", e),
-        }
-
-        match handle.redirect_count() {
-            Ok(count) => handle.get_mut().stat().set_redirect_count(count as usize),
-            Err(e) => log::warn!("error getting redirect count: {}", e),
-        }
-
-        match handle.pretransfer_time() {
-            Ok(duration) => handle.get_mut().stat().set_header_time(duration),
-            Err(e) => log::warn!("error getting pretransfer time: {}", e),
-        }
-
         handle.get_mut().on_result(result);
 
         Ok(())
