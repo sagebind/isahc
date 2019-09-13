@@ -12,8 +12,6 @@ jobs:
 
       - name: Publish to crates.io
         if: github.event.action == 'published'
-        run: |
-          cargo login "${CARGO_TOKEN}"
-          cargo publish
+        run: cargo publish --token "${CARGO_TOKEN}" --no-verify
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
