@@ -333,26 +333,19 @@ impl AgentThread {
                     handle.get_mut().on_result(result);
                 }
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
-                Err(crossbeam_channel::TryRecvError::Disconnected) => panic!(),
+                Err(crossbeam_channel::TryRecvError::Disconnected) => unreachable!(),
             }
         }
 
         Ok(())
     }
 
-    fn waker_drain(&self) -> bool {
-        let mut woke = false;
-
-        while let Ok(_) = self.wake_socket.recv_from(&mut [0; 32]) {
-            woke = true;
-        }
-
-        woke
-    }
-
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
         let mut wait_fds = self.get_wait_fds();
+        let mut wait_fd_buf = [0; 1024];
+
+        debug_assert_eq!(wait_fds.len(), 1);
 
         log::debug!("agent ready");
 
@@ -370,10 +363,16 @@ impl AgentThread {
             // Block until activity is detected or the timeout passes.
             self.multi.wait(&mut wait_fds, WAIT_TIMEOUT)?;
 
-            // We might have woken up early from the notify fd, so drain its
-            // queue.
-            if self.waker_drain() {
+            // We might have woken up early from the notify fd, so drain the
+            // socket to clear it.
+            if wait_fds[0].received_read() {
                 log::trace!("woke up from waker");
+
+                // Read data out of the wake socket to clean the buffer. While
+                // it's possible that there's a lot of data in the buffer, it
+                // is unlikely, so we do just one read. At worst case, the next
+                // wait call returns immediately.
+                let _ = self.wake_socket.recv_from(&mut wait_fd_buf);
             }
         }
 
