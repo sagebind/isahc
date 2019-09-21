@@ -3,13 +3,15 @@ on: release
 
 jobs:
   publish:
-    if: github.event.action == 'published'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+        if: github.event.action == 'published'
         with:
           submodules: true
-      - run: echo ${CARGO_TOKEN} | cargo login
+
+      - name: Publish to crates.io
+        if: github.event.action == 'published'
+        run: cargo publish --token "${CARGO_TOKEN}" --no-verify
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-      - run: cargo publish
