@@ -28,34 +28,29 @@ pub(crate) fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
 }
 
 pub(crate) fn parse_header(line: &[u8]) -> Option<(HeaderName, HeaderValue)> {
-    let mut parts = line.split(|byte| *byte == b':');
+    let split_index = line.iter().position(|&f| f == b':')?;
 
-    let name = parts.next().map(HeaderName::from_bytes)?.ok()?;
+    let name = HeaderName::from_bytes(&line[..split_index]).ok()?;
+    let mut value = &line[split_index + 1..];
 
-    let value = parts
-        .next()
-        // Trim whitespace
-        .map(|mut part| {
-            while let Some((byte, right)) = part.split_first() {
-                if byte.is_ascii_whitespace() {
-                    part = right;
-                } else {
-                    break;
-                }
-            }
+    // Trim whitespace
+    while let Some((byte, right)) = value.split_first() {
+        if byte.is_ascii_whitespace() {
+            value = right;
+        } else {
+            break;
+        }
+    }
 
-            while let Some((byte, left)) = part.split_last() {
-                if byte.is_ascii_whitespace() {
-                    part = left;
-                } else {
-                    break;
-                }
-            }
+    while let Some((byte, left)) = value.split_last() {
+        if byte.is_ascii_whitespace() {
+            value = left;
+        } else {
+            break;
+        }
+    }
 
-            part
-        })
-        .map(HeaderValue::from_bytes)?
-        .ok()?;
+    let value = HeaderValue::from_bytes(value).ok()?;
 
     Some((name, value))
 }
@@ -113,6 +108,14 @@ mod tests {
         assert_eq!(
             parse_header(b"X-val: Hello World\r"),
             Some(("x-val".parse().unwrap(), "Hello World".parse().unwrap(),))
+        );
+
+        assert_eq!(
+            parse_header(b"Location: https://example.com/\r"),
+            Some((
+                "location".parse().unwrap(),
+                "https://example.com/".parse().unwrap(),
+            ))
         );
     }
 
