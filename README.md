@@ -50,7 +50,7 @@ Please check out the [documentation] for details on what Isahc can do and how to
 
 ```rust
 // Send a GET request and wait for the response headers.
-let mut response = isahc::get("https://example.org")?
+let mut response = isahc::get("https://example.org")?;
 // Read the response body into a string and print it to standard output.
 println!("{}", response.text()?);
 ```
@@ -61,7 +61,7 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "0.6"
+isahc = "0.7"
 ```
 
 ### Supported Rust versions
@@ -77,7 +77,7 @@ feature names below to your `Cargo.toml` file to enable them:
 
 ```toml
 [dependencies.isahc]
-version = "0.6"
+version = "0.7"
 features = ["psl"]
 ```
 
