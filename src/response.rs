@@ -1,6 +1,5 @@
 use crate::io::Text;
-use crate::Error;
-use crate::stat::Stat;
+use crate::{Metrics, Error};
 use futures_io::AsyncRead;
 use http::{Response, Uri};
 use std::fs::File;
@@ -16,6 +15,8 @@ pub trait ResponseExt<T> {
     /// This information is only available if populated by the HTTP client that
     /// produced the response.
     fn effective_uri(&self) -> Option<&Uri>;
+
+    fn metrics(&self) -> Option<&Metrics>;
 
     /// Copy the response body into a writer.
     ///
@@ -97,6 +98,10 @@ pub trait ResponseExt<T> {
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
+    }
+
+    fn metrics(&self) -> Option<&Metrics> {
+        self.extensions().get()
     }
 
     fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>

@@ -1,4 +1,4 @@
-use crate::{parse, response::EffectiveUri, stat::Stat, Body, Error};
+use crate::{parse, response::EffectiveUri, Metrics, Body, Error};
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
@@ -8,16 +8,21 @@ use futures_util::pin_mut;
 use futures_util::task::AtomicWaker;
 use http::{Response, Uri};
 use sluice::pipe;
-use std::ascii;
-use std::ffi::CStr;
-use std::fmt;
-use std::future::Future;
-use std::io;
-use std::os::raw::c_char;
-use std::pin::Pin;
-use std::ptr;
-use std::sync::Arc;
-use std::task::{Context, Poll, Waker};
+use std::{
+    ascii,
+    ffi::CStr,
+    fmt,
+    future::Future,
+    io,
+    os::raw::c_char,
+    pin::Pin,
+    ptr,
+    sync::{
+        atomic::{fence, Ordering},
+        Arc,
+    },
+    task::{Context, Poll, Waker},
+};
 
 /// Manages the state of a single request/response life cycle.
 ///
@@ -67,19 +72,12 @@ pub(crate) struct RequestHandler {
     /// by this struct, but the parent struct to this one, so we know it will be
     /// valid at least for the lifetime of this struct (assuming all other
     /// invariants are upheld).
-    handle_raw: Option<UnsafeSend<*mut CURL>>,
+    handle: *mut CURL,
 }
 
-struct UnsafeSend<T>(T);
-
-impl<T: Clone> Clone for UnsafeSend<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
+// Would be send implicitly except for the raw CURL pointer.
 #[allow(unsafe_code)]
-unsafe impl<T> Send for UnsafeSend<T> {}
+unsafe impl Send for RequestHandler {}
 
 /// State shared by the handler and its future.
 ///
@@ -93,7 +91,9 @@ struct Shared {
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
 
-    stat: Stat,
+    /// Metrics object for publishing metrics data to.
+    metrics: Metrics,
+
     completed: AtomicCell<bool>,
     future_dropped: AtomicCell<bool>,
     response_body_dropped: AtomicCell<bool>,
@@ -106,7 +106,7 @@ impl RequestHandler {
         let shared = Arc::new(Shared {
             id: AtomicCell::new(usize::max_value()),
             waker: AtomicWaker::default(),
-            stat: Stat::default(),
+            metrics: Metrics::new(),
             completed: AtomicCell::new(false),
             future_dropped: AtomicCell::new(false),
             response_body_dropped: AtomicCell::new(false),
@@ -124,7 +124,7 @@ impl RequestHandler {
                 response_headers: http::HeaderMap::new(),
                 response_body_writer,
                 response_body_waker: None,
-                handle_raw: None,
+                handle: ptr::null_mut(),
             },
             RequestHandlerFuture {
                 receiver,
@@ -134,9 +134,9 @@ impl RequestHandler {
         )
     }
 
-    /// Get this handler's stat object.
-    pub(crate) fn stat(&self) -> &Stat {
-        &self.shared.stat
+    /// Get this handler's metrics.
+    pub(crate) fn metrics(&self) -> &Metrics {
+        &self.shared.metrics
     }
 
     /// Initialize the handler and prepare it for the request to begin.
@@ -158,7 +158,7 @@ impl RequestHandler {
 
         log::debug!("initializing handler for request [id={}]", id);
         self.shared.id.store(id);
-        self.handle_raw = Some(UnsafeSend(handle));
+        self.handle = handle;
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);
     }
@@ -228,9 +228,9 @@ impl RequestHandler {
 
     #[allow(unsafe_code)]
     fn get_effective_uri(&mut self) -> Option<Uri> {
-        self.handle_raw
-            .clone()
-            .and_then(|UnsafeSend(handle)| unsafe {
+        Some(self.handle)
+            .filter(|ptr| !ptr.is_null())
+            .and_then(|handle| unsafe {
                 let mut ptr = ptr::null::<c_char>();
 
                 if curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
@@ -381,6 +381,7 @@ impl curl::easy::Handler for RequestHandler {
     }
 
     /// Capture transfer progress updates from curl.
+    #[allow(unsafe_code)]
     fn progress(
         &mut self,
         dltotal: f64,
@@ -388,12 +389,73 @@ impl curl::easy::Handler for RequestHandler {
         ultotal: f64,
         ulnow: f64,
     ) -> bool {
-        self.shared.stat.post_progress(
-            ulnow as u64,
-            ultotal as u64,
-            dlnow as u64,
-            dltotal as u64,
-        );
+        // Store the progress values given.
+        self.shared.metrics.inner.upload_progress.store(ulnow);
+        self.shared.metrics.inner.upload_total.store(ultotal);
+        self.shared.metrics.inner.download_progress.store(dlnow);
+        self.shared.metrics.inner.download_total.store(dltotal);
+
+        // Also scrape additional metrics.
+        if !self.handle.is_null() {
+            unsafe {
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_SPEED_UPLOAD,
+                    self.shared.metrics.inner.upload_speed.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
+                    self.shared.metrics.inner.download_speed.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
+                    self.shared.metrics.inner.namelookup_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_CONNECT_TIME,
+                    self.shared.metrics.inner.connect_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_APPCONNECT_TIME,
+                    self.shared.metrics.inner.appconnect_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_PRETRANSFER_TIME,
+                    self.shared.metrics.inner.pretransfer_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
+                    self.shared.metrics.inner.starttransfer_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_TOTAL_TIME,
+                    self.shared.metrics.inner.total_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_REDIRECT_TIME,
+                    self.shared.metrics.inner.redirect_time.as_ptr(),
+                );
+            }
+        }
+
+        log::debug!("metrics: {:?}", self.shared.metrics);
+
         true
     }
 
@@ -473,8 +535,8 @@ impl RequestHandlerFuture {
                 .and_then(|v| v.parse().ok()),
         };
 
-        // Send stat object along for the ride.
-        builder.extension(self.shared.stat.clone());
+        // Send metrics along for the ride.
+        builder.extension(self.shared.metrics.clone());
 
         match builder.body(body) {
             Ok(response) => Ok(response),

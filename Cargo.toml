@@ -30,6 +30,7 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.3"
+crossbeam-epoch = "0.7"
 crossbeam-utils = "0.6"
 curl = "0.4.23"
 curl-sys = "0.4.21"
@@ -39,6 +40,7 @@ lazy_static = "1"
 log = "0.4"
 slab = "0.4"
 sluice = "0.4.2"
+triple_buffer = "5.0"
 
 [dependencies.chrono]
 version = "0.4"
@@ -69,9 +71,11 @@ optional = true
 env_logger = "0.7"
 flate2 = "1.0"
 futures-preview = "0.3.0-alpha.18"
+indicatif = "0.12"
 mockito = "0.21"
 rayon = "1"
 speculate = "0.1"
+structopt = "0.3"
 
 [[example]]
 name = "async"
