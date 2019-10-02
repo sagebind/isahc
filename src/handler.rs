@@ -17,10 +17,7 @@ use std::{
     os::raw::c_char,
     pin::Pin,
     ptr,
-    sync::{
-        atomic::{fence, Ordering},
-        Arc,
-    },
+    sync::Arc,
     task::{Context, Poll, Waker},
 };
 
@@ -68,6 +65,9 @@ pub(crate) struct RequestHandler {
     /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
 
+    /// Metrics object for publishing metrics data to. Lazily initialized.
+    metrics: Option<Metrics>,
+
     /// Raw pointer to the associated curl easy handle. The pointer is not owned
     /// by this struct, but the parent struct to this one, so we know it will be
     /// valid at least for the lifetime of this struct (assuming all other
@@ -91,9 +91,6 @@ struct Shared {
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
 
-    /// Metrics object for publishing metrics data to.
-    metrics: Metrics,
-
     completed: AtomicCell<bool>,
     future_dropped: AtomicCell<bool>,
     response_body_dropped: AtomicCell<bool>,
@@ -106,7 +103,6 @@ impl RequestHandler {
         let shared = Arc::new(Shared {
             id: AtomicCell::new(usize::max_value()),
             waker: AtomicWaker::default(),
-            metrics: Metrics::new(),
             completed: AtomicCell::new(false),
             future_dropped: AtomicCell::new(false),
             response_body_dropped: AtomicCell::new(false),
@@ -124,6 +120,7 @@ impl RequestHandler {
                 response_headers: http::HeaderMap::new(),
                 response_body_writer,
                 response_body_waker: None,
+                metrics: None,
                 handle: ptr::null_mut(),
             },
             RequestHandlerFuture {
@@ -132,11 +129,6 @@ impl RequestHandler {
                 response_body_reader: Some(response_body_reader),
             },
         )
-    }
-
-    /// Get this handler's metrics.
-    pub(crate) fn metrics(&self) -> &Metrics {
-        &self.shared.metrics
     }
 
     /// Initialize the handler and prepare it for the request to begin.
@@ -198,6 +190,12 @@ impl RequestHandler {
 
             if let Some(uri) = self.get_effective_uri() {
                 builder.extension(EffectiveUri(uri));
+            }
+
+            // Include metrics in response, but only if it was created. If
+            // metrics are disabled then it won't have been created.
+            if let Some(metrics) = self.metrics.clone() {
+                builder.extension(metrics);
             }
 
             self.complete(Ok(builder));
@@ -389,11 +387,14 @@ impl curl::easy::Handler for RequestHandler {
         ultotal: f64,
         ulnow: f64,
     ) -> bool {
+        // Initialize metrics if required.
+        let metrics = self.metrics.get_or_insert_with(Metrics::new);
+
         // Store the progress values given.
-        self.shared.metrics.inner.upload_progress.store(ulnow);
-        self.shared.metrics.inner.upload_total.store(ultotal);
-        self.shared.metrics.inner.download_progress.store(dlnow);
-        self.shared.metrics.inner.download_total.store(dltotal);
+        metrics.inner.upload_progress.store(ulnow);
+        metrics.inner.upload_total.store(ultotal);
+        metrics.inner.download_progress.store(dlnow);
+        metrics.inner.download_total.store(dltotal);
 
         // Also scrape additional metrics.
         if !self.handle.is_null() {
@@ -401,60 +402,60 @@ impl curl::easy::Handler for RequestHandler {
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_SPEED_UPLOAD,
-                    self.shared.metrics.inner.upload_speed.as_ptr(),
+                    metrics.inner.upload_speed.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_SPEED_DOWNLOAD,
-                    self.shared.metrics.inner.download_speed.as_ptr(),
+                    metrics.inner.download_speed.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_NAMELOOKUP_TIME,
-                    self.shared.metrics.inner.namelookup_time.as_ptr(),
+                    metrics.inner.namelookup_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_CONNECT_TIME,
-                    self.shared.metrics.inner.connect_time.as_ptr(),
+                    metrics.inner.connect_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_APPCONNECT_TIME,
-                    self.shared.metrics.inner.appconnect_time.as_ptr(),
+                    metrics.inner.appconnect_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_PRETRANSFER_TIME,
-                    self.shared.metrics.inner.pretransfer_time.as_ptr(),
+                    metrics.inner.pretransfer_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_STARTTRANSFER_TIME,
-                    self.shared.metrics.inner.starttransfer_time.as_ptr(),
+                    metrics.inner.starttransfer_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_TOTAL_TIME,
-                    self.shared.metrics.inner.total_time.as_ptr(),
+                    metrics.inner.total_time.as_ptr(),
                 );
 
                 curl_sys::curl_easy_getinfo(
                     self.handle,
                     curl_sys::CURLINFO_REDIRECT_TIME,
-                    self.shared.metrics.inner.redirect_time.as_ptr(),
+                    metrics.inner.redirect_time.as_ptr(),
                 );
             }
         }
 
-        log::debug!("metrics: {:?}", self.shared.metrics);
+        log::trace!("collected metrics: {:?}", metrics);
 
         true
     }
@@ -534,9 +535,6 @@ impl RequestHandlerFuture {
                 .and_then(|v| v.to_str().ok())
                 .and_then(|v| v.parse().ok()),
         };
-
-        // Send metrics along for the ride.
-        builder.extension(self.shared.metrics.clone());
 
         match builder.body(body) {
             Ok(response) => Ok(response),

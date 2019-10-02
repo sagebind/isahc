@@ -221,6 +221,7 @@ impl HttpClientBuilder {
         self.defaults.insert(certificate);
         self
     }
+
     /// Controls the use of certificate validation.
     ///
     /// Defaults to `false` as per libcurl's default
@@ -234,6 +235,11 @@ impl HttpClientBuilder {
     /// as a last resort.
     pub fn danger_allow_unsafe_ssl(mut self, allow_unsafe: bool) -> Self {
         self.defaults.insert(AllowUnsafeSSL(allow_unsafe));
+        self
+    }
+
+    pub fn enable_metrics(mut self) -> Self {
+        self.defaults.insert(EnableMetrics(true));
         self
     }
 
@@ -653,8 +659,11 @@ impl HttpClient {
         let mut easy = curl::easy::Easy2::new(handler);
 
         easy.verbose(log::log_enabled!(log::Level::Debug))?;
-        easy.progress(true)?;
         easy.signal(false)?;
+
+        if let Some(EnableMetrics(enable)) = extension!(parts.extensions, self.defaults) {
+            easy.progress(*enable)?;
+        }
 
         if let Some(Timeout(timeout)) = extension!(parts.extensions, self.defaults) {
             easy.timeout(*timeout)?;

@@ -147,6 +147,7 @@ pub trait RequestBuilderExt {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
+
     /// Controls the use of certificate validation.
     ///
     /// Defaults to `false` as per libcurl's default
@@ -159,6 +160,9 @@ pub trait RequestBuilderExt {
     /// introduces significant vulnerabilities, and should only be used
     /// as a last resort.
     fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self;
+
+    /// Enable comprehensive metrics collection.
+    fn enable_metrics(&mut self) -> &mut Self;
 }
 
 impl RequestBuilderExt for http::request::Builder {
@@ -213,8 +217,13 @@ impl RequestBuilderExt for http::request::Builder {
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self {
         self.extension(certificate)
     }
+
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
         self.extension(AllowUnsafeSSL(allow_unsafe))
+    }
+
+    fn enable_metrics(&mut self) -> &mut Self {
+        self.extension(EnableMetrics(true))
     }
 }
 
