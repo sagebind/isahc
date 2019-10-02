@@ -30,7 +30,6 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.3"
-crossbeam-epoch = "0.7"
 crossbeam-utils = "0.6"
 curl = "0.4.23"
 curl-sys = "0.4.21"
@@ -40,7 +39,6 @@ lazy_static = "1"
 log = "0.4"
 slab = "0.4"
 sluice = "0.4.2"
-triple_buffer = "5.0"
 
 [dependencies.chrono]
 version = "0.4"
