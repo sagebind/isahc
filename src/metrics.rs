@@ -68,30 +68,66 @@ impl Metrics {
         self.inner.download_speed.load()
     }
 
+    /// Get the total time from the start of the request until DNS name
+    /// resolving was completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn namelookup_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.namelookup_time.load())
     }
 
+    /// Get the total time from the start of the request until the connection to
+    /// the remote host (or proxy) was completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn connect_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.connect_time.load())
     }
 
+    /// Get the time it took from the start of the request until the SSL/SSH
+    /// connect/handshake to the remote host was completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn appconnect_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.appconnect_time.load())
     }
 
+    /// Get the time it took from the start of the request until the file
+    /// transfer is just about to begin. This includes all pre-transfer commands
+    /// and negotiations that are specific to the particular protocol(s)
+    /// involved. It does not involve the sending of the protocol-specific
+    /// request that triggers a transfer.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn pretransfer_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.pretransfer_time.load())
     }
 
+    /// Get the time it took from the start of the request until the first
+    /// response byte is received.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn starttransfer_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.starttransfer_time.load())
     }
 
+    /// Get the total time for the entire request. This will continuously
+    /// increase until the entire response body is consumed and completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
     pub fn total_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.total_time.load())
     }
 
+    /// If automatic redirect following is enabled, gets the total time taken
+    /// for all redirection steps including name lookup, connect, pretransfer
+    /// and transfer before final transaction was started.
     pub fn redirect_time(&self) -> Duration {
         Duration::from_secs_f64(self.inner.redirect_time.load())
     }

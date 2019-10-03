@@ -455,8 +455,6 @@ impl curl::easy::Handler for RequestHandler {
             }
         }
 
-        log::trace!("collected metrics: {:?}", metrics);
-
         true
     }
 
