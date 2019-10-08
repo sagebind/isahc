@@ -214,7 +214,7 @@ impl RequestBuilderExt for http::request::Builder {
         self.extension(certificate)
     }
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
-        self.extension(AllowUnsafeSSL(allow_unsafe))
+        self.extension(AllowUnsafeSsl(allow_unsafe))
     }
 }
 
