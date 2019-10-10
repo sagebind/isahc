@@ -32,7 +32,6 @@ type MultiMessage = (usize, Result<(), curl::Error>);
 pub(crate) struct AgentBuilder {
     max_connections: Option<usize>,
     max_connections_per_host: Option<usize>,
-    max_inactive_connections: Option<usize>,
 }
 
 impl AgentBuilder {
@@ -43,11 +42,6 @@ impl AgentBuilder {
 
     pub(crate) fn max_connections_per_host(mut self, max: impl Into<Option<usize>>) -> Self {
         self.max_connections_per_host = max.into();
-        self
-    }
-
-    pub(crate) fn max_inactive_connections(mut self, max: impl Into<Option<usize>>) -> Self {
-        self.max_inactive_connections = max.into();
         self
     }
 
@@ -70,7 +64,6 @@ impl AgentBuilder {
 
         let max_connections = self.max_connections;
         let max_connections_per_host = self.max_connections_per_host;
-        let max_inactive_connections = self.max_inactive_connections;
 
         let handle = Handle {
             message_tx: message_tx.clone(),
@@ -86,10 +79,6 @@ impl AgentBuilder {
 
                     if let Some(max) = max_connections_per_host {
                         multi.set_max_host_connections(max)?;
-                    }
-
-                    if let Some(max) = max_inactive_connections {
-                        multi.set_max_connects(max)?;
                     }
 
                     let agent = AgentContext {
