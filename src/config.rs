@@ -8,6 +8,12 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
+/// A helper trait for applying a configuration value to a given curl handle.
+pub(crate) trait SetOpt {
+    /// Apply this configuration option to the given curl handle.
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error>;
+}
+
 /// Describes a policy for handling server redirects.
 ///
 /// The default is to not follow redirects.
@@ -27,6 +33,25 @@ pub enum RedirectPolicy {
 impl Default for RedirectPolicy {
     fn default() -> Self {
         RedirectPolicy::None
+    }
+}
+
+impl SetOpt for RedirectPolicy {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        match self {
+            RedirectPolicy::Follow => {
+                easy.follow_location(true)?;
+            }
+            RedirectPolicy::Limit(max) => {
+                easy.follow_location(true)?;
+                easy.max_redirections(*max)?;
+            }
+            RedirectPolicy::None => {
+                easy.follow_location(false)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -59,6 +84,36 @@ pub enum ClientCertificate {
     },
 }
 
+impl SetOpt for ClientCertificate {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        match self {
+            ClientCertificate::PEM { path, private_key } => {
+                easy.ssl_cert(path)?;
+                easy.ssl_cert_type("PEM")?;
+                if let Some(key) = private_key {
+                    key.set_opt(easy)?;
+                }
+            }
+            ClientCertificate::DER { path, private_key } => {
+                easy.ssl_cert(path)?;
+                easy.ssl_cert_type("DER")?;
+                if let Some(key) = private_key {
+                    key.set_opt(easy)?;
+                }
+            }
+            ClientCertificate::P12 { path, password } => {
+                easy.ssl_cert(path)?;
+                easy.ssl_cert_type("P12")?;
+                if let Some(password) = password {
+                    easy.key_password(password)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// A private key file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PrivateKey {
@@ -80,32 +135,106 @@ pub enum PrivateKey {
     },
 }
 
+impl SetOpt for PrivateKey {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        match self {
+            PrivateKey::PEM { path, password } => {
+                easy.ssl_key(path)?;
+                easy.ssl_key_type("PEM")?;
+                if let Some(password) = password {
+                    easy.key_password(password)?;
+                }
+            }
+            PrivateKey::DER { path, password } => {
+                easy.ssl_key(path)?;
+                easy.ssl_key_type("DER")?;
+                if let Some(password) = password {
+                    easy.key_password(password)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Timeout(pub(crate) Duration);
+
+impl SetOpt for Timeout {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.timeout(self.0)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct ConnectTimeout(pub(crate) Duration);
 
+impl SetOpt for ConnectTimeout {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.connect_timeout(self.0)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct TcpKeepAlive(pub(crate) Duration);
+
+impl SetOpt for TcpKeepAlive {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.tcp_keepalive(true)?;
+        easy.tcp_keepintvl(self.0)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct PreferredHttpVersion(pub(crate) http::Version);
 
+impl SetOpt for PreferredHttpVersion {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.http_version(match self.0 {
+            http::Version::HTTP_10 => curl::easy::HttpVersion::V10,
+            http::Version::HTTP_11 => curl::easy::HttpVersion::V11,
+            http::Version::HTTP_2 => curl::easy::HttpVersion::V2,
+            _ => curl::easy::HttpVersion::Any,
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct TcpNoDelay;
+
+impl SetOpt for TcpNoDelay {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.tcp_nodelay(true)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct AutoReferer;
 
+impl SetOpt for AutoReferer {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.autoreferer(true)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct MaxUploadSpeed(pub(crate) u64);
+
+impl SetOpt for MaxUploadSpeed {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.max_send_speed(self.0)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
 
-#[derive(Clone, Debug)]
-pub(crate) struct AllowUnsafeSSL(pub(crate) bool);
+impl SetOpt for MaxDownloadSpeed {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.max_recv_speed(self.0)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct DnsServers(pub(crate) Vec<SocketAddr>);
@@ -116,8 +245,31 @@ impl FromIterator<SocketAddr> for DnsServers {
     }
 }
 
+impl SetOpt for DnsServers {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let dns_string = self.0
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+        // DNS servers should not be hard error.
+        if let Err(e) = easy.dns_servers(&dns_string) {
+            log::warn!("DNS servers could not be configured: {}", e);
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Proxy(pub(crate) http::Uri);
+
+impl SetOpt for Proxy {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.proxy(&format!("{}", self.0))
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) struct SslCiphers(pub(crate) Vec<String>);
@@ -128,5 +280,27 @@ impl FromIterator<String> for SslCiphers {
     }
 }
 
+impl SetOpt for SslCiphers {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.ssl_cipher_list(&self.0.join(":"))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AllowUnsafeSsl(pub(crate) bool);
+
+impl SetOpt for AllowUnsafeSsl {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.ssl_verify_peer(!self.0)?;
+        easy.ssl_verify_host(!self.0)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct EnableMetrics(pub(crate) bool);
+
+impl SetOpt for EnableMetrics {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.progress(self.0)
+    }
+}

@@ -126,4 +126,33 @@ speculate::speculate! {
         m1.expect(3);
         m2.expect(3);
     }
+
+    test "auto referer sets expected header" {
+        let m1 = mock("GET", "/a")
+            .with_status(301)
+            .with_header("Location", "/b")
+            .create();
+
+        let m2 = mock("GET", "/b")
+            .with_status(301)
+            .with_header("Location", "/c")
+            .match_header("Referer", (server_url() + "/a").as_str())
+            .create();
+
+        let m3 = mock("GET", "/c")
+            .match_header("Referer", (server_url() + "/b").as_str())
+            .create();
+
+        Request::get(server_url() + "/a")
+            .redirect_policy(RedirectPolicy::Follow)
+            .auto_referer()
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        m1.assert();
+        m2.assert();
+        m3.assert();
+    }
 }

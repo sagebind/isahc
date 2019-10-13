@@ -1,23 +1,27 @@
 //! The HTTP client implementation.
 
-use crate::agent;
-use crate::config::*;
-use crate::handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader};
-use crate::middleware::Middleware;
-use crate::{Body, Error};
+use crate::{
+    agent::{self, AgentBuilder},
+    config::*,
+    handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
+    middleware::Middleware,
+    Body, Error,
+};
 use futures_io::AsyncRead;
 use futures_util::pin_mut;
 use http::{Request, Response};
 use lazy_static::lazy_static;
-use std::fmt;
-use std::future::Future;
-use std::io;
-use std::iter::FromIterator;
-use std::net::SocketAddr;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
-use std::time::Duration;
+use std::{
+    fmt,
+    future::Future,
+    io,
+    iter::FromIterator,
+    net::SocketAddr,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    time::Duration,
+};
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -47,6 +51,7 @@ lazy_static! {
 /// ```
 #[derive(Default)]
 pub struct HttpClientBuilder {
+    agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
 }
@@ -79,6 +84,49 @@ impl HttpClientBuilder {
     #[allow(unused)]
     fn middleware_impl(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened at one time. If executing a new request would require opening
+    /// a new connection, then the request will stay in a "pending" state until
+    /// an existing connection can be used or an active request completes and
+    /// can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely.
+    ///
+    /// This is an effective way of limiting the number of sockets or file
+    /// descriptors that this client will open, though note that the client may
+    /// use file descriptors for purposes other than just HTTP connections.
+    ///
+    /// By default this value is `0` and no limit is enforced.
+    ///
+    /// To apply a limit per-host, see
+    /// [`HttpClientBuilder::max_connections_per_host`].
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections(max);
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open to individual hosts at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened to a single host at one time. If executing a new request would
+    /// require opening a new connection, then the request will stay in a
+    /// "pending" state until an existing connection can be used or an active
+    /// request completes and can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely. By default this
+    /// value is `0` and no limit is enforced.
+    ///
+    /// To set a global limit across all hosts, see
+    /// [`HttpClientBuilder::max_connections`].
+    pub fn max_connections_per_host(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections_per_host(max);
         self
     }
 
@@ -234,7 +282,7 @@ impl HttpClientBuilder {
     /// introduces significant vulnerabilities, and should only be used
     /// as a last resort.
     pub fn danger_allow_unsafe_ssl(mut self, allow_unsafe: bool) -> Self {
-        self.defaults.insert(AllowUnsafeSSL(allow_unsafe));
+        self.defaults.insert(AllowUnsafeSsl(allow_unsafe));
         self
     }
 
@@ -248,7 +296,7 @@ impl HttpClientBuilder {
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
         Ok(HttpClient {
-            agent: Arc::new(agent::new()?),
+            agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             middleware: self.middleware,
         })
@@ -644,104 +692,43 @@ impl HttpClient {
         let body_length = body.len();
         let (handler, future) = RequestHandler::new(body);
 
-        // Helper for fetching an extension first from the request, then falling
-        // back to client defaults.
-        macro_rules! extension {
-            ($first:expr) => {
-                $first.get()
-            };
-
-            ($first:expr, $($rest:expr),+) => {
-                $first.get().or_else(|| extension!($($rest),*))
-            };
-        }
-
         let mut easy = curl::easy::Easy2::new(handler);
 
         easy.verbose(log::log_enabled!(log::Level::Debug))?;
         easy.signal(false)?;
 
-        if let Some(EnableMetrics(enable)) = extension!(parts.extensions, self.defaults) {
-            easy.progress(*enable)?;
+        // Macro to apply all config values given in the request or in defaults.
+        macro_rules! set_opts {
+            ($easy:expr, $extensions:expr, $defaults:expr, [$($option:ty,)*]) => {{
+                $(
+                    if let Some(extension) = $extensions.get::<$option>().or_else(|| $defaults.get()) {
+                        extension.set_opt($easy)?;
+                    }
+                )*
+            }};
         }
 
-        if let Some(Timeout(timeout)) = extension!(parts.extensions, self.defaults) {
-            easy.timeout(*timeout)?;
-        }
-
-        if let Some(ConnectTimeout(timeout)) = extension!(parts.extensions, self.defaults) {
-            easy.connect_timeout(*timeout)?;
-        }
-
-        if let Some(TcpKeepAlive(interval)) = extension!(parts.extensions, self.defaults) {
-            easy.tcp_keepalive(true)?;
-            easy.tcp_keepintvl(*interval)?;
-        }
-
-        if let Some(TcpNoDelay) = extension!(parts.extensions, self.defaults) {
-            easy.tcp_nodelay(true)?;
-        }
-
-        if let Some(redirect_policy) = extension!(parts.extensions, self.defaults) {
-            match redirect_policy {
-                RedirectPolicy::Follow => {
-                    easy.follow_location(true)?;
-                }
-                RedirectPolicy::Limit(max) => {
-                    easy.follow_location(true)?;
-                    easy.max_redirections(*max)?;
-                }
-                RedirectPolicy::None => {
-                    easy.follow_location(false)?;
-                }
-            }
-        }
-
-        if let Some(MaxUploadSpeed(limit)) = extension!(parts.extensions, self.defaults) {
-            easy.max_send_speed(*limit)?;
-        }
-
-        if let Some(MaxDownloadSpeed(limit)) = extension!(parts.extensions, self.defaults) {
-            easy.max_recv_speed(*limit)?;
-        }
-
-        // Set a preferred HTTP version to negotiate.
-        easy.http_version(match extension!(parts.extensions, self.defaults) {
-            Some(PreferredHttpVersion(http::Version::HTTP_10)) => curl::easy::HttpVersion::V10,
-            Some(PreferredHttpVersion(http::Version::HTTP_11)) => curl::easy::HttpVersion::V11,
-            Some(PreferredHttpVersion(http::Version::HTTP_2)) => curl::easy::HttpVersion::V2,
-            _ => curl::easy::HttpVersion::Any,
-        })?;
-
-        if let Some(Proxy(proxy)) = extension!(parts.extensions, self.defaults) {
-            easy.proxy(&format!("{}", proxy))?;
-        }
-
-        if let Some(DnsServers(addrs)) = extension!(parts.extensions, self.defaults) {
-            let dns_string = addrs
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(",");
-            if let Err(e) = easy.dns_servers(&dns_string) {
-                log::warn!("DNS servers could not be configured: {}", e);
-            }
-        }
-
-        // Configure SSL options.
-        if let Some(SslCiphers(ciphers)) = extension!(parts.extensions, self.defaults) {
-            easy.ssl_cipher_list(&ciphers.join(":"))?;
-        }
-
-        if let Some(cert) = extension!(parts.extensions, self.defaults) {
-            easy.ssl_client_certificate(cert)?;
-        }
-
-        if let Some(AllowUnsafeSSL(allow_unsafe_ssl)) = extension!(parts.extensions, self.defaults)
-        {
-            easy.ssl_verify_peer(!*allow_unsafe_ssl)?;
-            easy.ssl_verify_host(!*allow_unsafe_ssl)?;
-        }
+        set_opts!(
+            &mut easy,
+            parts.extensions,
+            self.defaults,
+            [
+                Timeout,
+                ConnectTimeout,
+                TcpKeepAlive,
+                TcpNoDelay,
+                RedirectPolicy,
+                AutoReferer,
+                MaxUploadSpeed,
+                MaxDownloadSpeed,
+                PreferredHttpVersion,
+                Proxy,
+                DnsServers,
+                SslCiphers,
+                ClientCertificate,
+                AllowUnsafeSsl,
+            ]
+        );
 
         // Enable automatic response decoding, unless overridden by the user via
         // a custom Accept-Encoding value.
@@ -756,6 +743,7 @@ impl HttpClient {
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
+        #[allow(indirect_structural_match)]
         match (&parts.method, has_body) {
             // Normal GET request.
             (&http::Method::GET, false) => {
@@ -829,66 +817,6 @@ impl HttpClient {
 impl fmt::Debug for HttpClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HttpClient").finish()
-    }
-}
-
-/// Helper extension methods for curl easy handles.
-trait EasyExt {
-    fn easy(&mut self) -> &mut curl::easy::Easy2<RequestHandler>;
-
-    fn ssl_client_certificate(&mut self, cert: &ClientCertificate) -> Result<(), curl::Error> {
-        match cert {
-            ClientCertificate::PEM { path, private_key } => {
-                self.easy().ssl_cert(path)?;
-                self.easy().ssl_cert_type("PEM")?;
-                if let Some(key) = private_key {
-                    self.ssl_private_key(key)?;
-                }
-            }
-            ClientCertificate::DER { path, private_key } => {
-                self.easy().ssl_cert(path)?;
-                self.easy().ssl_cert_type("DER")?;
-                if let Some(key) = private_key {
-                    self.ssl_private_key(key)?;
-                }
-            }
-            ClientCertificate::P12 { path, password } => {
-                self.easy().ssl_cert(path)?;
-                self.easy().ssl_cert_type("P12")?;
-                if let Some(password) = password {
-                    self.easy().key_password(password)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn ssl_private_key(&mut self, key: &PrivateKey) -> Result<(), curl::Error> {
-        match key {
-            PrivateKey::PEM { path, password } => {
-                self.easy().ssl_key(path)?;
-                self.easy().ssl_key_type("PEM")?;
-                if let Some(password) = password {
-                    self.easy().key_password(password)?;
-                }
-            }
-            PrivateKey::DER { path, password } => {
-                self.easy().ssl_key(path)?;
-                self.easy().ssl_key_type("DER")?;
-                if let Some(password) = password {
-                    self.easy().key_password(password)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl EasyExt for curl::easy::Easy2<RequestHandler> {
-    fn easy(&mut self) -> &mut Self {
-        self
     }
 }
 

@@ -219,7 +219,7 @@ impl RequestBuilderExt for http::request::Builder {
     }
 
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
-        self.extension(AllowUnsafeSSL(allow_unsafe))
+        self.extension(AllowUnsafeSsl(allow_unsafe))
     }
 
     fn enable_metrics(&mut self) -> &mut Self {
