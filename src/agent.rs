@@ -2,7 +2,8 @@
 //!
 //! The agent is implemented as a single background thread attached to a
 //! "handle". The handle communicates with the agent thread by using message
-//! passing.
+//! passing. The agent executes multiple curl requests simultaneously by using a
+//! single "multi" handle.
 //!
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
@@ -26,6 +27,85 @@ const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
 type MultiMessage = (usize, Result<(), curl::Error>);
 
+/// Builder for configuring and spawning an agent.
+#[derive(Debug, Default)]
+pub(crate) struct AgentBuilder {
+    max_connections: usize,
+    max_connections_per_host: usize,
+}
+
+impl AgentBuilder {
+    pub(crate) fn max_connections(mut self, max: usize) -> Self {
+        self.max_connections = max;
+        self
+    }
+
+    pub(crate) fn max_connections_per_host(mut self, max: usize) -> Self {
+        self.max_connections_per_host = max;
+        self
+    }
+
+    /// Spawn a new agent using the configuration in this builder and return a
+    /// handle for communicating with the agent.
+    pub(crate) fn spawn(&self) -> Result<Handle, Error> {
+        let create_start = Instant::now();
+
+        // Create an UDP socket for the agent thread to listen for wakeups on.
+        let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
+        wake_socket.set_nonblocking(true)?;
+        let wake_addr = wake_socket.local_addr()?;
+        let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
+        log::debug!("agent waker listening on {}", wake_addr);
+
+        let (message_tx, message_rx) = crossbeam_channel::unbounded();
+
+        let wait_group = WaitGroup::new();
+        let wait_group_thread = wait_group.clone();
+
+        let max_connections = self.max_connections;
+        let max_connections_per_host = self.max_connections_per_host;
+
+        let handle = Handle {
+            message_tx: message_tx.clone(),
+            waker: waker.clone(),
+            join_handle: Some(thread::Builder::new()
+                .name(AGENT_THREAD_NAME.into())
+                .spawn(move || {
+                    let mut multi = curl::multi::Multi::new();
+
+                    if max_connections > 0 {
+                        multi.set_max_total_connections(max_connections)?;
+                    }
+
+                    if max_connections_per_host > 0 {
+                        multi.set_max_host_connections(max_connections_per_host)?;
+                    }
+
+                    let agent = AgentContext {
+                        multi,
+                        multi_messages: crossbeam_channel::unbounded(),
+                        message_tx,
+                        message_rx,
+                        wake_socket,
+                        requests: Slab::new(),
+                        close_requested: false,
+                        waker,
+                    };
+
+                    drop(wait_group_thread);
+                    log::debug!("agent took {:?} to start up", create_start.elapsed());
+
+                    agent.run()
+                })?),
+        };
+
+        // Block until the agent thread responds.
+        wait_group.wait();
+
+        Ok(handle)
+    }
+}
+
 /// A handle to an active agent running in a background thread.
 ///
 /// Dropping the handle will cause the agent thread to shut down and abort any
@@ -47,7 +127,7 @@ pub(crate) struct Handle {
 /// The agent thread runs the primary client event loop, which is essentially a
 /// traditional curl multi event loop with some extra bookkeeping and async
 /// features like wakers.
-struct AgentThread {
+struct AgentContext {
     /// A curl multi handle, of course.
     multi: curl::multi::Multi,
 
@@ -91,56 +171,6 @@ enum Message {
     UnpauseWrite(usize),
 }
 
-/// Create an agent that executes multiple curl requests simultaneously.
-///
-/// The agent maintains a background thread that multiplexes all active requests
-/// using a single "multi" handle.
-pub(crate) fn new() -> Result<Handle, Error> {
-    let create_start = Instant::now();
-
-    // Create an UDP socket for the agent thread to listen for wakeups on.
-    let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
-    wake_socket.set_nonblocking(true)?;
-    let wake_addr = wake_socket.local_addr()?;
-    let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
-    log::debug!("agent waker listening on {}", wake_addr);
-
-    let (message_tx, message_rx) = crossbeam_channel::unbounded();
-
-    let wait_group = WaitGroup::new();
-    let wait_group_thread = wait_group.clone();
-
-    let handle = Handle {
-        message_tx: message_tx.clone(),
-        waker: waker.clone(),
-        join_handle: Some(
-            thread::Builder::new()
-                .name(AGENT_THREAD_NAME.into())
-                .spawn(move || {
-                    let agent = AgentThread {
-                        multi: curl::multi::Multi::new(),
-                        multi_messages: crossbeam_channel::unbounded(),
-                        message_tx,
-                        message_rx,
-                        wake_socket,
-                        requests: Slab::new(),
-                        close_requested: false,
-                        waker,
-                    };
-
-                    drop(wait_group_thread);
-                    log::debug!("agent took {:?} to start up", create_start.elapsed());
-
-                    agent.run()
-                })?,
-        ),
-    };
-
-    wait_group.wait();
-
-    Ok(handle)
-}
-
 impl Handle {
     /// Begin executing a request with this agent.
     pub(crate) fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
@@ -182,7 +212,7 @@ impl Drop for Handle {
     }
 }
 
-impl AgentThread {
+impl AgentContext {
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();

@@ -1,7 +1,7 @@
 //! The HTTP client implementation.
 
 use crate::{
-    agent,
+    agent::{self, AgentBuilder},
     config::*,
     handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
     middleware::Middleware,
@@ -51,6 +51,7 @@ lazy_static! {
 /// ```
 #[derive(Default)]
 pub struct HttpClientBuilder {
+    agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
 }
@@ -83,6 +84,49 @@ impl HttpClientBuilder {
     #[allow(unused)]
     fn middleware_impl(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened at one time. If executing a new request would require opening
+    /// a new connection, then the request will stay in a "pending" state until
+    /// an existing connection can be used or an active request completes and
+    /// can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely.
+    ///
+    /// This is an effective way of limiting the number of sockets or file
+    /// descriptors that this client will open, though note that the client may
+    /// use file descriptors for purposes other than just HTTP connections.
+    ///
+    /// By default this value is `0` and no limit is enforced.
+    ///
+    /// To apply a limit per-host, see
+    /// [`HttpClientBuilder::max_connections_per_host`].
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections(max);
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open to individual hosts at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened to a single host at one time. If executing a new request would
+    /// require opening a new connection, then the request will stay in a
+    /// "pending" state until an existing connection can be used or an active
+    /// request completes and can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely. By default this
+    /// value is `0` and no limit is enforced.
+    ///
+    /// To set a global limit across all hosts, see
+    /// [`HttpClientBuilder::max_connections`].
+    pub fn max_connections_per_host(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections_per_host(max);
         self
     }
 
@@ -246,7 +290,7 @@ impl HttpClientBuilder {
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
         Ok(HttpClient {
-            agent: Arc::new(agent::new()?),
+            agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             middleware: self.middleware,
         })
@@ -693,6 +737,7 @@ impl HttpClient {
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
+        #[allow(indirect_structural_match)]
         match (&parts.method, has_body) {
             // Normal GET request.
             (&http::Method::GET, false) => {
