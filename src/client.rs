@@ -738,6 +738,7 @@ impl HttpClient {
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
+                DisableConnectionCache,
             ]
         );
 
