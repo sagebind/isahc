@@ -298,9 +298,9 @@ impl SetOpt for DnsCache {
     #[allow(unsafe_code)]
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         let value = match self {
-            Self::Disable => 0,
-            Self::Timeout(duration) => duration.as_secs() as i64,
-            Self::Forever => -1,
+            DnsCache::Disable => 0,
+            DnsCache::Timeout(duration) => duration.as_secs() as i64,
+            DnsCache::Forever => -1,
         };
 
         // Use unsafe API, because safe API doesn't let us set to -1.
