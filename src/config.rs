@@ -290,7 +290,7 @@ impl Default for DnsCache {
 
 impl From<Duration> for DnsCache {
     fn from(duration: Duration) -> Self {
-        Self::Timeout(duration)
+        DnsCache::Timeout(duration)
     }
 }
 
