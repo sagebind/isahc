@@ -217,6 +217,43 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Configure DNS caching.
+    ///
+    /// By default, DNS entries are cached by the client executing the request
+    /// and are used until the entry expires. Calling this method allows you to
+    /// change the entry timeout duration or disable caching completely.
+    ///
+    /// Note that DNS entry TTLs are not respected, regardless of this setting.
+    ///
+    /// By default caching is enabled with a 60 second timeout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// # use std::time::Duration;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Cache entries for 10 seconds.
+    ///     .dns_cache(Duration::from_secs(10))
+    ///     // Cache entries forever.
+    ///     .dns_cache(DnsCache::Forever)
+    ///     // Don't cache anything.
+    ///     .dns_cache(DnsCache::Disable)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn dns_cache(mut self, cache: impl Into<DnsCache>) -> Self {
+        // This option is per-request, but we only expose it on the client.
+        // Since the DNS cache is shared between all requests, exposing this
+        // option per-request would actually cause the timeout to alternate
+        // values for every request with a different timeout, resulting in some
+        // confusing (but valid) behavior.
+        self.defaults.insert(cache.into());
+        self
+    }
+
     /// Set a list of specific DNS servers to be used for DNS resolution.
     ///
     /// By default this option is not set and the system's built-in DNS resolver
@@ -717,6 +754,7 @@ impl HttpClient {
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
                 Proxy,
+                DnsCache,
                 DnsServers,
                 SslCiphers,
                 ClientCertificate,
