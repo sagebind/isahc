@@ -295,3 +295,13 @@ impl SetOpt for AllowUnsafeSsl {
         easy.ssl_verify_host(!self.0)
     }
 }
+
+#[derive(Clone, Debug)]
+pub(crate) struct DisableConnectionCache(pub(crate) bool);
+
+impl SetOpt for DisableConnectionCache {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.fresh_connect(self.0)?;
+        easy.forbid_reuse(self.0)
+    }
+}
