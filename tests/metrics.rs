@@ -40,7 +40,7 @@ speculate::speculate! {
         io::copy(response.body_mut(), &mut io::sink()).unwrap();
 
         assert_eq!(metrics.download_progress().0, 11);
-        assert!(metrics.total_time() > Duration::default()); // FIXME: Why is this always zero?
+        assert!(metrics.total_time() > Duration::default());
 
         m.assert();
     }
