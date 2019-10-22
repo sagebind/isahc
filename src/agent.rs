@@ -16,7 +16,7 @@ use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use slab::Slab;
 use std::net::UdpSocket;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::Waker;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -68,7 +68,7 @@ impl AgentBuilder {
         let handle = Handle {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
-            join_handle: Some(thread::Builder::new()
+            join_handle: Mutex::new(Some(thread::Builder::new()
                 .name(AGENT_THREAD_NAME.into())
                 .spawn(move || {
                     let mut multi = curl::multi::Multi::new();
@@ -95,8 +95,13 @@ impl AgentBuilder {
                     drop(wait_group_thread);
                     log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                    agent.run()
-                })?),
+                    let result = agent.run();
+                    if let Err(e) = &result {
+                        log::error!("agent shut down with error: {}", e);
+                    }
+
+                    result
+                })?)),
         };
 
         // Block until the agent thread responds.
@@ -119,7 +124,7 @@ pub(crate) struct Handle {
     waker: Waker,
 
     /// A join handle for the agent thread.
-    join_handle: Option<thread::JoinHandle<Result<(), Error>>>,
+    join_handle: Mutex<Option<thread::JoinHandle<Result<(), Error>>>>,
 }
 
 /// Internal state of an agent thread.
@@ -171,6 +176,14 @@ enum Message {
     UnpauseWrite(usize),
 }
 
+#[derive(Debug)]
+enum JoinResult {
+    AlreadyJoined,
+    Ok,
+    Err(Error),
+    Panic,
+}
+
 impl Handle {
     /// Begin executing a request with this agent.
     pub(crate) fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
@@ -188,8 +201,26 @@ impl Handle {
                 Ok(())
             }
             Err(crossbeam_channel::SendError(_)) => {
-                panic!("agent thread terminated prematurely");
+                match self.try_join() {
+                    JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
+                    JoinResult::Panic => panic!("agent thread panicked"),
+                    _ => panic!("agent thread terminated prematurely"),
+                }
             }
+        }
+    }
+
+    fn try_join(&self) -> JoinResult {
+        let mut option = self.join_handle.lock().unwrap();
+
+        if let Some(join_handle) = option.take() {
+            match join_handle.join() {
+                Ok(Ok(())) => JoinResult::Ok,
+                Ok(Err(e)) => JoinResult::Err(e),
+                Err(_) => JoinResult::Panic,
+            }
+        } else {
+            JoinResult::AlreadyJoined
         }
     }
 }
@@ -202,12 +233,11 @@ impl Drop for Handle {
         }
 
         // Wait for the agent thread to shut down before continuing.
-        if let Some(join_handle) = self.join_handle.take() {
-            match join_handle.join() {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => log::error!("agent thread terminated with error: {}", e),
-                Err(_) => log::error!("agent thread panicked"),
-            }
+        match self.try_join() {
+            JoinResult::Ok => log::trace!("agent thread joined cleanly"),
+            JoinResult::Err(e) => log::error!("agent thread terminated with error: {}", e),
+            JoinResult::Panic => log::error!("agent thread panicked"),
+            _ => {},
         }
     }
 }
