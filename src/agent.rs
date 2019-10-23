@@ -348,7 +348,16 @@ impl AgentContext {
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    request.unpause_read()?;
+                    if let Err(e) = request.unpause_read() {
+                        // If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        log::debug!("error unpausing read for request [id={}]: {}", token, e);
+                    }
                 } else {
                     log::warn!(
                         "received unpause request for unknown request token: {}",
@@ -358,7 +367,16 @@ impl AgentContext {
             }
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    request.unpause_write()?;
+                    if let Err(e) = request.unpause_write() {
+                        // If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        log::debug!("error unpausing write for request [id={}]: {}", token, e);
+                    }
                 } else {
                     log::warn!(
                         "received unpause request for unknown request token: {}",
