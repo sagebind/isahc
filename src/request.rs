@@ -147,6 +147,7 @@ pub trait RequestBuilderExt {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
+
     /// Controls the use of certificate validation.
     ///
     /// Defaults to `false` as per libcurl's default
@@ -213,6 +214,7 @@ impl RequestBuilderExt for http::request::Builder {
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self {
         self.extension(certificate)
     }
+
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
         self.extension(AllowUnsafeSsl(allow_unsafe))
     }

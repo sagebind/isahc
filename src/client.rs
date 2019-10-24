@@ -130,6 +130,23 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set the size of the connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is reusable,
+    /// it is added to the connection cache to be reused to reduce latency for
+    /// future requests.
+    ///
+    /// Setting the size to `0` disables connection caching for all requests
+    /// using this client.
+    ///
+    /// By default this value is unspecified. A reasonable default size will be
+    /// chosen.
+    pub fn connection_cache_size(mut self, size: usize) -> Self {
+        self.agent_builder = self.agent_builder.connection_cache_size(size);
+        self.defaults.insert(CloseConnection(size == 0));
+        self
+    }
+
     /// Set a timeout for the maximum time allowed for a request-response cycle.
     ///
     /// If not set, no timeout will be enforced.
@@ -763,6 +780,7 @@ impl HttpClient {
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
+                CloseConnection,
             ]
         );
 
