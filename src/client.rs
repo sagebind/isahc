@@ -628,6 +628,10 @@ impl HttpClient {
     /// consumed once. If you need to inspect the response body more than once,
     /// you will have to either read it into memory or write it to a file.
     ///
+    /// The response body is not a direct stream from the server, but uses its
+    /// own buffering mechanisms internally for performance. It is therefore
+    /// undesirable to wrap the body in additional buffering readers.
+    ///
     /// To execute the request asynchronously, see [`HttpClient::send_async`].
     ///
     /// # Examples
