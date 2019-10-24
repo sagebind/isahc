@@ -143,7 +143,7 @@ impl HttpClientBuilder {
     /// chosen.
     pub fn connection_cache_size(mut self, size: usize) -> Self {
         self.agent_builder = self.agent_builder.connection_cache_size(size);
-        self.defaults.insert(DisableConnectionCache(size == 0));
+        self.defaults.insert(CloseConnection(size == 0));
         self
     }
 
@@ -738,7 +738,7 @@ impl HttpClient {
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
-                DisableConnectionCache,
+                CloseConnection,
             ]
         );
 

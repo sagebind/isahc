@@ -296,12 +296,13 @@ impl SetOpt for AllowUnsafeSsl {
     }
 }
 
+/// Close the connection when the request completes instead of returning it to
+/// the connection cache.
 #[derive(Clone, Debug)]
-pub(crate) struct DisableConnectionCache(pub(crate) bool);
+pub(crate) struct CloseConnection(pub(crate) bool);
 
-impl SetOpt for DisableConnectionCache {
+impl SetOpt for CloseConnection {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.fresh_connect(self.0)?;
         easy.forbid_reuse(self.0)
     }
 }

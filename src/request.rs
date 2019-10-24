@@ -160,14 +160,6 @@ pub trait RequestBuilderExt {
     /// introduces significant vulnerabilities, and should only be used
     /// as a last resort.
     fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self;
-
-    /// Disable connection reuse for this request.
-    ///
-    /// By default, requests re-use persistent open connections available to the
-    /// same host in a connection cache (unless disabled by the client). Calling
-    /// this will ensure a new connection will be established for this request
-    /// that will not be partake in the connection cache.
-    fn disable_connection_cache(&mut self) -> &mut Self;
 }
 
 impl RequestBuilderExt for http::request::Builder {
@@ -225,10 +217,6 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
         self.extension(AllowUnsafeSsl(allow_unsafe))
-    }
-
-    fn disable_connection_cache(&mut self) -> &mut Self {
-        self.extension(DisableConnectionCache(true))
     }
 }
 
