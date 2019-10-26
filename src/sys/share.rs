@@ -3,6 +3,24 @@
 use curl_sys::*;
 use std::ptr::NonNull;
 
+pub enum ShareData {
+    Cookie,
+    Dns,
+    SslSession,
+    Connect,
+}
+
+impl ShareData {
+    fn raw(&self) -> curl_lock_data {
+        match self {
+            Self::Cookie => CURL_LOCK_DATA_COOKIE,
+            Self::Dns => CURL_LOCK_DATA_DNS,
+            Self::SslSession => CURL_LOCK_DATA_SSL_SESSION,
+            Self::Connect => CURL_LOCK_DATA_CONNECT,
+        }
+    }
+}
+
 /// Safe wrapper around a libcurl CURLSH handle.
 ///
 /// While this wrapper is safe, fully using it is not, because it is very
@@ -28,18 +46,22 @@ impl Share {
         }
     }
 
-    pub fn share(&mut self) {
+    pub fn share(&mut self, data: ShareData) -> Result<(), Error> {
         unsafe {
-            self.setopt(CURLSHOPT_SHARE, ());
+            self.setopt(CURLSHOPT_SHARE, data.raw())
+        }
+    }
+
+    pub fn unshare(&mut self, data: ShareData) -> Result<(), Error> {
+        unsafe {
+            self.setopt(CURLSHOPT_UNSHARE, data.raw())
         }
     }
 
     unsafe fn setopt<T>(&mut self, option: CURLSHoption, parameter: T) -> Result<(), Error> {
-        match curl_share_setopt(self.as_ptr(), option, parameter){
+        match curl_share_setopt(self.as_ptr(), option, parameter) {
             CURLSHE_OK => Ok(()),
-            code => Err(Error {
-                code,
-            }),
+            code => Err(Error { code }),
         }
     }
 
