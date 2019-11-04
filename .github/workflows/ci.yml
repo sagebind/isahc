@@ -15,21 +15,18 @@ jobs:
         with:
           submodules: true
 
-      - name: Install Rust (macOS)
-        run: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.36.0
-        if: runner.os == 'macOS'
-
-      - run: rustup default 1.36.0
-        shell: "bash -l {0}"
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: "1.36.0"
+          default: true
 
       - run: cargo test --features psl -- --test-threads=8
-        shell: "bash -l {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: isahc=debug
 
       - run: cargo run --release --example simple
-        shell: "bash -l {0}"
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: isahc=debug
