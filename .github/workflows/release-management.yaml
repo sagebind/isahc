@@ -1,11 +1,10 @@
 name: release management
 on:
   push:
-    branches:
-      - master
+    branches: [master]
 
 jobs:
-  update_draft_release:
+  update-draft-release:
     runs-on: ubuntu-latest
     steps:
       - uses: toolmantim/release-drafter@v5.2.0
