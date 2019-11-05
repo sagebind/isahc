@@ -13,6 +13,7 @@ jobs:
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
+      RUST_TEST_THREADS: 1
     steps:
       - uses: actions/checkout@master
         with:
@@ -24,7 +25,7 @@ jobs:
           toolchain: "1.38.0"
           default: true
 
-      - run: cargo test --features psl -- --test-threads=8
+      - run: cargo test --features psl
 
       - run: cargo run --release --example simple
 
@@ -39,4 +40,4 @@ jobs:
         with:
           submodules: true
 
-      - run: cargo test --features psl,nightly -- --test-threads=8
+      - run: cargo test --features psl,nightly
