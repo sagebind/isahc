@@ -347,15 +347,6 @@ impl SetOpt for AllowUnsafeSsl {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct EnableMetrics(pub(crate) bool);
-
-impl SetOpt for EnableMetrics {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.progress(self.0)
-    }
-}
-
 /// Close the connection when the request completes instead of returning it to
 /// the connection cache.
 #[derive(Clone, Debug)]
@@ -364,5 +355,14 @@ pub(crate) struct CloseConnection(pub(crate) bool);
 impl SetOpt for CloseConnection {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         easy.forbid_reuse(self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct EnableMetrics(pub(crate) bool);
+
+impl SetOpt for EnableMetrics {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.progress(self.0)
     }
 }

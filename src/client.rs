@@ -787,6 +787,7 @@ impl HttpClient {
                 ClientCertificate,
                 AllowUnsafeSsl,
                 CloseConnection,
+                EnableMetrics,
             ]
         );
 
