@@ -21,7 +21,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.36.0"
+          toolchain: "1.38.0"
           default: true
 
       - run: cargo test --features psl -- --test-threads=8
