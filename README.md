@@ -4,7 +4,9 @@ Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is 
 
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
-![License](https://img.shields.io/github/license/sagebind/isahc.svg) ![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
+![License](https://img.shields.io/github/license/sagebind/isahc.svg)
+![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
+![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)
 
 ## Key features
 

@@ -130,6 +130,23 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set the size of the connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is reusable,
+    /// it is added to the connection cache to be reused to reduce latency for
+    /// future requests.
+    ///
+    /// Setting the size to `0` disables connection caching for all requests
+    /// using this client.
+    ///
+    /// By default this value is unspecified. A reasonable default size will be
+    /// chosen.
+    pub fn connection_cache_size(mut self, size: usize) -> Self {
+        self.agent_builder = self.agent_builder.connection_cache_size(size);
+        self.defaults.insert(CloseConnection(size == 0));
+        self
+    }
+
     /// Set a timeout for the maximum time allowed for a request-response cycle.
     ///
     /// If not set, no timeout will be enforced.
@@ -214,6 +231,43 @@ impl HttpClientBuilder {
     /// The default is unlimited.
     pub fn max_download_speed(mut self, max: u64) -> Self {
         self.defaults.insert(MaxDownloadSpeed(max));
+        self
+    }
+
+    /// Configure DNS caching.
+    ///
+    /// By default, DNS entries are cached by the client executing the request
+    /// and are used until the entry expires. Calling this method allows you to
+    /// change the entry timeout duration or disable caching completely.
+    ///
+    /// Note that DNS entry TTLs are not respected, regardless of this setting.
+    ///
+    /// By default caching is enabled with a 60 second timeout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// # use std::time::Duration;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Cache entries for 10 seconds.
+    ///     .dns_cache(Duration::from_secs(10))
+    ///     // Cache entries forever.
+    ///     .dns_cache(DnsCache::Forever)
+    ///     // Don't cache anything.
+    ///     .dns_cache(DnsCache::Disable)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn dns_cache(mut self, cache: impl Into<DnsCache>) -> Self {
+        // This option is per-request, but we only expose it on the client.
+        // Since the DNS cache is shared between all requests, exposing this
+        // option per-request would actually cause the timeout to alternate
+        // values for every request with a different timeout, resulting in some
+        // confusing (but valid) behavior.
+        self.defaults.insert(cache.into());
         self
     }
 
@@ -597,6 +651,10 @@ impl HttpClient {
     /// consumed once. If you need to inspect the response body more than once,
     /// you will have to either read it into memory or write it to a file.
     ///
+    /// The response body is not a direct stream from the server, but uses its
+    /// own buffering mechanisms internally for performance. It is therefore
+    /// undesirable to wrap the body in additional buffering readers.
+    ///
     /// To execute the request asynchronously, see [`HttpClient::send_async`].
     ///
     /// # Examples
@@ -723,10 +781,12 @@ impl HttpClient {
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
                 Proxy,
+                DnsCache,
                 DnsServers,
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
+                CloseConnection,
             ]
         );
 

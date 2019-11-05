@@ -16,7 +16,7 @@ use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use slab::Slab;
 use std::net::UdpSocket;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::Waker;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -32,6 +32,7 @@ type MultiMessage = (usize, Result<(), curl::Error>);
 pub(crate) struct AgentBuilder {
     max_connections: usize,
     max_connections_per_host: usize,
+    connection_cache_size: usize,
 }
 
 impl AgentBuilder {
@@ -42,6 +43,11 @@ impl AgentBuilder {
 
     pub(crate) fn max_connections_per_host(mut self, max: usize) -> Self {
         self.max_connections_per_host = max;
+        self
+    }
+
+    pub(crate) fn connection_cache_size(mut self, size: usize) -> Self {
+        self.connection_cache_size = size;
         self
     }
 
@@ -64,11 +70,12 @@ impl AgentBuilder {
 
         let max_connections = self.max_connections;
         let max_connections_per_host = self.max_connections_per_host;
+        let connection_cache_size = self.connection_cache_size;
 
         let handle = Handle {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
-            join_handle: Some(thread::Builder::new()
+            join_handle: Mutex::new(Some(thread::Builder::new()
                 .name(AGENT_THREAD_NAME.into())
                 .spawn(move || {
                     let mut multi = curl::multi::Multi::new();
@@ -79,6 +86,11 @@ impl AgentBuilder {
 
                     if max_connections_per_host > 0 {
                         multi.set_max_host_connections(max_connections_per_host)?;
+                    }
+
+                    // Only set maxconnects if greater than 0, because 0 actually means unlimited.
+                    if connection_cache_size > 0 {
+                        multi.set_max_connects(connection_cache_size)?;
                     }
 
                     let agent = AgentContext {
@@ -95,8 +107,13 @@ impl AgentBuilder {
                     drop(wait_group_thread);
                     log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                    agent.run()
-                })?),
+                    let result = agent.run();
+                    if let Err(e) = &result {
+                        log::error!("agent shut down with error: {}", e);
+                    }
+
+                    result
+                })?)),
         };
 
         // Block until the agent thread responds.
@@ -119,7 +136,7 @@ pub(crate) struct Handle {
     waker: Waker,
 
     /// A join handle for the agent thread.
-    join_handle: Option<thread::JoinHandle<Result<(), Error>>>,
+    join_handle: Mutex<Option<thread::JoinHandle<Result<(), Error>>>>,
 }
 
 /// Internal state of an agent thread.
@@ -171,6 +188,14 @@ enum Message {
     UnpauseWrite(usize),
 }
 
+#[derive(Debug)]
+enum JoinResult {
+    AlreadyJoined,
+    Ok,
+    Err(Error),
+    Panic,
+}
+
 impl Handle {
     /// Begin executing a request with this agent.
     pub(crate) fn submit_request(&self, request: EasyHandle) -> Result<(), Error> {
@@ -188,8 +213,26 @@ impl Handle {
                 Ok(())
             }
             Err(crossbeam_channel::SendError(_)) => {
-                panic!("agent thread terminated prematurely");
+                match self.try_join() {
+                    JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
+                    JoinResult::Panic => panic!("agent thread panicked"),
+                    _ => panic!("agent thread terminated prematurely"),
+                }
             }
+        }
+    }
+
+    fn try_join(&self) -> JoinResult {
+        let mut option = self.join_handle.lock().unwrap();
+
+        if let Some(join_handle) = option.take() {
+            match join_handle.join() {
+                Ok(Ok(())) => JoinResult::Ok,
+                Ok(Err(e)) => JoinResult::Err(e),
+                Err(_) => JoinResult::Panic,
+            }
+        } else {
+            JoinResult::AlreadyJoined
         }
     }
 }
@@ -202,12 +245,11 @@ impl Drop for Handle {
         }
 
         // Wait for the agent thread to shut down before continuing.
-        if let Some(join_handle) = self.join_handle.take() {
-            match join_handle.join() {
-                Ok(Ok(())) => {}
-                Ok(Err(e)) => log::error!("agent thread terminated with error: {}", e),
-                Err(_) => log::error!("agent thread panicked"),
-            }
+        match self.try_join() {
+            JoinResult::Ok => log::trace!("agent thread joined cleanly"),
+            JoinResult::Err(e) => log::error!("agent thread terminated with error: {}", e),
+            JoinResult::Panic => log::error!("agent thread panicked"),
+            _ => {},
         }
     }
 }
@@ -327,7 +369,16 @@ impl AgentContext {
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    request.unpause_read()?;
+                    if let Err(e) = request.unpause_read() {
+                        // If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        log::debug!("error unpausing read for request [id={}]: {}", token, e);
+                    }
                 } else {
                     log::warn!(
                         "received unpause request for unknown request token: {}",
@@ -337,7 +388,16 @@ impl AgentContext {
             }
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    request.unpause_write()?;
+                    if let Err(e) = request.unpause_write() {
+                        // If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        log::debug!("error unpausing write for request [id={}]: {}", token, e);
+                    }
                 } else {
                     log::warn!(
                         "received unpause request for unknown request token: {}",

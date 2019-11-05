@@ -274,7 +274,7 @@ impl curl::easy::Handler for RequestHandler {
 
         // Is this a header line?
         if let Some((name, value)) = parse::parse_header(data) {
-            self.response_headers.insert(name, value);
+            self.response_headers.append(name, value);
             return true;
         }
 
