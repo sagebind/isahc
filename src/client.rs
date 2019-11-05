@@ -326,7 +326,7 @@ impl HttpClientBuilder {
 
     /// Controls the use of certificate validation.
     ///
-    /// Defaults to `false` as per libcurl's default
+    /// Defaults to `false` as per libcurl's default.
     ///
     /// # Warning
     ///
@@ -340,8 +340,23 @@ impl HttpClientBuilder {
         self
     }
 
-    pub fn enable_metrics(mut self) -> Self {
-        self.defaults.insert(EnableMetrics(true));
+    /// Enable comprehensive per-request metrics collection.
+    ///
+    /// When enabled, detailed timing metrics will be tracked while a request is
+    /// in progress, such as bytes sent and received, estimated size, DNS lookup
+    /// time, etc. For a complete list of the available metrics that can be
+    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
+    ///
+    /// When enabled, to access a view of the current metrics values you can use
+    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
+    ///
+    /// While effort is taken to optimize hot code in metrics collection, it is
+    /// likely that enabling it will have a small effect on overall throughput.
+    /// Disabling metrics may be necessary for absolute peak performance.
+    ///
+    /// By default metrics are disabled.
+    pub fn metrics(mut self, enable: bool) -> Self {
+        self.defaults.insert(EnableMetrics(enable));
         self
     }
 

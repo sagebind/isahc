@@ -19,7 +19,10 @@ fn main() -> Result<(), isahc::Error> {
         .with_style(ProgressStyle::default_bar()
             .template("{bar:40.cyan/blue} {bytes:>7}/{total_bytes:7} {msg}"));
 
-    let mut response = isahc::get(options.url)?;
+    let mut response = Request::get(options.url)
+        .metrics(true)
+        .body(())?
+        .send()?;
     let metrics = response.metrics().unwrap().clone();
     let body = response.body_mut();
     let mut buf = [0; 16384 * 4];

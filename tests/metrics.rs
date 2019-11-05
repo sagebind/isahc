@@ -27,7 +27,7 @@ speculate::speculate! {
             .create();
 
         let client = isahc::HttpClient::builder()
-            .enable_metrics()
+            .metrics(true)
             .build()
             .unwrap();
 

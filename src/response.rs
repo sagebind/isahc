@@ -16,6 +16,14 @@ pub trait ResponseExt<T> {
     /// produced the response.
     fn effective_uri(&self) -> Option<&Uri>;
 
+    /// If request metrics are enabled for this particular transfer, return a
+    /// metrics object containing a live view of currently available data.
+    ///
+    /// By default metrics are disabled and `None` will be returned. To enable
+    /// metrics for a single request you can use
+    /// [`RequestExt::metrics`](crate::RequestBuilderExt::metrics), or to enable
+    /// it client-wide, you can use
+    /// [`HttpClientBuilder::metrics`](crate::HttpClientBuilder::metrics).
     fn metrics(&self) -> Option<&Metrics>;
 
     /// Copy the response body into a writer.
