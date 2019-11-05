@@ -26,11 +26,14 @@ speculate::speculate! {
             })
             .create();
 
-        let mut response = Request::post(server_url())
+        let client = isahc::HttpClient::builder()
             .enable_metrics()
+            .build()
+            .unwrap();
+
+        let mut response = client.send(Request::post(server_url())
             .body("hello server")
-            .unwrap()
-            .send()
+            .unwrap())
             .unwrap();
 
         let metrics = response.metrics().unwrap().clone();
