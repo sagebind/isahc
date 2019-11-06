@@ -7,6 +7,7 @@ use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
+use curl::easy::SslOpt;
 
 /// A helper trait for applying a configuration value to a given curl handle.
 pub(crate) trait SetOpt {
@@ -65,6 +66,30 @@ impl SetOpt for RedirectPolicy {
         }
 
         Ok(())
+    }
+}
+
+/// A public CA certificate bundle file.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct CACertificatePath {
+    /// Path to the certificate bundle file.
+    pub(crate) path: PathBuf,
+}
+
+impl SetOpt for CACertificatePath {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.cainfo(self.path.clone())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct NoRevoke {
+    pub(crate) on: bool,
+}
+
+impl SetOpt for NoRevoke {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.ssl_options(SslOpt::new().no_revoke(self.on))
     }
 }
 
@@ -335,6 +360,35 @@ pub(crate) struct Proxy<T>(pub(crate) T);
 impl SetOpt for Proxy<http::Uri> {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         easy.proxy(&format!("{}", self.0))
+    }
+}
+
+/// No Proxy configuration.
+///
+/// The default configuration is for the system proxy to be used.
+///
+/// See [`HttpClientBuilder::noproxy`](crate::HttpClientBuilder::noproxy)
+/// for configuring a client's no proxy list.
+#[derive(Clone, Debug)]
+pub enum NoProxy {
+    /// Disable proxy usage entirely.
+    All,
+    /// Disable proxy usage only for the given hosts.
+    Skip(Vec<String>),
+}
+
+impl SetOpt for NoProxy {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let skip = match self {
+            NoProxy::All => {
+                "*".to_string()
+            },
+            NoProxy::Skip(skip) => {
+                skip.join(",")
+            }
+        };
+
+        easy.noproxy(&skip)
     }
 }
 

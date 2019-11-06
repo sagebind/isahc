@@ -23,6 +23,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
+use std::path::PathBuf;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -279,6 +280,24 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Disable proxy usage to use for the provided list of hosts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Disable proxy for all hosts.
+    ///     .noproxy(isahc::config::NoProxy::All)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn noproxy(mut self, noproxy: NoProxy) -> Self {
+        self.defaults.insert(noproxy);
+        self
+    }
+
     /// Set one or more default HTTP authentication methods to attempt to use
     /// when authenticating with a proxy.
     ///
@@ -387,6 +406,49 @@ impl HttpClientBuilder {
     /// The default is unset and will result in the system defaults being used.
     pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
         self.defaults.insert(SslCiphers::from_iter(servers));
+        self
+    }
+
+    /// Set a custom SSL/TLS CA certificate bundle to use for all client connections.
+    ///
+    /// The default value is none.
+    ///
+    /// Note: for Windows, setting `no_revoke(true)` might also be nessery.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ca_certificate("ca.pem".into())
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ca_certificate(mut self, ca_path: PathBuf) -> Self {
+        self.defaults.insert(CACertificatePath { path: ca_path });
+        self
+    }
+
+    /// Disable certificate revocation checks for those SSL backends where such behavior is present.
+    /// This option is only supported for Schannel (the native Windows SSL library),
+    ///
+    /// The default value is false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .no_revoke(true)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn no_revoke(mut self, on: bool) -> Self {
+        self.defaults.insert(NoRevoke { on });
         self
     }
 
@@ -905,6 +967,9 @@ impl HttpClient {
                 AllowUnsafeSsl,
                 CloseConnection,
                 EnableMetrics,
+                CACertificatePath,
+                NoRevoke,
+                NoProxy,
             ]
         );
 
