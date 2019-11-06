@@ -1,7 +1,7 @@
 name: psl update
 on:
   schedule:
-    - cron:  '*/20 * * * *'
+    - cron: '0 0 7 * *'
 
 jobs:
   update:
@@ -30,11 +30,6 @@ jobs:
             Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
           PULL_REQUEST_LABELS: dependencies
           PULL_REQUEST_BODY: |
-            Update Public Suffix List from
-            [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }})
-            to
-            [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).
+            Update Public Suffix List from [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }}) to [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).
 
-            This pull request was generated automatically. If you close this
-            pull request, I won't bother you again until the next automatically
-            scheduled update.
+            This pull request was generated automatically. If you close this pull request, I won't bother you again until the next automatically scheduled update.
