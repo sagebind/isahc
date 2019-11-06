@@ -1,0 +1,33 @@
+name: psl update
+on:
+  schedule:
+    - cron:  '*/20 * * * *'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          submodules: true
+
+      - id: update-submodule
+        name: Update public suffix list submodule
+        run:
+          - git -C src/cookies/psl/list checkout master
+          - git -C src/cookies/psl/list pull
+          - echo "::set-output name=sha::$(git -C src/cookies/psl/list rev-parse HEAD)"
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v1.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_MESSAGE: |
+            Update Public Suffix List to ${{ steps.update-submodule.outputs.sha }}.
+          PULL_REQUEST_BRANCH: public-suffix-list/patch
+          PULL_REQUEST_TITLE: |
+            Update Public Suffix List to ${{ steps.update-submodule.outputs.sha }}.
+          PULL_REQUEST_BODY: |
+            Update Public Suffix List to [${{ steps.update-submodule.outputs.sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update-submodule.outputs.sha }}).
+
+            This pull request was generated automatically.
