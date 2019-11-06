@@ -13,10 +13,10 @@ jobs:
 
       - id: update-submodule
         name: Update public suffix list submodule
-        run:
-          - git -C src/cookies/psl/list checkout master
-          - git -C src/cookies/psl/list pull
-          - echo "::set-output name=sha::$(git -C src/cookies/psl/list rev-parse HEAD)"
+        run: |
+          git -C src/cookies/psl/list checkout master
+          git -C src/cookies/psl/list pull
+          echo "::set-output name=sha::$(git -C src/cookies/psl/list rev-parse HEAD)"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v1.6.1
