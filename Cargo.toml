@@ -22,7 +22,6 @@ default = ["cookies", "http2", "static-curl"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
-nightly = []
 psl = ["parking_lot", "publicsuffix"]
 static-curl = ["curl/static-curl"]
 middleware-api = []
@@ -33,19 +32,19 @@ crossbeam-channel = "0.3"
 crossbeam-utils = "0.6"
 curl = "0.4.25"
 curl-sys = "0.4.23"
-futures-io-preview = "0.3.0-alpha.18"
+futures-io = "0.3"
 http = "0.1"
 lazy_static = "1"
 log = "0.4"
 slab = "0.4"
-sluice = "0.4.2"
+sluice = "0.5"
 
 [dependencies.chrono]
 version = "0.4"
 optional = true
 
-[dependencies.futures-util-preview]
-version = "0.3.0-alpha.18"
+[dependencies.futures-util]
+version = "0.3"
 features = ["io"]
 
 [dependencies.parking_lot]
@@ -68,14 +67,10 @@ optional = true
 [dev-dependencies]
 env_logger = "0.7"
 flate2 = "1.0"
-futures-preview = "0.3.0-alpha.18"
+futures = "0.3"
 mockito = "0.21"
 rayon = "1"
 speculate = "0.1"
-
-[[example]]
-name = "async"
-required-features = ["nightly"]
 
 [[example]]
 name = "json"

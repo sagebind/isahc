@@ -680,7 +680,7 @@ impl HttpClient {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::new()?;
