@@ -21,10 +21,10 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.36.0"
+          toolchain: "1.38.0"
           default: true
 
-      - run: cargo test --features psl -- --test-threads=8
+      - run: cargo test --features psl
 
       - run: cargo run --release --example simple
 
@@ -39,4 +39,4 @@ jobs:
         with:
           submodules: true
 
-      - run: cargo test --features psl,nightly -- --test-threads=8
+      - run: cargo test --features psl,nightly

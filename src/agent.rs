@@ -301,6 +301,15 @@ impl AgentContext {
         Ok(())
     }
 
+    fn complete_request(&mut self, token: usize, result: Result<(), curl::Error>) -> Result<(), Error> {
+        let handle = self.requests.remove(token);
+        let mut handle = self.multi.remove2(handle)?;
+
+        handle.get_mut().on_result(result);
+
+        Ok(())
+    }
+
     fn get_wait_fds(&self) -> [WaitFd; 1] {
         let mut fd = WaitFd::new();
 
@@ -417,11 +426,7 @@ impl AgentContext {
         loop {
             match self.multi_messages.1.try_recv() {
                 // A request completed.
-                Ok((token, result)) => {
-                    let handle = self.requests.remove(token);
-                    let mut handle = self.multi.remove2(handle)?;
-                    handle.get_mut().on_result(result);
-                }
+                Ok((token, result)) => self.complete_request(token, result)?,
                 Err(crossbeam_channel::TryRecvError::Empty) => break,
                 Err(crossbeam_channel::TryRecvError::Disconnected) => unreachable!(),
             }

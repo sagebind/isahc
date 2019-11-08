@@ -160,6 +160,12 @@ pub trait RequestBuilderExt {
     /// introduces significant vulnerabilities, and should only be used
     /// as a last resort.
     fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self;
+
+    /// Enable or disable comprehensive metrics collection for this request.
+    ///
+    /// See [`HttpClientBuilder::metrics`](crate::HttpClientBuilder::metrics)
+    /// for details.
+    fn metrics(&mut self, enable: bool) -> &mut Self;
 }
 
 impl RequestBuilderExt for http::request::Builder {
@@ -217,6 +223,10 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
         self.extension(AllowUnsafeSsl(allow_unsafe))
+    }
+
+    fn metrics(&mut self, enable: bool) -> &mut Self {
+        self.extension(EnableMetrics(enable))
     }
 }
 

@@ -162,6 +162,7 @@ pub mod config;
 mod error;
 mod handler;
 mod io;
+mod metrics;
 mod parse;
 mod request;
 mod response;
@@ -171,6 +172,7 @@ pub use crate::{
     body::Body,
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
+    metrics::Metrics,
     request::{RequestBuilderExt, RequestExt},
     response::ResponseExt,
 };
