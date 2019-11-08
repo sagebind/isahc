@@ -30,7 +30,7 @@ middleware-api = []
 [dependencies]
 bytes = "0.4"
 crossbeam-channel = "0.4"
-crossbeam-utils = "0.6"
+crossbeam-utils = "0.7"
 curl = "0.4.25"
 curl-sys = "0.4.23"
 futures-io-preview = "0.3.0-alpha.18"
