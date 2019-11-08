@@ -1,6 +1,8 @@
-# Isahc (formerly cHTTP)
+# Isahc
 
 Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is fun to use.
+
+_Formerly known as [chttp]._
 
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
@@ -112,6 +114,7 @@ The "Isahc" logo and mascot may only be used as required for reasonable and cust
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+[chttp]: https://crates.io/crates/chttp
 [curl crate]: https://crates.io/crates/curl
 [documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
