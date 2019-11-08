@@ -5,6 +5,7 @@ use crate::{
     config::*,
     handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
     middleware::Middleware,
+    task::Join,
     Body, Error,
 };
 use futures_io::AsyncRead;
@@ -698,6 +699,10 @@ impl HttpClient {
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let mut request = request.map(Into::into);
 
+        ResponseFuture(Box::pin(self.send_async_inner(request)))
+    }
+
+    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         // Set default user agent if not specified.
         request
             .headers_mut()
@@ -710,12 +715,37 @@ impl HttpClient {
             request = middleware.filter_request(request);
         }
 
-        ResponseFuture {
-            client: self,
-            error: None,
-            request: Some(request),
-            inner: None,
+        // Create and configure a curl easy handle to fulfil the request.
+        let (easy, future) = self.create_easy_handle(request)?;
+
+        // Send the request to the agent to be executed.
+        self.agent.submit_request(easy)?;
+
+        // Await for the response headers.
+        let response = future.await?;
+
+        // Convert the reader into an opaque Body.
+        let mut response = response.map(|reader| {
+            let body = ResponseBody {
+                inner: reader,
+                // Extend the lifetime of the agent by including a reference
+                // to its handle in the response body.
+                agent: self.agent.clone(),
+            };
+
+            match body.inner.len() {
+                Some(len) => Body::reader_sized(body, len),
+                None => Body::reader(body),
+            }
+        });
+
+        // Apply response middleware, starting with the innermost
+        // one.
+        for middleware in self.middleware.iter() {
+            response = middleware.filter_response(response);
         }
+
+        Ok(response)
     }
 
     fn send_builder_async(
@@ -723,15 +753,11 @@ impl HttpClient {
         mut builder: http::request::Builder,
         body: impl Into<Body>,
     ) -> ResponseFuture<'_> {
-        match builder.body(body.into()) {
-            Ok(request) => self.send_async(request),
-            Err(e) => ResponseFuture {
-                client: self,
-                error: Some(e.into()),
-                request: None,
-                inner: None,
-            },
-        }
+        let body = body.into();
+
+        ResponseFuture(Box::pin(async move {
+            self.send_async_inner(builder.body(body)?).await
+        }))
     }
 
     fn create_easy_handle(
@@ -875,94 +901,20 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-#[derive(Debug)]
-pub struct ResponseFuture<'c> {
-    /// The client this future is associated with.
-    client: &'c HttpClient,
-    /// A pre-filled error to return.
-    error: Option<Error>,
-    /// The request to send.
-    request: Option<Request<Body>>,
-    /// The inner future for actual execution.
-    inner: Option<RequestHandlerFuture>,
-}
-
-impl<'c> ResponseFuture<'c> {
-    fn maybe_initialize(&mut self) -> Result<(), Error> {
-        // If the future has a pre-filled error, return that.
-        if let Some(e) = self.error.take() {
-            return Err(e);
-        }
-
-        // Request has not been sent yet.
-        if let Some(request) = self.request.take() {
-            // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.client.create_easy_handle(request)?;
-
-            // Send the request to the agent to be executed.
-            self.client.agent.submit_request(easy)?;
-
-            self.inner = Some(future);
-        }
-
-        Ok(())
-    }
-
-    fn complete(
-        &self,
-        result: Result<Response<ResponseBodyReader>, Error>,
-    ) -> Result<Response<Body>, Error> {
-        result.map(|response| {
-            // Convert the reader into an opaque Body.
-            let mut response = response.map(|reader| {
-                let body = ResponseBody {
-                    inner: reader,
-                    // Extend the lifetime of the agent by including a reference
-                    // to its handle in the response body.
-                    agent: self.client.agent.clone(),
-                };
-
-                match body.inner.len() {
-                    Some(len) => Body::reader_sized(body, len),
-                    None => Body::reader(body),
-                }
-            });
-
-            // Apply response middleware, starting with the innermost
-            // one.
-            for middleware in self.client.middleware.iter() {
-                response = middleware.filter_response(response);
-            }
-
-            response
-        })
-    }
-
-    /// Block the current thread until the request is completed or aborted. This
-    /// effectively turns the asynchronous request into a synchronous one.
-    fn join(mut self) -> Result<Response<Body>, Error> {
-        self.maybe_initialize()?;
-
-        if let Some(inner) = self.inner.take() {
-            self.complete(inner.join())
-        } else {
-            panic!("join called after poll");
-        }
-    }
-}
+pub struct ResponseFuture<'c>(futures_util::future::BoxFuture<'c, Result<Response<Body>, Error>>);
 
 impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.maybe_initialize()?;
+        use futures_util::future::FutureExt;
+        self.0.poll_unpin(cx)
+    }
+}
 
-        if let Some(inner) = self.inner.as_mut() {
-            Pin::new(inner).poll(cx).map(|result| self.complete(result))
-        } else {
-            // Invalid state (called poll() after ready), just return pending...
-            Poll::Pending
-        }
+impl<'c> fmt::Debug for ResponseFuture<'c> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResponseFuture").finish()
     }
 }
 
