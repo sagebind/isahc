@@ -29,7 +29,7 @@ middleware-api = []
 
 [dependencies]
 bytes = "0.4"
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 crossbeam-utils = "0.6"
 curl = "0.4.25"
 curl-sys = "0.4.23"
