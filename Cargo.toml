@@ -38,7 +38,7 @@ http = "0.1"
 lazy_static = "1"
 log = "0.4"
 slab = "0.4"
-sluice = "0.4.2"
+sluice = "0.5.0"
 
 [dependencies.chrono]
 version = "0.4"
