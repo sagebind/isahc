@@ -421,14 +421,6 @@ pub(crate) struct RequestHandlerFuture {
 }
 
 impl RequestHandlerFuture {
-    pub(crate) fn join(mut self) -> Result<Response<ResponseBodyReader>, Error> {
-        match self.receiver.recv() {
-            Ok(Ok(builder)) => self.complete(builder),
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(Error::Aborted),
-        }
-    }
-
     fn complete(
         &mut self,
         mut builder: http::response::Builder,

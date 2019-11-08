@@ -697,11 +697,24 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// ```
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
-        let mut request = request.map(Into::into);
+        let request = request.map(Into::into);
 
-        ResponseFuture(Box::pin(self.send_async_inner(request)))
+        ResponseFuture::new(self.send_async_inner(request))
     }
 
+    fn send_builder_async(
+        &self,
+        mut builder: http::request::Builder,
+        body: impl Into<Body>,
+    ) -> ResponseFuture<'_> {
+        let body = body.into();
+
+        ResponseFuture::new(async move {
+            self.send_async_inner(builder.body(body)?).await
+        })
+    }
+
+    /// Actually send the request. All the public methods go through here.
     async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         // Set default user agent if not specified.
         request
@@ -748,22 +761,10 @@ impl HttpClient {
         Ok(response)
     }
 
-    fn send_builder_async(
-        &self,
-        mut builder: http::request::Builder,
-        body: impl Into<Body>,
-    ) -> ResponseFuture<'_> {
-        let body = body.into();
-
-        ResponseFuture(Box::pin(async move {
-            self.send_async_inner(builder.body(body)?).await
-        }))
-    }
-
     fn create_easy_handle(
         &self,
         request: Request<Body>,
-    ) -> Result<(curl::easy::Easy2<RequestHandler>, RequestHandlerFuture), Error> {
+    ) -> Result<(curl::easy::Easy2<RequestHandler>, impl Future<Output = Result<Response<ResponseBodyReader>, Error>>), Error> {
         // Prepare the request plumbing.
         let (mut parts, body) = request.into_parts();
         let has_body = !body.is_empty();
@@ -902,6 +903,12 @@ impl fmt::Debug for HttpClient {
 
 /// A future for a request being executed.
 pub struct ResponseFuture<'c>(futures_util::future::BoxFuture<'c, Result<Response<Body>, Error>>);
+
+impl<'c> ResponseFuture<'c> {
+    fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
+        ResponseFuture(Box::pin(future))
+    }
+}
 
 impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
