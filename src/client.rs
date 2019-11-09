@@ -50,11 +50,16 @@ lazy_static! {
 ///     .build()?;
 /// # Ok::<(), isahc::Error>(())
 /// ```
-#[derive(Default)]
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
+}
+
+impl Default for HttpClientBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HttpClientBuilder {
@@ -63,7 +68,16 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        Self::default()
+        let mut defaults = http::Extensions::new();
+
+        // Erase curl's default auth method of Basic.
+        defaults.insert(Authentication::new());
+
+        Self {
+            agent_builder: AgentBuilder::default(),
+            defaults,
+            middleware: Vec::new(),
+        }
     }
 
     /// Enable persistent cookie handling using a cookie jar.

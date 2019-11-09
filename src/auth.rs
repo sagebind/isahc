@@ -59,6 +59,14 @@ impl Authentication {
         }
     }
 
+    /// Enable all available authentication schemes.
+    pub fn all() -> Self {
+        Self::new()
+            .basic(true)
+            .digest(true)
+            .negotiate(true)
+    }
+
     /// HTTP Basic authentication.
     ///
     /// This authentication scheme sends the user name and password over the
