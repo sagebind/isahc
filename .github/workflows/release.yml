@@ -1,17 +1,17 @@
 name: release
-on: release
+on:
+  release:
+    types: [published]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-        if: github.event.action == 'published'
         with:
           submodules: true
 
       - name: Publish to crates.io
-        if: github.event.action == 'published'
         run: cargo publish --token "${CARGO_TOKEN}" --no-verify
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}

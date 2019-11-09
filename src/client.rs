@@ -1,7 +1,7 @@
 //! The HTTP client implementation.
 
 use crate::{
-    agent,
+    agent::{self, AgentBuilder},
     config::*,
     handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
     middleware::Middleware,
@@ -51,6 +51,7 @@ lazy_static! {
 /// ```
 #[derive(Default)]
 pub struct HttpClientBuilder {
+    agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
 }
@@ -83,6 +84,66 @@ impl HttpClientBuilder {
     #[allow(unused)]
     fn middleware_impl(mut self, middleware: impl Middleware) -> Self {
         self.middleware.push(Box::new(middleware));
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened at one time. If executing a new request would require opening
+    /// a new connection, then the request will stay in a "pending" state until
+    /// an existing connection can be used or an active request completes and
+    /// can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely.
+    ///
+    /// This is an effective way of limiting the number of sockets or file
+    /// descriptors that this client will open, though note that the client may
+    /// use file descriptors for purposes other than just HTTP connections.
+    ///
+    /// By default this value is `0` and no limit is enforced.
+    ///
+    /// To apply a limit per-host, see
+    /// [`HttpClientBuilder::max_connections_per_host`].
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections(max);
+        self
+    }
+
+    /// Set a maximum number of simultaneous connections that this client is
+    /// allowed to keep open to individual hosts at one time.
+    ///
+    /// If set to a value greater than zero, no more than `max` connections will
+    /// be opened to a single host at one time. If executing a new request would
+    /// require opening a new connection, then the request will stay in a
+    /// "pending" state until an existing connection can be used or an active
+    /// request completes and can be closed, making room for a new connection.
+    ///
+    /// Setting this value to `0` disables the limit entirely. By default this
+    /// value is `0` and no limit is enforced.
+    ///
+    /// To set a global limit across all hosts, see
+    /// [`HttpClientBuilder::max_connections`].
+    pub fn max_connections_per_host(mut self, max: usize) -> Self {
+        self.agent_builder = self.agent_builder.max_connections_per_host(max);
+        self
+    }
+
+    /// Set the size of the connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is reusable,
+    /// it is added to the connection cache to be reused to reduce latency for
+    /// future requests.
+    ///
+    /// Setting the size to `0` disables connection caching for all requests
+    /// using this client.
+    ///
+    /// By default this value is unspecified. A reasonable default size will be
+    /// chosen.
+    pub fn connection_cache_size(mut self, size: usize) -> Self {
+        self.agent_builder = self.agent_builder.connection_cache_size(size);
+        self.defaults.insert(CloseConnection(size == 0));
         self
     }
 
@@ -173,6 +234,43 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Configure DNS caching.
+    ///
+    /// By default, DNS entries are cached by the client executing the request
+    /// and are used until the entry expires. Calling this method allows you to
+    /// change the entry timeout duration or disable caching completely.
+    ///
+    /// Note that DNS entry TTLs are not respected, regardless of this setting.
+    ///
+    /// By default caching is enabled with a 60 second timeout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// # use std::time::Duration;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Cache entries for 10 seconds.
+    ///     .dns_cache(Duration::from_secs(10))
+    ///     // Cache entries forever.
+    ///     .dns_cache(DnsCache::Forever)
+    ///     // Don't cache anything.
+    ///     .dns_cache(DnsCache::Disable)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn dns_cache(mut self, cache: impl Into<DnsCache>) -> Self {
+        // This option is per-request, but we only expose it on the client.
+        // Since the DNS cache is shared between all requests, exposing this
+        // option per-request would actually cause the timeout to alternate
+        // values for every request with a different timeout, resulting in some
+        // confusing (but valid) behavior.
+        self.defaults.insert(cache.into());
+        self
+    }
+
     /// Set a list of specific DNS servers to be used for DNS resolution.
     ///
     /// By default this option is not set and the system's built-in DNS resolver
@@ -225,9 +323,10 @@ impl HttpClientBuilder {
         self.defaults.insert(certificate);
         self
     }
+
     /// Controls the use of certificate validation.
     ///
-    /// Defaults to `false` as per libcurl's default
+    /// Defaults to `false` as per libcurl's default.
     ///
     /// # Warning
     ///
@@ -241,12 +340,32 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Enable comprehensive per-request metrics collection.
+    ///
+    /// When enabled, detailed timing metrics will be tracked while a request is
+    /// in progress, such as bytes sent and received, estimated size, DNS lookup
+    /// time, etc. For a complete list of the available metrics that can be
+    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
+    ///
+    /// When enabled, to access a view of the current metrics values you can use
+    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
+    ///
+    /// While effort is taken to optimize hot code in metrics collection, it is
+    /// likely that enabling it will have a small effect on overall throughput.
+    /// Disabling metrics may be necessary for absolute peak performance.
+    ///
+    /// By default metrics are disabled.
+    pub fn metrics(mut self, enable: bool) -> Self {
+        self.defaults.insert(EnableMetrics(enable));
+        self
+    }
+
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
         Ok(HttpClient {
-            agent: Arc::new(agent::new()?),
+            agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             middleware: self.middleware,
         })
@@ -547,6 +666,10 @@ impl HttpClient {
     /// consumed once. If you need to inspect the response body more than once,
     /// you will have to either read it into memory or write it to a file.
     ///
+    /// The response body is not a direct stream from the server, but uses its
+    /// own buffering mechanisms internally for performance. It is therefore
+    /// undesirable to wrap the body in additional buffering readers.
+    ///
     /// To execute the request asynchronously, see [`HttpClient::send_async`].
     ///
     /// # Examples
@@ -673,10 +796,13 @@ impl HttpClient {
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
                 Proxy,
+                DnsCache,
                 DnsServers,
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
+                CloseConnection,
+                EnableMetrics,
             ]
         );
 
@@ -693,6 +819,7 @@ impl HttpClient {
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
+        #[allow(indirect_structural_match)]
         match (&parts.method, has_body) {
             // Normal GET request.
             (&http::Method::GET, false) => {
