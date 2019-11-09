@@ -113,10 +113,12 @@
 //! first example rewritten to use async/await syntax:
 //!
 //! ```no_run
+//! # async fn run() -> Result<(), isahc::Error> {
 //! use isahc::prelude::*;
 //!
 //! let mut response = isahc::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
+//! # Ok(()) }
 //! ```
 //!
 //! # Logging

@@ -3,7 +3,7 @@
 use crate::{
     agent::{self, AgentBuilder},
     config::*,
-    handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
+    handler::{RequestHandler, ResponseBodyReader},
     middleware::Middleware,
     task::Join,
     Body, Error,
@@ -682,6 +682,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
+    /// # async fn run() -> Result<(), isahc::Error> {
     /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::new()?;
@@ -695,6 +696,7 @@ impl HttpClient {
     ///
     /// let response = client.send_async(request).await?;
     /// assert!(response.status().is_success());
+    /// # Ok(()) }
     /// ```
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
         let request = request.map(Into::into);
@@ -737,18 +739,27 @@ impl HttpClient {
         // Await for the response headers.
         let response = future.await?;
 
+        // If a Content-Length header is present, include that information in
+        // the body as well.
+        let content_length = response
+            .headers()
+            .get(http::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok());
+
         // Convert the reader into an opaque Body.
         let mut response = response.map(|reader| {
             let body = ResponseBody {
                 inner: reader,
                 // Extend the lifetime of the agent by including a reference
                 // to its handle in the response body.
-                agent: self.agent.clone(),
+                _agent: self.agent.clone(),
             };
 
-            match body.inner.len() {
-                Some(len) => Body::reader_sized(body, len),
-                None => Body::reader(body),
+            if let Some(len) = content_length {
+                Body::reader_sized(body, len)
+            } else {
+                Body::reader(body)
             }
         });
 
@@ -927,10 +938,9 @@ impl<'c> fmt::Debug for ResponseFuture<'c> {
 
 /// Response body stream. Holds a reference to the agent to ensure it is kept
 /// alive until at least this transfer is complete.
-#[derive(Debug)]
 struct ResponseBody {
     inner: ResponseBodyReader,
-    agent: Arc<agent::Handle>,
+    _agent: Arc<agent::Handle>,
 }
 
 impl AsyncRead for ResponseBody {
