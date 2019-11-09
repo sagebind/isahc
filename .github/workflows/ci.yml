@@ -5,11 +5,11 @@ jobs:
   test:
     strategy:
       matrix:
-        platform:
+        os:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -27,16 +27,3 @@ jobs:
       - run: cargo test --features psl -- --test-threads=8
 
       - run: cargo run --release --example simple
-
-  test-nightly:
-    runs-on: ubuntu-latest
-    container: rustlang/rust:nightly
-    env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
-    steps:
-      - uses: actions/checkout@master
-        with:
-          submodules: true
-
-      - run: cargo test --features psl,nightly -- --test-threads=8
