@@ -1,6 +1,9 @@
-use crate::client::ResponseFuture;
-use crate::config::*;
-use crate::{Body, Error};
+use crate::{
+    auth::{Authentication, Credentials},
+    client::ResponseFuture,
+    config::*,
+    {Body, Error},
+};
 use http::{Request, Response};
 use std::iter::FromIterator;
 use std::net::SocketAddr;
@@ -63,6 +66,20 @@ pub trait RequestBuilderExt {
 
     /// Update the `Referer` header automatically when following redirects.
     fn auto_referer(&mut self) -> &mut Self;
+
+    /// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`RequestBuilderExt::credentials`].
+    fn authentication(&mut self, authentication: Authentication) -> &mut Self;
+
+    /// Set the credentials to use for HTTP authentication on this requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`RequestBuilderExt::authentication`].
+    fn credentials(&mut self, credentials: Credentials) -> &mut Self;
 
     /// Set a preferred HTTP version the client should attempt to use to
     /// communicate to the server with.
@@ -183,6 +200,14 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn auto_referer(&mut self) -> &mut Self {
         self.extension(AutoReferer)
+    }
+
+    fn authentication(&mut self, authentication: Authentication) -> &mut Self {
+        self.extension(authentication)
+    }
+
+    fn credentials(&mut self, credentials: Credentials) -> &mut Self {
+        self.extension(credentials)
     }
 
     fn preferred_http_version(&mut self, version: http::Version) -> &mut Self {

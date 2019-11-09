@@ -2,6 +2,7 @@
 
 use crate::{
     agent::{self, AgentBuilder},
+    auth::{Authentication, Credentials},
     config::*,
     handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
     middleware::Middleware,
@@ -174,6 +175,40 @@ impl HttpClientBuilder {
     /// Update the `Referer` header automatically when following redirects.
     pub fn auto_referer(mut self) -> Self {
         self.defaults.insert(AutoReferer);
+        self
+    }
+
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`HttpClientBuilder::credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .authentication(Authentication::new().basic(true))
+    ///     .credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn authentication(mut self, authentication: Authentication) -> Self {
+        self.defaults.insert(authentication);
+        self
+    }
+
+    /// Set the default credentials to use for HTTP authentication on all
+    /// requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`HttpClientBuilder::authentication`].
+    pub fn credentials(mut self, credentials: Credentials) -> Self {
+        self.defaults.insert(credentials);
         self
     }
 
@@ -792,6 +827,8 @@ impl HttpClient {
                 TcpNoDelay,
                 RedirectPolicy,
                 AutoReferer,
+                Credentials,
+                Authentication,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 PreferredHttpVersion,

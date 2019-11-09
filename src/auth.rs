@@ -3,20 +3,29 @@
 use crate::config::SetOpt;
 use std::fmt;
 
-enum Authentication {
-    /// Username and password authentication, used by most schemes.
-    Credentials(Credentials),
-
-    /// Bearer token authentication scheme, typically used for OAuth 2.0.
-    Bearer(String),
-}
-
 /// Credentials consisting of a username and a secret (password) that can be
 /// used to establish user identity.
 #[derive(Clone)]
 pub struct Credentials {
     username: String,
     password: String,
+}
+
+impl Credentials {
+    /// Create credentials from a username and password.
+    pub fn new(username: impl Into<String>, password: impl Into<String>) -> Self {
+        Self {
+            username: username.into(),
+            password: password.into(),
+        }
+    }
+}
+
+impl SetOpt for Credentials {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.username(&self.username)?;
+        easy.password(&self.password)
+    }
 }
 
 // Implement our own debug since we don't want to print passwords even on
@@ -30,9 +39,61 @@ impl fmt::Debug for Credentials {
     }
 }
 
-impl SetOpt for Credentials {
+/// Specifies one or more HTTP authentication methods to use.
+#[derive(Debug)]
+pub struct Authentication {
+    inner: curl::easy::Auth,
+}
+
+impl Default for Authentication {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Authentication {
+    /// Create a new empty set of authentication schemes.
+    pub fn new() -> Self {
+        Self {
+            inner: curl::easy::Auth::new(),
+        }
+    }
+
+    /// HTTP Basic authentication.
+    ///
+    /// This authentication scheme sends the user name and password over the
+    /// network in plain text. Avoid using this scheme without TLS as the
+    /// credentials can be easily captured otherwise.
+    pub fn basic(mut self, on: bool) -> Self {
+        self.inner.basic(on);
+        self
+    }
+
+    /// HTTP Digest authentication.
+    ///
+    /// Digest authentication is defined in RFC 2617 and is a more secure way to
+    /// do authentication over public networks than the regular old-fashioned
+    /// Basic method.
+    pub fn digest(mut self, on: bool) -> Self {
+        self.inner.digest(on);
+        self
+    }
+
+    /// HTTP Negotiate (SPNEGO) authentication.
+    ///
+    /// Negotiate authentication is defined in RFC 4559 and is the most secure
+    /// way to perform authentication over HTTP.
+    ///
+    /// You need to build libcurl with a suitable GSS-API library or SSPI on
+    /// Windows for this to work.
+    pub fn negotiate(mut self, on: bool) -> Self {
+        self.inner.gssnegotiate(on);
+        self
+    }
+}
+
+impl SetOpt for Authentication {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.username(&self.username)?;
-        easy.password(&self.password)
+        easy.http_auth(&self.inner)
     }
 }
