@@ -46,14 +46,12 @@ speculate::speculate! {
             .with_header("WWW-Authenticate", "Negotiate")
             .create();
 
-        let response = Request::get(server_url())
+        Request::get(server_url())
             .authentication(Authentication::new().negotiate(true))
             .body(())
             .unwrap()
             .send()
             .unwrap();
-
-        assert_eq!(response.status(), 401);
 
         m.assert();
     }
