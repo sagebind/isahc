@@ -18,7 +18,7 @@ jobs:
         with:
           submodules: true
 
-      - run: apt install libkrb5-dev
+      - run: sudo apt install libkrb5-dev
         if: matrix.os == 'ubuntu-latest'
 
       - uses: actions-rs/toolchain@v1
