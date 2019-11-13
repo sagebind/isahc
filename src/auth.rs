@@ -173,3 +173,37 @@ impl SetOpt for Proxy<Authentication> {
         easy.proxy_auth(&self.0.as_auth())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Authentication;
+
+    #[test]
+    fn auth_default() {
+        let auth = Authentication::default();
+
+        assert!(!auth.contains(Authentication::basic()));
+        assert!(!auth.contains(Authentication::digest()));
+    }
+
+    #[test]
+    fn auth_all() {
+        let auth = Authentication::all();
+
+        assert!(auth.contains(Authentication::basic()));
+        assert!(auth.contains(Authentication::digest()));
+    }
+
+    #[test]
+    fn auth_single() {
+        let auth = Authentication::basic();
+
+        assert!(auth.contains(Authentication::basic()));
+        assert!(!auth.contains(Authentication::digest()));
+
+        let auth = Authentication::digest();
+
+        assert!(!auth.contains(Authentication::basic()));
+        assert!(auth.contains(Authentication::digest()));
+    }
+}
