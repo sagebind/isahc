@@ -24,7 +24,7 @@ jobs:
           toolchain: "1.38.0"
           default: true
 
-      - run: cargo test --features psl
+      - run: cargo test --features psl,spnego
 
       - run: cargo run --release --example simple
 
