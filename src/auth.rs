@@ -43,6 +43,8 @@ impl fmt::Debug for Credentials {
 #[derive(Debug)]
 pub struct Authentication {
     inner: curl::easy::Auth,
+    #[cfg(feature = "spnego")]
+    negotiate: bool,
 }
 
 impl Default for Authentication {
@@ -56,15 +58,24 @@ impl Authentication {
     pub fn new() -> Self {
         Self {
             inner: curl::easy::Auth::new(),
+            #[cfg(feature = "spnego")]
+            negotiate: false,
         }
     }
 
     /// Enable all available authentication schemes.
     pub fn all() -> Self {
-        Self::new()
+        #[allow(unused_mut)]
+        let mut all = Self::new()
             .basic(true)
-            .digest(true)
-            .negotiate(true)
+            .digest(true);
+
+        #[cfg(feature = "spnego")]
+        {
+            all = all.negotiate(true);
+        }
+
+        all
     }
 
     /// HTTP Basic authentication.
@@ -93,8 +104,11 @@ impl Authentication {
     /// way to perform authentication over HTTP.
     ///
     /// You need to build libcurl with a suitable GSS-API library or SSPI on
-    /// Windows for this to work.
+    /// Windows for this to work. This is automatic when binding to curl
+    /// statically, otherwise it depends on how your system curl is configured.
+    #[cfg(feature = "spnego")]
     pub fn negotiate(mut self, on: bool) -> Self {
+        self.negotiate = on;
         self.inner.gssnegotiate(on);
         self
     }
@@ -102,6 +116,13 @@ impl Authentication {
 
 impl SetOpt for Authentication {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        #[cfg(feature = "spnego")]
+        {
+            if self.negotiate {
+                easy.username(":")?;
+            }
+        }
+
         easy.http_auth(&self.inner)
     }
 }

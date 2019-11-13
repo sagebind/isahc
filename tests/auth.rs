@@ -37,4 +37,24 @@ speculate::speculate! {
 
         m.assert();
     }
+
+    #[cfg(feature = "spnego")]
+    test "negotiate auth exists" {
+        let m = mock("GET", "/")
+            .match_header("Authorization", Matcher::Missing)
+            .with_status(401)
+            .with_header("WWW-Authenticate", "Negotiate")
+            .create();
+
+        let response = Request::get(server_url())
+            .authentication(Authentication::new().negotiate(true))
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        assert_eq!(response.status(), 401);
+
+        m.assert();
+    }
 }
