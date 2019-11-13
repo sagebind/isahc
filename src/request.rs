@@ -94,7 +94,7 @@ pub trait RequestBuilderExt {
     /// Enables the `TCP_NODELAY` option on connect.
     fn tcp_nodelay(&mut self) -> &mut Self;
 
-    /// Set a proxy to use for requests.
+    /// Set a proxy to use for the request.
     ///
     /// The proxy protocol is specified by the URI scheme.
     ///
@@ -109,6 +109,21 @@ pub trait RequestBuilderExt {
     /// By default no proxy will be used, unless one is specified in either the
     /// `http_proxy` or `https_proxy` environment variables.
     fn proxy(&mut self, proxy: http::Uri) -> &mut Self;
+
+    /// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`RequestBuilderExt::proxy_credentials`].
+    fn proxy_authentication(&mut self, authentication: Authentication) -> &mut Self;
+
+    /// Set the credentials to use for proxy authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more proxy
+    /// authentication methods using
+    /// [`RequestBuilderExt::proxy_authentication`].
+    fn proxy_credentials(&mut self, credentials: Credentials) -> &mut Self;
 
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
@@ -224,6 +239,14 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn proxy(&mut self, proxy: http::Uri) -> &mut Self {
         self.extension(Proxy(proxy))
+    }
+
+    fn proxy_authentication(&mut self, authentication: Authentication) -> &mut Self {
+        self.extension(Proxy(authentication))
+    }
+
+    fn proxy_credentials(&mut self, credentials: Credentials) -> &mut Self {
+        self.extension(Proxy(credentials))
     }
 
     fn max_upload_speed(&mut self, max: u64) -> &mut Self {

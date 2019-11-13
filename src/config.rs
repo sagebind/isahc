@@ -14,6 +14,19 @@ pub(crate) trait SetOpt {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error>;
 }
 
+impl SetOpt for http::HeaderMap {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let mut headers = curl::easy::List::new();
+
+        for (name, value) in self.iter() {
+            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
+            headers.append(&header)?;
+        }
+
+        easy.http_headers(headers)
+    }
+}
+
 /// Describes a policy for handling server redirects.
 ///
 /// The default is to not follow redirects.
@@ -313,10 +326,13 @@ impl SetOpt for DnsCache {
     }
 }
 
+/// Decorator for marking certain configurations to apply to a proxy rather than
+/// the origin itself.
 #[derive(Clone, Debug)]
-pub(crate) struct Proxy(pub(crate) http::Uri);
+pub(crate) struct Proxy<T>(pub(crate) T);
 
-impl SetOpt for Proxy {
+/// Proxy URI specifies the type and host of a proxy to use.
+impl SetOpt for Proxy<http::Uri> {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         easy.proxy(&format!("{}", self.0))
     }
