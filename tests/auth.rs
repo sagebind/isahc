@@ -41,7 +41,6 @@ speculate::speculate! {
     #[cfg(feature = "spnego")]
     test "negotiate auth exists" {
         let m = mock("GET", "/")
-            .match_header("Authorization", Matcher::Missing)
             .with_status(401)
             .with_header("WWW-Authenticate", "Negotiate")
             .create();
@@ -52,6 +51,26 @@ speculate::speculate! {
             .unwrap()
             .send()
             .unwrap();
+
+        m.assert();
+    }
+
+    #[cfg(all(feature = "spnego", windows))]
+    test "negotiate on windows provides a token" {
+        let m = mock("GET", "/")
+            .match_header("Authorization", Matcher::Regex(r"Negotiate \w+=*".into()))
+            .with_status(200)
+            .with_header("WWW-Authenticate", "Negotiate")
+            .create();
+
+        let response = Request::get(server_url())
+            .authentication(Authentication::new().negotiate(true))
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        assert_eq!(response.status(), 200);
 
         m.assert();
     }
