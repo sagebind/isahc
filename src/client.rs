@@ -71,7 +71,7 @@ impl HttpClientBuilder {
         let mut defaults = http::Extensions::new();
 
         // Erase curl's default auth method of Basic.
-        defaults.insert(Authentication::new());
+        defaults.insert(Authentication::default());
 
         Self {
             agent_builder: AgentBuilder::default(),
@@ -206,7 +206,7 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .authentication(Authentication::new().basic(true))
+    ///     .authentication(Authentication::basic() | Authentication::digest())
     ///     .credentials(Credentials::new("clark", "qwerty"))
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
@@ -294,7 +294,7 @@ impl HttpClientBuilder {
     /// #
     /// let client = HttpClient::builder()
     ///     .proxy("http://proxy:80".parse()?)
-    ///     .proxy_authentication(Authentication::new().basic(true))
+    ///     .proxy_authentication(Authentication::basic())
     ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
     ///     .build()?;
     /// # Ok::<(), Box<std::error::Error>>(())

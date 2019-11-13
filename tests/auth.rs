@@ -28,7 +28,7 @@ speculate::speculate! {
             .create();
 
         Request::get(server_url())
-            .authentication(Authentication::new().basic(true))
+            .authentication(Authentication::basic())
             .credentials(Credentials::new("clark", "querty"))
             .body(())
             .unwrap()
@@ -46,7 +46,7 @@ speculate::speculate! {
             .create();
 
         Request::get(server_url())
-            .authentication(Authentication::new().negotiate(true))
+            .authentication(Authentication::negotiate())
             .body(())
             .unwrap()
             .send()
@@ -64,7 +64,7 @@ speculate::speculate! {
             .create();
 
         let response = Request::get(server_url())
-            .authentication(Authentication::new().negotiate(true))
+            .authentication(Authentication::negotiate())
             .body(())
             .unwrap()
             .send()

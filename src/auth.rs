@@ -2,6 +2,7 @@
 
 use crate::config::{Proxy, SetOpt};
 use std::fmt;
+use std::ops::{BitOr, BitOrAssign};
 
 /// Credentials consisting of a username and a secret (password) that can be
 /// used to establish user identity.
@@ -46,43 +47,33 @@ impl fmt::Debug for Credentials {
     }
 }
 
-/// Specifies one or more HTTP authentication methods to use.
+/// Specifies one or more HTTP authentication schemes to use.
 #[derive(Clone, Debug)]
-pub struct Authentication {
-    inner: curl::easy::Auth,
-    #[cfg(feature = "spnego")]
-    negotiate: bool,
-}
+pub struct Authentication(u8);
 
 impl Default for Authentication {
     fn default() -> Self {
-        Self::new()
+        Self::none()
     }
 }
 
 impl Authentication {
-    /// Create a new empty set of authentication schemes.
-    pub fn new() -> Self {
-        Self {
-            inner: curl::easy::Auth::new(),
-            #[cfg(feature = "spnego")]
-            negotiate: false,
-        }
+    /// Disable all authentication schemes. This is the default.
+    pub const fn none() -> Self {
+        Authentication(0)
     }
 
     /// Enable all available authentication schemes.
-    pub fn all() -> Self {
+    pub const fn all() -> Self {
         #[allow(unused_mut)]
-        let mut all = Self::new()
-            .basic(true)
-            .digest(true);
+        let mut all = Self::basic().0 | Self::digest().0;
 
         #[cfg(feature = "spnego")]
         {
-            all = all.negotiate(true);
+            all |= Self::negotiate().0;
         }
 
-        all
+        Authentication(all)
     }
 
     /// HTTP Basic authentication.
@@ -90,9 +81,8 @@ impl Authentication {
     /// This authentication scheme sends the user name and password over the
     /// network in plain text. Avoid using this scheme without TLS as the
     /// credentials can be easily captured otherwise.
-    pub fn basic(mut self, on: bool) -> Self {
-        self.inner.basic(on);
-        self
+    pub const fn basic() -> Self {
+        Authentication(0b0001)
     }
 
     /// HTTP Digest authentication.
@@ -100,9 +90,8 @@ impl Authentication {
     /// Digest authentication is defined in RFC 2617 and is a more secure way to
     /// do authentication over public networks than the regular old-fashioned
     /// Basic method.
-    pub fn digest(mut self, on: bool) -> Self {
-        self.inner.digest(on);
-        self
+    pub const fn digest() -> Self {
+        Authentication(0b0010)
     }
 
     /// HTTP Negotiate (SPNEGO) authentication.
@@ -114,10 +103,48 @@ impl Authentication {
     /// Windows for this to work. This is automatic when binding to curl
     /// statically, otherwise it depends on how your system curl is configured.
     #[cfg(feature = "spnego")]
-    pub fn negotiate(mut self, on: bool) -> Self {
-        self.negotiate = on;
-        self.inner.gssnegotiate(on);
-        self
+    pub const fn negotiate() -> Self {
+        Authentication(0b0100)
+    }
+
+    #[inline]
+    fn contains(&self, other: Self) -> bool {
+        (self.0 & other.0) == other.0
+    }
+
+    fn as_auth(&self) -> curl::easy::Auth {
+        let mut auth = curl::easy::Auth::new();
+
+        if self.contains(Authentication::basic()) {
+            auth.basic(true);
+        }
+
+        if self.contains(Authentication::digest()) {
+            auth.digest(true);
+        }
+
+        #[cfg(feature = "spnego")]
+        {
+            if self.contains(Authentication::negotiate()) {
+                auth.gssnegotiate(true);
+            }
+        }
+
+        auth
+    }
+}
+
+impl BitOr for Authentication {
+    type Output = Self;
+
+    fn bitor(self, other: Self) -> Self {
+        Authentication(self.0 | other.0)
+    }
+}
+
+impl BitOrAssign for Authentication {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = self.clone() | rhs;
     }
 }
 
@@ -125,12 +152,12 @@ impl SetOpt for Authentication {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         #[cfg(feature = "spnego")]
         {
-            if self.negotiate {
+            if self.contains(Authentication::negotiate()) {
                 easy.username(":")?;
             }
         }
 
-        easy.http_auth(&self.inner)
+        easy.http_auth(&self.as_auth())
     }
 }
 
@@ -138,11 +165,11 @@ impl SetOpt for Proxy<Authentication> {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         #[cfg(feature = "spnego")]
         {
-            if self.negotiate {
+            if self.0.contains(Authentication::negotiate()) {
                 easy.proxy_username(":")?;
             }
         }
 
-        easy.proxy_auth(&self.0.inner)
+        easy.proxy_auth(&self.0.as_auth())
     }
 }
