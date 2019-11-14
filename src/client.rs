@@ -2,6 +2,7 @@
 
 use crate::{
     agent::{self, AgentBuilder},
+    auth::{Authentication, Credentials},
     config::*,
     handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
     middleware::Middleware,
@@ -49,11 +50,16 @@ lazy_static! {
 ///     .build()?;
 /// # Ok::<(), isahc::Error>(())
 /// ```
-#[derive(Default)]
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
+}
+
+impl Default for HttpClientBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HttpClientBuilder {
@@ -62,7 +68,16 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        Self::default()
+        let mut defaults = http::Extensions::new();
+
+        // Erase curl's default auth method of Basic.
+        defaults.insert(Authentication::default());
+
+        Self {
+            agent_builder: AgentBuilder::default(),
+            defaults,
+            middleware: Vec::new(),
+        }
     }
 
     /// Enable persistent cookie handling using a cookie jar.
@@ -177,6 +192,40 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`HttpClientBuilder::credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .authentication(Authentication::basic() | Authentication::digest())
+    ///     .credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn authentication(mut self, authentication: Authentication) -> Self {
+        self.defaults.insert(authentication);
+        self
+    }
+
+    /// Set the default credentials to use for HTTP authentication on all
+    /// requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`HttpClientBuilder::authentication`].
+    pub fn credentials(mut self, credentials: Credentials) -> Self {
+        self.defaults.insert(credentials);
+        self
+    }
+
     /// Set a preferred HTTP version the client should attempt to use to
     /// communicate to the server with.
     ///
@@ -213,8 +262,56 @@ impl HttpClientBuilder {
     ///
     /// By default no proxy will be used, unless one is specified in either the
     /// `http_proxy` or `https_proxy` environment variables.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy("http://proxy:80".parse()?)
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
     pub fn proxy(mut self, proxy: http::Uri) -> Self {
         self.defaults.insert(Proxy(proxy));
+        self
+    }
+
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`HttpClientBuilder::proxy_credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy("http://proxy:80".parse()?)
+    ///     .proxy_authentication(Authentication::basic())
+    ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    pub fn proxy_authentication(mut self, authentication: Authentication) -> Self {
+        self.defaults.insert(Proxy(authentication));
+        self
+    }
+
+    /// Set the default credentials to use for proxy authentication on all
+    /// requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// proxy authentication methods using
+    /// [`HttpClientBuilder::proxy_authentication`].
+    pub fn proxy_credentials(mut self, credentials: Credentials) -> Self {
+        self.defaults.insert(Proxy(credentials));
         self
     }
 
@@ -755,6 +852,7 @@ impl HttpClient {
         }
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn create_easy_handle(
         &self,
         request: Request<Body>,
@@ -792,10 +890,14 @@ impl HttpClient {
                 TcpNoDelay,
                 RedirectPolicy,
                 AutoReferer,
+                Authentication,
+                Credentials,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
-                Proxy,
+                Proxy<http::Uri>,
+                Proxy<Authentication>,
+                Proxy<Credentials>,
                 DnsCache,
                 DnsServers,
                 SslCiphers,
@@ -878,13 +980,8 @@ impl HttpClient {
             }
         }
 
-        // Prepare header list to give to curl.
-        let mut headers = curl::easy::List::new();
-        for (name, value) in parts.headers.iter() {
-            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
-            headers.append(&header)?;
-        }
-        easy.http_headers(headers)?;
+        // Set custom request headers.
+        parts.headers.set_opt(&mut easy)?;
 
         Ok((easy, future))
     }

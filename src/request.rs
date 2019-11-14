@@ -1,6 +1,9 @@
-use crate::client::ResponseFuture;
-use crate::config::*;
-use crate::{Body, Error};
+use crate::{
+    auth::{Authentication, Credentials},
+    client::ResponseFuture,
+    config::*,
+    {Body, Error},
+};
 use http::{Request, Response};
 use std::iter::FromIterator;
 use std::net::SocketAddr;
@@ -64,6 +67,20 @@ pub trait RequestBuilderExt {
     /// Update the `Referer` header automatically when following redirects.
     fn auto_referer(&mut self) -> &mut Self;
 
+    /// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`RequestBuilderExt::credentials`].
+    fn authentication(&mut self, authentication: Authentication) -> &mut Self;
+
+    /// Set the credentials to use for HTTP authentication on this requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`RequestBuilderExt::authentication`].
+    fn credentials(&mut self, credentials: Credentials) -> &mut Self;
+
     /// Set a preferred HTTP version the client should attempt to use to
     /// communicate to the server with.
     ///
@@ -77,7 +94,7 @@ pub trait RequestBuilderExt {
     /// Enables the `TCP_NODELAY` option on connect.
     fn tcp_nodelay(&mut self) -> &mut Self;
 
-    /// Set a proxy to use for requests.
+    /// Set a proxy to use for the request.
     ///
     /// The proxy protocol is specified by the URI scheme.
     ///
@@ -92,6 +109,21 @@ pub trait RequestBuilderExt {
     /// By default no proxy will be used, unless one is specified in either the
     /// `http_proxy` or `https_proxy` environment variables.
     fn proxy(&mut self, proxy: http::Uri) -> &mut Self;
+
+    /// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`RequestBuilderExt::proxy_credentials`].
+    fn proxy_authentication(&mut self, authentication: Authentication) -> &mut Self;
+
+    /// Set the credentials to use for proxy authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more proxy
+    /// authentication methods using
+    /// [`RequestBuilderExt::proxy_authentication`].
+    fn proxy_credentials(&mut self, credentials: Credentials) -> &mut Self;
 
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
@@ -185,6 +217,14 @@ impl RequestBuilderExt for http::request::Builder {
         self.extension(AutoReferer)
     }
 
+    fn authentication(&mut self, authentication: Authentication) -> &mut Self {
+        self.extension(authentication)
+    }
+
+    fn credentials(&mut self, credentials: Credentials) -> &mut Self {
+        self.extension(credentials)
+    }
+
     fn preferred_http_version(&mut self, version: http::Version) -> &mut Self {
         self.extension(PreferredHttpVersion(version))
     }
@@ -199,6 +239,14 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn proxy(&mut self, proxy: http::Uri) -> &mut Self {
         self.extension(Proxy(proxy))
+    }
+
+    fn proxy_authentication(&mut self, authentication: Authentication) -> &mut Self {
+        self.extension(Proxy(authentication))
+    }
+
+    fn proxy_credentials(&mut self, credentials: Credentials) -> &mut Self {
+        self.extension(Proxy(credentials))
     }
 
     fn max_upload_speed(&mut self, max: u64) -> &mut Self {

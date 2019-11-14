@@ -5,11 +5,11 @@ jobs:
   test:
     strategy:
       matrix:
-        platform:
+        os:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -18,13 +18,16 @@ jobs:
         with:
           submodules: true
 
+      - run: sudo apt install libkrb5-dev
+        if: matrix.os == 'ubuntu-latest'
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: "1.38.0"
           default: true
 
-      - run: cargo test --features psl
+      - run: cargo test --features psl,spnego
 
       - run: cargo run --release --example simple
 
