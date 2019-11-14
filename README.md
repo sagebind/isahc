@@ -91,6 +91,7 @@ Below is a list of all available feature flags and their meanings.
 - `http2`: Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
 - `json`: Additional serialization and deserialization of JSON bodies via [serde]. Disabled by default.
 - `psl`: Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Disabled by default.
+- `spnego`: Enable support for [SPNEGO-based HTTP authentication][rfc4559] (`negotiate` auth scheme). This makes the `negotiate` scheme available in the API and, if `static-curl` is enabled, compiles libcurl with GSS-API APIs. The [MIT Kerberos] headers must be pre-installed at compile time.
 - `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
 - `middleware-api`: Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may change between patch releases.
 
@@ -119,6 +120,8 @@ The "Isahc" logo and mascot may only be used as required for reasonable and cust
 [documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/
+[MIT Kerberos]: https://web.mit.edu/kerberos/
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
+[rfc4559]: https://tools.ietf.org/html/rfc4559
 [rust]: https://www.rustlang.org
 [serde]: https://serde.rs
