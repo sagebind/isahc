@@ -97,7 +97,9 @@ impl Authentication {
     /// HTTP Negotiate (SPNEGO) authentication.
     ///
     /// Negotiate authentication is defined in RFC 4559 and is the most secure
-    /// way to perform authentication over HTTP.
+    /// way to perform authentication over HTTP. Specifying [`Credentials`] is
+    /// not necessary as credentials are provided by platform authentication
+    /// means.
     ///
     /// You need to build libcurl with a suitable GSS-API library or SSPI on
     /// Windows for this to work. This is automatic when binding to curl
@@ -153,7 +155,10 @@ impl SetOpt for Authentication {
         #[cfg(feature = "spnego")]
         {
             if self.contains(Authentication::negotiate()) {
-                easy.username(":")?;
+                // Ensure auth engine is enabled, even though credentials do not
+                // need to be specified.
+                easy.username("")?;
+                easy.password("")?;
             }
         }
 
@@ -166,7 +171,10 @@ impl SetOpt for Proxy<Authentication> {
         #[cfg(feature = "spnego")]
         {
             if self.0.contains(Authentication::negotiate()) {
-                easy.proxy_username(":")?;
+                // Ensure auth engine is enabled, even though credentials do not
+                // need to be specified.
+                easy.proxy_username("")?;
+                easy.proxy_password("")?;
             }
         }
 
