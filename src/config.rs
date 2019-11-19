@@ -3,11 +3,11 @@
 //! Individual options are separated out into multiple types. Each type acts
 //! both as a "field name" and the value of that option.
 
+use curl::easy::SslOpt;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
-use curl::easy::SslOpt;
 
 /// A helper trait for applying a configuration value to a given curl handle.
 pub(crate) trait SetOpt {
@@ -71,12 +71,21 @@ impl SetOpt for RedirectPolicy {
 
 /// A public CA certificate bundle file.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CACertificatePath {
+pub struct CaCertificate {
     /// Path to the certificate bundle file.
-    pub(crate) path: PathBuf,
+    path: PathBuf,
 }
 
-impl SetOpt for CACertificatePath {
+impl CaCertificate {
+    /// Create a new `CaCertificate` from a path to a certificate bundle file.
+    pub fn path(ca_bundle_path: PathBuf) -> Self {
+        CaCertificate {
+            path: ca_bundle_path,
+        }
+    }
+}
+
+impl SetOpt for CaCertificate {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         easy.cainfo(self.path.clone())
     }
@@ -357,36 +366,28 @@ impl SetOpt for DnsCache {
 pub(crate) struct Proxy<T>(pub(crate) T);
 
 /// Proxy URI specifies the type and host of a proxy to use.
-impl SetOpt for Proxy<http::Uri> {
+impl SetOpt for Proxy<Option<http::Uri>> {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.proxy(&format!("{}", self.0))
+        match &self.0 {
+            Some(uri) => easy.proxy(&format!("{}", uri)),
+            None => easy.proxy(""),
+        }
     }
 }
 
-/// No Proxy configuration.
+/// A list of host names that do not require a proxy to get reached,
+/// even if one is specified.
 ///
-/// The default configuration is for the system proxy to be used.
-///
-/// See [`HttpClientBuilder::noproxy`](crate::HttpClientBuilder::noproxy)
+/// See [`HttpClientBuilder::proxy_blacklist`](crate::HttpClientBuilder::proxy_blacklist)
 /// for configuring a client's no proxy list.
 #[derive(Clone, Debug)]
-pub enum NoProxy {
-    /// Disable proxy usage entirely.
-    All,
-    /// Disable proxy usage only for the given hosts.
-    Skip(Vec<String>),
+pub(crate) struct ProxyBlacklist {
+    pub(crate) hosts: Vec<String>,
 }
 
-impl SetOpt for NoProxy {
+impl SetOpt for ProxyBlacklist {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        let skip = match self {
-            NoProxy::All => {
-                "*".to_string()
-            },
-            NoProxy::Skip(skip) => {
-                skip.join(",")
-            }
-        };
+        let skip = self.hosts.join(",");
 
         easy.noproxy(&skip)
     }
