@@ -3,6 +3,7 @@
 //! Individual options are separated out into multiple types. Each type acts
 //! both as a "field name" and the value of that option.
 
+use curl::easy::SslOpt;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -65,6 +66,39 @@ impl SetOpt for RedirectPolicy {
         }
 
         Ok(())
+    }
+}
+
+/// A public CA certificate bundle file.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CaCertificate {
+    /// Path to the certificate bundle file.
+    path: PathBuf,
+}
+
+impl CaCertificate {
+    /// Create a new `CaCertificate` from a path to a certificate bundle file.
+    pub fn path(ca_bundle_path: PathBuf) -> Self {
+        CaCertificate {
+            path: ca_bundle_path,
+        }
+    }
+}
+
+impl SetOpt for CaCertificate {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.cainfo(self.path.clone())
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct NoRevoke {
+    pub(crate) on: bool,
+}
+
+impl SetOpt for NoRevoke {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.ssl_options(SslOpt::new().no_revoke(self.on))
     }
 }
 
@@ -332,9 +366,30 @@ impl SetOpt for DnsCache {
 pub(crate) struct Proxy<T>(pub(crate) T);
 
 /// Proxy URI specifies the type and host of a proxy to use.
-impl SetOpt for Proxy<http::Uri> {
+impl SetOpt for Proxy<Option<http::Uri>> {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.proxy(&format!("{}", self.0))
+        match &self.0 {
+            Some(uri) => easy.proxy(&format!("{}", uri)),
+            None => easy.proxy(""),
+        }
+    }
+}
+
+/// A list of host names that do not require a proxy to get reached,
+/// even if one is specified.
+///
+/// See [`HttpClientBuilder::proxy_blacklist`](crate::HttpClientBuilder::proxy_blacklist)
+/// for configuring a client's no proxy list.
+#[derive(Clone, Debug)]
+pub(crate) struct ProxyBlacklist {
+    pub(crate) hosts: Vec<String>,
+}
+
+impl SetOpt for ProxyBlacklist {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let skip = self.hosts.join(",");
+
+        easy.noproxy(&skip)
     }
 }
 

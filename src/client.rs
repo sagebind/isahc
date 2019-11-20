@@ -260,22 +260,58 @@ impl HttpClientBuilder {
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
     ///
-    /// By default no proxy will be used, unless one is specified in either the
-    /// `http_proxy` or `https_proxy` environment variables.
+    /// By default the system proxy will be used, for example if one specified in either the
+    /// `http_proxy` or `https_proxy` environment variables on *nix platforms.
+    ///
+    /// Settings to `None` explicitly disable the use of a proxy.
     ///
     /// # Examples
+    ///
+    /// Using `http://proxy:80` as a proxy:
     ///
     /// ```
     /// # use isahc::auth::*;
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .proxy("http://proxy:80".parse()?)
+    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
     ///     .build()?;
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
-    pub fn proxy(mut self, proxy: http::Uri) -> Self {
-        self.defaults.insert(Proxy(proxy));
+    ///
+    /// Explicitly disable the use of a proxy:
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy(None)
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    pub fn proxy(mut self, proxy: impl Into<Option<http::Uri>>) -> Self {
+        self.defaults.insert(Proxy(proxy.into()));
+        self
+    }
+
+    /// Disable proxy usage to use for the provided list of hosts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Disable proxy for specified hosts.
+    ///     .proxy_blacklist(vec!["a.com".to_string(), "b.org".to_string()])
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn proxy_blacklist(mut self, hosts: impl IntoIterator<Item = String>) -> Self {
+        self.defaults.insert(ProxyBlacklist {
+            hosts: hosts.into_iter().collect(),
+        });
         self
     }
 
@@ -293,7 +329,7 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .proxy("http://proxy:80".parse()?)
+    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
     ///     .proxy_authentication(Authentication::basic())
     ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
     ///     .build()?;
@@ -387,6 +423,49 @@ impl HttpClientBuilder {
     /// The default is unset and will result in the system defaults being used.
     pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
         self.defaults.insert(SslCiphers::from_iter(servers));
+        self
+    }
+
+    /// Set a custom SSL/TLS CA certificate bundle to use for all client connections.
+    ///
+    /// The default value is none.
+    ///
+    /// Note: for Windows, setting `ssl_no_revoke(true)` might also be nessery.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ca_certificate(CaCertificate::path("ca.pem".into()))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ca_certificate(mut self, ca_cert: impl Into<CaCertificate>) -> Self {
+        self.defaults.insert(ca_cert.into());
+        self
+    }
+
+    /// Disable certificate revocation checks for those SSL backends where such behavior is present.
+    /// This option is only supported for Schannel (the native Windows SSL library),
+    ///
+    /// The default value is false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_no_revoke(true)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ssl_no_revoke(mut self, on: bool) -> Self {
+        self.defaults.insert(NoRevoke { on });
         self
     }
 
@@ -895,7 +974,7 @@ impl HttpClient {
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
-                Proxy<http::Uri>,
+                Proxy<Option<http::Uri>>,
                 Proxy<Authentication>,
                 Proxy<Credentials>,
                 DnsCache,
@@ -905,6 +984,9 @@ impl HttpClient {
                 AllowUnsafeSsl,
                 CloseConnection,
                 EnableMetrics,
+                CaCertificate,
+                NoRevoke,
+                ProxyBlacklist,
             ]
         );
 
