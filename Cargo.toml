@@ -1,6 +1,6 @@
 [package]
 name = "isahc"
-version = "0.7.5"
+version = "0.7.6"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -23,13 +23,14 @@ cookies = ["chrono"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
 psl = ["parking_lot", "publicsuffix"]
+spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 middleware-api = []
 
 [dependencies]
 bytes = "0.4"
-crossbeam-channel = "0.3"
-crossbeam-utils = "0.6"
+crossbeam-channel = "0.4"
+crossbeam-utils = "0.7"
 curl = "0.4.25"
 curl-sys = "0.4.23"
 futures-channel = "0.3"
@@ -69,9 +70,11 @@ optional = true
 env_logger = "0.7"
 flate2 = "1.0"
 futures = "0.3"
-mockito = "0.21"
+indicatif = "0.13"
+mockito = "0.22"
 rayon = "1"
 speculate = "0.1"
+structopt = "0.3"
 
 [[example]]
 name = "json"

@@ -160,19 +160,23 @@ mod middleware;
 mod agent;
 mod body;
 mod client;
-pub mod config;
 mod error;
 mod handler;
 mod io;
+mod metrics;
 mod parse;
 mod request;
 mod response;
 mod task;
 
+pub mod auth;
+pub mod config;
+
 pub use crate::{
     body::Body,
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
+    metrics::Metrics,
     request::{RequestBuilderExt, RequestExt},
     response::ResponseExt,
 };

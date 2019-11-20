@@ -1,4 +1,4 @@
-use crate::{parse, response::EffectiveUri, Body, Error};
+use crate::{parse, response::EffectiveUri, Metrics, Body, Error};
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
@@ -10,16 +10,18 @@ use futures_util::{
 };
 use http::{Response, Uri};
 use sluice::pipe;
-use std::ascii;
-use std::ffi::CStr;
-use std::fmt;
-use std::future::Future;
-use std::io;
-use std::os::raw::c_char;
-use std::pin::Pin;
-use std::ptr;
-use std::sync::Arc;
-use std::task::{Context, Poll, Waker};
+use std::{
+    ascii,
+    ffi::CStr,
+    fmt,
+    future::Future,
+    io,
+    os::raw::c_char,
+    pin::Pin,
+    ptr,
+    sync::Arc,
+    task::{Context, Poll, Waker},
+};
 
 /// Manages the state of a single request/response life cycle.
 ///
@@ -65,23 +67,19 @@ pub(crate) struct RequestHandler {
     /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
 
+    /// Metrics object for publishing metrics data to. Lazily initialized.
+    metrics: Option<Metrics>,
+
     /// Raw pointer to the associated curl easy handle. The pointer is not owned
     /// by this struct, but the parent struct to this one, so we know it will be
     /// valid at least for the lifetime of this struct (assuming all other
     /// invariants are upheld).
-    handle_raw: Option<UnsafeSend<*mut CURL>>,
+    handle: *mut CURL,
 }
 
-struct UnsafeSend<T>(T);
-
-impl<T: Clone> Clone for UnsafeSend<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
+// Would be send implicitly except for the raw CURL pointer.
 #[allow(unsafe_code)]
-unsafe impl<T> Send for UnsafeSend<T> {}
+unsafe impl Send for RequestHandler {}
 
 /// State shared by the handler and its future.
 ///
@@ -121,7 +119,8 @@ impl RequestHandler {
             response_headers: http::HeaderMap::new(),
             response_body_writer,
             response_body_waker: None,
-            handle_raw: None,
+            metrics: None,
+            handle: ptr::null_mut(),
         };
 
         // Create a future that resolves when the handler receives the response
@@ -166,7 +165,7 @@ impl RequestHandler {
 
         log::debug!("initializing handler for request [id={}]", id);
         self.shared.id.store(id);
-        self.handle_raw = Some(UnsafeSend(handle));
+        self.handle = handle;
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);
     }
@@ -208,6 +207,12 @@ impl RequestHandler {
                 builder.extension(EffectiveUri(uri));
             }
 
+            // Include metrics in response, but only if it was created. If
+            // metrics are disabled then it won't have been created.
+            if let Some(metrics) = self.metrics.clone() {
+                builder.extension(metrics);
+            }
+
             self.complete(Ok(builder));
         }
     }
@@ -236,9 +241,9 @@ impl RequestHandler {
 
     #[allow(unsafe_code)]
     fn get_effective_uri(&mut self) -> Option<Uri> {
-        self.handle_raw
-            .clone()
-            .and_then(|UnsafeSend(handle)| unsafe {
+        Some(self.handle)
+            .filter(|ptr| !ptr.is_null())
+            .and_then(|handle| unsafe {
                 let mut ptr = ptr::null::<c_char>();
 
                 if curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
@@ -386,6 +391,86 @@ impl curl::easy::Handler for RequestHandler {
             log::error!("request has not been initialized!");
             Ok(0)
         }
+    }
+
+    /// Capture transfer progress updates from curl.
+    #[allow(unsafe_code)]
+    fn progress(
+        &mut self,
+        dltotal: f64,
+        dlnow: f64,
+        ultotal: f64,
+        ulnow: f64,
+    ) -> bool {
+        // Initialize metrics if required.
+        let metrics = self.metrics.get_or_insert_with(Metrics::new);
+
+        // Store the progress values given.
+        metrics.inner.upload_progress.store(ulnow);
+        metrics.inner.upload_total.store(ultotal);
+        metrics.inner.download_progress.store(dlnow);
+        metrics.inner.download_total.store(dltotal);
+
+        // Also scrape additional metrics.
+        if !self.handle.is_null() {
+            unsafe {
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_SPEED_UPLOAD,
+                    metrics.inner.upload_speed.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
+                    metrics.inner.download_speed.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
+                    metrics.inner.namelookup_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_CONNECT_TIME,
+                    metrics.inner.connect_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_APPCONNECT_TIME,
+                    metrics.inner.appconnect_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_PRETRANSFER_TIME,
+                    metrics.inner.pretransfer_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
+                    metrics.inner.starttransfer_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_TOTAL_TIME,
+                    metrics.inner.total_time.as_ptr(),
+                );
+
+                curl_sys::curl_easy_getinfo(
+                    self.handle,
+                    curl_sys::CURLINFO_REDIRECT_TIME,
+                    metrics.inner.redirect_time.as_ptr(),
+                );
+            }
+        }
+
+        true
     }
 
     /// Gets called by curl whenever it wishes to log a debug message.

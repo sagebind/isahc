@@ -18,12 +18,15 @@ jobs:
         with:
           submodules: true
 
+      - run: sudo apt install libkrb5-dev
+        if: matrix.os == 'ubuntu-latest'
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: "1.39.0"
           default: true
 
-      - run: cargo test --features psl -- --test-threads=8
+      - run: cargo test --features psl,spnego
 
       - run: cargo run --release --example simple

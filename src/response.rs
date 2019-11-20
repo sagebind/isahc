@@ -1,5 +1,5 @@
 use crate::io::Text;
-use crate::Error;
+use crate::{Metrics, Error};
 use futures_io::AsyncRead;
 use http::{Response, Uri};
 use std::fs::File;
@@ -15,6 +15,16 @@ pub trait ResponseExt<T> {
     /// This information is only available if populated by the HTTP client that
     /// produced the response.
     fn effective_uri(&self) -> Option<&Uri>;
+
+    /// If request metrics are enabled for this particular transfer, return a
+    /// metrics object containing a live view of currently available data.
+    ///
+    /// By default metrics are disabled and `None` will be returned. To enable
+    /// metrics for a single request you can use
+    /// [`RequestExt::metrics`](crate::RequestBuilderExt::metrics), or to enable
+    /// it client-wide, you can use
+    /// [`HttpClientBuilder::metrics`](crate::HttpClientBuilder::metrics).
+    fn metrics(&self) -> Option<&Metrics>;
 
     /// Copy the response body into a writer.
     ///
@@ -96,6 +106,10 @@ pub trait ResponseExt<T> {
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
+    }
+
+    fn metrics(&self) -> Option<&Metrics> {
+        self.extensions().get()
     }
 
     fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>

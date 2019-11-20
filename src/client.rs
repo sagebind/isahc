@@ -2,6 +2,7 @@
 
 use crate::{
     agent::{self, AgentBuilder},
+    auth::{Authentication, Credentials},
     config::*,
     handler::{RequestHandler, ResponseBodyReader},
     middleware::Middleware,
@@ -50,11 +51,16 @@ lazy_static! {
 ///     .build()?;
 /// # Ok::<(), isahc::Error>(())
 /// ```
-#[derive(Default)]
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
+}
+
+impl Default for HttpClientBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HttpClientBuilder {
@@ -63,7 +69,16 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        Self::default()
+        let mut defaults = http::Extensions::new();
+
+        // Erase curl's default auth method of Basic.
+        defaults.insert(Authentication::default());
+
+        Self {
+            agent_builder: AgentBuilder::default(),
+            defaults,
+            middleware: Vec::new(),
+        }
     }
 
     /// Enable persistent cookie handling using a cookie jar.
@@ -178,6 +193,40 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`HttpClientBuilder::credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .authentication(Authentication::basic() | Authentication::digest())
+    ///     .credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn authentication(mut self, authentication: Authentication) -> Self {
+        self.defaults.insert(authentication);
+        self
+    }
+
+    /// Set the default credentials to use for HTTP authentication on all
+    /// requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`HttpClientBuilder::authentication`].
+    pub fn credentials(mut self, credentials: Credentials) -> Self {
+        self.defaults.insert(credentials);
+        self
+    }
+
     /// Set a preferred HTTP version the client should attempt to use to
     /// communicate to the server with.
     ///
@@ -212,10 +261,94 @@ impl HttpClientBuilder {
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
     ///
-    /// By default no proxy will be used, unless one is specified in either the
-    /// `http_proxy` or `https_proxy` environment variables.
-    pub fn proxy(mut self, proxy: http::Uri) -> Self {
-        self.defaults.insert(Proxy(proxy));
+    /// By default the system proxy will be used, for example if one specified in either the
+    /// `http_proxy` or `https_proxy` environment variables on *nix platforms.
+    ///
+    /// Settings to `None` explicitly disable the use of a proxy.
+    ///
+    /// # Examples
+    ///
+    /// Using `http://proxy:80` as a proxy:
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    ///
+    /// Explicitly disable the use of a proxy:
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy(None)
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    pub fn proxy(mut self, proxy: impl Into<Option<http::Uri>>) -> Self {
+        self.defaults.insert(Proxy(proxy.into()));
+        self
+    }
+
+    /// Disable proxy usage to use for the provided list of hosts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Disable proxy for specified hosts.
+    ///     .proxy_blacklist(vec!["a.com".to_string(), "b.org".to_string()])
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn proxy_blacklist(mut self, hosts: impl IntoIterator<Item = String>) -> Self {
+        self.defaults.insert(ProxyBlacklist {
+            hosts: hosts.into_iter().collect(),
+        });
+        self
+    }
+
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`HttpClientBuilder::proxy_credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
+    ///     .proxy_authentication(Authentication::basic())
+    ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    pub fn proxy_authentication(mut self, authentication: Authentication) -> Self {
+        self.defaults.insert(Proxy(authentication));
+        self
+    }
+
+    /// Set the default credentials to use for proxy authentication on all
+    /// requests.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// proxy authentication methods using
+    /// [`HttpClientBuilder::proxy_authentication`].
+    pub fn proxy_credentials(mut self, credentials: Credentials) -> Self {
+        self.defaults.insert(Proxy(credentials));
         self
     }
 
@@ -294,6 +427,49 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set a custom SSL/TLS CA certificate bundle to use for all client connections.
+    ///
+    /// The default value is none.
+    ///
+    /// Note: for Windows, setting `ssl_no_revoke(true)` might also be nessery.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ca_certificate(CaCertificate::path("ca.pem".into()))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ca_certificate(mut self, ca_cert: impl Into<CaCertificate>) -> Self {
+        self.defaults.insert(ca_cert.into());
+        self
+    }
+
+    /// Disable certificate revocation checks for those SSL backends where such behavior is present.
+    /// This option is only supported for Schannel (the native Windows SSL library),
+    ///
+    /// The default value is false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_no_revoke(true)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ssl_no_revoke(mut self, on: bool) -> Self {
+        self.defaults.insert(NoRevoke { on });
+        self
+    }
+
     /// Set a custom SSL/TLS client certificate to use for all client
     /// connections.
     ///
@@ -324,9 +500,10 @@ impl HttpClientBuilder {
         self.defaults.insert(certificate);
         self
     }
+
     /// Controls the use of certificate validation.
     ///
-    /// Defaults to `false` as per libcurl's default
+    /// Defaults to `false` as per libcurl's default.
     ///
     /// # Warning
     ///
@@ -337,6 +514,26 @@ impl HttpClientBuilder {
     /// as a last resort.
     pub fn danger_allow_unsafe_ssl(mut self, allow_unsafe: bool) -> Self {
         self.defaults.insert(AllowUnsafeSsl(allow_unsafe));
+        self
+    }
+
+    /// Enable comprehensive per-request metrics collection.
+    ///
+    /// When enabled, detailed timing metrics will be tracked while a request is
+    /// in progress, such as bytes sent and received, estimated size, DNS lookup
+    /// time, etc. For a complete list of the available metrics that can be
+    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
+    ///
+    /// When enabled, to access a view of the current metrics values you can use
+    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
+    ///
+    /// While effort is taken to optimize hot code in metrics collection, it is
+    /// likely that enabling it will have a small effect on overall throughput.
+    /// Disabling metrics may be necessary for absolute peak performance.
+    ///
+    /// By default metrics are disabled.
+    pub fn metrics(mut self, enable: bool) -> Self {
+        self.defaults.insert(EnableMetrics(enable));
         self
     }
 
@@ -772,6 +969,7 @@ impl HttpClient {
         Ok(response)
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn create_easy_handle(
         &self,
         request: Request<Body>,
@@ -809,16 +1007,24 @@ impl HttpClient {
                 TcpNoDelay,
                 RedirectPolicy,
                 AutoReferer,
+                Authentication,
+                Credentials,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
-                Proxy,
+                Proxy<Option<http::Uri>>,
+                Proxy<Authentication>,
+                Proxy<Credentials>,
                 DnsCache,
                 DnsServers,
                 SslCiphers,
                 ClientCertificate,
                 AllowUnsafeSsl,
                 CloseConnection,
+                EnableMetrics,
+                CaCertificate,
+                NoRevoke,
+                ProxyBlacklist,
             ]
         );
 
@@ -894,13 +1100,8 @@ impl HttpClient {
             }
         }
 
-        // Prepare header list to give to curl.
-        let mut headers = curl::easy::List::new();
-        for (name, value) in parts.headers.iter() {
-            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
-            headers.append(&header)?;
-        }
-        easy.http_headers(headers)?;
+        // Set custom request headers.
+        parts.headers.set_opt(&mut easy)?;
 
         Ok((easy, future))
     }
