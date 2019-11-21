@@ -82,58 +82,64 @@ impl SetOpt for RedirectPolicy {
 }
 
 /// A public key certificate file.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ClientCertificate {
-    /// A PEM-encoded certificate file.
-    PEM {
-        /// Path to the certificate file.
-        path: PathBuf,
+#[derive(Clone, Debug)]
+pub struct ClientCertificate {
+    /// Name of the cert format.
+    format: &'static str,
 
-        /// Private key corresponding to the SSL/TLS certificate.
-        private_key: Option<PrivateKey>,
-    },
-    /// A DER-encoded certificate file.
-    DER {
-        /// Path to the certificate file.
-        path: PathBuf,
+    /// Path to the certificate file.
+    path: PathBuf,
 
-        /// Private key corresponding to the SSL/TLS certificate.
-        private_key: Option<PrivateKey>,
-    },
-    /// A PKCS#12-encoded certificate file.
-    P12 {
-        /// Path to the certificate file.
-        path: PathBuf,
+    /// Private key corresponding to the SSL/TLS certificate.
+    private_key: Option<PrivateKey>,
 
-        /// Password to decrypt the certificate file.
-        password: Option<String>,
-    },
+    /// Password to decrypt the certificate file.
+    password: Option<String>,
+}
+
+impl ClientCertificate {
+    /// Get a certificate from a PEM-encoded file.
+    pub fn pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+        Self {
+            format: "PEM",
+            path: path.into(),
+            private_key: private_key.into(),
+            password: None,
+        }
+    }
+
+    /// Get a certificate from a DER-encoded file.
+    pub fn der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+        Self {
+            format: "DER",
+            path: path.into(),
+            private_key: private_key.into(),
+            password: None,
+        }
+    }
+
+    /// Get a certificate from a PKCS#12-encoded file.
+    pub fn p12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+        Self {
+            format: "P12",
+            path: path.into(),
+            private_key: None,
+            password: password.into(),
+        }
+    }
 }
 
 impl SetOpt for ClientCertificate {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match self {
-            ClientCertificate::PEM { path, private_key } => {
-                easy.ssl_cert(path)?;
-                easy.ssl_cert_type("PEM")?;
-                if let Some(key) = private_key {
-                    key.set_opt(easy)?;
-                }
-            }
-            ClientCertificate::DER { path, private_key } => {
-                easy.ssl_cert(path)?;
-                easy.ssl_cert_type("DER")?;
-                if let Some(key) = private_key {
-                    key.set_opt(easy)?;
-                }
-            }
-            ClientCertificate::P12 { path, password } => {
-                easy.ssl_cert(path)?;
-                easy.ssl_cert_type("P12")?;
-                if let Some(password) = password {
-                    easy.key_password(password)?;
-                }
-            }
+        easy.ssl_cert_type(self.format)?;
+        easy.ssl_cert(&self.path)?;
+
+        if let Some(key) = self.private_key.as_ref() {
+            key.set_opt(easy)?;
+        }
+
+        if let Some(password) = self.password.as_ref() {
+            easy.key_password(password)?;
         }
 
         Ok(())
@@ -141,43 +147,45 @@ impl SetOpt for ClientCertificate {
 }
 
 /// A private key file.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum PrivateKey {
-    /// A PEM-encoded private key file.
-    PEM {
-        /// Path to the key file.
-        path: PathBuf,
+#[derive(Clone, Debug)]
+pub struct PrivateKey {
+    /// Key format name.
+    format: &'static str,
 
-        /// Password to decrypt the key file.
-        password: Option<String>,
-    },
-    /// A DER-encoded private key file.
-    DER {
-        /// Path to the key file.
-        path: PathBuf,
+    /// Path to the key file.
+    path: PathBuf,
 
-        /// Password to decrypt the key file.
-        password: Option<String>,
-    },
+    /// Password to decrypt the key file.
+    password: Option<String>,
+}
+
+impl PrivateKey {
+    /// Get a PEM-encoded private key file.
+    pub fn pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+        Self {
+            format: "PEM",
+            path: path.into(),
+            password: password.into(),
+        }
+    }
+
+    /// Get a DER-encoded private key file.
+    pub fn der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+        Self {
+            format: "DER",
+            path: path.into(),
+            password: password.into(),
+        }
+    }
 }
 
 impl SetOpt for PrivateKey {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match self {
-            PrivateKey::PEM { path, password } => {
-                easy.ssl_key(path)?;
-                easy.ssl_key_type("PEM")?;
-                if let Some(password) = password {
-                    easy.key_password(password)?;
-                }
-            }
-            PrivateKey::DER { path, password } => {
-                easy.ssl_key(path)?;
-                easy.ssl_key_type("DER")?;
-                if let Some(password) = password {
-                    easy.key_password(password)?;
-                }
-            }
+        easy.ssl_key(&self.path)?;
+        easy.ssl_key_type(self.format)?;
+
+        if let Some(password) = self.password.as_ref() {
+            easy.key_password(password)?;
         }
 
         Ok(())
@@ -194,7 +202,7 @@ pub struct CaCertificate {
 
 impl CaCertificate {
     /// Get a CA certificate from a path to a certificate bundle file.
-    pub fn path(ca_bundle_path: impl Into<PathBuf>) -> Self {
+    pub fn file(ca_bundle_path: impl Into<PathBuf>) -> Self {
         Self {
             path: ca_bundle_path.into(),
         }

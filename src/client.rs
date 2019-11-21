@@ -445,13 +445,10 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::PEM {
-    ///         path: "client.pem".into(),
-    ///         private_key: Some(PrivateKey::PEM {
-    ///             path: "key.pem".into(),
-    ///             password: Some("secret".into()),
-    ///         }),
-    ///     })
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
+    ///     ))
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
@@ -475,7 +472,7 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::path("ca.pem"))
+    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```

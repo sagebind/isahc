@@ -172,13 +172,10 @@ pub trait RequestBuilderExt {
     /// use isahc::prelude::*;
     ///
     /// let response = Request::get("localhost:3999")
-    ///     .ssl_client_certificate(ClientCertificate::PEM {
-    ///         path: "client.pem".into(),
-    ///         private_key: Some(PrivateKey::PEM {
-    ///             path: "key.pem".into(),
-    ///             password: Some("secret".into()),
-    ///         }),
-    ///     })
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
+    ///     ))
     ///     .body(())?
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
