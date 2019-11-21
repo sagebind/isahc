@@ -108,7 +108,12 @@ pub trait RequestBuilderExt {
     ///
     /// By default no proxy will be used, unless one is specified in either the
     /// `http_proxy` or `https_proxy` environment variables.
-    fn proxy(&mut self, proxy: http::Uri) -> &mut Self;
+    ///
+    /// Setting to `None` explicitly disable the use of a proxy.
+    fn proxy(&mut self, proxy: impl Into<Option<http::Uri>>) -> &mut Self;
+
+    /// Disable proxy usage to use for the provided list of hosts.
+    fn proxy_blacklist(&mut self, hosts: impl IntoIterator<Item = String>) -> &mut Self;
 
     /// Set one or more HTTP authentication methods to attempt to use when
     /// authenticating with a proxy.
@@ -180,6 +185,18 @@ pub trait RequestBuilderExt {
     /// ```
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self;
 
+    /// Set a custom SSL/TLS CA certificate bundle to use.
+    ///
+    /// The default value is none.
+    fn ssl_ca_certificate(&mut self, certificate: CaCertificate) -> &mut Self;
+
+    /// Disable certificate revocation checks for those SSL backends where such
+    /// behavior is present. This option is only supported for Schannel (the
+    /// native Windows SSL library),
+    ///
+    /// The default value is false.
+    fn ssl_no_revoke(&mut self, on: bool) -> &mut Self;
+
     /// Controls the use of certificate validation.
     ///
     /// Defaults to `false` as per libcurl's default
@@ -237,8 +254,12 @@ impl RequestBuilderExt for http::request::Builder {
         self.extension(TcpNoDelay)
     }
 
-    fn proxy(&mut self, proxy: http::Uri) -> &mut Self {
-        self.extension(Proxy(proxy))
+    fn proxy(&mut self, proxy: impl Into<Option<http::Uri>>) -> &mut Self {
+        self.extension(Proxy(proxy.into()))
+    }
+
+    fn proxy_blacklist(&mut self, hosts: impl IntoIterator<Item = String>) -> &mut Self {
+        self.extension(ProxyBlacklist::from_iter(hosts))
     }
 
     fn proxy_authentication(&mut self, authentication: Authentication) -> &mut Self {
@@ -267,6 +288,14 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self {
         self.extension(certificate)
+    }
+
+    fn ssl_ca_certificate(&mut self, certificate: CaCertificate) -> &mut Self {
+        self.extension(certificate)
+    }
+
+    fn ssl_no_revoke(&mut self, on: bool) -> &mut Self {
+        self.extension(SslNoRevoke::from(on))
     }
 
     fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {

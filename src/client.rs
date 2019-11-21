@@ -10,7 +10,10 @@ use crate::{
     Body, Error,
 };
 use futures_io::AsyncRead;
-use futures_util::pin_mut;
+use futures_util::{
+    future::BoxFuture,
+    pin_mut,
+};
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::{
@@ -261,10 +264,11 @@ impl HttpClientBuilder {
     /// - **`socks5`**: SOCKS5 Proxy.
     /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
     ///
-    /// By default the system proxy will be used, for example if one specified in either the
-    /// `http_proxy` or `https_proxy` environment variables on *nix platforms.
+    /// By default the system proxy will be used, for example if one specified
+    /// in either the `http_proxy` or `https_proxy` environment variables on
+    /// *nix platforms.
     ///
-    /// Settings to `None` explicitly disable the use of a proxy.
+    /// Setting to `None` explicitly disable the use of a proxy.
     ///
     /// # Examples
     ///
@@ -275,7 +279,7 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
+    ///     .proxy(Some("http://proxy:80".parse()?))
     ///     .build()?;
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
@@ -310,9 +314,7 @@ impl HttpClientBuilder {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     pub fn proxy_blacklist(mut self, hosts: impl IntoIterator<Item = String>) -> Self {
-        self.defaults.insert(ProxyBlacklist {
-            hosts: hosts.into_iter().collect(),
-        });
+        self.defaults.insert(ProxyBlacklist::from_iter(hosts));
         self
     }
 
@@ -427,49 +429,6 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Set a custom SSL/TLS CA certificate bundle to use for all client connections.
-    ///
-    /// The default value is none.
-    ///
-    /// Note: for Windows, setting `ssl_no_revoke(true)` might also be nessery.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .ca_certificate(CaCertificate::path("ca.pem".into()))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn ca_certificate(mut self, ca_cert: impl Into<CaCertificate>) -> Self {
-        self.defaults.insert(ca_cert.into());
-        self
-    }
-
-    /// Disable certificate revocation checks for those SSL backends where such behavior is present.
-    /// This option is only supported for Schannel (the native Windows SSL library),
-    ///
-    /// The default value is false.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .ssl_no_revoke(true)
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn ssl_no_revoke(mut self, on: bool) -> Self {
-        self.defaults.insert(NoRevoke { on });
-        self
-    }
-
     /// Set a custom SSL/TLS client certificate to use for all client
     /// connections.
     ///
@@ -498,6 +457,52 @@ impl HttpClientBuilder {
     /// ```
     pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
         self.defaults.insert(certificate);
+        self
+    }
+
+    /// Set a custom SSL/TLS CA certificate bundle to use for all client
+    /// connections.
+    ///
+    /// The default value is none.
+    ///
+    /// Note: For Windows, setting `ssl_no_revoke(true)` might also be
+    /// necessary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_ca_certificate(CaCertificate::path("ca.pem"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ssl_ca_certificate(mut self, certificate: CaCertificate) -> Self {
+        self.defaults.insert(certificate);
+        self
+    }
+
+    /// Disable certificate revocation checks for those SSL backends where such
+    /// behavior is present. This option is only supported for Schannel (the
+    /// native Windows SSL library),
+    ///
+    /// The default value is false.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_no_revoke(true)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    pub fn ssl_no_revoke(mut self, on: bool) -> Self {
+        self.defaults.insert(SslNoRevoke::from(on));
         self
     }
 
@@ -1013,18 +1018,18 @@ impl HttpClient {
                 MaxDownloadSpeed,
                 PreferredHttpVersion,
                 Proxy<Option<http::Uri>>,
+                ProxyBlacklist,
                 Proxy<Authentication>,
                 Proxy<Credentials>,
                 DnsCache,
                 DnsServers,
                 SslCiphers,
                 ClientCertificate,
+                CaCertificate,
+                SslNoRevoke,
                 AllowUnsafeSsl,
                 CloseConnection,
                 EnableMetrics,
-                CaCertificate,
-                NoRevoke,
-                ProxyBlacklist,
             ]
         );
 
@@ -1114,7 +1119,7 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-pub struct ResponseFuture<'c>(futures_util::future::BoxFuture<'c, Result<Response<Body>, Error>>);
+pub struct ResponseFuture<'c>(BoxFuture<'c, Result<Response<Body>, Error>>);
 
 impl<'c> ResponseFuture<'c> {
     fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
