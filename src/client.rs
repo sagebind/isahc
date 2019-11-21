@@ -4,8 +4,9 @@ use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
     config::*,
-    handler::{RequestHandler, RequestHandlerFuture, ResponseBodyReader},
+    handler::{RequestHandler, ResponseBodyReader},
     middleware::Middleware,
+    task::Join,
     Body, Error,
 };
 use futures_io::AsyncRead;
@@ -877,7 +878,8 @@ impl HttpClient {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # async fn run() -> Result<(), isahc::Error> {
     /// use isahc::prelude::*;
     ///
     /// let client = HttpClient::new()?;
@@ -891,10 +893,28 @@ impl HttpClient {
     ///
     /// let response = client.send_async(request).await?;
     /// assert!(response.status().is_success());
+    /// # Ok(()) }
     /// ```
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
-        let mut request = request.map(Into::into);
+        let request = request.map(Into::into);
 
+        ResponseFuture::new(self.send_async_inner(request))
+    }
+
+    fn send_builder_async(
+        &self,
+        mut builder: http::request::Builder,
+        body: impl Into<Body>,
+    ) -> ResponseFuture<'_> {
+        let body = body.into();
+
+        ResponseFuture::new(async move {
+            self.send_async_inner(builder.body(body)?).await
+        })
+    }
+
+    /// Actually send the request. All the public methods go through here.
+    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         // Set default user agent if not specified.
         request
             .headers_mut()
@@ -907,35 +927,53 @@ impl HttpClient {
             request = middleware.filter_request(request);
         }
 
-        ResponseFuture {
-            client: self,
-            error: None,
-            request: Some(request),
-            inner: None,
-        }
-    }
+        // Create and configure a curl easy handle to fulfil the request.
+        let (easy, future) = self.create_easy_handle(request)?;
 
-    fn send_builder_async(
-        &self,
-        mut builder: http::request::Builder,
-        body: impl Into<Body>,
-    ) -> ResponseFuture<'_> {
-        match builder.body(body.into()) {
-            Ok(request) => self.send_async(request),
-            Err(e) => ResponseFuture {
-                client: self,
-                error: Some(e.into()),
-                request: None,
-                inner: None,
-            },
+        // Send the request to the agent to be executed.
+        self.agent.submit_request(easy)?;
+
+        // Await for the response headers.
+        let response = future.await?;
+
+        // If a Content-Length header is present, include that information in
+        // the body as well.
+        let content_length = response
+            .headers()
+            .get(http::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok());
+
+        // Convert the reader into an opaque Body.
+        let mut response = response.map(|reader| {
+            let body = ResponseBody {
+                inner: reader,
+                // Extend the lifetime of the agent by including a reference
+                // to its handle in the response body.
+                _agent: self.agent.clone(),
+            };
+
+            if let Some(len) = content_length {
+                Body::reader_sized(body, len)
+            } else {
+                Body::reader(body)
+            }
+        });
+
+        // Apply response middleware, starting with the innermost
+        // one.
+        for middleware in self.middleware.iter() {
+            response = middleware.filter_response(response);
         }
+
+        Ok(response)
     }
 
     #[allow(clippy::cognitive_complexity)]
     fn create_easy_handle(
         &self,
         request: Request<Body>,
-    ) -> Result<(curl::easy::Easy2<RequestHandler>, RequestHandlerFuture), Error> {
+    ) -> Result<(curl::easy::Easy2<RequestHandler>, impl Future<Output = Result<Response<ResponseBodyReader>, Error>>), Error> {
         // Prepare the request plumbing.
         let (mut parts, body) = request.into_parts();
         let has_body = !body.is_empty();
@@ -1076,79 +1114,11 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-#[derive(Debug)]
-pub struct ResponseFuture<'c> {
-    /// The client this future is associated with.
-    client: &'c HttpClient,
-    /// A pre-filled error to return.
-    error: Option<Error>,
-    /// The request to send.
-    request: Option<Request<Body>>,
-    /// The inner future for actual execution.
-    inner: Option<RequestHandlerFuture>,
-}
+pub struct ResponseFuture<'c>(futures_util::future::BoxFuture<'c, Result<Response<Body>, Error>>);
 
 impl<'c> ResponseFuture<'c> {
-    fn maybe_initialize(&mut self) -> Result<(), Error> {
-        // If the future has a pre-filled error, return that.
-        if let Some(e) = self.error.take() {
-            return Err(e);
-        }
-
-        // Request has not been sent yet.
-        if let Some(request) = self.request.take() {
-            // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.client.create_easy_handle(request)?;
-
-            // Send the request to the agent to be executed.
-            self.client.agent.submit_request(easy)?;
-
-            self.inner = Some(future);
-        }
-
-        Ok(())
-    }
-
-    fn complete(
-        &self,
-        result: Result<Response<ResponseBodyReader>, Error>,
-    ) -> Result<Response<Body>, Error> {
-        result.map(|response| {
-            // Convert the reader into an opaque Body.
-            let mut response = response.map(|reader| {
-                let body = ResponseBody {
-                    inner: reader,
-                    // Extend the lifetime of the agent by including a reference
-                    // to its handle in the response body.
-                    agent: self.client.agent.clone(),
-                };
-
-                match body.inner.len() {
-                    Some(len) => Body::reader_sized(body, len),
-                    None => Body::reader(body),
-                }
-            });
-
-            // Apply response middleware, starting with the innermost
-            // one.
-            for middleware in self.client.middleware.iter() {
-                response = middleware.filter_response(response);
-            }
-
-            response
-        })
-    }
-
-    /// Block the current thread until the request is completed or aborted. This
-    /// effectively turns the asynchronous request into a synchronous one.
-    fn join(mut self) -> Result<Response<Body>, Error> {
-        self.maybe_initialize()?;
-
-        if let Some(inner) = self.inner.take() {
-            self.complete(inner.join())
-        } else {
-            panic!("join called after poll");
-        }
+    fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
+        ResponseFuture(Box::pin(future))
     }
 }
 
@@ -1156,23 +1126,22 @@ impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.maybe_initialize()?;
+        use futures_util::future::FutureExt;
+        self.0.poll_unpin(cx)
+    }
+}
 
-        if let Some(inner) = self.inner.as_mut() {
-            Pin::new(inner).poll(cx).map(|result| self.complete(result))
-        } else {
-            // Invalid state (called poll() after ready), just return pending...
-            Poll::Pending
-        }
+impl<'c> fmt::Debug for ResponseFuture<'c> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResponseFuture").finish()
     }
 }
 
 /// Response body stream. Holds a reference to the agent to ensure it is kept
 /// alive until at least this transfer is complete.
-#[derive(Debug)]
 struct ResponseBody {
     inner: ResponseBodyReader,
-    agent: Arc<agent::Handle>,
+    _agent: Arc<agent::Handle>,
 }
 
 impl AsyncRead for ResponseBody {

@@ -110,13 +110,15 @@
 //! from the async nature of the client by using the asynchronous methods
 //! available to prevent blocking threads in your code. All request methods have
 //! an asynchronous variant that ends with `_async` in the name. Here is our
-//! first example rewritten to use async/await syntax (nightly Rust only):
+//! first example rewritten to use async/await syntax:
 //!
-//! ```ignore
+//! ```no_run
+//! # async fn run() -> Result<(), isahc::Error> {
 //! use isahc::prelude::*;
 //!
 //! let mut response = isahc::get_async("https://httpbin.org/get").await?;
 //! println!("{}", response.text_async().await?);
+//! # Ok(()) }
 //! ```
 //!
 //! # Logging
