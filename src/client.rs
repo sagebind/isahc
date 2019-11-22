@@ -42,15 +42,14 @@ lazy_static! {
 /// # Examples
 ///
 /// ```
-/// use isahc::config::RedirectPolicy;
-/// use isahc::http;
+/// use isahc::config::{RedirectPolicy, VersionNegotiation};
 /// use isahc::prelude::*;
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
 ///     .timeout(Duration::from_secs(60))
 ///     .redirect_policy(RedirectPolicy::Limit(10))
-///     .preferred_http_version(http::Version::HTTP_2)
+///     .version_negotiation(VersionNegotiation::http2())
 ///     .build()?;
 /// # Ok::<(), isahc::Error>(())
 /// ```
@@ -73,6 +72,9 @@ impl HttpClientBuilder {
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
         let mut defaults = http::Extensions::new();
+
+        // Always start out with latest compatible HTTP version.
+        defaults.insert(VersionNegotiation::default());
 
         // Erase curl's default auth method of Basic.
         defaults.insert(Authentication::default());
@@ -182,6 +184,15 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Configure how the use of HTTP versions should be negotiated with the
+    /// server.
+    ///
+    /// The default is [`HttpVersionNegotiation::latest_compatible`].
+    pub fn version_negotiation(mut self, negotiation: VersionNegotiation) -> Self {
+        self.defaults.insert(negotiation);
+        self
+    }
+
     /// Set a policy for automatically following server redirects.
     ///
     /// The default is to not follow redirects.
@@ -227,16 +238,6 @@ impl HttpClientBuilder {
     /// authentication methods using [`HttpClientBuilder::authentication`].
     pub fn credentials(mut self, credentials: Credentials) -> Self {
         self.defaults.insert(credentials);
-        self
-    }
-
-    /// Set a preferred HTTP version the client should attempt to use to
-    /// communicate to the server with.
-    ///
-    /// This is treated as a suggestion. A different version may be used if the
-    /// server does not support it or negotiates a different version.
-    pub fn preferred_http_version(mut self, version: http::Version) -> Self {
-        self.defaults.insert(PreferredHttpVersion(version));
         self
     }
 
@@ -599,11 +600,14 @@ impl fmt::Debug for HttpClientBuilder {
 /// Customizing the client configuration:
 ///
 /// ```no_run
-/// use isahc::{config::RedirectPolicy, prelude::*};
+/// use isahc::{
+///     config::{RedirectPolicy, VersionNegotiation},
+///     prelude::*,
+/// };
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
-///     .preferred_http_version(http::Version::HTTP_11)
+///     .version_negotiation(VersionNegotiation::http11())
 ///     .redirect_policy(RedirectPolicy::Limit(10))
 ///     .timeout(Duration::from_secs(20))
 ///     // May return an error if there's something wrong with our configuration
@@ -1008,7 +1012,7 @@ impl HttpClient {
                 Credentials,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
-                PreferredHttpVersion,
+                VersionNegotiation,
                 Proxy<Option<http::Uri>>,
                 ProxyBlacklist,
                 Proxy<Authentication>,
