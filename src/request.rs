@@ -147,15 +147,6 @@ pub trait RequestBuilderExt {
     /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
     fn dns_servers(&mut self, servers: impl IntoIterator<Item = SocketAddr>) -> &mut Self;
 
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self;
-
     /// Set a custom SSL/TLS client certificate to use for all client
     /// connections.
     ///
@@ -187,25 +178,42 @@ pub trait RequestBuilderExt {
     /// The default value is none.
     fn ssl_ca_certificate(&mut self, certificate: CaCertificate) -> &mut Self;
 
-    /// Disable certificate revocation checks for those SSL backends where such
-    /// behavior is present. This option is only supported for Schannel (the
-    /// native Windows SSL library),
+    /// Set a list of ciphers to use for SSL/TLS connections.
     ///
-    /// The default value is false.
-    fn ssl_no_revoke(&mut self, on: bool) -> &mut Self;
+    /// The list of valid cipher names is dependent on the underlying SSL/TLS
+    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
+    ///
+    /// The default is unset and will result in the system defaults being used.
+    fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self;
 
-    /// Controls the use of certificate validation.
+    /// Set various options for this request that control SSL/TLS behavior.
     ///
-    /// Defaults to `false` as per libcurl's default
+    /// Most options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are already the default and do not need to be specified.
+    ///
+    /// The default value is [`SslOption::NONE`].
     ///
     /// # Warning
     ///
-    /// You should think very carefully before using this method. If
-    /// invalid certificates are trusted, *any* certificate for *any* site
-    /// will be trusted for use. This includes expired certificates. This
-    /// introduces significant vulnerabilities, and should only be used
-    /// as a last resort.
-    fn danger_allow_unsafe_ssl(&mut self, no_verify: bool) -> &mut Self;
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let response = Request::get("https://badssl.com")
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn ssl_options(&mut self, options: SslOption) -> &mut Self;
 
     /// Enable or disable comprehensive metrics collection for this request.
     ///
@@ -280,7 +288,7 @@ impl RequestBuilderExt for http::request::Builder {
     }
 
     fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self {
-        self.extension(SslCiphers::from_iter(servers))
+        self.extension(ssl::Ciphers::from_iter(servers))
     }
 
     fn ssl_client_certificate(&mut self, certificate: ClientCertificate) -> &mut Self {
@@ -291,12 +299,8 @@ impl RequestBuilderExt for http::request::Builder {
         self.extension(certificate)
     }
 
-    fn ssl_no_revoke(&mut self, on: bool) -> &mut Self {
-        self.extension(SslNoRevoke::from(on))
-    }
-
-    fn danger_allow_unsafe_ssl(&mut self, allow_unsafe: bool) -> &mut Self {
-        self.extension(AllowUnsafeSsl(allow_unsafe))
+    fn ssl_options(&mut self, options: SslOption) -> &mut Self {
+        self.extension(options)
     }
 
     fn metrics(&mut self, enable: bool) -> &mut Self {

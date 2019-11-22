@@ -109,8 +109,7 @@ impl Authentication {
         Authentication(0b0100)
     }
 
-    #[inline]
-    fn contains(&self, other: Self) -> bool {
+    const fn contains(&self, other: Self) -> bool {
         (self.0 & other.0) == other.0
     }
 
@@ -139,14 +138,15 @@ impl Authentication {
 impl BitOr for Authentication {
     type Output = Self;
 
-    fn bitor(self, other: Self) -> Self {
-        Authentication(self.0 | other.0)
+    fn bitor(mut self, other: Self) -> Self {
+        self |= other;
+        self
     }
 }
 
 impl BitOrAssign for Authentication {
     fn bitor_assign(&mut self, rhs: Self) {
-        *self = self.clone() | rhs;
+        self.0 |= rhs.0;
     }
 }
 

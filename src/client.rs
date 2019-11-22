@@ -417,18 +417,6 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
-        self.defaults.insert(SslCiphers::from_iter(servers));
-        self
-    }
-
     /// Set a custom SSL/TLS client certificate to use for all client
     /// connections.
     ///
@@ -462,8 +450,11 @@ impl HttpClientBuilder {
     ///
     /// The default value is none.
     ///
-    /// Note: For Windows, setting `ssl_no_revoke(true)` might also be
-    /// necessary.
+    /// # Notes
+    ///
+    /// On Windows it may be necessary to combine this with
+    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
+    /// the contents of your CA bundle.
     ///
     /// # Examples
     ///
@@ -481,11 +472,31 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Disable certificate revocation checks for those SSL backends where such
-    /// behavior is present. This option is only supported for Schannel (the
-    /// native Windows SSL library),
+    /// Set a list of ciphers to use for SSL/TLS connections.
     ///
-    /// The default value is false.
+    /// The list of valid cipher names is dependent on the underlying SSL/TLS
+    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
+    ///
+    /// The default is unset and will result in the system defaults being used.
+    pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
+        self.defaults.insert(ssl::Ciphers::from_iter(servers));
+        self
+    }
+
+    /// Set various options that control SSL/TLS behavior.
+    ///
+    /// Most options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are already the default and do not need to be specified.
+    ///
+    /// The default value is [`SslOption::NONE`].
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
     ///
     /// # Examples
     ///
@@ -494,28 +505,12 @@ impl HttpClientBuilder {
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
-    ///     .ssl_no_revoke(true)
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn ssl_no_revoke(mut self, on: bool) -> Self {
-        self.defaults.insert(SslNoRevoke::from(on));
-        self
-    }
-
-    /// Controls the use of certificate validation.
-    ///
-    /// Defaults to `false` as per libcurl's default.
-    ///
-    /// # Warning
-    ///
-    /// You should think very carefully before using this method. If
-    /// invalid certificates are trusted, *any* certificate for *any* site
-    /// will be trusted for use. This includes expired certificates. This
-    /// introduces significant vulnerabilities, and should only be used
-    /// as a last resort.
-    pub fn danger_allow_unsafe_ssl(mut self, allow_unsafe: bool) -> Self {
-        self.defaults.insert(AllowUnsafeSsl(allow_unsafe));
+    pub fn ssl_options(mut self, options: SslOption) -> Self {
+        self.defaults.insert(options);
         self
     }
 
@@ -1020,11 +1015,10 @@ impl HttpClient {
                 Proxy<Credentials>,
                 DnsCache,
                 DnsServers,
-                SslCiphers,
+                ssl::Ciphers,
                 ClientCertificate,
                 CaCertificate,
-                SslNoRevoke,
-                AllowUnsafeSsl,
+                SslOption,
                 CloseConnection,
                 EnableMetrics,
             ]
