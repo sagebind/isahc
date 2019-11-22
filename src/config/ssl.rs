@@ -231,3 +231,30 @@ impl SetOpt for SslOption {
         easy.ssl_verify_host(!self.contains(Self::DANGER_ACCEPT_INVALID_HOSTS))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SslOption;
+
+    #[test]
+    fn default_ssl_options() {
+        let options = SslOption::default();
+
+        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
+        assert!(!options.contains(SslOption::DANGER_ACCEPT_REVOKED_CERTS));
+    }
+
+    #[test]
+    fn ssl_option_invalid_certs() {
+        let options = SslOption::DANGER_ACCEPT_INVALID_CERTS;
+
+        assert!(options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
+
+        let options = SslOption::DANGER_ACCEPT_INVALID_HOSTS;
+
+        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        assert!(options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
+    }
+}
