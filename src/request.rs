@@ -38,6 +38,12 @@ pub trait RequestBuilderExt {
     /// If not set, a connect timeout of 300 seconds will be used.
     fn connect_timeout(&mut self, timeout: Duration) -> &mut Self;
 
+    /// Configure how the use of HTTP versions should be negotiated with the
+    /// server.
+    ///
+    /// The default is [`HttpVersionNegotiation::latest_compatible`].
+    fn version_negotiation(&mut self, negotiation: VersionNegotiation) -> &mut Self;
+
     /// Set a policy for automatically following server redirects.
     ///
     /// The default is to not follow redirects.
@@ -80,13 +86,6 @@ pub trait RequestBuilderExt {
     /// This setting will do nothing unless you also set one or more
     /// authentication methods using [`RequestBuilderExt::authentication`].
     fn credentials(&mut self, credentials: Credentials) -> &mut Self;
-
-    /// Set a preferred HTTP version the client should attempt to use to
-    /// communicate to the server with.
-    ///
-    /// This is treated as a suggestion. A different version may be used if the
-    /// server does not support it or negotiates a different version.
-    fn preferred_http_version(&mut self, version: http::Version) -> &mut Self;
 
     /// Enable TCP keepalive with a given probe interval.
     fn tcp_keepalive(&mut self, interval: Duration) -> &mut Self;
@@ -231,6 +230,10 @@ impl RequestBuilderExt for http::request::Builder {
         self.extension(ConnectTimeout(timeout))
     }
 
+    fn version_negotiation(&mut self, negotiation: VersionNegotiation) -> &mut Self {
+        self.extension(negotiation)
+    }
+
     fn redirect_policy(&mut self, policy: RedirectPolicy) -> &mut Self {
         self.extension(policy)
     }
@@ -245,10 +248,6 @@ impl RequestBuilderExt for http::request::Builder {
 
     fn credentials(&mut self, credentials: Credentials) -> &mut Self {
         self.extension(credentials)
-    }
-
-    fn preferred_http_version(&mut self, version: http::Version) -> &mut Self {
-        self.extension(PreferredHttpVersion(version))
     }
 
     fn tcp_keepalive(&mut self, interval: Duration) -> &mut Self {

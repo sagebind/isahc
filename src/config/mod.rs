@@ -48,6 +48,63 @@ impl SetOpt for http::HeaderMap {
     }
 }
 
+/// A strategy for selecting what HTTP versions should be used when
+/// communicating with a server.
+#[derive(Clone, Debug)]
+pub struct VersionNegotiation(curl::easy::HttpVersion);
+
+impl Default for VersionNegotiation {
+    fn default() -> Self {
+        Self::latest_compatible()
+    }
+}
+
+impl VersionNegotiation {
+    /// Always prefer the latest supported version with a preference for old
+    /// versions if necessary in order to connect. This is the default.
+    ///
+    /// Typically negotiation will begin with an HTTP/1.1 request, upgrading to
+    /// HTTP/2 if possible, then to HTTP/3 if possible, etc.
+    pub const fn latest_compatible() -> Self {
+        // In curl land, this basically the most lenient option. Alt-Svc is used
+        // to upgrade to newer versions, and old versions are used if the server
+        // doesn't respond to the HTTP/1.1 -> HTTP/2 upgrade.
+        VersionNegotiation(curl::easy::HttpVersion::V2)
+    }
+
+    /// Connect via HTTP/1.0 and do not attempt to use a higher version.
+    pub const fn http10() -> Self {
+        VersionNegotiation(curl::easy::HttpVersion::V10)
+    }
+
+    /// Connect via HTTP/1.1 and do not attempt to use a higher version.
+    pub const fn http11() -> Self {
+        VersionNegotiation(curl::easy::HttpVersion::V11)
+    }
+
+    /// Connect via HTTP/2. Failure to connect will not fall back to old
+    /// versions, unless HTTP/1.1 is negotiated via TLS ALPN before the session
+    /// begins.
+    ///
+    /// This strategy is often referred to as [HTTP/2 with Prior
+    /// Knowledge](https://http2.github.io/http2-spec/#known-http).
+    pub const fn http2() -> Self {
+        VersionNegotiation(curl::easy::HttpVersion::V2PriorKnowledge)
+    }
+
+    // /// Connect via HTTP/3. Failure to connect will not fall back to old
+    // /// versions.
+    // pub const fn http3() -> Self {
+    //     HttpVersionNegotiation(url::easy::HttpVersion::V3)
+    // }
+}
+
+impl SetOpt for VersionNegotiation {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.http_version(self.0)
+    }
+}
+
 /// Describes a policy for handling server redirects.
 ///
 /// The default is to not follow redirects.
@@ -114,20 +171,6 @@ impl SetOpt for TcpKeepAlive {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.tcp_keepalive(true)?;
         easy.tcp_keepintvl(self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct PreferredHttpVersion(pub(crate) http::Version);
-
-impl SetOpt for PreferredHttpVersion {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.http_version(match self.0 {
-            http::Version::HTTP_10 => curl::easy::HttpVersion::V10,
-            http::Version::HTTP_11 => curl::easy::HttpVersion::V11,
-            http::Version::HTTP_2 => curl::easy::HttpVersion::V2,
-            _ => curl::easy::HttpVersion::Any,
-        })
     }
 }
 
