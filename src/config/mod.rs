@@ -13,12 +13,20 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use curl::easy::{Easy2, SslOpt};
+use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
     net::SocketAddr,
-    path::PathBuf,
     time::Duration,
+};
+
+pub(crate) mod ssl;
+
+pub use ssl::{
+    ClientCertificate,
+    CaCertificate,
+    PrivateKey,
+    SslOption,
 };
 
 /// A helper trait for applying a configuration value to a given curl handle.
@@ -78,155 +86,6 @@ impl SetOpt for RedirectPolicy {
         }
 
         Ok(())
-    }
-}
-
-/// A public key certificate file.
-#[derive(Clone, Debug)]
-pub struct ClientCertificate {
-    /// Name of the cert format.
-    format: &'static str,
-
-    /// Path to the certificate file.
-    path: PathBuf,
-
-    /// Private key corresponding to the SSL/TLS certificate.
-    private_key: Option<PrivateKey>,
-
-    /// Password to decrypt the certificate file.
-    password: Option<String>,
-}
-
-impl ClientCertificate {
-    /// Get a certificate from a PEM-encoded file.
-    pub fn pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
-        Self {
-            format: "PEM",
-            path: path.into(),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Get a certificate from a DER-encoded file.
-    pub fn der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
-        Self {
-            format: "DER",
-            path: path.into(),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Get a certificate from a PKCS#12-encoded file.
-    pub fn p12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "P12",
-            path: path.into(),
-            private_key: None,
-            password: password.into(),
-        }
-    }
-}
-
-impl SetOpt for ClientCertificate {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_cert_type(self.format)?;
-        easy.ssl_cert(&self.path)?;
-
-        if let Some(key) = self.private_key.as_ref() {
-            key.set_opt(easy)?;
-        }
-
-        if let Some(password) = self.password.as_ref() {
-            easy.key_password(password)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// A private key file.
-#[derive(Clone, Debug)]
-pub struct PrivateKey {
-    /// Key format name.
-    format: &'static str,
-
-    /// Path to the key file.
-    path: PathBuf,
-
-    /// Password to decrypt the key file.
-    password: Option<String>,
-}
-
-impl PrivateKey {
-    /// Get a PEM-encoded private key file.
-    pub fn pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "PEM",
-            path: path.into(),
-            password: password.into(),
-        }
-    }
-
-    /// Get a DER-encoded private key file.
-    pub fn der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "DER",
-            path: path.into(),
-            password: password.into(),
-        }
-    }
-}
-
-impl SetOpt for PrivateKey {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_key(&self.path)?;
-        easy.ssl_key_type(self.format)?;
-
-        if let Some(password) = self.password.as_ref() {
-            easy.key_password(password)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// A public CA certificate bundle file.
-#[derive(Clone, Debug)]
-pub struct CaCertificate {
-    /// Path to the certificate bundle file. Currently only file paths are
-    /// supported.
-    path: PathBuf,
-}
-
-impl CaCertificate {
-    /// Get a CA certificate from a path to a certificate bundle file.
-    pub fn file(ca_bundle_path: impl Into<PathBuf>) -> Self {
-        Self {
-            path: ca_bundle_path.into(),
-        }
-    }
-}
-
-impl SetOpt for CaCertificate {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.cainfo(&self.path)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct SslNoRevoke(bool);
-
-impl From<bool> for SslNoRevoke {
-    fn from(value: bool) -> Self {
-        SslNoRevoke(value)
-    }
-}
-
-impl SetOpt for SslNoRevoke {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_options(SslOpt::new().no_revoke(self.0))
     }
 }
 
@@ -422,31 +281,6 @@ impl FromIterator<String> for ProxyBlacklist {
 impl SetOpt for ProxyBlacklist {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.noproxy(&self.skip)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SslCiphers(pub(crate) Vec<String>);
-
-impl FromIterator<String> for SslCiphers {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
-        SslCiphers(Vec::from_iter(iter))
-    }
-}
-
-impl SetOpt for SslCiphers {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_cipher_list(&self.0.join(":"))
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct AllowUnsafeSsl(pub(crate) bool);
-
-impl SetOpt for AllowUnsafeSsl {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_verify_peer(!self.0)?;
-        easy.ssl_verify_host(!self.0)
     }
 }
 
