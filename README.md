@@ -65,7 +65,7 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "0.7"
+isahc = "0.8"
 ```
 
 ### Supported Rust versions
@@ -81,7 +81,7 @@ feature names below to your `Cargo.toml` file to enable them:
 
 ```toml
 [dependencies.isahc]
-version = "0.7"
+version = "0.8"
 features = ["psl"]
 ```
 
