@@ -16,12 +16,13 @@
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
-    net::SocketAddr,
     time::Duration,
 };
 
+pub(crate) mod dns;
 pub(crate) mod ssl;
 
+pub use dns::DnsCache;
 pub use ssl::{
     ClientCertificate,
     CaCertificate,
@@ -207,83 +208,6 @@ pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
 impl SetOpt for MaxDownloadSpeed {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.max_recv_speed(self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct DnsServers(pub(crate) Vec<SocketAddr>);
-
-impl FromIterator<SocketAddr> for DnsServers {
-    fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
-        DnsServers(Vec::from_iter(iter))
-    }
-}
-
-impl SetOpt for DnsServers {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        let dns_string = self.0
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(",");
-
-        // DNS servers should not be hard error.
-        if let Err(e) = easy.dns_servers(&dns_string) {
-            log::warn!("DNS servers could not be configured: {}", e);
-        }
-
-        Ok(())
-    }
-}
-
-/// DNS caching configuration.
-///
-/// The default configuration is for caching to be enabled with a 60 second
-/// entry timeout.
-///
-/// See [`HttpClientBuilder::dns_cache`](crate::HttpClientBuilder::dns_cache)
-/// for configuring a client's DNS cache.
-#[derive(Clone, Debug)]
-pub enum DnsCache {
-    /// Disable DNS caching entirely.
-    Disable,
-
-    /// Enable DNS caching and keep entries in the cache for the given duration.
-    Timeout(Duration),
-
-    /// Enable DNS caching and cache entries forever.
-    Forever,
-}
-
-impl Default for DnsCache {
-    fn default() -> Self {
-        // Match curl's default.
-        Duration::from_secs(60).into()
-    }
-}
-
-impl From<Duration> for DnsCache {
-    fn from(duration: Duration) -> Self {
-        DnsCache::Timeout(duration)
-    }
-}
-
-impl SetOpt for DnsCache {
-    #[allow(unsafe_code)]
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        let value = match self {
-            DnsCache::Disable => 0,
-            DnsCache::Timeout(duration) => duration.as_secs() as i64,
-            DnsCache::Forever => -1,
-        };
-
-        // Use unsafe API, because safe API doesn't let us set to -1.
-        unsafe {
-            match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_DNS_CACHE_TIMEOUT, value) {
-                curl_sys::CURLE_OK => Ok(()),
-                code => Err(curl::Error::new(code)),
-            }
-        }
     }
 }
 

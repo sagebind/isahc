@@ -283,7 +283,7 @@ impl RequestBuilderExt for http::request::Builder {
     }
 
     fn dns_servers(&mut self, servers: impl IntoIterator<Item = SocketAddr>) -> &mut Self {
-        self.extension(DnsServers::from_iter(servers))
+        self.extension(dns::Servers::from_iter(servers))
     }
 
     fn ssl_ciphers(&mut self, servers: impl IntoIterator<Item = String>) -> &mut Self {

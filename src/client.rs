@@ -414,7 +414,7 @@ impl HttpClientBuilder {
     /// is used. This option can only be used if libcurl is compiled with
     /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
     pub fn dns_servers(mut self, servers: impl IntoIterator<Item = SocketAddr>) -> Self {
-        self.defaults.insert(DnsServers::from_iter(servers));
+        self.defaults.insert(dns::Servers::from_iter(servers));
         self
     }
 
@@ -1018,7 +1018,7 @@ impl HttpClient {
                 Proxy<Authentication>,
                 Proxy<Credentials>,
                 DnsCache,
-                DnsServers,
+                dns::Servers,
                 ssl::Ciphers,
                 ClientCertificate,
                 CaCertificate,
