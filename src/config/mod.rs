@@ -52,7 +52,10 @@ impl SetOpt for http::HeaderMap {
 /// A strategy for selecting what HTTP versions should be used when
 /// communicating with a server.
 #[derive(Clone, Debug)]
-pub struct VersionNegotiation(curl::easy::HttpVersion);
+pub struct VersionNegotiation {
+    flag: curl::easy::HttpVersion,
+    strict: bool,
+}
 
 impl Default for VersionNegotiation {
     fn default() -> Self {
@@ -67,42 +70,68 @@ impl VersionNegotiation {
     /// Typically negotiation will begin with an HTTP/1.1 request, upgrading to
     /// HTTP/2 if possible, then to HTTP/3 if possible, etc.
     pub const fn latest_compatible() -> Self {
-        // In curl land, this basically the most lenient option. Alt-Svc is used
-        // to upgrade to newer versions, and old versions are used if the server
-        // doesn't respond to the HTTP/1.1 -> HTTP/2 upgrade.
-        VersionNegotiation(curl::easy::HttpVersion::V2)
+        Self {
+            // In curl land, this basically the most lenient option. Alt-Svc is
+            // used to upgrade to newer versions, and old versions are used if
+            // the server doesn't respond to the HTTP/1.1 -> HTTP/2 upgrade.
+            flag: curl::easy::HttpVersion::V2,
+            strict: false,
+        }
     }
 
     /// Connect via HTTP/1.0 and do not attempt to use a higher version.
     pub const fn http10() -> Self {
-        VersionNegotiation(curl::easy::HttpVersion::V10)
+        Self {
+            flag: curl::easy::HttpVersion::V10,
+            strict: true,
+        }
     }
 
     /// Connect via HTTP/1.1 and do not attempt to use a higher version.
     pub const fn http11() -> Self {
-        VersionNegotiation(curl::easy::HttpVersion::V11)
+        Self {
+            flag: curl::easy::HttpVersion::V11,
+            strict: true,
+        }
     }
 
     /// Connect via HTTP/2. Failure to connect will not fall back to old
     /// versions, unless HTTP/1.1 is negotiated via TLS ALPN before the session
     /// begins.
     ///
+    /// If HTTP/2 support is not compiled in, then using this strategy will
+    /// always result in an error.
+    ///
     /// This strategy is often referred to as [HTTP/2 with Prior
     /// Knowledge](https://http2.github.io/http2-spec/#known-http).
     pub const fn http2() -> Self {
-        VersionNegotiation(curl::easy::HttpVersion::V2PriorKnowledge)
+        Self {
+            flag: curl::easy::HttpVersion::V2PriorKnowledge,
+            strict: true,
+        }
     }
 
     // /// Connect via HTTP/3. Failure to connect will not fall back to old
     // /// versions.
     // pub const fn http3() -> Self {
-    //     HttpVersionNegotiation(url::easy::HttpVersion::V3)
+    //     Self {
+    //         flag: curl::easy::HttpVersion::V3,
+    //         strict: true,
+    //     }
     // }
 }
 
 impl SetOpt for VersionNegotiation {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.http_version(self.0)
+        if let Err(e) = easy.http_version(self.flag) {
+            if self.strict {
+                return Err(e);
+            } else {
+                log::debug!("failed to set HTTP version: {}", e);
+            }
+        }
+
+        Ok(())
     }
 }
 
