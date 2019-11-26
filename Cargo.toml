@@ -12,7 +12,7 @@ readme = "README.md"
 edition = "2018"
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["json"]
 
 [badges.maintenance]
 status = "actively-developed"
