@@ -50,7 +50,7 @@ version = "0.3"
 features = ["io"]
 
 [dependencies.parking_lot]
-version = "0.9"
+version = "0.10"
 optional = true
 
 [dependencies.publicsuffix]
