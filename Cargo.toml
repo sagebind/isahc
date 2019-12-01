@@ -47,6 +47,7 @@ optional = true
 
 [dependencies.futures-util]
 version = "0.3"
+default-features = false
 features = ["io"]
 
 [dependencies.parking_lot]
