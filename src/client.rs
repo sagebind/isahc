@@ -17,15 +17,13 @@ use futures_util::{
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::{
+    convert::TryFrom,
     fmt,
     future::Future,
     io,
-    iter::FromIterator,
-    net::SocketAddr,
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
-    time::Duration,
 };
 
 lazy_static! {
@@ -62,6 +60,13 @@ pub struct HttpClientBuilder {
 impl Default for HttpClientBuilder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Configurable for HttpClientBuilder {
+    fn configure<T: SetOpt>(mut self, option: T) -> Self {
+        self.defaults.insert(option);
+        self
     }
 }
 
@@ -168,209 +173,6 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Set a timeout for the maximum time allowed for a request-response cycle.
-    ///
-    /// If not set, no timeout will be enforced.
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.defaults.insert(Timeout(timeout));
-        self
-    }
-
-    /// Set a timeout for the initial connection phase.
-    ///
-    /// If not set, a connect timeout of 300 seconds will be used.
-    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
-        self.defaults.insert(ConnectTimeout(timeout));
-        self
-    }
-
-    /// Configure how the use of HTTP versions should be negotiated with the
-    /// server.
-    ///
-    /// The default is [`HttpVersionNegotiation::latest_compatible`].
-    pub fn version_negotiation(mut self, negotiation: VersionNegotiation) -> Self {
-        self.defaults.insert(negotiation);
-        self
-    }
-
-    /// Set a policy for automatically following server redirects.
-    ///
-    /// The default is to not follow redirects.
-    pub fn redirect_policy(mut self, policy: RedirectPolicy) -> Self {
-        self.defaults.insert(policy);
-        self
-    }
-
-    /// Update the `Referer` header automatically when following redirects.
-    pub fn auto_referer(mut self) -> Self {
-        self.defaults.insert(AutoReferer);
-        self
-    }
-
-    /// Set one or more default HTTP authentication methods to attempt to use
-    /// when authenticating with the server.
-    ///
-    /// Depending on the authentication schemes enabled, you will also need to
-    /// set credentials to use for authentication using
-    /// [`HttpClientBuilder::credentials`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .authentication(Authentication::basic() | Authentication::digest())
-    ///     .credentials(Credentials::new("clark", "qwerty"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn authentication(mut self, authentication: Authentication) -> Self {
-        self.defaults.insert(authentication);
-        self
-    }
-
-    /// Set the default credentials to use for HTTP authentication on all
-    /// requests.
-    ///
-    /// This setting will do nothing unless you also set one or more
-    /// authentication methods using [`HttpClientBuilder::authentication`].
-    pub fn credentials(mut self, credentials: Credentials) -> Self {
-        self.defaults.insert(credentials);
-        self
-    }
-
-    /// Enable TCP keepalive with a given probe interval.
-    pub fn tcp_keepalive(mut self, interval: Duration) -> Self {
-        self.defaults.insert(TcpKeepAlive(interval));
-        self
-    }
-
-    /// Enables the `TCP_NODELAY` option on connect.
-    pub fn tcp_nodelay(mut self) -> Self {
-        self.defaults.insert(TcpNoDelay);
-        self
-    }
-
-    /// Set a proxy to use for requests.
-    ///
-    /// The proxy protocol is specified by the URI scheme.
-    ///
-    /// - **`http`**: Proxy. Default when no scheme is specified.
-    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and
-    ///   NSS)
-    /// - **`socks4`**: SOCKS4 Proxy.
-    /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
-    /// - **`socks5`**: SOCKS5 Proxy.
-    /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
-    ///
-    /// By default the system proxy will be used, for example if one specified
-    /// in either the `http_proxy` or `https_proxy` environment variables on
-    /// *nix platforms.
-    ///
-    /// Setting to `None` explicitly disable the use of a proxy.
-    ///
-    /// # Examples
-    ///
-    /// Using `http://proxy:80` as a proxy:
-    ///
-    /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .proxy(Some("http://proxy:80".parse()?))
-    ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
-    /// ```
-    ///
-    /// Explicitly disable the use of a proxy:
-    ///
-    /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .proxy(None)
-    ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
-    /// ```
-    pub fn proxy(mut self, proxy: impl Into<Option<http::Uri>>) -> Self {
-        self.defaults.insert(Proxy(proxy.into()));
-        self
-    }
-
-    /// Disable proxy usage to use for the provided list of hosts.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     // Disable proxy for specified hosts.
-    ///     .proxy_blacklist(vec!["a.com".to_string(), "b.org".to_string()])
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn proxy_blacklist(mut self, hosts: impl IntoIterator<Item = String>) -> Self {
-        self.defaults.insert(ProxyBlacklist::from_iter(hosts));
-        self
-    }
-
-    /// Set one or more default HTTP authentication methods to attempt to use
-    /// when authenticating with a proxy.
-    ///
-    /// Depending on the authentication schemes enabled, you will also need to
-    /// set credentials to use for authentication using
-    /// [`HttpClientBuilder::proxy_credentials`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
-    ///     .proxy_authentication(Authentication::basic())
-    ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
-    ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
-    /// ```
-    pub fn proxy_authentication(mut self, authentication: Authentication) -> Self {
-        self.defaults.insert(Proxy(authentication));
-        self
-    }
-
-    /// Set the default credentials to use for proxy authentication on all
-    /// requests.
-    ///
-    /// This setting will do nothing unless you also set one or more
-    /// proxy authentication methods using
-    /// [`HttpClientBuilder::proxy_authentication`].
-    pub fn proxy_credentials(mut self, credentials: Credentials) -> Self {
-        self.defaults.insert(Proxy(credentials));
-        self
-    }
-
-    /// Set a maximum upload speed for the request body, in bytes per second.
-    ///
-    /// The default is unlimited.
-    pub fn max_upload_speed(mut self, max: u64) -> Self {
-        self.defaults.insert(MaxUploadSpeed(max));
-        self
-    }
-
-    /// Set a maximum download speed for the response body, in bytes per second.
-    ///
-    /// The default is unlimited.
-    pub fn max_download_speed(mut self, max: u64) -> Self {
-        self.defaults.insert(MaxDownloadSpeed(max));
-        self
-    }
-
     /// Configure DNS caching.
     ///
     /// By default, DNS entries are cached by the client executing the request
@@ -398,141 +200,13 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn dns_cache(mut self, cache: impl Into<DnsCache>) -> Self {
+    pub fn dns_cache(self, cache: impl Into<DnsCache>) -> Self {
         // This option is per-request, but we only expose it on the client.
         // Since the DNS cache is shared between all requests, exposing this
         // option per-request would actually cause the timeout to alternate
         // values for every request with a different timeout, resulting in some
         // confusing (but valid) behavior.
-        self.defaults.insert(cache.into());
-        self
-    }
-
-    /// Set a list of specific DNS servers to be used for DNS resolution.
-    ///
-    /// By default this option is not set and the system's built-in DNS resolver
-    /// is used. This option can only be used if libcurl is compiled with
-    /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
-    pub fn dns_servers(mut self, servers: impl IntoIterator<Item = SocketAddr>) -> Self {
-        self.defaults.insert(dns::Servers::from_iter(servers));
-        self
-    }
-
-    /// Set a custom SSL/TLS client certificate to use for all client
-    /// connections.
-    ///
-    /// If a format is not supported by the underlying SSL/TLS engine, an error
-    /// will be returned when attempting to send a request using the offending
-    /// certificate.
-    ///
-    /// The default value is none.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn ssl_client_certificate(mut self, certificate: ClientCertificate) -> Self {
-        self.defaults.insert(certificate);
-        self
-    }
-
-    /// Set a custom SSL/TLS CA certificate bundle to use for all client
-    /// connections.
-    ///
-    /// The default value is none.
-    ///
-    /// # Notes
-    ///
-    /// On Windows it may be necessary to combine this with
-    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
-    /// the contents of your CA bundle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn ssl_ca_certificate(mut self, certificate: CaCertificate) -> Self {
-        self.defaults.insert(certificate);
-        self
-    }
-
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    pub fn ssl_ciphers(mut self, servers: impl IntoIterator<Item = String>) -> Self {
-        self.defaults.insert(ssl::Ciphers::from_iter(servers));
-        self
-    }
-
-    /// Set various options that control SSL/TLS behavior.
-    ///
-    /// Most options are for disabling security checks that introduce security
-    /// risks, but may be required as a last resort. Note that the most secure
-    /// options are already the default and do not need to be specified.
-    ///
-    /// The default value is [`SslOption::NONE`].
-    ///
-    /// # Warning
-    ///
-    /// You should think very carefully before using this method. Using *any*
-    /// options that alter how certificates are validated can introduce
-    /// significant security vulnerabilities.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
-    /// let client = HttpClient::builder()
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn ssl_options(mut self, options: SslOption) -> Self {
-        self.defaults.insert(options);
-        self
-    }
-
-    /// Enable comprehensive per-request metrics collection.
-    ///
-    /// When enabled, detailed timing metrics will be tracked while a request is
-    /// in progress, such as bytes sent and received, estimated size, DNS lookup
-    /// time, etc. For a complete list of the available metrics that can be
-    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
-    ///
-    /// When enabled, to access a view of the current metrics values you can use
-    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
-    ///
-    /// While effort is taken to optimize hot code in metrics collection, it is
-    /// likely that enabling it will have a small effect on overall throughput.
-    /// Disabling metrics may be necessary for absolute peak performance.
-    ///
-    /// By default metrics are disabled.
-    pub fn metrics(mut self, enable: bool) -> Self {
-        self.defaults.insert(EnableMetrics(enable));
-        self
+        self.configure(cache.into())
     }
 
     /// Build an [`HttpClient`] using the configured options.
@@ -673,7 +347,8 @@ impl HttpClient {
     #[inline]
     pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.get_async(uri).join()
     }
@@ -684,7 +359,8 @@ impl HttpClient {
     /// execute the request synchronously, see [`HttpClient::get`].
     pub fn get_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.send_builder_async(http::Request::get(uri), Body::empty())
     }
@@ -706,7 +382,8 @@ impl HttpClient {
     #[inline]
     pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.head_async(uri).join()
     }
@@ -717,7 +394,8 @@ impl HttpClient {
     /// execute the request synchronously, see [`HttpClient::head`].
     pub fn head_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.send_builder_async(http::Request::head(uri), Body::empty())
     }
@@ -742,7 +420,8 @@ impl HttpClient {
     #[inline]
     pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.post_async(uri, body).join()
     }
@@ -754,9 +433,10 @@ impl HttpClient {
     /// execute the request synchronously, see [`HttpClient::post`].
     pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::post(uri), body)
+        self.send_builder_async(http::Request::post(uri), body.into())
     }
 
     /// Send a PUT request to the given URI with a given request body.
@@ -780,7 +460,8 @@ impl HttpClient {
     #[inline]
     pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.put_async(uri, body).join()
     }
@@ -792,9 +473,10 @@ impl HttpClient {
     /// execute the request synchronously, see [`HttpClient::put`].
     pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::put(uri), body)
+        self.send_builder_async(http::Request::put(uri), body.into())
     }
 
     /// Send a DELETE request to the given URI.
@@ -804,7 +486,8 @@ impl HttpClient {
     #[inline]
     pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.delete_async(uri).join()
     }
@@ -815,7 +498,8 @@ impl HttpClient {
     /// execute the request synchronously, see [`HttpClient::delete`].
     pub fn delete_async<U>(&self, uri: U) -> ResponseFuture<'_>
     where
-        http::Uri: http::HttpTryFrom<U>,
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         self.send_builder_async(http::Request::delete(uri), Body::empty())
     }
@@ -904,11 +588,9 @@ impl HttpClient {
 
     fn send_builder_async(
         &self,
-        mut builder: http::request::Builder,
-        body: impl Into<Body>,
+        builder: http::request::Builder,
+        body: Body,
     ) -> ResponseFuture<'_> {
-        let body = body.into();
-
         ResponseFuture::new(async move {
             self.send_async_inner(builder.body(body)?).await
         })
@@ -920,7 +602,6 @@ impl HttpClient {
         request
             .headers_mut()
             .entry(http::header::USER_AGENT)
-            .unwrap()
             .or_insert(USER_AGENT.parse().unwrap());
 
         // Apply any request middleware, starting with the outermost one.

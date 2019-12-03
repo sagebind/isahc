@@ -126,7 +126,7 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let mut builder = receiver.await
+            let builder = receiver.await
                 .map_err(|_| Error::Aborted)??;
 
             let reader = ResponseBodyReader {
@@ -190,27 +190,25 @@ impl RequestHandler {
             let mut builder = http::Response::builder();
 
             if let Some(status) = self.response_status_code.take() {
-                builder.status(status);
+                builder = builder.status(status);
             }
 
             if let Some(version) = self.response_version.take() {
-                builder.version(version);
+                builder = builder.version(version);
             }
 
-            for (name, values) in self.response_headers.drain() {
-                for value in values {
-                    builder.header(&name, value);
-                }
+            if let Some(headers) = builder.headers_mut() {
+                headers.extend(self.response_headers.drain());
             }
 
             if let Some(uri) = self.get_effective_uri() {
-                builder.extension(EffectiveUri(uri));
+                builder = builder.extension(EffectiveUri(uri));
             }
 
             // Include metrics in response, but only if it was created. If
             // metrics are disabled then it won't have been created.
             if let Some(metrics) = self.metrics.clone() {
-                builder.extension(metrics);
+                builder = builder.extension(metrics);
             }
 
             self.complete(Ok(builder));

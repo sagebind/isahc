@@ -153,7 +153,7 @@ impl Cookie {
 
     // http://tools.ietf.org/html/rfc6265#section-5.4
     fn matches(&self, uri: &Uri) -> bool {
-        if self.secure && uri.scheme_part() != Some(&::http::uri::Scheme::HTTPS) {
+        if self.secure && uri.scheme() != Some(&::http::uri::Scheme::HTTPS) {
             return false;
         }
 

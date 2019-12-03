@@ -147,6 +147,7 @@
 
 use http::{Request, Response};
 use lazy_static::lazy_static;
+use std::convert::TryFrom;
 
 #[cfg(feature = "cookies")]
 pub mod cookies;
@@ -177,7 +178,7 @@ pub use crate::{
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
     metrics::Metrics,
-    request::{RequestBuilderExt, RequestExt},
+    request::RequestExt,
     response::ResponseExt,
 };
 
@@ -186,7 +187,13 @@ pub use http;
 
 /// A "prelude" for importing common Isahc types.
 pub mod prelude {
-    pub use crate::{Body, HttpClient, RequestBuilderExt, RequestExt, ResponseExt};
+    pub use crate::{
+        config::Configurable,
+        Body,
+        HttpClient,
+        RequestExt,
+        ResponseExt,
+    };
 
     pub use http::{Request, Response};
 }
@@ -197,7 +204,8 @@ pub mod prelude {
 /// [`HttpClient::get`] for details.
 pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().get(uri)
 }
@@ -208,7 +216,8 @@ where
 /// [`HttpClient::get_async`] for details.
 pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().get_async(uri)
 }
@@ -219,7 +228,8 @@ where
 /// [`HttpClient::head`] for details.
 pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().head(uri)
 }
@@ -230,7 +240,8 @@ where
 /// [`HttpClient::head_async`] for details.
 pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().head_async(uri)
 }
@@ -241,7 +252,8 @@ where
 /// [`HttpClient::post`] for details.
 pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().post(uri, body)
 }
@@ -253,7 +265,8 @@ where
 /// [`HttpClient::post_async`] for details.
 pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().post_async(uri, body)
 }
@@ -264,7 +277,8 @@ where
 /// [`HttpClient::put`] for details.
 pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().put(uri, body)
 }
@@ -276,7 +290,8 @@ where
 /// [`HttpClient::put_async`] for details.
 pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().put_async(uri, body)
 }
@@ -287,7 +302,8 @@ where
 /// [`HttpClient::delete`] for details.
 pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
 where
-    http::Uri: http::HttpTryFrom<U>,
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().delete(uri)
 }
@@ -297,8 +313,9 @@ where
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::delete_async`] for details.
 pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
-where
-    http::Uri: http::HttpTryFrom<U>,
+    where
+        http::Uri: TryFrom<U>,
+        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().delete_async(uri)
 }

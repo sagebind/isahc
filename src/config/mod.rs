@@ -13,9 +13,11 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
+use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
+    net::SocketAddr,
     time::Duration,
 };
 
@@ -30,11 +32,398 @@ pub use ssl::{
     SslOption,
 };
 
-/// A helper trait for applying a configuration value to a given curl handle.
-pub(crate) trait SetOpt {
-    /// Apply this configuration option to the given curl handle.
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
+/// Provides additional methods when building a request for configuring various
+/// execution-related options on how the request should be sent.
+pub trait Configurable: Sized {
+    /// Set a maximum amount of time that a request is allowed to take before
+    /// being aborted.
+    ///
+    /// If not set, no timeout will be enforced.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    /// use std::time::Duration;
+    ///
+    /// // This page is too slow and won't respond in time.
+    /// let response = Request::get("https://httpbin.org/delay/10")
+    ///     .timeout(Duration::from_secs(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err("page should time out");
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn timeout(self, timeout: Duration) -> Self {
+        self.configure(Timeout(timeout))
+    }
+
+    /// Set a timeout for the initial connection phase.
+    ///
+    /// If not set, a connect timeout of 300 seconds will be used.
+    fn connect_timeout(self, timeout: Duration) -> Self {
+        self.configure(ConnectTimeout(timeout))
+    }
+
+    /// Configure how the use of HTTP versions should be negotiated with the
+    /// server.
+    ///
+    /// The default is [`HttpVersionNegotiation::latest_compatible`].
+    fn version_negotiation(self, negotiation: VersionNegotiation) -> Self {
+        self.configure(negotiation)
+    }
+
+    /// Set a policy for automatically following server redirects.
+    ///
+    /// The default is to not follow redirects.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::config::RedirectPolicy;
+    /// use isahc::prelude::*;
+    ///
+    /// // This URL redirects us to where we want to go.
+    /// let response = Request::get("https://httpbin.org/redirect/1")
+    ///     .redirect_policy(RedirectPolicy::Follow)
+    ///     .body(())?
+    ///     .send()?;
+    ///
+    /// // This URL redirects too much!
+    /// let error = Request::get("https://httpbin.org/redirect/10")
+    ///     .redirect_policy(RedirectPolicy::Limit(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err("too many redirects");
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn redirect_policy(self, policy: RedirectPolicy) -> Self {
+        self.configure(policy)
+    }
+
+    /// Update the `Referer` header automatically when following redirects.
+    fn auto_referer(self) -> Self {
+        self.configure(AutoReferer)
+    }
+
+    /// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`Configurable::credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .authentication(Authentication::basic() | Authentication::digest())
+    ///     .credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn authentication(self, authentication: Authentication) -> Self {
+        self.configure(authentication)
+    }
+
+    /// Set the credentials to use for HTTP authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`Configurable::authentication`].
+    fn credentials(self, credentials: Credentials) -> Self {
+        self.configure(credentials)
+    }
+
+    /// Enable TCP keepalive with a given probe interval.
+    fn tcp_keepalive(self, interval: Duration) -> Self {
+        self.configure(TcpKeepAlive(interval))
+    }
+
+    /// Enables the `TCP_NODELAY` option on connect.
+    fn tcp_nodelay(self) -> Self {
+        self.configure(TcpNoDelay)
+    }
+
+    /// Set a proxy to use for requests.
+    ///
+    /// The proxy protocol is specified by the URI scheme.
+    ///
+    /// - **`http`**: Proxy. Default when no scheme is specified.
+    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and
+    ///   NSS)
+    /// - **`socks4`**: SOCKS4 Proxy.
+    /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
+    /// - **`socks5`**: SOCKS5 Proxy.
+    /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    ///
+    /// By default no proxy will be used, unless one is specified in either the
+    /// `http_proxy` or `https_proxy` environment variables.
+    ///
+    /// Setting to `None` explicitly disables the use of a proxy.
+    ///
+    /// # Examples
+    ///
+    /// Using `http://proxy:80` as a proxy:
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy(Some("http://proxy:80".parse()?))
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    ///
+    /// Explicitly disable the use of a proxy:
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy(None)
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
+        self.configure(Proxy(proxy.into()))
+    }
+
+    /// Disable proxy usage for the provided list of hosts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     // Disable proxy for specified hosts.
+    ///     .proxy_blacklist(vec!["a.com".to_string(), "b.org".to_string()])
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn proxy_blacklist(self, hosts: impl IntoIterator<Item = String>) -> Self {
+        self.configure(ProxyBlacklist::from_iter(hosts))
+    }
+
+    /// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`Configurable::proxy_credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::auth::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
+    ///     .proxy_authentication(Authentication::basic())
+    ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
+    ///     .build()?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    fn proxy_authentication(self, authentication: Authentication) -> Self {
+        self.configure(Proxy(authentication))
+    }
+
+    /// Set the credentials to use for proxy authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more proxy
+    /// authentication methods using
+    /// [`Configurable::proxy_authentication`].
+    fn proxy_credentials(self, credentials: Credentials) -> Self {
+        self.configure(Proxy(credentials))
+    }
+
+    /// Set a maximum upload speed for the request body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    fn max_upload_speed(self, max: u64) -> Self {
+        self.configure(MaxUploadSpeed(max))
+    }
+
+    /// Set a maximum download speed for the response body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    fn max_download_speed(self, max: u64) -> Self {
+        self.configure(MaxDownloadSpeed(max))
+    }
+
+    /// Set a list of specific DNS servers to be used for DNS resolution.
+    ///
+    /// By default this option is not set and the system's built-in DNS resolver
+    /// is used. This option can only be used if libcurl is compiled with
+    /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
+    fn dns_servers(self, servers: impl IntoIterator<Item = SocketAddr>) -> Self {
+        self.configure(dns::Servers::from_iter(servers))
+    }
+
+    /// Set a custom SSL/TLS client certificate to use for client connections.
+    ///
+    /// If a format is not supported by the underlying SSL/TLS engine, an error
+    /// will be returned when attempting to send a request using the offending
+    /// certificate.
+    ///
+    /// The default value is none.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::config::{ClientCertificate, PrivateKey};
+    /// use isahc::prelude::*;
+    ///
+    /// let response = Request::get("localhost:3999")
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
+    ///     ))
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
+    ///     ))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
+        self.configure(certificate)
+    }
+
+    /// Set a custom SSL/TLS CA certificate bundle to use for client
+    /// connections.
+    ///
+    /// The default value is none.
+    ///
+    /// # Notes
+    ///
+    /// On Windows it may be necessary to combine this with
+    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
+    /// the contents of your CA bundle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
+        self.configure(certificate)
+    }
+
+    /// Set a list of ciphers to use for SSL/TLS connections.
+    ///
+    /// The list of valid cipher names is dependent on the underlying SSL/TLS
+    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
+    ///
+    /// The default is unset and will result in the system defaults being used.
+    fn ssl_ciphers(self, servers: impl IntoIterator<Item = String>) -> Self {
+        self.configure(ssl::Ciphers::from_iter(servers))
+    }
+
+    /// Set various options for this request that control SSL/TLS behavior.
+    ///
+    /// Most options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are already the default and do not need to be specified.
+    ///
+    /// The default value is [`SslOption::NONE`].
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let response = Request::get("https://badssl.com")
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// ```
+    /// # use isahc::config::*;
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn ssl_options(self, options: SslOption) -> Self {
+        self.configure(options)
+    }
+
+    /// Enable or disable comprehensive per-request metrics collection.
+    ///
+    /// When enabled, detailed timing metrics will be tracked while a request is
+    /// in progress, such as bytes sent and received, estimated size, DNS lookup
+    /// time, etc. For a complete list of the available metrics that can be
+    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
+    ///
+    /// When enabled, to access a view of the current metrics values you can use
+    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
+    ///
+    /// While effort is taken to optimize hot code in metrics collection, it is
+    /// likely that enabling it will have a small effect on overall throughput.
+    /// Disabling metrics may be necessary for absolute peak performance.
+    ///
+    /// By default metrics are disabled.
+    fn metrics(self, enable: bool) -> Self {
+        self.configure(EnableMetrics(enable))
+    }
+
+    #[doc(hidden)]
+    fn configure<T: SetOpt>(self, option: T) -> Self;
 }
+
+impl Configurable for http::request::Builder {
+    fn configure<T: SetOpt>(self, option: T) -> Self {
+        self.extension(option)
+    }
+}
+
+mod private {
+    use curl::easy::Easy2;
+    use std::any::Any;
+
+    /// A helper trait for applying a configuration value to a given curl handle.
+    pub trait SetOpt: Any + Send + Sync + 'static {
+        /// Apply this configuration option to the given curl handle.
+        fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
+    }
+}
+
+pub(crate) use private::SetOpt;
 
 impl SetOpt for http::HeaderMap {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
