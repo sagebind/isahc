@@ -1,3 +1,4 @@
+#![doc(html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png", html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png")]
 //! The practical HTTP client that is fun to use.
 //!
 //! Here are some of Isahc's key features:
