@@ -79,7 +79,7 @@ impl ListCache {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
-            request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
+            request = request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
         }
 
         let mut response = request.body(())?.send()?;
