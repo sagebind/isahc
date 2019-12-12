@@ -14,7 +14,7 @@ jobs:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v1
         with:
           submodules: true
 

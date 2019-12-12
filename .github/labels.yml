@@ -1,0 +1,61 @@
+- name: bug
+  description: ""
+  color: e57373
+- name: build
+  description: ""
+  color: dce775
+- name: dependencies
+  description: Pull requests that update a dependency file
+  color: dce775
+- name: documentation
+  description: ""
+  color: dce775
+- name: enhancement
+  description: ""
+  color: 64b5f6
+- name: feature
+  description: A new feature!
+  color: 81c784
+- name: good first issue
+  description: ""
+  color: ffd54f
+- name: help wanted
+  description: ""
+  color: ffd54f
+- name: performance
+  description: ""
+  color: 64b5f6
+- name: question
+  description: ""
+  color: ba68c8
+- name: security
+  description: ""
+  color: e57373
+- name: upstream
+  description: ""
+  color: f7ae7e
+
+# meta
+- name: blocked
+  description: ""
+  color: e0e0e0
+- name: duplicate
+  description: ""
+  color: e0e0e0
+- name: invalid
+  description: ""
+  color: e0e0e0
+- name: wontfix
+  description: ""
+  color: e0e0e0
+
+# platforms
+- name: linux
+  description: Linux-specific issue
+  color: a1887f
+- name: macos
+  description: macOS-specific issue
+  color: a1887f
+- name: windows
+  description: Windows-specific issue
+  color: a1887f
