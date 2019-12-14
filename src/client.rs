@@ -37,6 +37,11 @@ lazy_static! {
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
 ///
+/// Any option that can be configured per-request can also be configured on a
+/// client builder as a default setting. Request configuration is provided by
+/// the [`Configurable`] trait, which is also available in the
+/// [`prelude`](crate::prelude) module.
+///
 /// # Examples
 ///
 /// ```
@@ -60,13 +65,6 @@ pub struct HttpClientBuilder {
 impl Default for HttpClientBuilder {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Configurable for HttpClientBuilder {
-    fn configure<T: SetOpt>(mut self, option: T) -> Self {
-        self.defaults.insert(option);
-        self
     }
 }
 
@@ -218,6 +216,13 @@ impl HttpClientBuilder {
             defaults: self.defaults,
             middleware: self.middleware,
         })
+    }
+}
+
+impl ConfigurableBase for HttpClientBuilder {
+    fn configure(mut self, option: impl Send + Sync + 'static) -> Self {
+        self.defaults.insert(option);
+        self
     }
 }
 
@@ -510,8 +515,8 @@ impl HttpClient {
     /// once.
     ///
     /// This client's configuration can be overridden for this request by
-    /// configuring the request using methods provided by the
-    /// [`RequestBuilderExt`](crate::prelude::RequestBuilderExt) trait.
+    /// configuring the request using methods provided by the [`Configurable`]
+    /// trait.
     ///
     /// Upon success, will return a [`Response`] containing the status code,
     /// response headers, and response body from the server. The [`Response`] is
@@ -688,16 +693,16 @@ impl HttpClient {
                 TcpKeepAlive,
                 TcpNoDelay,
                 RedirectPolicy,
-                AutoReferer,
+                redirect::AutoReferer,
                 Authentication,
                 Credentials,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 VersionNegotiation,
-                Proxy<Option<http::Uri>>,
-                ProxyBlacklist,
-                Proxy<Authentication>,
-                Proxy<Credentials>,
+                proxy::Proxy<Option<http::Uri>>,
+                proxy::Blacklist,
+                proxy::Proxy<Authentication>,
+                proxy::Proxy<Credentials>,
                 DnsCache,
                 dns::Servers,
                 ssl::Ciphers,

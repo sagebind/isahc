@@ -15,26 +15,29 @@
 
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
-use std::{
-    iter::FromIterator,
-    net::SocketAddr,
-    time::Duration,
-};
+use std::{iter::FromIterator, net::SocketAddr, time::Duration};
 
 pub(crate) mod dns;
+pub(crate) mod proxy;
+pub(crate) mod redirect;
 pub(crate) mod ssl;
 
 pub use dns::DnsCache;
-pub use ssl::{
-    ClientCertificate,
-    CaCertificate,
-    PrivateKey,
-    SslOption,
-};
+pub use redirect::RedirectPolicy;
+pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
+
+pub(crate) use self::private::ConfigurableBase;
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
-pub trait Configurable: Sized {
+///
+/// This trait can be used to either configure requests individually by invoking
+/// them on an [`http::request::Builder`], or to configure the default settings
+/// for an [`HttpClient`](crate::HttpClient) by invoking them on an
+/// [`HttpClientBuilder`](crate::HttpClientBuilder).
+///
+/// This trait is sealed and cannot be implemented for types outside of Isahc.
+pub trait Configurable: ConfigurableBase {
     /// Set a maximum amount of time that a request is allowed to take before
     /// being aborted.
     ///
@@ -68,7 +71,7 @@ pub trait Configurable: Sized {
     /// Configure how the use of HTTP versions should be negotiated with the
     /// server.
     ///
-    /// The default is [`HttpVersionNegotiation::latest_compatible`].
+    /// The default is [`VersionNegotiation::latest_compatible`].
     fn version_negotiation(self, negotiation: VersionNegotiation) -> Self {
         self.configure(negotiation)
     }
@@ -103,7 +106,7 @@ pub trait Configurable: Sized {
 
     /// Update the `Referer` header automatically when following redirects.
     fn auto_referer(self) -> Self {
-        self.configure(AutoReferer)
+        self.configure(redirect::AutoReferer)
     }
 
     /// Set one or more default HTTP authentication methods to attempt to use
@@ -190,7 +193,7 @@ pub trait Configurable: Sized {
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
     fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
-        self.configure(Proxy(proxy.into()))
+        self.configure(proxy::Proxy(proxy.into()))
     }
 
     /// Disable proxy usage for the provided list of hosts.
@@ -207,7 +210,7 @@ pub trait Configurable: Sized {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn proxy_blacklist(self, hosts: impl IntoIterator<Item = String>) -> Self {
-        self.configure(ProxyBlacklist::from_iter(hosts))
+        self.configure(proxy::Blacklist::from_iter(hosts))
     }
 
     /// Set one or more HTTP authentication methods to attempt to use when
@@ -231,7 +234,7 @@ pub trait Configurable: Sized {
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
     fn proxy_authentication(self, authentication: Authentication) -> Self {
-        self.configure(Proxy(authentication))
+        self.configure(proxy::Proxy(authentication))
     }
 
     /// Set the credentials to use for proxy authentication.
@@ -240,7 +243,7 @@ pub trait Configurable: Sized {
     /// authentication methods using
     /// [`Configurable::proxy_authentication`].
     fn proxy_credentials(self, credentials: Credentials) -> Self {
-        self.configure(Proxy(credentials))
+        self.configure(proxy::Proxy(credentials))
     }
 
     /// Set a maximum upload speed for the request body, in bytes per second.
@@ -401,29 +404,15 @@ pub trait Configurable: Sized {
     fn metrics(self, enable: bool) -> Self {
         self.configure(EnableMetrics(enable))
     }
-
-    #[doc(hidden)]
-    fn configure<T: SetOpt>(self, option: T) -> Self;
 }
 
-impl Configurable for http::request::Builder {
-    fn configure<T: SetOpt>(self, option: T) -> Self {
-        self.extension(option)
-    }
+impl<C: ConfigurableBase> Configurable for C {}
+
+/// A helper trait for applying a configuration value to a given curl handle.
+pub(crate) trait SetOpt: Send + Sync + 'static {
+    /// Apply this configuration property to the given curl handle.
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
 }
-
-mod private {
-    use curl::easy::Easy2;
-    use std::any::Any;
-
-    /// A helper trait for applying a configuration value to a given curl handle.
-    pub trait SetOpt: Any + Send + Sync + 'static {
-        /// Apply this configuration option to the given curl handle.
-        fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
-    }
-}
-
-pub(crate) use private::SetOpt;
 
 impl SetOpt for http::HeaderMap {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
@@ -524,47 +513,6 @@ impl SetOpt for VersionNegotiation {
     }
 }
 
-/// Describes a policy for handling server redirects.
-///
-/// The default is to not follow redirects.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RedirectPolicy {
-    /// Do not apply any special treatment to redirect responses. The response
-    /// will be returned as-is and redirects will not be followed.
-    ///
-    /// This is the default policy.
-    None,
-    /// Follow all redirects automatically.
-    Follow,
-    /// Follow redirects automatically up to a maximum number of redirects.
-    Limit(u32),
-}
-
-impl Default for RedirectPolicy {
-    fn default() -> Self {
-        RedirectPolicy::None
-    }
-}
-
-impl SetOpt for RedirectPolicy {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match self {
-            RedirectPolicy::Follow => {
-                easy.follow_location(true)?;
-            }
-            RedirectPolicy::Limit(max) => {
-                easy.follow_location(true)?;
-                easy.max_redirections(*max)?;
-            }
-            RedirectPolicy::None => {
-                easy.follow_location(false)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct Timeout(pub(crate) Duration);
 
@@ -603,15 +551,6 @@ impl SetOpt for TcpNoDelay {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct AutoReferer;
-
-impl SetOpt for AutoReferer {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.autoreferer(true)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
 pub(crate) struct MaxUploadSpeed(pub(crate) u64);
 
 impl SetOpt for MaxUploadSpeed {
@@ -626,46 +565,6 @@ pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
 impl SetOpt for MaxDownloadSpeed {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.max_recv_speed(self.0)
-    }
-}
-
-/// Decorator for marking certain configurations to apply to a proxy rather than
-/// the origin itself.
-#[derive(Clone, Debug)]
-pub(crate) struct Proxy<T>(pub(crate) T);
-
-/// Proxy URI specifies the type and host of a proxy to use.
-impl SetOpt for Proxy<Option<http::Uri>> {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match &self.0 {
-            Some(uri) => easy.proxy(&format!("{}", uri)),
-            None => easy.proxy(""),
-        }
-    }
-}
-
-/// A list of host names that do not require a proxy to get reached, even if one
-/// is specified.
-///
-/// See
-/// [`HttpClientBuilder::proxy_blacklist`](crate::HttpClientBuilder::proxy_blacklist)
-/// for configuring a client's no proxy list.
-#[derive(Clone, Debug)]
-pub(crate) struct ProxyBlacklist {
-    skip: String,
-}
-
-impl FromIterator<String> for ProxyBlacklist {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
-        Self {
-            skip: iter.into_iter().collect::<Vec<_>>().join(","),
-        }
-    }
-}
-
-impl SetOpt for ProxyBlacklist {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.noproxy(&self.skip)
     }
 }
 
@@ -686,5 +585,13 @@ pub(crate) struct EnableMetrics(pub(crate) bool);
 impl SetOpt for EnableMetrics {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.progress(self.0)
+    }
+}
+
+mod private {
+    #[doc(hidden)]
+    pub trait ConfigurableBase: Sized {
+        #[doc(hidden)]
+        fn configure(self, property: impl Send + Sync + 'static) -> Self;
     }
 }

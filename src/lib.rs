@@ -88,8 +88,8 @@
 //! make common tasks convenient and allow you to make more advanced
 //! configuration.
 //!
-//! Some key traits to read about include [`RequestExt`], [`RequestBuilderExt`],
-//! and [`ResponseExt`].
+//! Some key traits to read about include
+//! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].
 //!
 //! ## Custom clients
 //!
@@ -131,8 +131,8 @@
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
-//! [examples]: https://github.com/sagebind/isahc/tree/master/examples
-//! [log]: https://docs.rs/log
+//! [examples]: https://github.com/sagebind/isahc/tree/master/examples [log]:
+//! https://docs.rs/log
 
 #![deny(unsafe_code)]
 #![warn(
@@ -186,6 +186,12 @@ pub use crate::{
 pub use http;
 
 /// A "prelude" for importing common Isahc types.
+///
+/// # Example
+///
+/// ```
+/// use isahc::prelude::*;
+/// ```
 pub mod prelude {
     pub use crate::{
         config::Configurable,
