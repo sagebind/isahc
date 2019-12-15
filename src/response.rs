@@ -20,10 +20,8 @@ pub trait ResponseExt<T> {
     /// metrics object containing a live view of currently available data.
     ///
     /// By default metrics are disabled and `None` will be returned. To enable
-    /// metrics for a single request you can use
-    /// [`RequestExt::metrics`](crate::RequestBuilderExt::metrics), or to enable
-    /// it client-wide, you can use
-    /// [`HttpClientBuilder::metrics`](crate::HttpClientBuilder::metrics).
+    /// metrics you can use
+    /// [`Configurable::metrics`](crate::config::Configurable::metrics).
     fn metrics(&self) -> Option<&Metrics>;
 
     /// Copy the response body into a writer.

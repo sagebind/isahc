@@ -20,7 +20,7 @@ speculate::speculate! {
 
         // Send a request with a timeout.
         let result = Request::post(server_url())
-            .timeout(Duration::from_millis(100))
+            .timeout(Duration::from_millis(500))
             .body("hello world")
             .unwrap()
             .send();
