@@ -27,6 +27,6 @@ jobs:
           toolchain: "1.39.0"
           default: true
 
-      - run: cargo test --features psl,spnego
+      - run: cargo test --features cookies,psl,spnego
 
       - run: cargo run --release --example simple

@@ -87,7 +87,7 @@ features = ["psl"]
 
 Below is a list of all available feature flags and their meanings.
 
-- `cookies`: Enable persistent HTTP cookie support. Enabled by default.
+- `cookies`: Enable persistent HTTP cookie support. Disabled by default.
 - `http2`: Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
 - `json`: Additional serialization and deserialization of JSON bodies via [serde]. Disabled by default.
 - `psl`: Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Disabled by default.
