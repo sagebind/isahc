@@ -1,3 +1,4 @@
+use isahc::prelude::*;
 use mockito::{mock, server_url};
 
 speculate::speculate! {
@@ -11,7 +12,7 @@ speculate::speculate! {
             .create();
 
         let mut response = isahc::get(server_url()).unwrap();
-        let response_text = response.body_mut().text().unwrap();
+        let response_text = response.text().unwrap();
 
         assert_eq!(response_text, "hello world");
         m.assert();
@@ -25,7 +26,7 @@ speculate::speculate! {
             .create();
 
         let mut response = isahc::get(server_url()).unwrap();
-        let response_text = response.body_mut().text().unwrap();
+        let response_text = response.text().unwrap();
 
         assert_eq!(response_text, body);
         m.assert();
@@ -64,7 +65,7 @@ speculate::speculate! {
         let mut response = client.get(server_url()).unwrap();
         drop(client);
 
-        assert_eq!(response.body_mut().text().unwrap().len(), body.len());
+        assert_eq!(response.text().unwrap().len(), body.len());
         m.assert();
     }
 

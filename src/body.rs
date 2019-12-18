@@ -1,6 +1,5 @@
 //! Provides types for working with request and response bodies.
 
-use crate::io::Text;
 use crate::task::Join;
 use bytes::Bytes;
 use futures_io::AsyncRead;
@@ -46,15 +45,33 @@ impl Body {
     /// Create a new body from bytes stored in memory.
     ///
     /// The body will have a known length equal to the number of bytes given.
-    pub fn bytes(bytes: impl Into<Bytes>) -> Self {
-        Body(Inner::Bytes(Cursor::new(bytes.into())))
+    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Self {
+        bytes.as_ref().to_vec().into()
+    }
+
+    /// Create a new body from bytes stored in memory.
+    ///
+    /// The body will have a known length equal to the number of bytes given.
+    #[allow(unsafe_code)]
+    pub fn from_maybe_bytes(bytes: impl AsRef<[u8]> + 'static) -> Self {
+        use std::any::{Any, TypeId};
+
+        if bytes.type_id() == TypeId::of::<Bytes>() {
+            Self::new(unsafe {
+                let v = std::mem::transmute_copy(&bytes);
+                std::mem::forget(bytes);
+                v
+            })
+        } else {
+            Self::new(bytes.as_ref().to_vec().into())
+        }
     }
 
     /// Create a streaming body that reads from the given reader.
     ///
     /// The body will have an unknown length. When used as a request body,
     /// chunked transfer encoding might be used to send the request.
-    pub fn reader(read: impl AsyncRead + Send + 'static) -> Self {
+    pub fn from_reader(read: impl AsyncRead + Send + 'static) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), None))
     }
 
@@ -67,8 +84,12 @@ impl Body {
     /// Giving a value for `length` that doesn't actually match how much data
     /// the reader will produce may result in errors when sending the body in a
     /// request.
-    pub fn reader_sized(read: impl AsyncRead + Send + 'static, length: u64) -> Self {
+    pub fn from_reader_sized(read: impl AsyncRead + Send + 'static, length: u64) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), Some(length)))
+    }
+
+    fn new(bytes: Bytes) -> Self {
+        Body(Inner::Bytes(Cursor::new(bytes)))
     }
 
     /// Report if this body is empty.
@@ -109,36 +130,6 @@ impl Body {
             Inner::AsyncRead(_, _) => false,
         }
     }
-
-    /// Get the response body as a string.
-    ///
-    /// If the body comes from a stream, the steam bytes will be consumed and
-    /// this method will return an empty string next call. If this body supports
-    /// seeking, you can seek to the beginning of the body if you need to call
-    /// this method again later.
-    pub fn text(&mut self) -> Result<String, io::Error> {
-        let mut s = String::default();
-        Read::read_to_string(self, &mut s)?;
-        Ok(s)
-    }
-
-    /// Get the response body as a string asynchronously.
-    ///
-    /// If the body comes from a stream, the steam bytes will be consumed and
-    /// this method will return an empty string next call. If this body supports
-    /// seeking, you can seek to the beginning of the body if you need to call
-    /// this method again later.
-    pub fn text_async(&mut self) -> Text<'_, Body> {
-        Text::new(self)
-    }
-
-    /// Deserialize the response body as JSON into a given type.
-    ///
-    /// This method requires the `json` feature to be enabled.
-    #[cfg(feature = "json")]
-    pub fn json<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, serde_json::Error> {
-        serde_json::from_reader(self)
-    }
 }
 
 impl Read for Body {
@@ -175,19 +166,13 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self::bytes(body)
+        Self::new(body.into())
     }
 }
 
 impl From<&'static [u8]> for Body {
     fn from(body: &'static [u8]) -> Self {
-        Bytes::from_static(body).into()
-    }
-}
-
-impl From<Bytes> for Body {
-    fn from(body: Bytes) -> Self {
-        Self::bytes(body)
+        Self::new(Bytes::from_static(body))
     }
 }
 
@@ -207,7 +192,7 @@ impl<T: Into<Body>> From<Option<T>> for Body {
     fn from(body: Option<T>) -> Self {
         match body {
             Some(body) => body.into(),
-            None => Self::default(),
+            None => Self::empty(),
         }
     }
 }
