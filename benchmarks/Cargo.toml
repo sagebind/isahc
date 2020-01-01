@@ -8,7 +8,7 @@ publish = false
 criterion = "0.3"
 curl = "0.4"
 rayon = "1"
-reqwest = "0.9"
+reqwest = "0.10"
 rouille = "3"
 
 [dependencies.isahc]
