@@ -641,9 +641,9 @@ impl HttpClient {
             };
 
             if let Some(len) = content_length {
-                Body::reader_sized(body, len)
+                Body::from_reader_sized(body, len)
             } else {
-                Body::reader(body)
+                Body::from_reader(body)
             }
         });
 

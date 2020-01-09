@@ -43,7 +43,7 @@ speculate::speculate! {
                 .uri(server_url())
                 // This header should be ignored
                 .header("transfer-encoding", "identity")
-                .body(Body::reader(body.as_bytes()))
+                .body(Body::from_reader(body.as_bytes()))
                 .unwrap()
                 .send()
                 .unwrap();
