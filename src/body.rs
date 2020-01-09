@@ -10,6 +10,28 @@ use std::pin::Pin;
 use std::str;
 use std::task::{Context, Poll};
 
+macro_rules! match_type {
+    {
+        $(
+            <$name:ident as $T:ty> => $branch:expr,
+        )*
+        $defaultName:ident => $defaultBranch:expr,
+    } => {{
+        match () {
+            $(
+                _ if ::std::any::Any::type_id(&$name) == ::std::any::TypeId::of::<$T>() => {
+                    #[allow(unsafe_code)]
+                    let $name: $T = unsafe {
+                        ::std::mem::transmute_copy::<_, $T>(&::std::mem::ManuallyDrop::new($name))
+                    };
+                    $branch
+                }
+            )*
+            _ => $defaultBranch,
+        }
+    }};
+}
+
 /// Contains the body of an HTTP request or response.
 ///
 /// This type is used to encapsulate the underlying stream or region of memory
@@ -45,26 +67,16 @@ impl Body {
     /// Create a new body from bytes stored in memory.
     ///
     /// The body will have a known length equal to the number of bytes given.
-    pub fn from_bytes<B: AsRef<[u8]>>(bytes: B) -> Self {
+    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Self {
         bytes.as_ref().to_vec().into()
     }
 
-    /// Create a new body from bytes stored in memory.
-    ///
-    /// The body will have a known length equal to the number of bytes given.
-    #[allow(unsafe_code)]
-    pub fn from_maybe_bytes(bytes: impl AsRef<[u8]> + 'static) -> Self {
-        use std::any::{Any, TypeId};
-
-        if bytes.type_id() == TypeId::of::<Bytes>() {
-            Self::new(unsafe {
-                let v = std::mem::transmute_copy(&bytes);
-                std::mem::forget(bytes);
-                v
-            })
-        } else {
-            Self::new(bytes.as_ref().to_vec().into())
-        }
+    fn from_bytes_static(bytes: impl AsRef<[u8]> + 'static) -> Self {
+        Body(Inner::Bytes(Cursor::new(match_type! {
+            <bytes as Bytes> => bytes,
+            <bytes as &'static [u8]> => Bytes::from_static(bytes),
+            bytes => bytes.as_ref().to_vec().into(),
+        })))
     }
 
     /// Create a streaming body that reads from the given reader.
@@ -86,10 +98,6 @@ impl Body {
     /// request.
     pub fn from_reader_sized(read: impl AsyncRead + Send + 'static, length: u64) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), Some(length)))
-    }
-
-    fn new(bytes: Bytes) -> Self {
-        Body(Inner::Bytes(Cursor::new(bytes)))
     }
 
     /// Report if this body is empty.
@@ -166,13 +174,13 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self::new(body.into())
+        Self::from_bytes_static(Bytes::from(body))
     }
 }
 
 impl From<&'static [u8]> for Body {
     fn from(body: &'static [u8]) -> Self {
-        Self::new(Bytes::from_static(body))
+        Self::from_bytes_static(Bytes::from(body))
     }
 }
 
