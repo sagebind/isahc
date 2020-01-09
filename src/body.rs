@@ -102,7 +102,10 @@ impl Body {
 
     /// Report if this body is empty.
     pub fn is_empty(&self) -> bool {
-        self.len() == Some(0)
+        match self.0 {
+            Inner::Empty => true,
+            _ => false,
+        }
     }
 
     /// Get the size of the body, if known.
@@ -223,5 +226,21 @@ mod tests {
     #[test]
     fn traits() {
         is_send::<Body>();
+    }
+
+    #[test]
+    fn empty_body() {
+        let body = Body::empty();
+
+        assert!(body.is_empty());
+        assert_eq!(body.len(), Some(0));
+    }
+
+    #[test]
+    fn zero_length_body() {
+        let body = Body::from_bytes(vec![]);
+
+        assert!(!body.is_empty());
+        assert_eq!(body.len(), Some(0));
     }
 }
