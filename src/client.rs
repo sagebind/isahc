@@ -711,6 +711,7 @@ impl HttpClient {
                 SslOption,
                 CloseConnection,
                 EnableMetrics,
+                Interface,
             ]
         );
 

@@ -246,6 +246,12 @@ pub trait Configurable: ConfigurableBase {
         self.configure(proxy::Proxy(credentials))
     }
 
+    /// Set the interface to use for requests
+    ///
+    fn interface(self, interface: impl AsRef<str>) -> Self {
+        self.configure(Interface(interface.as_ref().to_owned()))
+    }
+
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
@@ -588,6 +594,13 @@ impl SetOpt for EnableMetrics {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct Interface(String);
+impl SetOpt for Interface {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.interface(&self.0)
+    }
+}
 mod private {
     #[doc(hidden)]
     pub trait ConfigurableBase: Sized {
