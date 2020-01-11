@@ -602,7 +602,6 @@ pub enum Interface {
     Host(String),
     /// A valid device name such as eth0
     /// note that according to [curl documentation](https://curl.haxx.se/libcurl/c/CURLOPT_INTERFACE.html) this option does not work on windows
-    #[cfg(not(windows))]
     Name(String),
 }
 impl SetOpt for Interface {
