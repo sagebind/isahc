@@ -248,8 +248,8 @@ pub trait Configurable: ConfigurableBase {
 
     /// Set the interface to use for requests
     ///
-    fn interface(self, interface: impl AsRef<str>) -> Self {
-        self.configure(Interface(interface.as_ref().to_owned()))
+    fn interface(self, interface: Interface) -> Self {
+        self.configure(interface)
     }
 
     /// Set a maximum upload speed for the request body, in bytes per second.
@@ -595,10 +595,21 @@ impl SetOpt for EnableMetrics {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Interface(String);
+/// Interface type to be used with CURLOPT_INTERFACE
+/// if given interface is not valid an error is returned
+pub enum Interface {
+    /// host can be a valid host such as 123.234.12.3
+    Host(String),
+    /// A valid device name such as eth0
+    /// note that according to [curl documentation](https://curl.haxx.se/libcurl/c/CURLOPT_INTERFACE.html) this option does not work on windows
+    Name(String),
+}
 impl SetOpt for Interface {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.interface(&self.0)
+        match self {
+            Interface::Name(dev) => easy.interface(&dev),
+            Interface::Host(ip) => easy.interface(&ip),
+        }
     }
 }
 mod private {
