@@ -602,13 +602,14 @@ pub enum Interface {
     Host(String),
     /// A valid device name such as eth0
     /// note that according to [curl documentation](https://curl.haxx.se/libcurl/c/CURLOPT_INTERFACE.html) this option does not work on windows
+    #[cfg(not(windows))]
     Name(String),
 }
 impl SetOpt for Interface {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         match self {
-            Interface::Name(dev) => easy.interface(&dev),
-            Interface::Host(ip) => easy.interface(&ip),
+            Interface::Name(dev) => easy.interface(&format!("if!{}", dev)),
+            Interface::Host(ip) => easy.interface(&format!("host!{}", ip)),
         }
     }
 }
