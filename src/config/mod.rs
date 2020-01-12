@@ -14,10 +14,12 @@
 // handle.
 
 use crate::auth::{Authentication, Credentials};
+use self::internal::SetOpt;
 use curl::easy::Easy2;
 use std::{iter::FromIterator, net::SocketAddr, time::Duration};
 
 pub(crate) mod dns;
+pub(crate) mod internal;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
@@ -25,8 +27,6 @@ pub(crate) mod ssl;
 pub use dns::DnsCache;
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
-
-pub(crate) use self::private::ConfigurableBase;
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -37,7 +37,7 @@ pub(crate) use self::private::ConfigurableBase;
 /// [`HttpClientBuilder`](crate::HttpClientBuilder).
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
-pub trait Configurable: ConfigurableBase {
+pub trait Configurable: internal::ConfigurableBase {
     /// Set a maximum amount of time that a request is allowed to take before
     /// being aborted.
     ///
@@ -406,14 +406,6 @@ pub trait Configurable: ConfigurableBase {
     }
 }
 
-impl<C: ConfigurableBase> Configurable for C {}
-
-/// A helper trait for applying a configuration value to a given curl handle.
-pub(crate) trait SetOpt: Send + Sync + 'static {
-    /// Apply this configuration property to the given curl handle.
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
-}
-
 impl SetOpt for http::HeaderMap {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         let mut headers = curl::easy::List::new();
@@ -585,13 +577,5 @@ pub(crate) struct EnableMetrics(pub(crate) bool);
 impl SetOpt for EnableMetrics {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.progress(self.0)
-    }
-}
-
-mod private {
-    #[doc(hidden)]
-    pub trait ConfigurableBase: Sized {
-        #[doc(hidden)]
-        fn configure(self, property: impl Send + Sync + 'static) -> Self;
     }
 }

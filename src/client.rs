@@ -4,6 +4,7 @@ use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
     config::*,
+    config::internal::{ConfigurableBase, SetOpt},
     handler::{RequestHandler, ResponseBodyReader},
     middleware::Middleware,
     task::Join,
@@ -218,6 +219,8 @@ impl HttpClientBuilder {
         })
     }
 }
+
+impl Configurable for HttpClientBuilder {}
 
 impl ConfigurableBase for HttpClientBuilder {
     fn configure(mut self, option: impl Send + Sync + 'static) -> Self {

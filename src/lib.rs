@@ -131,8 +131,8 @@
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
 //!
-//! [examples]: https://github.com/sagebind/isahc/tree/master/examples [log]:
-//! https://docs.rs/log
+//! [examples]: https://github.com/sagebind/isahc/tree/master/examples
+//! [log]: https://docs.rs/log
 
 #![deny(unsafe_code)]
 #![warn(

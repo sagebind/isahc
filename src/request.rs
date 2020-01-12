@@ -1,6 +1,9 @@
 use crate::{
     client::ResponseFuture,
-    config::ConfigurableBase,
+    config::{
+        Configurable,
+        internal::ConfigurableBase,
+    },
     {Body, Error},
 };
 use http::{Request, Response};
@@ -54,6 +57,8 @@ impl<T> RequestExt<T> for Request<T> {
         crate::send_async(self)
     }
 }
+
+impl Configurable for http::request::Builder {}
 
 impl ConfigurableBase for http::request::Builder {
     fn configure(self, option: impl Send + Sync + 'static) -> Self {
