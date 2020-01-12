@@ -16,7 +16,11 @@
 use crate::auth::{Authentication, Credentials};
 use self::internal::SetOpt;
 use curl::easy::Easy2;
-use std::{iter::FromIterator, net::SocketAddr, time::Duration};
+use std::{
+    iter::FromIterator,
+    net::SocketAddr,
+    time::Duration,
+};
 
 pub(crate) mod dns;
 pub(crate) mod internal;
@@ -205,12 +209,16 @@ pub trait Configurable: internal::ConfigurableBase {
     /// #
     /// let client = HttpClient::builder()
     ///     // Disable proxy for specified hosts.
-    ///     .proxy_blacklist(vec!["a.com".to_string(), "b.org".to_string()])
+    ///     .proxy_blacklist(vec!["a.com", "b.org"])
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn proxy_blacklist(self, hosts: impl IntoIterator<Item = String>) -> Self {
-        self.configure(proxy::Blacklist::from_iter(hosts))
+    fn proxy_blacklist<I, T>(self, hosts: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<String>,
+    {
+        self.configure(proxy::Blacklist::from_iter(hosts.into_iter().map(T::into)))
     }
 
     /// Set one or more HTTP authentication methods to attempt to use when
@@ -265,8 +273,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// By default this option is not set and the system's built-in DNS resolver
     /// is used. This option can only be used if libcurl is compiled with
     /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
-    fn dns_servers(self, servers: impl IntoIterator<Item = SocketAddr>) -> Self {
-        self.configure(dns::Servers::from_iter(servers))
+    fn dns_servers<I, T>(self, servers: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<SocketAddr>,
+    {
+        self.configure(dns::Servers::from_iter(servers.into_iter().map(T::into)))
     }
 
     /// Set a custom SSL/TLS client certificate to use for client connections.
@@ -342,8 +354,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in the system defaults being used.
-    fn ssl_ciphers(self, servers: impl IntoIterator<Item = String>) -> Self {
-        self.configure(ssl::Ciphers::from_iter(servers))
+    fn ssl_ciphers<I, T>(self, servers: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<String>,
+    {
+        self.configure(ssl::Ciphers::from_iter(servers.into_iter().map(T::into)))
     }
 
     /// Set various options for this request that control SSL/TLS behavior.
