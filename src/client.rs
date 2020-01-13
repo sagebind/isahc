@@ -707,6 +707,7 @@ impl HttpClient {
                 proxy::Proxy<Authentication>,
                 proxy::Proxy<Credentials>,
                 DnsCache,
+                dns::Mappings,
                 dns::Servers,
                 ssl::Ciphers,
                 ClientCertificate,

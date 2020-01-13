@@ -2,9 +2,10 @@
 
 use super::SetOpt;
 use curl::easy::Easy2;
+use http::uri::Authority;
 use std::{
     iter::FromIterator,
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     time::Duration,
 };
 
@@ -56,6 +57,61 @@ impl SetOpt for DnsCache {
                 code => Err(curl::Error::new(code)),
             }
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct DnsMapping {
+    authority: Authority,
+    addr: IpAddr,
+}
+
+impl DnsMapping {
+    pub fn new(authority: Authority, addr: IpAddr) -> Self {
+        Self {
+            authority,
+            addr,
+        }
+    }
+}
+
+impl From<(Authority, IpAddr)> for DnsMapping {
+    fn from((authority, addr): (Authority, IpAddr)) -> Self {
+        Self::new(authority, addr)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Mappings(Vec<String>);
+
+impl FromIterator<DnsMapping> for Mappings {
+    fn from_iter<I: IntoIterator<Item = DnsMapping>>(iter: I) -> Self {
+        let mut mappings = Self::default();
+
+        for mapping in iter {
+            mappings = mappings.add(mapping.authority, mapping.addr);
+        }
+
+        mappings
+    }
+}
+
+impl Mappings {
+    pub fn add(mut self, authority: Authority, addr: IpAddr) -> Self {
+        self.0.push(format!("{}:{}", authority, addr));
+        self
+    }
+}
+
+impl SetOpt for Mappings {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let mut list = curl::easy::List::new();
+
+        for entry in self.0.iter() {
+            list.append(entry)?;
+        }
+
+        easy.resolve(list)
     }
 }
 

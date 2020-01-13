@@ -268,6 +268,10 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(MaxDownloadSpeed(max))
     }
 
+    fn dns_mappings(self, mappings: dns::Mappings) -> Self {
+        self.configure(mappings)
+    }
+
     /// Set a list of specific DNS servers to be used for DNS resolution.
     ///
     /// By default this option is not set and the system's built-in DNS resolver
