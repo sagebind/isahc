@@ -1,0 +1,27 @@
+name: publish docs
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  publish-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: "nightly"
+          default: true
+
+      - run: cargo doc --no-deps
+
+      - uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.GH_PAT }}
+          BRANCH: gh-pages
+          FOLDER: target/doc/isahc

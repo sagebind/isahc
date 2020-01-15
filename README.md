@@ -59,6 +59,8 @@ let mut response = isahc::get("https://example.org")?;
 println!("{}", response.text()?);
 ```
 
+Click [here](https://sagebind.github.io/isahc/) for built documentation from the latest `master` build.
+
 ## Installation
 
 Install via Cargo by adding to your `Cargo.toml` file:
