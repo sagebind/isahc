@@ -24,4 +24,4 @@ jobs:
         with:
           ACCESS_TOKEN: ${{ secrets.GH_PAT }}
           BRANCH: gh-pages
-          FOLDER: target/doc/isahc
+          FOLDER: target/doc

@@ -59,7 +59,7 @@ let mut response = isahc::get("https://example.org")?;
 println!("{}", response.text()?);
 ```
 
-Click [here](https://sagebind.github.io/isahc/) for built documentation from the latest `master` build.
+Click [here](https://sagebind.github.io/isahc/isahc/) for built documentation from the latest `master` build.
 
 ## Installation
 
