@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Authentication","Specifies one or more HTTP authentication schemes to use."],["Credentials","Credentials consisting of a username and a secret (password) that can be used to establish user identity."]]});
