@@ -28,7 +28,7 @@ pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
 
-pub use dns::DnsCache;
+pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
@@ -188,7 +188,6 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Explicitly disable the use of a proxy:
     ///
     /// ```
-    /// # use isahc::auth::*;
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()

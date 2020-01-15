@@ -4,7 +4,7 @@ use super::SetOpt;
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     time::Duration,
 };
 
@@ -56,6 +56,43 @@ impl SetOpt for DnsCache {
                 code => Err(curl::Error::new(code)),
             }
         }
+    }
+}
+
+/// A mapping of host and port pairs to IP addresses.
+///
+/// Entries added to this map can be used to override how DNS is resolved for a
+/// request and use specific IP addresses instead of using the default name
+/// resolver.
+#[derive(Clone, Debug, Default)]
+pub struct ResolveMap(Vec<String>);
+
+impl ResolveMap {
+    /// Create a new empty resolve map.
+    pub const fn new() -> Self {
+        ResolveMap(Vec::new())
+    }
+
+    /// Add a DNS mapping for a given host and port pair.
+    pub fn add<H, A>(mut self, host: H, port: u16, addr: A) -> Self
+    where
+        H: AsRef<str>,
+        A: Into<IpAddr>,
+    {
+        self.0.push(format!("{}:{}:{}", host.as_ref(), port, addr.into()));
+        self
+    }
+}
+
+impl SetOpt for ResolveMap {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        let mut list = curl::easy::List::new();
+
+        for entry in self.0.iter() {
+            list.append(entry)?;
+        }
+
+        easy.resolve(list)
     }
 }
 
