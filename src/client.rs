@@ -208,6 +208,34 @@ impl HttpClientBuilder {
         self.configure(cache.into())
     }
 
+    /// Set a mapping of DNS resolve overrides.
+    ///
+    /// Entries in the given map will be used first before using the default DNS
+    /// resolver for host+port pairs.
+    ///
+    /// Note that DNS resolving is only performed when establishing a new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::ResolveMap;
+    /// # use isahc::prelude::*;
+    /// # use std::net::IpAddr;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .dns_resolve(ResolveMap::new()
+    ///         // Send requests for example.org on port 80 to 127.0.0.1.
+    ///         .add("example.org", 80, [127, 0, 0, 1]))
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn dns_resolve(self, map: ResolveMap) -> Self {
+        // Similar to the dns_cache option, this operation actually affects all
+        // requests in a multi handle so we do not expose it per-request to
+        // avoid confusing behavior.
+        self.configure(map)
+    }
+
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
@@ -707,7 +735,7 @@ impl HttpClient {
                 proxy::Proxy<Authentication>,
                 proxy::Proxy<Credentials>,
                 DnsCache,
-                dns::Mappings,
+                dns::ResolveMap,
                 dns::Servers,
                 ssl::Ciphers,
                 ClientCertificate,

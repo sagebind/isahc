@@ -28,7 +28,7 @@ pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
 
-pub use dns::DnsCache;
+pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
@@ -188,7 +188,6 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Explicitly disable the use of a proxy:
     ///
     /// ```
-    /// # use isahc::auth::*;
     /// # use isahc::prelude::*;
     /// #
     /// let client = HttpClient::builder()
@@ -266,10 +265,6 @@ pub trait Configurable: internal::ConfigurableBase {
     /// The default is unlimited.
     fn max_download_speed(self, max: u64) -> Self {
         self.configure(MaxDownloadSpeed(max))
-    }
-
-    fn dns_mappings(self, mappings: dns::Mappings) -> Self {
-        self.configure(mappings)
     }
 
     /// Set a list of specific DNS servers to be used for DNS resolution.
