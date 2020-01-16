@@ -1,12 +1,14 @@
 //! Helpers for working with tasks and futures.
 
 use crate::Error;
+use crossbeam_utils::sync::{Parker, Unparker};
 use futures_util::{pin_mut, task::ArcWake};
-use std::future::Future;
-use std::net::{SocketAddr, UdpSocket};
-use std::sync::Arc;
-use std::task::{Context, Poll, Waker};
-use std::thread::{self, Thread};
+use std::{
+    future::Future,
+    net::{SocketAddr, UdpSocket},
+    sync::Arc,
+    task::{Context, Poll, Waker},
+};
 
 /// Extension trait for efficiently blocking on a future.
 pub(crate) trait Join: Future {
@@ -15,7 +17,7 @@ pub(crate) trait Join: Future {
 
 impl<F: Future> Join for F {
     fn join(self) -> <Self as Future>::Output {
-        struct ThreadWaker(Thread);
+        struct ThreadWaker(Unparker);
 
         impl ArcWake for ThreadWaker {
             fn wake_by_ref(arc_self: &Arc<Self>) {
@@ -23,15 +25,17 @@ impl<F: Future> Join for F {
             }
         }
 
+        let parker = Parker::new();
+        let waker = futures_util::task::waker(Arc::new(ThreadWaker(parker.unparker().clone())));
+        let mut context = Context::from_waker(&waker);
+
         let future = self;
         pin_mut!(future);
-        let waker = futures_util::task::waker(Arc::new(ThreadWaker(thread::current())));
-        let mut context = Context::from_waker(&waker);
 
         loop {
             match future.as_mut().poll(&mut context) {
                 Poll::Ready(output) => return output,
-                Poll::Pending => thread::park(),
+                Poll::Pending => parker.park(),
             }
         }
     }
