@@ -169,23 +169,23 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// // Bind to an IP address.
     /// let client = HttpClient::builder()
-    ///     .network_interface(IpAddr::from([192, 168, 1, 2]))
+    ///     .interface(IpAddr::from([192, 168, 1, 2]))
     ///     .build()?;
     ///
     /// // Bind to an interface by name (not supported on Windows).
     /// # #[cfg(unix)]
     /// let client = HttpClient::builder()
-    ///     .network_interface(NetworkInterface::name("eth0"))
+    ///     .interface(NetworkInterface::name("eth0"))
     ///     .build()?;
     ///
     /// // Reset to using whatever interface the TCP stack finds suitable (the
     /// // default).
     /// let request = Request::get("https://example.org")
-    ///     .network_interface(NetworkInterface::any())
+    ///     .interface(NetworkInterface::any())
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn network_interface(self, interface: impl Into<NetworkInterface>) -> Self {
+    fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
         self.configure(interface.into())
     }
 
