@@ -167,12 +167,12 @@ mod body;
 mod client;
 mod error;
 mod handler;
-mod io;
 mod metrics;
 mod parse;
 mod request;
 mod response;
 mod task;
+mod text;
 
 pub mod auth;
 pub mod config;

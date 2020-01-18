@@ -1,10 +1,15 @@
-use crate::io::Text;
-use crate::{Metrics, Error};
+use crate::{
+    text::Text,
+    Metrics,
+    Error,
+};
 use futures_io::AsyncRead;
 use http::{Response, Uri};
-use std::fs::File;
-use std::io::{self, Read, Write};
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{self, Read, Write},
+    path::Path,
+};
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
@@ -76,7 +81,7 @@ pub trait ResponseExt<T> {
     ///
     /// This method consumes the entire response body stream and can only be
     /// called once, unless you can rewind this response body.
-    fn text_async(&mut self) -> Text<'_, T>
+    fn text_async(&mut self) -> Text<'_>
     where
         T: AsyncRead + Unpin;
 
@@ -126,7 +131,7 @@ impl<T> ResponseExt<T> for Response<T> {
         Ok(s)
     }
 
-    fn text_async(&mut self) -> Text<'_, T>
+    fn text_async(&mut self) -> Text<'_>
     where
         T: AsyncRead + Unpin,
     {
