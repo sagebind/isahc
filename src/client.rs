@@ -723,6 +723,7 @@ impl HttpClient {
                 ConnectTimeout,
                 TcpKeepAlive,
                 TcpNoDelay,
+                NetworkInterface,
                 RedirectPolicy,
                 redirect::AutoReferer,
                 Authentication,
