@@ -173,15 +173,16 @@ pub trait Configurable: internal::ConfigurableBase {
     ///     .build()?;
     ///
     /// // Bind to an interface by name (not supported on Windows).
+    /// # #[cfg(unix)]
     /// let client = HttpClient::builder()
     ///     .network_interface(NetworkInterface::name("eth0"))
     ///     .build()?;
     ///
     /// // Reset to using whatever interface the TCP stack finds suitable (the
     /// // default).
-    /// let client = HttpClient::builder()
+    /// let request = Request::get("https://example.org")
     ///     .network_interface(NetworkInterface::any())
-    ///     .build()?;
+    ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn network_interface(self, interface: impl Into<NetworkInterface>) -> Self {
@@ -556,6 +557,10 @@ impl SetOpt for VersionNegotiation {
 
 /// Used to configure which local addresses or interfaces should be used to send
 /// network traffic from.
+///
+/// Note that this type is "lazy" in the sense that errors are not returned if
+/// the given interfaces are not checked for validity until you actually attempt
+/// to use it in a network request.
 #[derive(Clone, Debug)]
 pub struct NetworkInterface {
     /// Interface in verbose curl format.
@@ -572,7 +577,15 @@ impl NetworkInterface {
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method
-    /// is not available on Windows.
+    /// is not available on Windows as it does not really have names for network
+    /// devices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let loopback = NetworkInterface::name("lo");
+    /// let wifi = NetworkInterface::name("wlan0");
+    /// ```
     #[cfg(unix)]
     pub fn name(name: impl AsRef<str>) -> Self {
         Self {
@@ -580,7 +593,15 @@ impl NetworkInterface {
         }
     }
 
-    /// Bind to the given local host or address.
+    /// Bind to the given local host or address. This can either be a host name
+    /// or an IP address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let local = NetworkInterface::host("server.local");
+    /// let addr = NetworkInterface::host("192.168.1.2");
+    /// ```
     pub fn host(host: impl AsRef<str>) -> Self {
         Self {
             interface: Some(format!("host!{}", host.as_ref())),
