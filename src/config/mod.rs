@@ -583,6 +583,7 @@ impl NetworkInterface {
     /// # Examples
     ///
     /// ```
+    /// # use isahc::config::NetworkInterface;
     /// let loopback = NetworkInterface::name("lo");
     /// let wifi = NetworkInterface::name("wlan0");
     /// ```
@@ -599,6 +600,7 @@ impl NetworkInterface {
     /// # Examples
     ///
     /// ```
+    /// # use isahc::config::NetworkInterface;
     /// let local = NetworkInterface::host("server.local");
     /// let addr = NetworkInterface::host("192.168.1.2");
     /// ```
