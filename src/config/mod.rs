@@ -18,7 +18,7 @@ use self::internal::SetOpt;
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     time::Duration,
 };
 
@@ -152,6 +152,41 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Enables the `TCP_NODELAY` option on connect.
     fn tcp_nodelay(self) -> Self {
         self.configure(TcpNoDelay)
+    }
+
+    /// Bind local socket connections to a particular network interface.
+    ///
+    /// # Examples
+    ///
+    /// Bind to an IP address.
+    ///
+    /// ```
+    /// use isahc::{
+    ///     prelude::*,
+    ///     config::NetworkInterface,
+    /// };
+    /// use std::net::IpAddr;
+    ///
+    /// // Bind to an IP address.
+    /// let client = HttpClient::builder()
+    ///     .interface(IpAddr::from([192, 168, 1, 2]))
+    ///     .build()?;
+    ///
+    /// // Bind to an interface by name (not supported on Windows).
+    /// # #[cfg(unix)]
+    /// let client = HttpClient::builder()
+    ///     .interface(NetworkInterface::name("eth0"))
+    ///     .build()?;
+    ///
+    /// // Reset to using whatever interface the TCP stack finds suitable (the
+    /// // default).
+    /// let request = Request::get("https://example.org")
+    ///     .interface(NetworkInterface::any())
+    ///     .body(())?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
+        self.configure(interface.into())
     }
 
     /// Set a proxy to use for requests.
@@ -517,6 +552,93 @@ impl SetOpt for VersionNegotiation {
         }
 
         Ok(())
+    }
+}
+
+/// Used to configure which local addresses or interfaces should be used to send
+/// network traffic from.
+///
+/// Note that this type is "lazy" in the sense that errors are not returned if
+/// the given interfaces are not checked for validity until you actually attempt
+/// to use it in a network request.
+#[derive(Clone, Debug)]
+pub struct NetworkInterface {
+    /// Interface in verbose curl format.
+    interface: Option<String>,
+}
+
+impl NetworkInterface {
+    /// Bind to whatever the networking stack finds suitable. This is the
+    /// default behavior.
+    pub fn any() -> Self {
+        Self {
+            interface: None,
+        }
+    }
+
+    /// Bind to the interface with the given name (such as `eth0`). This method
+    /// is not available on Windows as it does not really have names for network
+    /// devices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::NetworkInterface;
+    /// let loopback = NetworkInterface::name("lo");
+    /// let wifi = NetworkInterface::name("wlan0");
+    /// ```
+    #[cfg(unix)]
+    pub fn name(name: impl AsRef<str>) -> Self {
+        Self {
+            interface: Some(format!("if!{}", name.as_ref())),
+        }
+    }
+
+    /// Bind to the given local host or address. This can either be a host name
+    /// or an IP address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::NetworkInterface;
+    /// let local = NetworkInterface::host("server.local");
+    /// let addr = NetworkInterface::host("192.168.1.2");
+    /// ```
+    pub fn host(host: impl AsRef<str>) -> Self {
+        Self {
+            interface: Some(format!("host!{}", host.as_ref())),
+        }
+    }
+}
+
+impl Default for NetworkInterface {
+    fn default() -> Self {
+        Self::any()
+    }
+}
+
+impl From<IpAddr> for NetworkInterface {
+    fn from(ip: IpAddr) -> Self {
+        Self {
+            interface: Some(format!("host!{}", ip)),
+        }
+    }
+}
+
+impl SetOpt for NetworkInterface {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        #[allow(unsafe_code)]
+        match self.interface.as_ref() {
+            Some(interface) => easy.interface(interface),
+
+            // Use raw FFI because safe wrapper doesn't let us set to null.
+            None => unsafe {
+                match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_INTERFACE, 0) {
+                    curl_sys::CURLE_OK => Ok(()),
+                    code => Err(curl::Error::new(code)),
+                }
+            },
+        }
     }
 }
 
