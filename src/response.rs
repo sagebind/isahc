@@ -1,14 +1,20 @@
 use crate::{
-    text::Text,
+    text::Decoder,
     Metrics,
-    Error,
 };
 use futures_io::AsyncRead;
+use futures_util::{
+    future::{FutureExt, LocalBoxFuture},
+    io::{AsyncReadExt},
+};
 use http::{Response, Uri};
 use std::{
     fs::File,
+    future::Future,
     io::{self, Read, Write},
     path::Path,
+    pin::Pin,
+    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -73,7 +79,7 @@ pub trait ResponseExt<T> {
     /// println!("{}", text);
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn text(&mut self) -> Result<String, Error>
+    fn text(&mut self) -> io::Result<String>
     where
         T: Read;
 
@@ -106,6 +112,30 @@ pub trait ResponseExt<T> {
         T: Read;
 }
 
+macro_rules! read_text_impl {
+    ($response:expr, $buf:ident, $read:expr) => {
+        {
+            let mut decoder = Decoder::new(guess_encoding($response).unwrap_or(encoding_rs::UTF_8));
+            let mut buf = [0; 8192];
+            let mut unread = 0;
+
+            loop {
+                let $buf = &mut buf[unread..];
+                let len = match $read {
+                    Ok(0) => break,
+                    Ok(len) => len,
+                    Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                };
+
+                unread = decoder.push(&buf[..unread+len]).len();
+            }
+
+            Ok(decoder.finish(&buf[..unread]))
+        }
+    };
+}
+
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
@@ -122,20 +152,20 @@ impl<T> ResponseExt<T> for Response<T> {
         io::copy(self.body_mut(), &mut writer)
     }
 
-    fn text(&mut self) -> Result<String, Error>
+    fn text(&mut self) -> io::Result<String>
     where
         T: Read,
     {
-        let mut s = String::default();
-        self.body_mut().read_to_string(&mut s)?;
-        Ok(s)
+        read_text_impl!(self, buf, self.body_mut().read(buf))
     }
 
     fn text_async(&mut self) -> Text<'_>
     where
         T: AsyncRead + Unpin,
     {
-        Text::new(self.body_mut())
+        Text(Box::pin(async move {
+            read_text_impl!(self, buf, self.body_mut().read(buf).await)
+        }))
     }
 
     #[cfg(feature = "json")]
@@ -146,6 +176,30 @@ impl<T> ResponseExt<T> for Response<T> {
     {
         serde_json::from_reader(self.body_mut())
     }
+}
+
+/// A future returning a response body decoded as text.
+#[allow(missing_debug_implementations)]
+pub struct Text<'a>(LocalBoxFuture<'a, io::Result<String>>);
+
+impl<'a> Future for Text<'a> {
+    type Output = io::Result<String>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.as_mut().0.poll_unpin(cx)
+    }
+}
+
+fn guess_encoding<T>(response: &Response<T>) -> Option<&'static encoding_rs::Encoding> {
+    let content_type = response
+        .headers()
+        .get(http::header::CONTENT_TYPE)?
+        .to_str()
+        .ok()?
+        .parse::<mime::Mime>()
+        .ok()?;
+
+    encoding_rs::Encoding::for_label(content_type.get_param("charset")?.as_str().as_bytes())
 }
 
 pub(crate) struct EffectiveUri(pub(crate) Uri);

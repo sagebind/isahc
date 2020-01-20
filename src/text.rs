@@ -1,38 +1,82 @@
 //! Text decoding routines.
 
-use futures_io::AsyncRead;
-use futures_util::{
-    future::{FutureExt, LocalBoxFuture},
-    io::{AsyncReadExt},
-};
-use std::{
-    future::Future,
-    io,
-    pin::Pin,
-    task::{Context, Poll},
-};
+use encoding_rs::{CoderResult, Encoding};
 
-/// A future returning a response body decoded as text.
-#[allow(missing_debug_implementations)]
-pub struct Text<'a>(LocalBoxFuture<'a, io::Result<String>>);
+/// A streaming text decoder that supports multiple encodings.
+pub(crate) struct Decoder {
+    /// Inner decoder implementation.
+    decoder: encoding_rs::Decoder,
 
-impl<'a> Text<'a> {
-    pub(crate) fn new<R>(reader: &'a mut R) -> Self
-    where
-        R: AsyncRead + Unpin,
-    {
-        Text(Box::pin(async move {
-            let mut buffer = String::new();
-            reader.read_to_string(&mut buffer).await?;
-            Ok(buffer)
-        }))
+    /// The output string that characters are accumulated to.
+    output: String,
+}
+
+impl Decoder {
+    /// Create a new decoder with the given encoding.
+    pub(crate) fn new(encoding: &'static Encoding) -> Self {
+        Self {
+            decoder: encoding.new_decoder(),
+            output: String::new(),
+        }
+    }
+
+    /// Push additional bytes into the decoder, returning any trailing bytes
+    /// that formed a partial character.
+    pub(crate) fn push<'b>(&mut self, buf: &'b [u8]) -> &'b [u8] {
+        self.decode(buf, false)
+    }
+
+    /// Mark the stream as complete and finish the decoding process, returning
+    /// the resulting string.
+    pub(crate) fn finish(mut self, buf: &[u8]) -> String {
+        self.decode(buf, true);
+        self.output
+    }
+
+    fn decode<'b>(&mut self, mut buf: &'b [u8], last: bool) -> &'b [u8] {
+        loop {
+            let (result, consumed, _) = self.decoder.decode_to_string(buf, &mut self.output, last);
+            buf = &buf[consumed..];
+
+            match result {
+                CoderResult::InputEmpty => break,
+                CoderResult::OutputFull => self
+                    .output
+                    .reserve(self.decoder.max_utf8_buffer_length(buf.len()).unwrap()),
+            }
+        }
+
+        // If last is true, buf should always be fully consumed.
+        if cfg!(debug) && last {
+            assert_eq!(buf.len(), 0);
+        }
+
+        buf
     }
 }
 
-impl<'a> Future for Text<'a> {
-    type Output = io::Result<String>;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().0.poll_unpin(cx)
+    #[test]
+    fn utf8_decode() {
+        let mut decoder = Decoder::new(encoding_rs::UTF_8);
+
+        assert_eq!(decoder.push(b"hello"), &[]);
+        assert_eq!(decoder.push(b" "), &[]);
+        assert_eq!(decoder.finish(b"world"), "hello world");
+    }
+
+    #[test]
+    fn utf16_decode() {
+        let bytes = encoding_rs::UTF_16BE.encode("hello world!").0.into_owned();
+        let mut decoder = Decoder::new(encoding_rs::UTF_8);
+
+        for byte in bytes {
+            decoder.push(&[byte]);
+        }
+
+        assert_eq!(decoder.finish(&[]), "hello world!");
     }
 }
