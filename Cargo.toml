@@ -18,13 +18,14 @@ features = ["json"]
 status = "actively-developed"
 
 [features]
-default = ["http2", "static-curl"]
+default = ["http2", "static-curl", "text-decoding"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
 psl = ["parking_lot", "publicsuffix"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
+text-decoding = ["encoding_rs", "mime"]
 middleware-api = []
 
 [dependencies]
@@ -33,13 +34,11 @@ crossbeam-channel = "0.4"
 crossbeam-utils = "0.7"
 curl = "0.4.25"
 curl-sys = "0.4.23"
-encoding_rs = "0.8"
 futures-channel = "0.3"
 futures-io = "0.3"
 http = "0.2"
 lazy_static = "1"
 log = "0.4"
-mime = "0.3"
 slab = "0.4"
 sluice = "0.5"
 
@@ -47,10 +46,18 @@ sluice = "0.5"
 version = "0.4"
 optional = true
 
+[dependencies.encoding_rs]
+version = "0.8"
+optional = true
+
 [dependencies.futures-util]
 version = "0.3"
 default-features = false
 features = ["io"]
+
+[dependencies.mime]
+version = "0.3"
+optional = true
 
 [dependencies.parking_lot]
 version = "0.10"

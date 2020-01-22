@@ -1,6 +1,9 @@
 //! Text decoding routines.
 
+#![cfg(feature = "text-decoding")]
+
 use encoding_rs::{CoderResult, Encoding};
+use http::Response;
 
 /// A streaming text decoder that supports multiple encodings.
 pub(crate) struct Decoder {
@@ -18,6 +21,28 @@ impl Decoder {
             decoder: encoding.new_decoder(),
             output: String::new(),
         }
+    }
+
+    /// Create a new encoder suitable for decoding the given response.
+    pub(crate) fn for_response<T>(response: &Response<T>) -> Self {
+        if let Some(content_type) = response
+            .headers()
+            .get(http::header::CONTENT_TYPE)
+            .and_then(|header| header.to_str().ok())
+            .and_then(|header| header.parse::<mime::Mime>().ok())
+        {
+            if let Some(charset) = content_type.get_param(mime::CHARSET) {
+                if let Some(encoding) =
+                    encoding_rs::Encoding::for_label(charset.as_str().as_bytes())
+                {
+                    return Self::new(encoding);
+                } else {
+                    log::warn!("unknown encoding '{}', falling back to UTF-8", charset);
+                }
+            }
+        }
+
+        Self::new(encoding_rs::UTF_8)
     }
 
     /// Push additional bytes into the decoder, returning any trailing bytes
