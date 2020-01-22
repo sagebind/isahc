@@ -1,17 +1,9 @@
 use crate::Metrics;
-use futures_io::AsyncRead;
-use futures_util::{
-    future::{FutureExt, LocalBoxFuture},
-    io::AsyncReadExt,
-};
 use http::{Response, Uri};
 use std::{
     fs::File,
-    future::Future,
     io::{self, Read, Write},
     path::Path,
-    pin::Pin,
-    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -97,9 +89,9 @@ pub trait ResponseExt<T> {
     /// This method consumes the entire response body stream and can only be
     /// called once.
     #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> Text<'_>
+    fn text_async(&mut self) -> text::Text<'_>
     where
-        T: AsyncRead + Unpin;
+        T: futures_io::AsyncRead + Unpin;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -122,26 +114,50 @@ pub trait ResponseExt<T> {
         T: Read;
 }
 
-macro_rules! read_text_impl {
-    ($response:expr, $buf:ident, $read:expr) => {{
-        let mut decoder = crate::text::Decoder::for_response($response);
-        let mut buf = [0; 8192];
-        let mut unread = 0;
+#[cfg(feature = "text-decoding")]
+#[macro_use]
+mod text {
+    use futures_util::future::{FutureExt, LocalBoxFuture};
+    use std::{
+        future::Future,
+        io,
+        pin::Pin,
+        task::{Context, Poll},
+    };
 
-        loop {
-            let $buf = &mut buf[unread..];
-            let len = match $read {
-                Ok(0) => break,
-                Ok(len) => len,
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-                Err(e) => return Err(e),
-            };
+    macro_rules! read_text_impl {
+        ($response:expr, $buf:ident, $read:expr) => {{
+            let mut decoder = crate::text::Decoder::for_response($response);
+            let mut buf = [0; 8192];
+            let mut unread = 0;
 
-            unread = decoder.push(&buf[..unread + len]).len();
+            loop {
+                let $buf = &mut buf[unread..];
+                let len = match $read {
+                    Ok(0) => break,
+                    Ok(len) => len,
+                    Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                };
+
+                unread = decoder.push(&buf[..unread + len]).len();
+            }
+
+            Ok(decoder.finish(&buf[..unread]))
+        }};
+    }
+
+    /// A future returning a response body decoded as text.
+    #[allow(missing_debug_implementations)]
+    pub struct Text<'a>(pub(crate) LocalBoxFuture<'a, io::Result<String>>);
+
+    impl<'a> Future for Text<'a> {
+        type Output = io::Result<String>;
+
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            self.as_mut().0.poll_unpin(cx)
         }
-
-        Ok(decoder.finish(&buf[..unread]))
-    }};
+    }
 }
 
 impl<T> ResponseExt<T> for Response<T> {
@@ -169,11 +185,13 @@ impl<T> ResponseExt<T> for Response<T> {
     }
 
     #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> Text<'_>
+    fn text_async(&mut self) -> text::Text<'_>
     where
-        T: AsyncRead + Unpin,
+        T: futures_io::AsyncRead + Unpin,
     {
-        Text(Box::pin(async move {
+        use futures_util::io::AsyncReadExt;
+
+        text::Text(Box::pin(async move {
             read_text_impl!(self, buf, self.body_mut().read(buf).await)
         }))
     }
@@ -185,20 +203,6 @@ impl<T> ResponseExt<T> for Response<T> {
         T: Read,
     {
         serde_json::from_reader(self.body_mut())
-    }
-}
-
-/// A future returning a response body decoded as text.
-#[cfg(feature = "text-decoding")]
-#[allow(missing_debug_implementations)]
-pub struct Text<'a>(LocalBoxFuture<'a, io::Result<String>>);
-
-#[cfg(feature = "text-decoding")]
-impl<'a> Future for Text<'a> {
-    type Output = io::Result<String>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().0.poll_unpin(cx)
     }
 }
 
