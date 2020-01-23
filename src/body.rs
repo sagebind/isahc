@@ -59,7 +59,8 @@ enum Inner {
 impl Body {
     /// Create a new empty body.
     ///
-    /// An empty body will have a known length of 0 bytes.
+    /// An empty body represents the *absence* of a body, which is semantically
+    /// different than the presence of a body of zero length.
     pub const fn empty() -> Self {
         Body(Inner::Empty)
     }
