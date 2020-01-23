@@ -70,6 +70,12 @@ pub trait ResponseExt<T> {
     /// This method consumes the entire response body stream and can only be
     /// called once.
     ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -88,6 +94,12 @@ pub trait ResponseExt<T> {
     ///
     /// This method consumes the entire response body stream and can only be
     /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
     #[cfg(feature = "text-decoding")]
     fn text_async(&mut self) -> text::Text<'_>
     where
@@ -95,7 +107,10 @@ pub trait ResponseExt<T> {
 
     /// Deserialize the response body as JSON into a given type.
     ///
-    /// This method requires the `json` feature to be enabled.
+    /// # Availability
+    ///
+    /// This method is only available when the [`json`](index.html#json) feature
+    /// is enabled.
     ///
     /// # Examples
     ///

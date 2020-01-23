@@ -65,8 +65,9 @@
 //! # Ok::<(), isahc::Error>(())
 //! ```
 //!
-//! Check out the [examples] directory in the project sources for even more
-//! examples.
+//! Check out the
+//! [examples](https://github.com/sagebind/isahc/tree/master/examples) directory
+//! in the project sources for even more examples.
 //!
 //! # Feature tour
 //!
@@ -121,18 +122,81 @@
 //! # Ok(()) }
 //! ```
 //!
+//! # Feature flags
+//!
+//! Isahc is designed to be as "pay-as-you-need" as possible using Cargo feature
+//! flags and optional dependencies. Unstable features are also initially
+//! released behind feature flags until they are stabilized. You can add the
+//! feature names below to your `Cargo.toml` file to enable them:
+//!
+//! ```toml
+//! [dependencies.isahc]
+//! version = "0.8"
+//! features = ["psl"]
+//! ```
+//!
+//! Below is a list of all available feature flags and their meanings.
+//!
+//! ## `cookies`
+//!
+//! Enable persistent HTTP cookie support. Disabled by default.
+//!
+//! ## `http2`
+//!
+//! Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does
+//! not actually affect whether HTTP/2 is used for a given request, but simply
+//! makes it available. To configure which HTTP versions to use in a request,
+//! see [`VersionNegotiation`](config::VersionNegotiation).
+//!
+//! Enabled by default.
+//!
+//! ## `json`
+//!
+//! Additional serialization and deserialization of JSON bodies via
+//! [serde](https://serde.rs). Disabled by default.
+//!
+//! ## `psl`
+//!
+//! Enable use of the Public Suffix List to filter out potentially malicious
+//! cross-domain cookies. Disabled by default.
+//!
+//! ## `spnego`
+//!
+//! Enable support for [SPNEGO-based HTTP
+//! authentication](https://tools.ietf.org/html/rfc4559) (`negotiate` auth
+//! scheme). This makes the `negotiate` scheme available in the API and, if
+//! `static-curl` is enabled, compiles libcurl with GSS-API APIs. The [MIT
+//! Kerberos](https://web.mit.edu/kerberos/) headers must be pre-installed at
+//! compile time.
+//!
+//! ## `static-curl`
+//!
+//! Use a bundled libcurl version and statically link to it. Enabled by default.
+//!
+//! ## `text-decoding`
+//!
+//! Enable support for decoding text-based responses in various charsets into
+//! strings. Enabled by default.
+//!
+//! ## Preview APIs
+//!
+//! There are also some features that enable new incubating APIs that do not
+//! have stability guarantees:
+//!
+//! ### `middleware-api-preview`
+//!
+//! Enable the new middleware API. Unstable until the API is finalized. This an
+//! unstable feature whose interface may change between patch releases.
+//!
 //! # Logging
 //!
 //! Isahc logs quite a bit of useful information at various levels using the
-//! [log] crate.
+//! [log](https://docs.rs/log) crate.
 //!
 //! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in
 //! handy if you are debugging code and need to see the exact data being sent to
 //! the server and being received.
-//!
-//! [examples]: https://github.com/sagebind/isahc/tree/master/examples
-//! [log]: https://docs.rs/log
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png",
@@ -156,9 +220,9 @@ use std::convert::TryFrom;
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
-#[cfg(feature = "middleware-api")]
+#[cfg(feature = "middleware-api-preview")]
 pub mod middleware;
-#[cfg(not(feature = "middleware-api"))]
+#[cfg(not(feature = "middleware-api-preview"))]
 #[allow(unreachable_pub, unused)]
 mod middleware;
 
@@ -197,6 +261,7 @@ pub use http;
 /// use isahc::prelude::*;
 /// ```
 pub mod prelude {
+    #[doc(no_inline)]
     pub use crate::{
         config::Configurable,
         Body,
@@ -205,6 +270,7 @@ pub mod prelude {
         ResponseExt,
     };
 
+    #[doc(no_inline)]
     pub use http::{Request, Response};
 }
 

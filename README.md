@@ -74,29 +74,6 @@ isahc = "0.8"
 
 The current release is only guaranteed to work with the latest stable Rust compiler. When Isahc reaches version `1.0`, a more conservative policy will be adopted.
 
-### Feature flags
-
-Isahc is designed to be as "pay-as-you-need" as possible using Cargo feature
-flags and optional dependencies. Unstable features are also initially
-released behind feature flags until they are stabilized. You can add the
-feature names below to your `Cargo.toml` file to enable them:
-
-```toml
-[dependencies.isahc]
-version = "0.8"
-features = ["psl"]
-```
-
-Below is a list of all available feature flags and their meanings.
-
-- `cookies`: Enable persistent HTTP cookie support. Disabled by default.
-- `http2`: Enable HTTP/2 support in libcurl via libnghttp2. Enabled by default.
-- `json`: Additional serialization and deserialization of JSON bodies via [serde]. Disabled by default.
-- `psl`: Enable use of the Public Suffix List to filter out potentially malicious cross-domain cookies. Disabled by default.
-- `spnego`: Enable support for [SPNEGO-based HTTP authentication][rfc4559] (`negotiate` auth scheme). This makes the `negotiate` scheme available in the API and, if `static-curl` is enabled, compiles libcurl with GSS-API APIs. The [MIT Kerberos] headers must be pre-installed at compile time.
-- `static-curl`: Use a bundled libcurl version and statically link to it. Enabled by default.
-- `middleware-api`: Enable the new middleware API. Unstable until the API is finalized. This an unstable feature whose interface may change between patch releases.
-
 ## Project goals
 
 - Create an ergonomic and innovative HTTP client API that is easy for beginners to use, and flexible for advanced uses.

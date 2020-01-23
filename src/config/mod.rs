@@ -76,6 +76,21 @@ pub trait Configurable: internal::ConfigurableBase {
     /// server.
     ///
     /// The default is [`VersionNegotiation::latest_compatible`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Never use anything newer than HTTP/1.x for this client.
+    /// let http11_client = HttpClient::builder()
+    ///     .version_negotiation(VersionNegotiation::http11())
+    ///     .build()?;
+    ///
+    /// // HTTP/2 with prior knowledge.
+    /// let http2_client = HttpClient::builder()
+    ///     .version_negotiation(VersionNegotiation::http2())
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     fn version_negotiation(self, negotiation: VersionNegotiation) -> Self {
         self.configure(negotiation)
     }
@@ -471,6 +486,15 @@ impl SetOpt for http::HeaderMap {
 
 /// A strategy for selecting what HTTP versions should be used when
 /// communicating with a server.
+///
+/// You can set a version negotiation strategy on a given request or on a client
+/// with [`Configurable::version_negotiation`].
+///
+/// Attempting to use an HTTP version without client-side support at runtime
+/// will result in an error. For example, using the system libcurl on an old
+/// machine may not have an HTTP/2 implementation. Using static linking and the
+/// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2
+/// will be available to use.
 #[derive(Clone, Debug)]
 pub struct VersionNegotiation {
     flag: curl::easy::HttpVersion,

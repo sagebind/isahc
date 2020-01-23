@@ -104,6 +104,11 @@ impl Authentication {
     /// You need to build libcurl with a suitable GSS-API library or SSPI on
     /// Windows for this to work. This is automatic when binding to curl
     /// statically, otherwise it depends on how your system curl is configured.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`spnego`](../index.html#spnego)
+    /// feature is enabled.
     #[cfg(feature = "spnego")]
     pub const fn negotiate() -> Self {
         Authentication(0b0100)
