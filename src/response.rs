@@ -1,9 +1,4 @@
-use crate::{
-    text::Text,
-    Metrics,
-    Error,
-};
-use futures_io::AsyncRead;
+use crate::Metrics;
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -59,10 +54,21 @@ pub trait ResponseExt<T> {
         File::create(path).and_then(|f| self.copy_to(f))
     }
 
-    /// Get the response body as a string.
+    /// Read the response body as a string.
+    ///
+    /// The encoding used to decode the response body into a string depends on
+    /// the response. If the body begins with a [Byte Order Mark
+    /// (BOM)](https://en.wikipedia.org/wiki/Byte_order_mark), then UTF-8,
+    /// UTF-16LE or UTF-16BE is used as indicated by the BOM. If no BOM is
+    /// present, the encoding specified in the `charset` parameter of the
+    /// `Content-Type` header is used if present. Otherwise UTF-8 is assumed.
+    ///
+    /// If the response body contains any malformed characters or characters not
+    /// representable in UTF-8, the offending bytes will be replaced with
+    /// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �.
     ///
     /// This method consumes the entire response body stream and can only be
-    /// called once, unless you can rewind this response body.
+    /// called once.
     ///
     /// # Examples
     ///
@@ -73,17 +79,19 @@ pub trait ResponseExt<T> {
     /// println!("{}", text);
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn text(&mut self) -> Result<String, Error>
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> io::Result<String>
     where
         T: Read;
 
-    /// Get the response body as a string asynchronously.
+    /// Read the response body as a string asynchronously.
     ///
     /// This method consumes the entire response body stream and can only be
-    /// called once, unless you can rewind this response body.
-    fn text_async(&mut self) -> Text<'_>
+    /// called once.
+    #[cfg(feature = "text-decoding")]
+    fn text_async(&mut self) -> text::Text<'_>
     where
-        T: AsyncRead + Unpin;
+        T: futures_io::AsyncRead + Unpin;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -106,6 +114,52 @@ pub trait ResponseExt<T> {
         T: Read;
 }
 
+#[cfg(feature = "text-decoding")]
+#[macro_use]
+mod text {
+    use futures_util::future::{FutureExt, LocalBoxFuture};
+    use std::{
+        future::Future,
+        io,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    macro_rules! read_text_impl {
+        ($response:expr, $buf:ident, $read:expr) => {{
+            let mut decoder = crate::text::Decoder::for_response($response);
+            let mut buf = [0; 8192];
+            let mut unread = 0;
+
+            loop {
+                let $buf = &mut buf[unread..];
+                let len = match $read {
+                    Ok(0) => break,
+                    Ok(len) => len,
+                    Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                };
+
+                unread = decoder.push(&buf[..unread + len]).len();
+            }
+
+            Ok(decoder.finish(&buf[..unread]))
+        }};
+    }
+
+    /// A future returning a response body decoded as text.
+    #[allow(missing_debug_implementations)]
+    pub struct Text<'a>(pub(crate) LocalBoxFuture<'a, io::Result<String>>);
+
+    impl<'a> Future for Text<'a> {
+        type Output = io::Result<String>;
+
+        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            self.as_mut().0.poll_unpin(cx)
+        }
+    }
+}
+
 impl<T> ResponseExt<T> for Response<T> {
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
@@ -122,20 +176,24 @@ impl<T> ResponseExt<T> for Response<T> {
         io::copy(self.body_mut(), &mut writer)
     }
 
-    fn text(&mut self) -> Result<String, Error>
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> io::Result<String>
     where
         T: Read,
     {
-        let mut s = String::default();
-        self.body_mut().read_to_string(&mut s)?;
-        Ok(s)
+        read_text_impl!(self, buf, self.body_mut().read(buf))
     }
 
-    fn text_async(&mut self) -> Text<'_>
+    #[cfg(feature = "text-decoding")]
+    fn text_async(&mut self) -> text::Text<'_>
     where
-        T: AsyncRead + Unpin,
+        T: futures_io::AsyncRead + Unpin,
     {
-        Text::new(self.body_mut())
+        use futures_util::io::AsyncReadExt;
+
+        text::Text(Box::pin(async move {
+            read_text_impl!(self, buf, self.body_mut().read(buf).await)
+        }))
     }
 
     #[cfg(feature = "json")]
