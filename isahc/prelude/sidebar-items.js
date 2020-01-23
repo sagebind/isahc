@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Body","Contains the body of an HTTP request or response."],["HttpClient","An HTTP client for making requests."],["Request","Represents an HTTP request."],["Response","Represents an HTTP response"]],"trait":[["RequestExt","Extension methods on an HTTP request."],["ResponseExt","Provides extension methods for working with HTTP responses."]]});
+initSidebarItems({});

@@ -215,6 +215,11 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types for working with HTTP authentication methods.</span>
 
@@ -322,6 +327,11 @@
     <span class="doccomment">/// You need to build libcurl with a suitable GSS-API library or SSPI on</span>
     <span class="doccomment">/// Windows for this to work. This is automatic when binding to curl</span>
     <span class="doccomment">/// statically, otherwise it depends on how your system curl is configured.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the [`spnego`](../index.html#spnego)</span>
+    <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">negotiate</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Authentication</span>(<span class="number">0b0100</span>)

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `isahc` crate."><meta name="keywords" content="rust, rustlang, rust-lang, isahc"><title>isahc - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a><p class='location'>Crate isahc</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all isahc's items</p></a><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'isahc', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/isahc/lib.rs.html#1-367' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>isahc</a></span></h1><div class='docblock'><p>The practical HTTP client that is fun to use.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `isahc` crate."><meta name="keywords" content="rust, rustlang, rust-lang, isahc"><title>isahc - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a><p class='location'>Crate isahc</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all isahc's items</p></a><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'isahc', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/isahc/lib.rs.html#1-433' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>isahc</a></span></h1><div class='docblock'><p>The practical HTTP client that is fun to use.</p>
 <p>Here are some of Isahc's key features:</p>
 <ul>
 <li>Full support for HTTP/1.1 and HTTP/2.</li>
@@ -34,9 +34,9 @@ the request body:</p>
 <span class="ident">isahc</span>::<span class="ident">head</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
 <span class="ident">isahc</span>::<span class="ident">delete</span>(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</pre></div>
 <p>If you want to customize the request by adding headers, setting timeouts,
-etc, then you can create a <a href="../isahc/prelude/struct.Request.html" title="prelude::Request"><code>Request</code></a> using a
+etc, then you can create a <a href="https://docs.rs/http/0.2.0/http/request/struct.Request.html" title="prelude::Request"><code>Request</code></a> using a
 builder-style fluent interface, then finishing it off with a
-<a href="../isahc/prelude/trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
+<a href="../isahc/trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered">
 <span class="kw">use</span> <span class="ident">isahc</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
@@ -50,8 +50,9 @@ builder-style fluent interface, then finishing it off with a
         &quot;cool_name&quot;: true
     }&quot;#</span>)<span class="question-mark">?</span>
     .<span class="ident">send</span>()<span class="question-mark">?</span>;</pre></div>
-<p>Check out the <a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory in the project sources for even more
-examples.</p>
+<p>Check out the
+<a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory
+in the project sources for even more examples.</p>
 <h1 id="feature-tour" class="section-header"><a href="#feature-tour">Feature tour</a></h1>
 <p>Below is a brief overview of some notable features of Isahc. Check out the
 rest of the documentation for even more guides and examples.</p>
@@ -63,11 +64,11 @@ up and running. They should work perfectly fine for many use-cases, so don't
 about graduating to more complex APIs if you don't need them.</p>
 <h2 id="request-and-response-traits" class="section-header"><a href="#request-and-response-traits">Request and response traits</a></h2>
 <p>Isahc includes a number of traits in the <a href="../isahc/prelude/index.html" title="`prelude`"><code>prelude</code></a> module that extend the
-<a href="../isahc/prelude/struct.Request.html" title="`Request`"><code>Request</code></a> and <a href="../isahc/prelude/struct.Response.html" title="`Response`"><code>Response</code></a> types with a plethora of extra methods that
+<a href="https://docs.rs/http/0.2.0/http/request/struct.Request.html" title="`Request`"><code>Request</code></a> and <a href="https://docs.rs/http/0.2.0/http/response/struct.Response.html" title="`Response`"><code>Response</code></a> types with a plethora of extra methods that
 make common tasks convenient and allow you to make more advanced
 configuration.</p>
 <p>Some key traits to read about include
-<a href="../isahc/config/trait.Configurable.html"><code>Configurable</code></a>, <a href="../isahc/prelude/trait.RequestExt.html" title="`RequestExt`"><code>RequestExt</code></a>, and <a href="../isahc/prelude/trait.ResponseExt.html" title="`ResponseExt`"><code>ResponseExt</code></a>.</p>
+<a href="../isahc/config/trait.Configurable.html"><code>Configurable</code></a>, <a href="../isahc/trait.RequestExt.html" title="`RequestExt`"><code>RequestExt</code></a>, and <a href="../isahc/trait.ResponseExt.html" title="`ResponseExt`"><code>ResponseExt</code></a>.</p>
 <h2 id="custom-clients" class="section-header"><a href="#custom-clients">Custom clients</a></h2>
 <p>The free-standing functions for sending requests use a shared <a href="../isahc/struct.HttpClient.html" title="`HttpClient`"><code>HttpClient</code></a>
 instance, but you can also create your own client instances, which allows
@@ -89,6 +90,48 @@ first example rewritten to use async/await syntax:</p>
 
 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc</span>::<span class="ident">get_async</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text_async</span>().<span class="kw">await</span><span class="question-mark">?</span>);</pre></div>
+<h1 id="feature-flags" class="section-header"><a href="#feature-flags">Feature flags</a></h1>
+<p>Isahc is designed to be as &quot;pay-as-you-need&quot; as possible using Cargo feature
+flags and optional dependencies. Unstable features are also initially
+released behind feature flags until they are stabilized. You can add the
+feature names below to your <code>Cargo.toml</code> file to enable them:</p>
+<pre><code class="language-toml">[dependencies.isahc]
+version = &quot;0.8&quot;
+features = [&quot;psl&quot;]
+</code></pre>
+<p>Below is a list of all available feature flags and their meanings.</p>
+<h2 id="cookies" class="section-header"><a href="#cookies"><code>cookies</code></a></h2>
+<p>Enable persistent HTTP cookie support. Disabled by default.</p>
+<h2 id="http2" class="section-header"><a href="#http2"><code>http2</code></a></h2>
+<p>Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does
+not actually affect whether HTTP/2 is used for a given request, but simply
+makes it available. To configure which HTTP versions to use in a request,
+see <a href="../isahc/config/struct.VersionNegotiation.html"><code>VersionNegotiation</code></a>.</p>
+<p>Enabled by default.</p>
+<h2 id="json" class="section-header"><a href="#json"><code>json</code></a></h2>
+<p>Additional serialization and deserialization of JSON bodies via
+<a href="https://serde.rs">serde</a>. Disabled by default.</p>
+<h2 id="psl" class="section-header"><a href="#psl"><code>psl</code></a></h2>
+<p>Enable use of the Public Suffix List to filter out potentially malicious
+cross-domain cookies. Disabled by default.</p>
+<h2 id="spnego" class="section-header"><a href="#spnego"><code>spnego</code></a></h2>
+<p>Enable support for <a href="https://tools.ietf.org/html/rfc4559">SPNEGO-based HTTP
+authentication</a> (<code>negotiate</code> auth
+scheme). This makes the <code>negotiate</code> scheme available in the API and, if
+<code>static-curl</code> is enabled, compiles libcurl with GSS-API APIs. The <a href="https://web.mit.edu/kerberos/">MIT
+Kerberos</a> headers must be pre-installed at
+compile time.</p>
+<h2 id="static-curl" class="section-header"><a href="#static-curl"><code>static-curl</code></a></h2>
+<p>Use a bundled libcurl version and statically link to it. Enabled by default.</p>
+<h2 id="text-decoding" class="section-header"><a href="#text-decoding"><code>text-decoding</code></a></h2>
+<p>Enable support for decoding text-based responses in various charsets into
+strings. Enabled by default.</p>
+<h2 id="preview-apis" class="section-header"><a href="#preview-apis">Preview APIs</a></h2>
+<p>There are also some features that enable new incubating APIs that do not
+have stability guarantees:</p>
+<h3 id="middleware-api-preview" class="section-header"><a href="#middleware-api-preview"><code>middleware-api-preview</code></a></h3>
+<p>Enable the new middleware API. Unstable until the API is finalized. This an
+unstable feature whose interface may change between patch releases.</p>
 <h1 id="logging" class="section-header"><a href="#logging">Logging</a></h1>
 <p>Isahc logs quite a bit of useful information at various levels using the
 <a href="https://docs.rs/log">log</a> crate.</p>

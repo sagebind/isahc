@@ -207,6 +207,21 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Metrics</span>;
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Response</span>, <span class="ident">Uri</span>};
@@ -280,6 +295,12 @@
     <span class="doccomment">/// This method consumes the entire response body stream and can only be</span>
     <span class="doccomment">/// called once.</span>
     <span class="doccomment">///</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the</span>
+    <span class="doccomment">/// [`text-decoding`](index.html#text-decoding) feature is enabled, which it</span>
+    <span class="doccomment">/// is by default.</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
@@ -298,6 +319,12 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This method consumes the entire response body stream and can only be</span>
     <span class="doccomment">/// called once.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the</span>
+    <span class="doccomment">/// [`text-decoding`](index.html#text-decoding) feature is enabled, which it</span>
+    <span class="doccomment">/// is by default.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">text_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">text</span>::<span class="ident">Text</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
@@ -305,7 +332,10 @@
 
     <span class="doccomment">/// Deserialize the response body as JSON into a given type.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// This method requires the `json` feature to be enabled.</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the [`json`](index.html#json) feature</span>
+    <span class="doccomment">/// is enabled.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>

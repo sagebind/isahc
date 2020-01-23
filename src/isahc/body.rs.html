@@ -244,6 +244,7 @@
 <span id="244">244</span>
 <span id="245">245</span>
 <span id="246">246</span>
+<span id="247">247</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides types for working with request and response bodies.</span>
 
@@ -306,7 +307,8 @@
 <span class="kw">impl</span> <span class="ident">Body</span> {
     <span class="doccomment">/// Create a new empty body.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// An empty body will have a known length of 0 bytes.</span>
+    <span class="doccomment">/// An empty body represents the *absence* of a body, which is semantically</span>
+    <span class="doccomment">/// different than the presence of a body of zero length.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">empty</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">Empty</span>)
     }
