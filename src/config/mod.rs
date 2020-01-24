@@ -80,6 +80,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
+    /// use isahc::config::VersionNegotiation;
+    /// use isahc::prelude::*;
     /// // Never use anything newer than HTTP/1.x for this client.
     /// let http11_client = HttpClient::builder()
     ///     .version_negotiation(VersionNegotiation::http11())
