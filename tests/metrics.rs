@@ -1,37 +1,43 @@
+use httptest::{
+    mappers::*,
+    responders::status_code,
+    Expectation,
+};
 use isahc::prelude::*;
-use mockito::{mock, server_url};
 use std::{io, thread, time::Duration};
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "metrics are disabled by default" {
-        let m = mock("GET", "/").create();
+        server.expect(
+            Expectation::matching(request::method_path("GET", "/"))
+            .respond_with(status_code(200))
+        );
 
-        let response = isahc::get(server_url()).unwrap();
+        let response = isahc::get(server.url("/")).unwrap();
 
         assert!(response.metrics().is_none());
-
-        m.assert();
     }
 
     test "enabling metrics causes metrics to be collected" {
-        let m = mock("POST", "/")
-            .with_body_from_fn(|body| {
+        server.expect(
+            Expectation::matching(request::method_path("POST", "/"))
+            .respond_with(|| {
                 thread::sleep(Duration::from_millis(10));
-                body.write_all(b"hello world")?;
-                Ok(())
+                status_code(200).body("hello world")
             })
-            .create();
+        );
 
         let client = isahc::HttpClient::builder()
             .metrics(true)
             .build()
             .unwrap();
 
-        let mut response = client.send(Request::post(server_url())
+        let mut response = client.send(Request::post(server.url("/"))
             .body("hello server")
             .unwrap())
             .unwrap();
@@ -44,7 +50,5 @@ speculate::speculate! {
 
         assert_eq!(metrics.download_progress().0, 11);
         assert!(metrics.total_time() > Duration::default());
-
-        m.assert();
     }
 }

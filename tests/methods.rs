@@ -1,62 +1,69 @@
+use httptest::{mappers::*, responders::status_code, Expectation};
 use isahc::prelude::*;
-use mockito::{mock, server_url};
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "GET request" {
-        let m = mock("GET", "/").create();
+        server.expect(
+            Expectation::matching(request::method("GET"))
+            .respond_with(status_code(200))
+        );
 
-        isahc::get(server_url()).unwrap();
-
-        m.assert();
+        isahc::get(server.url("/")).unwrap();
     }
 
     test "HEAD request" {
-        let m = mock("HEAD", "/").create();
+        server.expect(
+            Expectation::matching(request::method("HEAD"))
+            .respond_with(status_code(200))
+        );
 
-        isahc::head(server_url()).unwrap();
-
-        m.assert();
+        isahc::head(server.url("/")).unwrap();
     }
 
     test "POST request" {
-        let m = mock("POST", "/").create();
+        server.expect(
+            Expectation::matching(request::method("POST"))
+            .respond_with(status_code(200))
+        );
 
-        isahc::post(server_url(), ()).unwrap();
-
-        m.assert();
+        isahc::post(server.url("/"), ()).unwrap();
     }
 
     test "PUT request" {
-        let m = mock("PUT", "/").create();
+        server.expect(
+            Expectation::matching(request::method("PUT"))
+            .respond_with(status_code(200))
+        );
 
-        isahc::put(server_url(), ()).unwrap();
-
-        m.assert();
+        isahc::put(server.url("/"), ()).unwrap();
     }
 
     test "DELETE request" {
-        let m = mock("DELETE", "/").create();
+        server.expect(
+            Expectation::matching(request::method("DELETE"))
+            .respond_with(status_code(200))
+        );
 
-        isahc::delete(server_url()).unwrap();
-
-        m.assert();
+        isahc::delete(server.url("/")).unwrap();
     }
 
     test "arbitrary FOOBAR request" {
-        let m = mock("FOOBAR", "/").create();
+        server.expect(
+            Expectation::matching(request::method("FOOBAR"))
+            .respond_with(status_code(200))
+        );
 
         Request::builder()
             .method("FOOBAR")
-            .uri(server_url())
+            .uri(server.url("/"))
             .body(())
             .unwrap()
             .send()
             .unwrap();
-
-        m.assert();
     }
 }

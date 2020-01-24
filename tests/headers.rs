@@ -1,28 +1,37 @@
-use mockito::{mock, server_url, Matcher};
+use httptest::{mappers::*, responders::status_code, Expectation};
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "accept headers populated by default" {
-        let m = mock("GET", "/")
-            .match_header("accept", "*/*")
-            .match_header("accept-encoding", "deflate, gzip")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(all_of![
+                    contains(("accept", "*/*")),
+                    contains(("accept-encoding", "deflate, gzip")),
+                ]),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        isahc::get(server_url()).unwrap();
-
-        m.assert();
+        isahc::get(server.url("/")).unwrap();
     }
 
     test "user agent contains expected format" {
-        let m = mock("GET", "/")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(
+                    contains(("user-agent", matches(r"^curl/\S+ isahc/\S+$"))),
+                ),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        isahc::get(server_url()).unwrap();
-
-        m.assert();
+        isahc::get(server.url("/")).unwrap();
     }
 }

@@ -1,33 +1,41 @@
+use httptest::{mappers::*, responders::status_code, Expectation};
 use isahc::auth::*;
 use isahc::prelude::*;
-use mockito::{mock, server_url, Matcher};
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "credentials without auth config does nothing" {
-        let m = mock("GET", "/")
-            .match_header("authorization", Matcher::Missing)
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(not(contains(key("authorization")))),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        Request::get(server_url())
+        Request::get(server.url("/"))
             .credentials(Credentials::new("clark", "querty"))
             .body(())
             .unwrap()
             .send()
             .unwrap();
 
-        m.assert();
     }
 
     test "basic auth sends authorization header" {
-        let m = mock("GET", "/")
-            .match_header("authorization", "Basic Y2xhcms6cXVlcnR5") // base64
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(contains(("authorization", "Basic Y2xhcms6cXVlcnR5"))),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        Request::get(server_url())
+        Request::get(server.url("/"))
             .authentication(Authentication::basic())
             .credentials(Credentials::new("clark", "querty"))
             .body(())
@@ -35,35 +43,35 @@ speculate::speculate! {
             .send()
             .unwrap();
 
-        m.assert();
     }
 
     #[cfg(feature = "spnego")]
     test "negotiate auth exists" {
-        let m = mock("GET", "/")
-            .with_status(401)
-            .with_header("WWW-Authenticate", "Negotiate")
-            .create();
+        server.expect(
+            Expectation::matching(request::method_path("GET", "/"))
+            .respond_with(status_code(401).insert_header("WWW-Authenticate", "Negotiate"))
+        );
 
-        Request::get(server_url())
+        Request::get(server.url("/"))
             .authentication(Authentication::negotiate())
             .body(())
             .unwrap()
             .send()
             .unwrap();
 
-        m.assert();
     }
 
     #[cfg(all(feature = "spnego", windows))]
     test "negotiate on windows provides a token" {
-        let m = mock("GET", "/")
-            .match_header("Authorization", Matcher::Regex(r"Negotiate \w+=*".into()))
-            .with_status(200)
-            .with_header("WWW-Authenticate", "Negotiate")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(contains(("Authorization", matching(r"Negotiate \w=*")))),
+            ])
+            .respond_with(status_code(200).insert_header("WWW-Authenticate", "Negotiate"))
+        );
 
-        let response = Request::get(server_url())
+        let response = Request::get(server.url("/"))
             .authentication(Authentication::negotiate())
             .body(())
             .unwrap()
@@ -71,7 +79,5 @@ speculate::speculate! {
             .unwrap();
 
         assert_eq!(response.status(), 200);
-
-        m.assert();
     }
 }

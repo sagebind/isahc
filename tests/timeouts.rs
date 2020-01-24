@@ -1,26 +1,33 @@
+use httptest::{
+    mappers::*,
+    responders::status_code,
+    Expectation,
+};
 use isahc::prelude::*;
-use mockito::{mock, server_url};
-use std::thread::sleep;
 use std::time::Duration;
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     /// Issue #3
     test "request errors if read timeout is reached" {
+        let (_tx, rx) = crossbeam_channel::bounded::<()>(0);
         // Spawn a slow server.
-        let m = mock("POST", "/")
-            .with_body_from_fn(|_| {
-                sleep(Duration::from_secs(1));
-                Ok(())
+        server.expect(
+            Expectation::matching(request::method_path("POST", "/"))
+            .respond_with(move || {
+                // block to mimic a long running request.
+                let _ = rx.recv();
+                status_code(200)
             })
-            .create();
+        );
 
         // Send a request with a timeout.
-        let result = Request::post(server_url())
-            .timeout(Duration::from_millis(500))
+        let result = Request::post(server.url("/"))
+            .timeout(Duration::from_millis(100))
             .body("hello world")
             .unwrap()
             .send();
@@ -32,7 +39,5 @@ speculate::speculate! {
                 panic!("expected timeout error, got {:?}", e);
             }
         }
-
-        m.assert();
     }
 }

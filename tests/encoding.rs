@@ -1,12 +1,13 @@
 use flate2::read::{DeflateEncoder, GzEncoder};
 use flate2::Compression;
+use httptest::{mappers::*, responders::status_code, Expectation};
 use isahc::prelude::*;
-use mockito::{mock, server_url};
 use std::io::Read;
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "gzip-encoded response is decoded automatically" {
@@ -17,16 +18,17 @@ speculate::speculate! {
             .read_to_end(&mut body_encoded)
             .unwrap();
 
-        let m = mock("GET", "/")
-            .match_header("Accept-Encoding", "deflate, gzip")
-            .with_header("Content-Encoding", "gzip")
-            .with_body(&body_encoded)
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(contains(("accept-encoding", "deflate, gzip"))),
+            ])
+            .respond_with(status_code(200).insert_header("Content-Encoding", "gzip").body(body_encoded))
+        );
 
-        let mut response = isahc::get(server_url()).unwrap();
+        let mut response = isahc::get(server.url("/")).unwrap();
 
         assert_eq!(response.text().unwrap(), body);
-        m.assert();
     }
 
     test "deflate-encoded response is decoded automatically" {
@@ -37,16 +39,17 @@ speculate::speculate! {
             .read_to_end(&mut body_encoded)
             .unwrap();
 
-        let m = mock("GET", "/")
-            .match_header("Accept-Encoding", "deflate, gzip")
-            .with_header("Content-Encoding", "deflate")
-            .with_body(&body_encoded)
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(contains(("accept-encoding", "deflate, gzip"))),
+            ])
+            .respond_with(status_code(200).insert_header("Content-Encoding", "deflate").body(body_encoded))
+        );
 
-        let mut response = isahc::get(server_url()).unwrap();
+        let mut response = isahc::get(server.url("/")).unwrap();
 
         assert_eq!(response.text().unwrap(), body);
-        m.assert();
     }
 
     test "content is decoded even if not listed as accepted" {
@@ -57,13 +60,15 @@ speculate::speculate! {
             .read_to_end(&mut body_encoded)
             .unwrap();
 
-        let m = mock("GET", "/")
-            .match_header("Accept-Encoding", "deflate")
-            .with_header("Content-Encoding", "gzip")
-            .with_body(&body_encoded)
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method_path("GET", "/"),
+                request::headers(contains(("accept-encoding", "deflate"))),
+            ])
+            .respond_with(status_code(200).insert_header("Content-Encoding", "gzip").body(body_encoded))
+        );
 
-        let mut response = Request::get(server_url())
+        let mut response = Request::get(server.url("/"))
             .header("Accept-Encoding", "deflate")
             .body(())
             .unwrap()
@@ -71,16 +76,15 @@ speculate::speculate! {
             .unwrap();
 
         assert_eq!(response.text().unwrap(), body);
-        m.assert();
     }
 
     test "unknown Content-Encoding returns error" {
-        let m = mock("GET", "/")
-            .with_header("Content-Encoding", "foo")
-            .with_body("hello world")
-            .create();
+        server.expect(
+            Expectation::matching(request::method_path("GET", "/"))
+            .respond_with(status_code(200).insert_header("Content-Encoding", "foo").body("hello world"))
+        );
 
-        let result = Request::get(server_url())
+        let result = Request::get(server.url("/"))
             .header("Accept-Encoding", "deflate")
             .body(())
             .unwrap()
@@ -90,7 +94,5 @@ speculate::speculate! {
             Err(isahc::Error::InvalidContentEncoding(_)) => {}
             _ => panic!("expected unknown encoding error, instead got {:?}", result),
         };
-
-        m.assert();
     }
 }

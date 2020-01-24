@@ -1,39 +1,46 @@
+use httptest::{mappers::*, responders::status_code, Expectation};
 use isahc::config::RedirectPolicy;
 use isahc::prelude::*;
-use mockito::{mock, server_url};
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+        let server = httptest::Server::run();
     }
 
     test "response 301 no follow" {
-        let m = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/"),
+            ])
+            .respond_with(status_code(301).insert_header("Location", "/2"))
+        );
 
-        let response = isahc::get(server_url()).unwrap();
+        let response = isahc::get(server.url("/")).unwrap();
 
         assert_eq!(response.status(), 301);
         assert_eq!(response.headers()["Location"], "/2");
         assert_eq!(response.effective_uri().unwrap().path(), "/");
-
-        m.assert();
     }
 
     test "response 301 auto follow" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/"),
+            ])
+            .respond_with(status_code(301).insert_header("Location", "/2"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/2"),
+            ])
+            .respond_with(status_code(200).body("ok"))
+        );
 
-        let m2 = mock("GET", "/2")
-            .with_status(200)
-            .with_body("ok")
-            .create();
-
-        let mut response = Request::get(server_url())
+        let mut response = Request::get(server.url("/"))
             .redirect_policy(RedirectPolicy::Follow)
             .body(())
             .unwrap()
@@ -43,25 +50,25 @@ speculate::speculate! {
         assert_eq!(response.status(), 200);
         assert_eq!(response.text().unwrap(), "ok");
         assert_eq!(response.effective_uri().unwrap().path(), "/2");
-
-        m1.assert();
-        m2.assert();
     }
 
     test "headers are reset every redirect" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/b")
-            .with_header("X-Foo", "aaa")
-            .with_header("X-Bar", "zzz")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/"),
+            ])
+            .respond_with(status_code(301).insert_header("Location", "/b").insert_header("X-Foo", "aaa").insert_header("X-Bar", "zzz"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/b"),
+            ])
+            .respond_with(status_code(200).insert_header("X-Foo", "bbb").insert_header("X-Baz", "zzz"))
+        );
 
-        let m2 = mock("GET", "/b")
-            .with_header("X-Foo", "bbb")
-            .with_header("X-Baz", "zzz")
-            .create();
-
-        let response = Request::get(server_url())
+        let response = Request::get(server.url("/"))
             .redirect_policy(RedirectPolicy::Follow)
             .body(())
             .unwrap()
@@ -72,20 +79,25 @@ speculate::speculate! {
         assert_eq!(response.headers()["X-Foo"], "bbb");
         assert_eq!(response.headers()["X-Baz"], "zzz");
         assert!(!response.headers().contains_key("X-Bar"));
-
-        m1.assert();
-        m2.assert();
     }
 
     test "303 redirect changes POST to GET" {
-        let m1 = mock("POST", "/")
-            .with_status(303)
-            .with_header("Location", "/2")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("POST"),
+                request::path("/"),
+            ])
+            .respond_with(status_code(303).insert_header("Location", "/2"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/2"),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        let m2 = mock("GET", "/2").create();
-
-        let response = Request::post(server_url())
+        let response = Request::post(server.url("/"))
             .redirect_policy(RedirectPolicy::Follow)
             .body(())
             .unwrap()
@@ -94,23 +106,27 @@ speculate::speculate! {
 
         assert_eq!(response.status(), 200);
         assert_eq!(response.effective_uri().unwrap().path(), "/2");
-
-        m1.assert();
-        m2.assert();
     }
 
     test "redirect limit is respected" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/"),
+            ])
+            .times(3)
+            .respond_with(status_code(301).insert_header("Location", "/2"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/2"),
+            ])
+            .times(3)
+            .respond_with(status_code(301).insert_header("Location", "/"))
+        );
 
-        let m2 = mock("GET", "/2")
-            .with_status(301)
-            .with_header("Location", "/")
-            .create();
-
-        let result = Request::get(server_url())
+        let result = Request::get(server.url("/"))
             .redirect_policy(RedirectPolicy::Limit(5))
             .body(())
             .unwrap()
@@ -121,38 +137,43 @@ speculate::speculate! {
             Err(isahc::Error::TooManyRedirects) => true,
             _ => false,
         });
-
-        // After request (limit + 1) that returns a redirect should error.
-        m1.expect(3);
-        m2.expect(3);
     }
 
     test "auto referer sets expected header" {
-        let m1 = mock("GET", "/a")
-            .with_status(301)
-            .with_header("Location", "/b")
-            .create();
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/a"),
+            ])
+            .respond_with(status_code(301).insert_header("Location", "/b"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/b"),
+                request::headers(contains(
+                    ("referer", server.url_str("/a")),
+                )),
+            ])
+            .respond_with(status_code(301).insert_header("Location", "/c"))
+        );
+        server.expect(
+            Expectation::matching(all_of![
+                request::method("GET"),
+                request::path("/c"),
+                request::headers(contains(
+                    ("referer", server.url_str("/b")),
+                )),
+            ])
+            .respond_with(status_code(200))
+        );
 
-        let m2 = mock("GET", "/b")
-            .with_status(301)
-            .with_header("Location", "/c")
-            .match_header("Referer", (server_url() + "/a").as_str())
-            .create();
-
-        let m3 = mock("GET", "/c")
-            .match_header("Referer", (server_url() + "/b").as_str())
-            .create();
-
-        Request::get(server_url() + "/a")
+        Request::get(server.url("/a"))
             .redirect_policy(RedirectPolicy::Follow)
             .auto_referer()
             .body(())
             .unwrap()
             .send()
             .unwrap();
-
-        m1.assert();
-        m2.assert();
-        m3.assert();
     }
 }
