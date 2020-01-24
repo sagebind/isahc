@@ -1,9 +1,6 @@
 use crate::{
     client::ResponseFuture,
-    config::{
-        Configurable,
-        internal::ConfigurableBase,
-    },
+    config::{internal::ConfigurableBase, Configurable},
     {Body, Error},
 };
 use http::{Request, Response};

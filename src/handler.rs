@@ -1,13 +1,10 @@
-use crate::{parse, response::EffectiveUri, Metrics, Body, Error};
+use crate::{parse, response::EffectiveUri, Body, Error, Metrics};
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use futures_channel::oneshot::Sender;
 use futures_io::{AsyncRead, AsyncWrite};
-use futures_util::{
-    pin_mut,
-    task::AtomicWaker,
-};
+use futures_util::{pin_mut, task::AtomicWaker};
 use http::{Response, Uri};
 use sluice::pipe;
 use std::{
@@ -99,7 +96,12 @@ struct Shared {
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
-    pub(crate) fn new(request_body: Body) -> (Self, impl Future<Output = Result<Response<ResponseBodyReader>, Error>>) {
+    pub(crate) fn new(
+        request_body: Body,
+    ) -> (
+        Self,
+        impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
+    ) {
         let (sender, receiver) = futures_channel::oneshot::channel();
         let shared = Arc::new(Shared {
             id: AtomicCell::new(usize::max_value()),
@@ -126,8 +128,7 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.await
-                .map_err(|_| Error::Aborted)??;
+            let builder = receiver.await.map_err(|_| Error::Aborted)??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
@@ -141,7 +142,8 @@ impl RequestHandler {
     }
 
     fn is_future_canceled(&self) -> bool {
-        self.sender.as_ref()
+        self.sender
+            .as_ref()
             .map(Sender::is_canceled)
             .unwrap_or(false)
     }
@@ -393,13 +395,7 @@ impl curl::easy::Handler for RequestHandler {
 
     /// Capture transfer progress updates from curl.
     #[allow(unsafe_code)]
-    fn progress(
-        &mut self,
-        dltotal: f64,
-        dlnow: f64,
-        ultotal: f64,
-        ulnow: f64,
-    ) -> bool {
+    fn progress(&mut self, dltotal: f64, dlnow: f64, ultotal: f64, ulnow: f64) -> bool {
         // Initialize metrics if required.
         let metrics = self.metrics.get_or_insert_with(Metrics::new);
 
@@ -488,9 +484,15 @@ impl curl::easy::Handler for RequestHandler {
         }
 
         match kind {
-            InfoType::Text => log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end()),
-            InfoType::HeaderIn | InfoType::DataIn => log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data)),
-            InfoType::HeaderOut | InfoType::DataOut => log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data)),
+            InfoType::Text => {
+                log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
+            }
+            InfoType::HeaderIn | InfoType::DataIn => {
+                log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data))
+            }
+            InfoType::HeaderOut | InfoType::DataOut => {
+                log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data))
+            }
             _ => (),
         }
     }

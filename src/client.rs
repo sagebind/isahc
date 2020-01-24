@@ -3,18 +3,15 @@
 use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
-    config::*,
     config::internal::{ConfigurableBase, SetOpt},
+    config::*,
     handler::{RequestHandler, ResponseBodyReader},
     middleware::Middleware,
     task::Join,
     Body, Error,
 };
 use futures_io::AsyncRead;
-use futures_util::{
-    future::BoxFuture,
-    pin_mut,
-};
+use futures_util::{future::BoxFuture, pin_mut};
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::{
@@ -634,9 +631,7 @@ impl HttpClient {
         builder: http::request::Builder,
         body: Body,
     ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move {
-            self.send_async_inner(builder.body(body)?).await
-        })
+        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
     }
 
     /// Actually send the request. All the public methods go through here.
@@ -698,7 +693,13 @@ impl HttpClient {
     fn create_easy_handle(
         &self,
         request: Request<Body>,
-    ) -> Result<(curl::easy::Easy2<RequestHandler>, impl Future<Output = Result<Response<ResponseBodyReader>, Error>>), Error> {
+    ) -> Result<
+        (
+            curl::easy::Easy2<RequestHandler>,
+            impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
+        ),
+        Error,
+    > {
         // Prepare the request plumbing.
         let (mut parts, body) = request.into_parts();
         let has_body = !body.is_empty();

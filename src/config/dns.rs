@@ -51,7 +51,8 @@ impl SetOpt for DnsCache {
 
         // Use unsafe API, because safe API doesn't let us set to -1.
         unsafe {
-            match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_DNS_CACHE_TIMEOUT, value) {
+            match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_DNS_CACHE_TIMEOUT, value)
+            {
                 curl_sys::CURLE_OK => Ok(()),
                 code => Err(curl::Error::new(code)),
             }
@@ -79,7 +80,8 @@ impl ResolveMap {
         H: AsRef<str>,
         A: Into<IpAddr>,
     {
-        self.0.push(format!("{}:{}:{}", host.as_ref(), port, addr.into()));
+        self.0
+            .push(format!("{}:{}:{}", host.as_ref(), port, addr.into()));
         self
     }
 }
@@ -101,10 +103,12 @@ pub(crate) struct Servers(String);
 
 impl FromIterator<SocketAddr> for Servers {
     fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
-        Servers(iter.into_iter()
-            .map(|addr| addr.to_string())
-            .collect::<Vec<_>>()
-            .join(","))
+        Servers(
+            iter.into_iter()
+                .map(|addr| addr.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+        )
     }
 }
 

@@ -200,7 +200,7 @@
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png",
-    html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png",
+    html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"
 )]
 #![deny(unsafe_code)]
 #![warn(
@@ -262,13 +262,7 @@ pub use http;
 /// ```
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{
-        config::Configurable,
-        Body,
-        HttpClient,
-        RequestExt,
-        ResponseExt,
-    };
+    pub use crate::{config::Configurable, Body, HttpClient, RequestExt, ResponseExt};
 
     #[doc(no_inline)]
     pub use http::{Request, Response};
@@ -389,9 +383,9 @@ where
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::delete_async`] for details.
 pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
-    where
-        http::Uri: TryFrom<U>,
-        <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+where
+    http::Uri: TryFrom<U>,
+    <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
 {
     HttpClient::shared().delete_async(uri)
 }

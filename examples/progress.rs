@@ -15,14 +15,12 @@ struct Options {
 fn main() -> Result<(), isahc::Error> {
     let options = Options::from_args();
 
-    let bar = ProgressBar::new(0)
-        .with_style(ProgressStyle::default_bar()
-            .template("{bar:40.cyan/blue} {bytes:>7}/{total_bytes:7} {msg}"));
+    let bar = ProgressBar::new(0).with_style(
+        ProgressStyle::default_bar()
+            .template("{bar:40.cyan/blue} {bytes:>7}/{total_bytes:7} {msg}"),
+    );
 
-    let mut response = Request::get(options.url)
-        .metrics(true)
-        .body(())?
-        .send()?;
+    let mut response = Request::get(options.url).metrics(true).body(())?.send()?;
     let metrics = response.metrics().unwrap().clone();
     let body = response.body_mut();
     let mut buf = [0; 16384 * 4];
@@ -32,7 +30,7 @@ fn main() -> Result<(), isahc::Error> {
             Ok(0) => {
                 bar.finish();
                 break;
-            },
+            }
             Ok(_) => {
                 bar.set_position(metrics.download_progress().0);
                 bar.set_length(metrics.download_progress().1);
@@ -41,7 +39,7 @@ fn main() -> Result<(), isahc::Error> {
                     FormattedDuration(metrics.total_time()),
                     HumanBytes(metrics.download_speed() as u64),
                 ));
-            },
+            }
             Err(e) => {
                 bar.finish_at_current_pos();
                 eprintln!("Error: {}", e);
