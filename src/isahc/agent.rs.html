@@ -495,6 +495,10 @@
 <span id="495">495</span>
 <span id="496">496</span>
 <span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -573,45 +577,47 @@
         <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">Handle</span> {
             <span class="ident">message_tx</span>: <span class="ident">message_tx</span>.<span class="ident">clone</span>(),
             <span class="ident">waker</span>: <span class="ident">waker</span>.<span class="ident">clone</span>(),
-            <span class="ident">join_handle</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="prelude-val">Some</span>(<span class="ident">thread</span>::<span class="ident">Builder</span>::<span class="ident">new</span>()
-                .<span class="ident">name</span>(<span class="ident">AGENT_THREAD_NAME</span>.<span class="ident">into</span>())
-                .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Multi</span>::<span class="ident">new</span>();
+            <span class="ident">join_handle</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="prelude-val">Some</span>(
+                <span class="ident">thread</span>::<span class="ident">Builder</span>::<span class="ident">new</span>()
+                    .<span class="ident">name</span>(<span class="ident">AGENT_THREAD_NAME</span>.<span class="ident">into</span>())
+                    .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Multi</span>::<span class="ident">new</span>();
 
-                    <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                        <span class="ident">multi</span>.<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)<span class="question-mark">?</span>;
-                    }
+                        <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                            <span class="ident">multi</span>.<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)<span class="question-mark">?</span>;
+                        }
 
-                    <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                        <span class="ident">multi</span>.<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)<span class="question-mark">?</span>;
-                    }
+                        <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                            <span class="ident">multi</span>.<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)<span class="question-mark">?</span>;
+                        }
 
-                    <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
-                    <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                        <span class="ident">multi</span>.<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)<span class="question-mark">?</span>;
-                    }
+                        <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
+                        <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                            <span class="ident">multi</span>.<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)<span class="question-mark">?</span>;
+                        }
 
-                    <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span> {
-                        <span class="ident">multi</span>,
-                        <span class="ident">multi_messages</span>: <span class="ident">crossbeam_channel</span>::<span class="ident">unbounded</span>(),
-                        <span class="ident">message_tx</span>,
-                        <span class="ident">message_rx</span>,
-                        <span class="ident">wake_socket</span>,
-                        <span class="ident">requests</span>: <span class="ident">Slab</span>::<span class="ident">new</span>(),
-                        <span class="ident">close_requested</span>: <span class="bool-val">false</span>,
-                        <span class="ident">waker</span>,
-                    };
+                        <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span> {
+                            <span class="ident">multi</span>,
+                            <span class="ident">multi_messages</span>: <span class="ident">crossbeam_channel</span>::<span class="ident">unbounded</span>(),
+                            <span class="ident">message_tx</span>,
+                            <span class="ident">message_rx</span>,
+                            <span class="ident">wake_socket</span>,
+                            <span class="ident">requests</span>: <span class="ident">Slab</span>::<span class="ident">new</span>(),
+                            <span class="ident">close_requested</span>: <span class="bool-val">false</span>,
+                            <span class="ident">waker</span>,
+                        };
 
-                    <span class="ident">drop</span>(<span class="ident">wait_group_thread</span>);
-                    <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, <span class="ident">create_start</span>.<span class="ident">elapsed</span>());
+                        <span class="ident">drop</span>(<span class="ident">wait_group_thread</span>);
+                        <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, <span class="ident">create_start</span>.<span class="ident">elapsed</span>());
 
-                    <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">agent</span>.<span class="ident">run</span>();
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">result</span> {
-                        <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent shut down with error: {}&quot;</span>, <span class="ident">e</span>);
-                    }
+                        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">agent</span>.<span class="ident">run</span>();
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">result</span> {
+                            <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent shut down with error: {}&quot;</span>, <span class="ident">e</span>);
+                        }
 
-                    <span class="ident">result</span>
-                })<span class="question-mark">?</span>)),
+                        <span class="ident">result</span>
+                    })<span class="question-mark">?</span>,
+            )),
         };
 
         <span class="comment">// Block until the agent thread responds.</span>
@@ -710,13 +716,11 @@
                 <span class="self">self</span>.<span class="ident">waker</span>.<span class="ident">wake_by_ref</span>();
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
-                    <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
-                    <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
-                }
-            }
+            <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
+                <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
+                <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
+                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
+            },
         }
     }
 
@@ -747,7 +751,7 @@
             <span class="ident">JoinResult</span>::<span class="prelude-val">Ok</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;agent thread joined cleanly&quot;</span>),
             <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
             <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
         }
     }
 }
@@ -799,7 +803,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">complete_request</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">token</span>: <span class="ident">usize</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">complete_request</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">token</span>: <span class="ident">usize</span>,
+        <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">remove</span>(<span class="ident">token</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">remove2</span>(<span class="ident">handle</span>)<span class="question-mark">?</span>;
 

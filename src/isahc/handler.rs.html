@@ -538,17 +538,16 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">parse</span>, <span class="ident">response</span>::<span class="ident">EffectiveUri</span>, <span class="ident">Metrics</span>, <span class="ident">Body</span>, <span class="ident">Error</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">parse</span>, <span class="ident">response</span>::<span class="ident">EffectiveUri</span>, <span class="ident">Body</span>, <span class="ident">Error</span>, <span class="ident">Metrics</span>};
 <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">InfoType</span>, <span class="ident">ReadError</span>, <span class="ident">SeekResult</span>, <span class="ident">WriteError</span>};
 <span class="kw">use</span> <span class="ident">curl_sys</span>::<span class="ident">CURL</span>;
 <span class="kw">use</span> <span class="ident">futures_channel</span>::<span class="ident">oneshot</span>::<span class="ident">Sender</span>;
 <span class="kw">use</span> <span class="ident">futures_io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncWrite</span>};
-<span class="kw">use</span> <span class="ident">futures_util</span>::{
-    <span class="ident">pin_mut</span>,
-    <span class="ident">task</span>::<span class="ident">AtomicWaker</span>,
-};
+<span class="kw">use</span> <span class="ident">futures_util</span>::{<span class="ident">pin_mut</span>, <span class="ident">task</span>::<span class="ident">AtomicWaker</span>};
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Response</span>, <span class="ident">Uri</span>};
 <span class="kw">use</span> <span class="ident">sluice</span>::<span class="ident">pipe</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -640,7 +639,12 @@
 
 <span class="kw">impl</span> <span class="ident">RequestHandler</span> {
     <span class="doccomment">/// Create a new request handler and an associated response future.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">request_body</span>: <span class="ident">Body</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="self">Self</span>, <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">request_body</span>: <span class="ident">Body</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> (
+        <span class="self">Self</span>,
+        <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) {
         <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">futures_channel</span>::<span class="ident">oneshot</span>::<span class="ident">channel</span>();
         <span class="kw">let</span> <span class="ident">shared</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Shared</span> {
             <span class="ident">id</span>: <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="ident">usize</span>::<span class="ident">max_value</span>()),
@@ -667,8 +671,7 @@
         <span class="comment">// Create a future that resolves when the handler receives the response</span>
         <span class="comment">// headers.</span>
         <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>.<span class="kw">await</span>
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">Aborted</span>)<span class="question-mark">?</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">Aborted</span>)<span class="question-mark">?</span><span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">ResponseBodyReader</span> {
                 <span class="ident">inner</span>: <span class="ident">response_body_reader</span>,
@@ -682,7 +685,8 @@
     }
 
     <span class="kw">fn</span> <span class="ident">is_future_canceled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">as_ref</span>()
+        <span class="self">self</span>.<span class="ident">sender</span>
+            .<span class="ident">as_ref</span>()
             .<span class="ident">map</span>(<span class="ident">Sender</span>::<span class="ident">is_canceled</span>)
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
     }
@@ -934,13 +938,7 @@
 
     <span class="doccomment">/// Capture transfer progress updates from curl.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">progress</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">dltotal</span>: <span class="ident">f64</span>,
-        <span class="ident">dlnow</span>: <span class="ident">f64</span>,
-        <span class="ident">ultotal</span>: <span class="ident">f64</span>,
-        <span class="ident">ulnow</span>: <span class="ident">f64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">progress</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dltotal</span>: <span class="ident">f64</span>, <span class="ident">dlnow</span>: <span class="ident">f64</span>, <span class="ident">ultotal</span>: <span class="ident">f64</span>, <span class="ident">ulnow</span>: <span class="ident">f64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="comment">// Initialize metrics if required.</span>
         <span class="kw">let</span> <span class="ident">metrics</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">metrics</span>.<span class="ident">get_or_insert_with</span>(<span class="ident">Metrics</span>::<span class="ident">new</span>);
 
@@ -1029,9 +1027,15 @@
         }
 
         <span class="kw">match</span> <span class="ident">kind</span> {
-            <span class="ident">InfoType</span>::<span class="ident">Text</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::curl&quot;</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">String</span>::<span class="ident">from_utf8_lossy</span>(<span class="ident">data</span>).<span class="ident">trim_end</span>()),
-            <span class="ident">InfoType</span>::<span class="ident">HeaderIn</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataIn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&lt;&lt; {}&quot;</span>, <span class="ident">format_byte_string</span>(<span class="ident">data</span>)),
-            <span class="ident">InfoType</span>::<span class="ident">HeaderOut</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataOut</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&gt;&gt; {}&quot;</span>, <span class="ident">format_byte_string</span>(<span class="ident">data</span>)),
+            <span class="ident">InfoType</span>::<span class="ident">Text</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">log</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::curl&quot;</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">String</span>::<span class="ident">from_utf8_lossy</span>(<span class="ident">data</span>).<span class="ident">trim_end</span>())
+            }
+            <span class="ident">InfoType</span>::<span class="ident">HeaderIn</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataIn</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&lt;&lt; {}&quot;</span>, <span class="ident">format_byte_string</span>(<span class="ident">data</span>))
+            }
+            <span class="ident">InfoType</span>::<span class="ident">HeaderOut</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataOut</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">log</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&gt;&gt; {}&quot;</span>, <span class="ident">format_byte_string</span>(<span class="ident">data</span>))
+            }
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
         }
     }

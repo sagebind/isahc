@@ -756,8 +756,8 @@
 <span class="comment">// to update the client code to apply the option when configuring an easy</span>
 <span class="comment">// handle.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>};
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">internal</span>::<span class="ident">SetOpt</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>};
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">iter</span>::<span class="ident">FromIterator</span>,
@@ -823,6 +823,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// use isahc::config::VersionNegotiation;</span>
+    <span class="doccomment">/// use isahc::prelude::*;</span>
     <span class="doccomment">/// // Never use anything newer than HTTP/1.x for this client.</span>
     <span class="doccomment">/// let http11_client = HttpClient::builder()</span>
     <span class="doccomment">///     .version_negotiation(VersionNegotiation::http11())</span>
@@ -1338,9 +1340,7 @@
     <span class="doccomment">/// Bind to whatever the networking stack finds suitable. This is the</span>
     <span class="doccomment">/// default behavior.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">any</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">interface</span>: <span class="prelude-val">None</span>,
-        }
+        <span class="self">Self</span> { <span class="ident">interface</span>: <span class="prelude-val">None</span> }
     }
 
     <span class="doccomment">/// Bind to the interface with the given name (such as `eth0`). This method</span>

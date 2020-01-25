@@ -897,24 +897,22 @@
 <span id="897">897</span>
 <span id="898">898</span>
 <span id="899">899</span>
+<span id="900">900</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">agent</span>::{<span class="self">self</span>, <span class="ident">AgentBuilder</span>},
     <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
-    <span class="ident">config</span>::<span class="kw-2">*</span>,
     <span class="ident">config</span>::<span class="ident">internal</span>::{<span class="ident">ConfigurableBase</span>, <span class="ident">SetOpt</span>},
+    <span class="ident">config</span>::<span class="kw-2">*</span>,
     <span class="ident">handler</span>::{<span class="ident">RequestHandler</span>, <span class="ident">ResponseBodyReader</span>},
     <span class="ident">middleware</span>::<span class="ident">Middleware</span>,
     <span class="ident">task</span>::<span class="ident">Join</span>,
     <span class="ident">Body</span>, <span class="ident">Error</span>,
 };
 <span class="kw">use</span> <span class="ident">futures_io</span>::<span class="ident">AsyncRead</span>;
-<span class="kw">use</span> <span class="ident">futures_util</span>::{
-    <span class="ident">future</span>::<span class="ident">BoxFuture</span>,
-    <span class="ident">pin_mut</span>,
-};
+<span class="kw">use</span> <span class="ident">futures_util</span>::{<span class="ident">future</span>::<span class="ident">BoxFuture</span>, <span class="ident">pin_mut</span>};
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">lazy_static</span>::<span class="ident">lazy_static</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -1534,9 +1532,7 @@
         <span class="ident">builder</span>: <span class="ident">http</span>::<span class="ident">request</span>::<span class="ident">Builder</span>,
         <span class="ident">body</span>: <span class="ident">Body</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="kw">await</span>
-        })
+        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="kw">await</span> })
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
@@ -1598,7 +1594,13 @@
     <span class="kw">fn</span> <span class="ident">create_easy_handle</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>, <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>), <span class="ident">Error</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>
+        (
+            <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>,
+            <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        ),
+        <span class="ident">Error</span>,
+    <span class="op">&gt;</span> {
         <span class="comment">// Prepare the request plumbing.</span>
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">parts</span>, <span class="ident">body</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">into_parts</span>();
         <span class="kw">let</span> <span class="ident">has_body</span> <span class="op">=</span> <span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>();
