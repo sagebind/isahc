@@ -13,8 +13,8 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use crate::auth::{Authentication, Credentials};
 use self::internal::SetOpt;
+use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
@@ -80,6 +80,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
+    /// use isahc::config::VersionNegotiation;
+    /// use isahc::prelude::*;
     /// // Never use anything newer than HTTP/1.x for this client.
     /// let http11_client = HttpClient::builder()
     ///     .version_negotiation(VersionNegotiation::http11())
@@ -595,9 +597,7 @@ impl NetworkInterface {
     /// Bind to whatever the networking stack finds suitable. This is the
     /// default behavior.
     pub fn any() -> Self {
-        Self {
-            interface: None,
-        }
+        Self { interface: None }
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method

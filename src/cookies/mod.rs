@@ -4,11 +4,7 @@
 //!
 //! Everything in this module requires the `cookies` feature to be enabled.
 
-use crate::{
-    middleware::Middleware,
-    response::ResponseExt,
-    Body,
-};
+use crate::{middleware::Middleware, response::ResponseExt, Body};
 use chrono::prelude::*;
 use chrono::Duration;
 use http::{Request, Response, Uri};

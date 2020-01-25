@@ -75,45 +75,47 @@ impl AgentBuilder {
         let handle = Handle {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
-            join_handle: Mutex::new(Some(thread::Builder::new()
-                .name(AGENT_THREAD_NAME.into())
-                .spawn(move || {
-                    let mut multi = curl::multi::Multi::new();
+            join_handle: Mutex::new(Some(
+                thread::Builder::new()
+                    .name(AGENT_THREAD_NAME.into())
+                    .spawn(move || {
+                        let mut multi = curl::multi::Multi::new();
 
-                    if max_connections > 0 {
-                        multi.set_max_total_connections(max_connections)?;
-                    }
+                        if max_connections > 0 {
+                            multi.set_max_total_connections(max_connections)?;
+                        }
 
-                    if max_connections_per_host > 0 {
-                        multi.set_max_host_connections(max_connections_per_host)?;
-                    }
+                        if max_connections_per_host > 0 {
+                            multi.set_max_host_connections(max_connections_per_host)?;
+                        }
 
-                    // Only set maxconnects if greater than 0, because 0 actually means unlimited.
-                    if connection_cache_size > 0 {
-                        multi.set_max_connects(connection_cache_size)?;
-                    }
+                        // Only set maxconnects if greater than 0, because 0 actually means unlimited.
+                        if connection_cache_size > 0 {
+                            multi.set_max_connects(connection_cache_size)?;
+                        }
 
-                    let agent = AgentContext {
-                        multi,
-                        multi_messages: crossbeam_channel::unbounded(),
-                        message_tx,
-                        message_rx,
-                        wake_socket,
-                        requests: Slab::new(),
-                        close_requested: false,
-                        waker,
-                    };
+                        let agent = AgentContext {
+                            multi,
+                            multi_messages: crossbeam_channel::unbounded(),
+                            message_tx,
+                            message_rx,
+                            wake_socket,
+                            requests: Slab::new(),
+                            close_requested: false,
+                            waker,
+                        };
 
-                    drop(wait_group_thread);
-                    log::debug!("agent took {:?} to start up", create_start.elapsed());
+                        drop(wait_group_thread);
+                        log::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                    let result = agent.run();
-                    if let Err(e) = &result {
-                        log::error!("agent shut down with error: {}", e);
-                    }
+                        let result = agent.run();
+                        if let Err(e) = &result {
+                            log::error!("agent shut down with error: {}", e);
+                        }
 
-                    result
-                })?)),
+                        result
+                    })?,
+            )),
         };
 
         // Block until the agent thread responds.
@@ -212,13 +214,11 @@ impl Handle {
                 self.waker.wake_by_ref();
                 Ok(())
             }
-            Err(crossbeam_channel::SendError(_)) => {
-                match self.try_join() {
-                    JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
-                    JoinResult::Panic => panic!("agent thread panicked"),
-                    _ => panic!("agent thread terminated prematurely"),
-                }
-            }
+            Err(crossbeam_channel::SendError(_)) => match self.try_join() {
+                JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
+                JoinResult::Panic => panic!("agent thread panicked"),
+                _ => panic!("agent thread terminated prematurely"),
+            },
         }
     }
 
@@ -249,7 +249,7 @@ impl Drop for Handle {
             JoinResult::Ok => log::trace!("agent thread joined cleanly"),
             JoinResult::Err(e) => log::error!("agent thread terminated with error: {}", e),
             JoinResult::Panic => log::error!("agent thread panicked"),
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -301,7 +301,11 @@ impl AgentContext {
         Ok(())
     }
 
-    fn complete_request(&mut self, token: usize, result: Result<(), curl::Error>) -> Result<(), Error> {
+    fn complete_request(
+        &mut self,
+        token: usize,
+        result: Result<(), curl::Error>,
+    ) -> Result<(), Error> {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
 
