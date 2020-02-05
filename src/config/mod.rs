@@ -510,17 +510,25 @@ impl Default for VersionNegotiation {
 }
 
 impl VersionNegotiation {
-    /// Always prefer the latest supported version with a preference for old
-    /// versions if necessary in order to connect. This is the default.
+    /// Always prefer the latest supported version announced by the server,
+    /// falling back to older versions if not explicitly listed as supported.
+    /// This is the default.
     ///
-    /// Typically negotiation will begin with an HTTP/1.1 request, upgrading to
-    /// HTTP/2 if possible, then to HTTP/3 if possible, etc.
+    /// Secure connections will begin with a TLS handshake, after which the
+    /// highest supported HTTP version listed by the server via ALPN will be
+    /// used. Once connected, additional upgrades to newer versions may also
+    /// occur if the server lists support for it. In the future, headers such as
+    /// `Alt-Svc` will be used.
+    ///
+    /// Insecure connections always use HTTP/1.x since there is no standard
+    /// mechanism for a server to declare support for insecure HTTP versions,
+    /// and only HTTP/1.x and HTTP/2 support insecure transfers.
     pub const fn latest_compatible() -> Self {
         Self {
             // In curl land, this basically the most lenient option. Alt-Svc is
             // used to upgrade to newer versions, and old versions are used if
-            // the server doesn't respond to the HTTP/1.1 -> HTTP/2 upgrade.
-            flag: curl::easy::HttpVersion::V2,
+            // the server doesn't list HTTP/2 via ALPN.
+            flag: curl::easy::HttpVersion::V2TLS,
             strict: false,
         }
     }
