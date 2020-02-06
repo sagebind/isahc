@@ -40,10 +40,6 @@ jobs:
         with:
           submodules: true
 
-      - run: |
-          sudo apt update
-          sudo apt install libkrb5-dev
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
@@ -52,9 +48,14 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --features cookies,psl,spnego --no-fail-fast
+          args: --features cookies,psl --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads'
 
       - uses: actions-rs/grcov@v0.1
+
+      - uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./lcov.info
