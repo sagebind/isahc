@@ -68,6 +68,15 @@ impl Body {
     /// Create a new body from bytes stored in memory.
     ///
     /// The body will have a known length equal to the number of bytes given.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::Body;
+    ///
+    /// // Create a body from a string.
+    /// let body = Body::from_bytes("hello world");
+    /// ```
     pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Self {
         bytes.as_ref().to_vec().into()
     }
