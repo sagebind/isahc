@@ -58,7 +58,7 @@ jobs:
 
       - name: Install grcov
         run: |
-          curl -LSs https://github.com/mozilla/grcov/releases/download/v0.5.9/grcov-linux-x86_64.tar.bz2 | tar xjf - -C /usr/local/bin
+          curl -LSs https://github.com/mozilla/grcov/releases/download/v0.5.9/grcov-linux-x86_64.tar.bz2 | sudo tar xjf - -C /usr/local/bin
 
       - uses: actions-rs/grcov@v0.1
 
