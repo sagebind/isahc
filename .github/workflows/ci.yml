@@ -23,6 +23,14 @@ jobs:
           sudo apt install libkrb5-dev
         if: matrix.os == 'ubuntu-latest'
 
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: "1.39.0"
+          default: true
+
+      - run: cargo update
+
       - name: Cache Cargo registry
         uses: actions/cache@v1
         with:
@@ -34,12 +42,6 @@ jobs:
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: "1.39.0"
-          default: true
 
       - run: cargo test --features cookies,psl,spnego
 
