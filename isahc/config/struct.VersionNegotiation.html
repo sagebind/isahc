@@ -7,13 +7,20 @@ will result in an error. For example, using the system libcurl on an old
 machine may not have an HTTP/2 implementation. Using static linking and the
 <a href="../index.html#http2"><code>http2</code></a> crate feature can help guarantee that HTTP/2
 will be available to use.</p>
-</div><h2 id='methods' class='small-section-header'>Methods<a href='#methods' class='anchor'></a></h2><h3 id='impl' class='impl'><code class='in-band'>impl <a class="struct" href="../../isahc/config/struct.VersionNegotiation.html" title="struct isahc::config::VersionNegotiation">VersionNegotiation</a></code><a href='#impl' class='anchor'></a><a class='srclink' href='../../src/isahc/config/mod.rs.html#512-568' title='goto source code'>[src]</a></h3><div class='impl-items'><h4 id='method.latest_compatible' class="method"><code id='latest_compatible.v'>pub const fn <a href='#method.latest_compatible' class='fnname'>latest_compatible</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#518-526' title='goto source code'>[src]</a></h4><div class='docblock'><p>Always prefer the latest supported version with a preference for old
-versions if necessary in order to connect. This is the default.</p>
-<p>Typically negotiation will begin with an HTTP/1.1 request, upgrading to
-HTTP/2 if possible, then to HTTP/3 if possible, etc.</p>
-</div><h4 id='method.http10' class="method"><code id='http10.v'>pub const fn <a href='#method.http10' class='fnname'>http10</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#529-534' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/1.0 and do not attempt to use a higher version.</p>
-</div><h4 id='method.http11' class="method"><code id='http11.v'>pub const fn <a href='#method.http11' class='fnname'>http11</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#537-542' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/1.1 and do not attempt to use a higher version.</p>
-</div><h4 id='method.http2' class="method"><code id='http2.v'>pub const fn <a href='#method.http2' class='fnname'>http2</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#553-558' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/2. Failure to connect will not fall back to old
+</div><h2 id='methods' class='small-section-header'>Methods<a href='#methods' class='anchor'></a></h2><h3 id='impl' class='impl'><code class='in-band'>impl <a class="struct" href="../../isahc/config/struct.VersionNegotiation.html" title="struct isahc::config::VersionNegotiation">VersionNegotiation</a></code><a href='#impl' class='anchor'></a><a class='srclink' href='../../src/isahc/config/mod.rs.html#512-576' title='goto source code'>[src]</a></h3><div class='impl-items'><h4 id='method.latest_compatible' class="method"><code id='latest_compatible.v'>pub const fn <a href='#method.latest_compatible' class='fnname'>latest_compatible</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#526-534' title='goto source code'>[src]</a></h4><div class='docblock'><p>Always prefer the latest supported version announced by the server,
+falling back to older versions if not explicitly listed as supported.
+This is the default.</p>
+<p>Secure connections will begin with a TLS handshake, after which the
+highest supported HTTP version listed by the server via ALPN will be
+used. Once connected, additional upgrades to newer versions may also
+occur if the server lists support for it. In the future, headers such as
+<code>Alt-Svc</code> will be used.</p>
+<p>Insecure connections always use HTTP/1.x since there is no standard
+mechanism for a server to declare support for insecure HTTP versions,
+and only HTTP/1.x and HTTP/2 support insecure transfers.</p>
+</div><h4 id='method.http10' class="method"><code id='http10.v'>pub const fn <a href='#method.http10' class='fnname'>http10</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#537-542' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/1.0 and do not attempt to use a higher version.</p>
+</div><h4 id='method.http11' class="method"><code id='http11.v'>pub const fn <a href='#method.http11' class='fnname'>http11</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#545-550' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/1.1 and do not attempt to use a higher version.</p>
+</div><h4 id='method.http2' class="method"><code id='http2.v'>pub const fn <a href='#method.http2' class='fnname'>http2</a>() -&gt; Self</code><a class='srclink' href='../../src/isahc/config/mod.rs.html#561-566' title='goto source code'>[src]</a></h4><div class='docblock'><p>Connect via HTTP/2. Failure to connect will not fall back to old
 versions, unless HTTP/1.1 is negotiated via TLS ALPN before the session
 begins.</p>
 <p>If HTTP/2 support is not compiled in, then using this strategy will

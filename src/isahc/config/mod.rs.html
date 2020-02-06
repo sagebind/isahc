@@ -740,6 +740,14 @@
 <span id="740">740</span>
 <span id="741">741</span>
 <span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -1253,17 +1261,25 @@
 }
 
 <span class="kw">impl</span> <span class="ident">VersionNegotiation</span> {
-    <span class="doccomment">/// Always prefer the latest supported version with a preference for old</span>
-    <span class="doccomment">/// versions if necessary in order to connect. This is the default.</span>
+    <span class="doccomment">/// Always prefer the latest supported version announced by the server,</span>
+    <span class="doccomment">/// falling back to older versions if not explicitly listed as supported.</span>
+    <span class="doccomment">/// This is the default.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Typically negotiation will begin with an HTTP/1.1 request, upgrading to</span>
-    <span class="doccomment">/// HTTP/2 if possible, then to HTTP/3 if possible, etc.</span>
+    <span class="doccomment">/// Secure connections will begin with a TLS handshake, after which the</span>
+    <span class="doccomment">/// highest supported HTTP version listed by the server via ALPN will be</span>
+    <span class="doccomment">/// used. Once connected, additional upgrades to newer versions may also</span>
+    <span class="doccomment">/// occur if the server lists support for it. In the future, headers such as</span>
+    <span class="doccomment">/// `Alt-Svc` will be used.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Insecure connections always use HTTP/1.x since there is no standard</span>
+    <span class="doccomment">/// mechanism for a server to declare support for insecure HTTP versions,</span>
+    <span class="doccomment">/// and only HTTP/1.x and HTTP/2 support insecure transfers.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">latest_compatible</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="comment">// In curl land, this basically the most lenient option. Alt-Svc is</span>
             <span class="comment">// used to upgrade to newer versions, and old versions are used if</span>
-            <span class="comment">// the server doesn&#39;t respond to the HTTP/1.1 -&gt; HTTP/2 upgrade.</span>
-            <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V2</span>,
+            <span class="comment">// the server doesn&#39;t list HTTP/2 via ALPN.</span>
+            <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V2TLS</span>,
             <span class="ident">strict</span>: <span class="bool-val">false</span>,
         }
     }
