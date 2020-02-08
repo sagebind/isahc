@@ -1,14 +1,27 @@
 use crossbeam_utils::thread;
 use isahc::prelude::*;
-use mockito::{mock, server_url};
+use mockito::{mock, server_address, server_url};
 use std::{
-    io::{BufRead, BufReader},
-    net::TcpListener,
+    io::{BufRead, BufReader, Write},
+    net::{Shutdown, IpAddr, TcpListener, TcpStream},
 };
 
 speculate::speculate! {
     before {
         env_logger::try_init().ok();
+    }
+
+    test "no proxy" {
+        let m = mock("GET", "/").create();
+
+        Request::get(server_url())
+            .proxy(None)
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        m.assert();
     }
 
     test "http proxy" {
@@ -37,49 +50,89 @@ speculate::speculate! {
         m.assert();
     }
 
-    // test "socks4 proxy" {
-    //     // Set up a TCP listener that will implement a simple SOCKS4 proxy.
-    //     let proxy_listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    test "socks4 proxy" {
+        // Set up a TCP listener that will implement a simple SOCKS4 proxy.
+        let proxy_listener = TcpListener::bind("127.0.0.1:0").unwrap();
 
-    //     // Create the proxy URI for our listener.
-    //     let proxy_uri = http::Uri::builder()
-    //         .scheme("socks4")
-    //         .authority(proxy_listener.local_addr().unwrap().to_string().as_str())
-    //         .path_and_query("/")
-    //         .build()
-    //         .unwrap();
+        // Create the proxy URI for our listener.
+        let proxy_uri = http::Uri::builder()
+            .scheme("socks4")
+            .authority(proxy_listener.local_addr().unwrap().to_string().as_str())
+            .path_and_query("/")
+            .build()
+            .unwrap();
 
-    //     // Ensure our background test helper threads are cleaned up.
-    //     thread::scope(move |s| {
-    //         s.spawn(move |s| {
-    //             for stream in proxy_listener.incoming() {
-    //                 let mut stream = BufReader::new(stream.unwrap());
+        let upstream_port = server_address().port();
+        let upstream_ip = match server_address().ip() {
+            IpAddr::V4(ip) => ip,
+            _ => panic!(),
+        };
 
-    //                 s.spawn(move |s| {
-    //                     // Read connect packet.
-    //                     let buf = stream.fill_buf().unwrap();
+        // Set up our upstream HTTP test server.
+        let m = mock("GET", "/").create();
 
-    //                     assert_eq!(buf[0], 4);
-    //                     assert_eq!(buf[1], 1);
-    //                 });
-    //             }
-    //         });
+        // Set up a scope to clean up background threads.
+        thread::scope(move |s| {
+            // Spawn a simple SOCKS4 server to test against.
+            s.spawn(move |_| {
+                let mut client_writer = proxy_listener.accept().unwrap().0;
+                let mut client_reader = BufReader::new(client_writer.try_clone().unwrap());
 
-    //         // Set up our upstream HTTP test server.
-    //         let m = mock("GET", "/").create();
+                // Read connect packet.
+                client_reader.fill_buf().unwrap();
 
-    //         // Send a request...
-    //         Request::get(server_url())
-    //         .proxy(proxy_uri)
-    //         .body(())
-    //         .unwrap()
-    //         .send()
-    //         .unwrap();
+                // Header
+                assert_eq!(client_reader.buffer()[0], 4);
+                assert_eq!(client_reader.buffer()[1], 1);
+                client_reader.consume(2);
 
-    //         // ...expecting to receive it through the proxy.
-    //         m.assert();
-    //     }).unwrap();
-    // }
+                // Destination port
+                assert_eq!(&client_reader.buffer()[..2], upstream_port.to_be_bytes());
+                client_reader.consume(2);
+
+                // Destination address
+                assert_eq!(&client_reader.buffer()[..4], upstream_ip.octets());
+                client_reader.consume(4);
+
+                // User ID
+                loop {
+                    let byte = client_reader.buffer()[0];
+                    client_reader.consume(1);
+                    if byte == 0 {
+                        break;
+                    }
+                }
+
+                // Connect to upstream.
+                let upstream = TcpStream::connect(server_address()).unwrap();
+
+                // Send response packet.
+                client_writer.write_all(&[0, 0x5a, 0, 0, 0, 0, 0, 0]).unwrap();
+                client_writer.flush().unwrap();
+
+                // Copy bytes in and to the upstream in parallel.
+                thread::scope(|s| {
+                    s.spawn(|_| {
+                        std::io::copy(&mut client_reader, &mut &upstream).unwrap();
+                    });
+
+                    std::io::copy(&mut &upstream, &mut client_writer).unwrap();
+                    client_writer.shutdown(Shutdown::Both).unwrap();
+                }).unwrap();
+            });
+
+            // Send a request...
+            Request::get(server_url())
+                .proxy(proxy_uri)
+                .body(())
+                .unwrap()
+                .send()
+                .unwrap();
+
+            // ...expecting to receive it through the proxy.
+            m.assert();
+        }).unwrap();
+    }
 
     test "proxy blacklist works" {
         // This time, the proxy is the fake one.
