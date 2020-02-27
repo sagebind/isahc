@@ -472,15 +472,15 @@ impl curl::easy::Handler for RequestHandler {
     /// Since we're using the log crate, this callback normalizes the debug info
     /// and writes it to our log.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
-        fn format_byte_string(bytes: impl AsRef<[u8]>) -> String {
-            String::from_utf8(
-                bytes
-                    .as_ref()
-                    .iter()
-                    .flat_map(|byte| ascii::escape_default(*byte))
-                    .collect(),
-            )
-            .unwrap_or_else(|_| String::from("<binary>"))
+        struct FormatAscii<T>(T);
+
+        impl<T: AsRef<[u8]>> fmt::Display for FormatAscii<T> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                for &byte in self.0.as_ref() {
+                    ascii::escape_default(byte).fmt(f)?;
+                }
+                Ok(())
+            }
         }
 
         match kind {
@@ -488,10 +488,10 @@ impl curl::easy::Handler for RequestHandler {
                 log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
             }
             InfoType::HeaderIn | InfoType::DataIn => {
-                log::trace!(target: "isahc::wire", "<< {}", format_byte_string(data))
+                log::trace!(target: "isahc::wire", "<< {}", FormatAscii(data))
             }
             InfoType::HeaderOut | InfoType::DataOut => {
-                log::trace!(target: "isahc::wire", ">> {}", format_byte_string(data))
+                log::trace!(target: "isahc::wire", ">> {}", FormatAscii(data))
             }
             _ => (),
         }
