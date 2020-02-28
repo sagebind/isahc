@@ -254,6 +254,10 @@
 <span id="254">254</span>
 <span id="255">255</span>
 <span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides types for working with request and response bodies.</span>
 
@@ -338,7 +342,11 @@
         <span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">from_bytes_static</span>(<span class="ident">bytes</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="doccomment">/// Attempt to create a new body from a shared [`Bytes`] buffer.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This will try to prevent a copy if the type passed is the type used</span>
+    <span class="doccomment">/// internally, and will copy the data if it is not.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_maybe_shared</span>(<span class="ident">bytes</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="macro">match_type</span><span class="macro">!</span> {
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Bytes</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">bytes</span>,
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Bytes</span>::<span class="ident">from_static</span>(<span class="ident">bytes</span>),
@@ -444,13 +452,13 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">from_bytes_static</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
+        <span class="self">Self</span>::<span class="ident">from_maybe_shared</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">from_bytes_static</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
+        <span class="self">Self</span>::<span class="ident">from_maybe_shared</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
     }
 }
 
