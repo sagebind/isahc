@@ -81,7 +81,11 @@ impl Body {
         bytes.as_ref().to_vec().into()
     }
 
-    fn from_bytes_static(bytes: impl AsRef<[u8]> + 'static) -> Self {
+    /// Attempt to create a new body from a shared [`Bytes`] buffer.
+    ///
+    /// This will try to prevent a copy if the type passed is the type used
+    /// internally, and will copy the data if it is not.
+    pub fn from_maybe_shared(bytes: impl AsRef<[u8]> + 'static) -> Self {
         Body(Inner::Bytes(Cursor::new(match_type! {
             <bytes as Bytes> => bytes,
             <bytes as &'static [u8]> => Bytes::from_static(bytes),
@@ -187,13 +191,13 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self::from_bytes_static(Bytes::from(body))
+        Self::from_maybe_shared(Bytes::from(body))
     }
 }
 
 impl From<&'static [u8]> for Body {
     fn from(body: &'static [u8]) -> Self {
-        Self::from_bytes_static(Bytes::from(body))
+        Self::from_maybe_shared(Bytes::from(body))
     }
 }
 
