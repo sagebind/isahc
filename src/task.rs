@@ -94,7 +94,7 @@ impl ArcWake for UdpWaker {
         // We don't actually care here if this succeeds. Maybe the agent is
         // busy, or tired, or just needs some alone time right now.
         if let Err(e) = arc_self.socket.send(&[1]) {
-            log::debug!("agent waker produced an error: {}", e);
+            tracing::debug!("agent waker produced an error: {}", e);
         }
     }
 }

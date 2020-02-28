@@ -38,7 +38,6 @@ futures-channel = "0.3"
 futures-io = "0.3"
 http = "0.2"
 lazy_static = "1"
-log = "0.4"
 slab = "0.4"
 sluice = "0.5"
 
@@ -76,6 +75,15 @@ optional = true
 version = "1.0"
 optional = true
 
+[dependencies.tracing]
+version = "0.1"
+features = ["log"]
+
+[dependencies.tracing-futures]
+version = "0.2"
+default-features = false
+features = ["std", "std-future"]
+
 [dev-dependencies]
 env_logger = "0.7"
 flate2 = "1.0"
@@ -86,6 +94,7 @@ rayon = "1"
 speculate = "0.1"
 static_assertions = "1.1"
 structopt = "0.3"
+tracing-subscriber = "0.2"
 
 [[example]]
 name = "json"

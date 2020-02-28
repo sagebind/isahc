@@ -116,7 +116,7 @@ impl SetOpt for Servers {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         // DNS servers should not be hard error.
         if let Err(e) = easy.dns_servers(&self.0) {
-            log::warn!("DNS servers could not be configured: {}", e);
+            tracing::warn!("DNS servers could not be configured: {}", e);
         }
 
         Ok(())

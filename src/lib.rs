@@ -212,6 +212,9 @@
     unused,
     clippy::all
 )]
+// This lint produces a lot of false positives. See
+// https://github.com/rust-lang/rust-clippy/issues/3900.
+#![allow(clippy::cognitive_complexity)]
 
 use http::{Request, Response};
 use lazy_static::lazy_static;

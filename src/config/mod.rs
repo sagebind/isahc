@@ -581,7 +581,7 @@ impl SetOpt for VersionNegotiation {
             if self.strict {
                 return Err(e);
             } else {
-                log::debug!("failed to set HTTP version: {}", e);
+                tracing::debug!("failed to set HTTP version: {}", e);
             }
         }
 

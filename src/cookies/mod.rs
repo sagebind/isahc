@@ -91,7 +91,7 @@ impl Cookie {
             // The given domain must domain-match the origin.
             // https://tools.ietf.org/html/rfc6265#section-5.3.6
             if !Cookie::domain_matches(uri.host()?, domain) {
-                log::warn!(
+                tracing::warn!(
                     "cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'",
                     cookie_name,
                     uri.host()?,
@@ -102,7 +102,7 @@ impl Cookie {
 
             // Drop cookies for top-level domains.
             if !domain.contains('.') {
-                log::warn!(
+                tracing::warn!(
                     "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                     cookie_name,
                     domain
@@ -115,7 +115,7 @@ impl Cookie {
             #[cfg(feature = "psl")]
             {
                 if psl::is_public_suffix(domain) {
-                    log::warn!(
+                    tracing::warn!(
                         "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                         cookie_name,
                         domain
@@ -285,7 +285,7 @@ impl Middleware for CookieJar {
                 .into_iter()
                 .filter_map(|header| {
                     header.to_str().ok().or_else(|| {
-                        log::warn!("invalid encoding in Set-Cookie header");
+                        tracing::warn!("invalid encoding in Set-Cookie header");
                         None
                     })
                 })
@@ -294,7 +294,7 @@ impl Middleware for CookieJar {
                         .effective_uri()
                         .and_then(|uri| Cookie::parse(header, uri))
                         .or_else(|| {
-                            log::warn!("could not parse Set-Cookie header");
+                            tracing::warn!("could not parse Set-Cookie header");
                             None
                         })
                 });

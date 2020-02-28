@@ -21,7 +21,6 @@ use std::task::Waker;
 use std::thread;
 use std::time::{Duration, Instant};
 
-const AGENT_THREAD_NAME: &str = "curl agent";
 const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
@@ -60,8 +59,9 @@ impl AgentBuilder {
         let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
         wake_socket.set_nonblocking(true)?;
         let wake_addr = wake_socket.local_addr()?;
+        let id = wake_addr.port();
         let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
-        log::debug!("agent waker listening on {}", wake_addr);
+        tracing::debug!("agent waker listening on {}", wake_addr);
 
         let (message_tx, message_rx) = crossbeam_channel::unbounded();
 
@@ -72,48 +72,57 @@ impl AgentBuilder {
         let max_connections_per_host = self.max_connections_per_host;
         let connection_cache_size = self.connection_cache_size;
 
+        // Create a span for the agent thread that outlives this method call,
+        // but rather was caused by it.
+        let agent_span = tracing::trace_span!("agent_thread", id);
+        agent_span.follows_from(tracing::Span::current());
+
         let handle = Handle {
             message_tx: message_tx.clone(),
             waker: waker.clone(),
             join_handle: Mutex::new(Some(
                 thread::Builder::new()
-                    .name(AGENT_THREAD_NAME.into())
+                    .name(format!("isahc-agent-{}", id))
                     .spawn(move || {
-                        let mut multi = curl::multi::Multi::new();
+                        agent_span.in_scope(|| {
+                            let mut multi = curl::multi::Multi::new();
 
-                        if max_connections > 0 {
-                            multi.set_max_total_connections(max_connections)?;
-                        }
+                            if max_connections > 0 {
+                                multi.set_max_total_connections(max_connections)?;
+                            }
 
-                        if max_connections_per_host > 0 {
-                            multi.set_max_host_connections(max_connections_per_host)?;
-                        }
+                            if max_connections_per_host > 0 {
+                                multi.set_max_host_connections(max_connections_per_host)?;
+                            }
 
-                        // Only set maxconnects if greater than 0, because 0 actually means unlimited.
-                        if connection_cache_size > 0 {
-                            multi.set_max_connects(connection_cache_size)?;
-                        }
+                            // Only set maxconnects if greater than 0, because 0 actually means unlimited.
+                            if connection_cache_size > 0 {
+                                multi.set_max_connects(connection_cache_size)?;
+                            }
 
-                        let agent = AgentContext {
-                            multi,
-                            multi_messages: crossbeam_channel::unbounded(),
-                            message_tx,
-                            message_rx,
-                            wake_socket,
-                            requests: Slab::new(),
-                            close_requested: false,
-                            waker,
-                        };
+                            let agent = AgentContext {
+                                multi,
+                                multi_messages: crossbeam_channel::unbounded(),
+                                message_tx,
+                                message_rx,
+                                wake_socket,
+                                requests: Slab::new(),
+                                close_requested: false,
+                                waker,
+                            };
 
-                        drop(wait_group_thread);
-                        log::debug!("agent took {:?} to start up", create_start.elapsed());
+                            drop(wait_group_thread);
 
-                        let result = agent.run();
-                        if let Err(e) = &result {
-                            log::error!("agent shut down with error: {}", e);
-                        }
+                            tracing::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                        result
+                            let result = agent.run();
+
+                            if let Err(e) = &result {
+                                tracing::error!("agent shut down with error: {}", e);
+                            }
+
+                            result
+                        })
                     })?,
             )),
         };
@@ -241,20 +250,21 @@ impl Drop for Handle {
     fn drop(&mut self) {
         // Request the agent thread to shut down.
         if self.send_message(Message::Close).is_err() {
-            log::error!("agent thread terminated prematurely");
+            tracing::error!("agent thread terminated prematurely");
         }
 
         // Wait for the agent thread to shut down before continuing.
         match self.try_join() {
-            JoinResult::Ok => log::trace!("agent thread joined cleanly"),
-            JoinResult::Err(e) => log::error!("agent thread terminated with error: {}", e),
-            JoinResult::Panic => log::error!("agent thread panicked"),
+            JoinResult::Ok => tracing::trace!("agent thread joined cleanly"),
+            JoinResult::Err(e) => tracing::error!("agent thread terminated with error: {}", e),
+            JoinResult::Panic => tracing::error!("agent thread panicked"),
             _ => {}
         }
     }
 }
 
 impl AgentContext {
+    #[tracing::instrument(level = "trace", skip(self))]
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();
@@ -271,7 +281,7 @@ impl AgentContext {
                 self.waker
                     .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => log::warn!(
+                        Err(_) => tracing::warn!(
                             "agent went away while resuming read for request [id={}]",
                             id
                         ),
@@ -283,7 +293,7 @@ impl AgentContext {
                 self.waker
                     .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => log::warn!(
+                        Err(_) => tracing::warn!(
                             "agent went away while resuming write for request [id={}]",
                             id
                         ),
@@ -301,6 +311,7 @@ impl AgentContext {
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn complete_request(
         &mut self,
         token: usize,
@@ -338,13 +349,14 @@ impl AgentContext {
     ///
     /// If there are no active requests right now, this function will block
     /// until a message is received.
+    #[tracing::instrument(level = "trace", skip(self))]
     fn poll_messages(&mut self) -> Result<(), Error> {
         while !self.close_requested {
             if self.requests.is_empty() {
                 match self.message_rx.recv() {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
-                        log::warn!("agent handle disconnected without close message");
+                        tracing::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     }
@@ -354,7 +366,7 @@ impl AgentContext {
                     Ok(message) => self.handle_message(message)?,
                     Err(crossbeam_channel::TryRecvError::Empty) => break,
                     Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                        log::warn!("agent handle disconnected without close message");
+                        tracing::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     }
@@ -365,8 +377,9 @@ impl AgentContext {
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
-        log::trace!("received message from agent handle: {:?}", message);
+        tracing::trace!("received message from agent handle");
 
         match message {
             Message::Close => self.close_requested = true,
@@ -381,10 +394,10 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        log::debug!("error unpausing read for request [id={}]: {}", token, e);
+                        tracing::debug!("error unpausing read for request [id={}]: {}", token, e);
                     }
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "received unpause request for unknown request token: {}",
                         token
                     );
@@ -400,10 +413,10 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        log::debug!("error unpausing write for request [id={}]: {}", token, e);
+                        tracing::debug!("error unpausing write for request [id={}]: {}", token, e);
                     }
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "received unpause request for unknown request token: {}",
                         token
                     );
@@ -414,6 +427,7 @@ impl AgentContext {
         Ok(())
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn dispatch(&mut self) -> Result<(), Error> {
         self.multi.perform()?;
 
@@ -446,7 +460,7 @@ impl AgentContext {
 
         debug_assert_eq!(wait_fds.len(), 1);
 
-        log::debug!("agent ready");
+        tracing::debug!("agent ready");
 
         // Agent main loop.
         loop {
@@ -465,7 +479,7 @@ impl AgentContext {
             // We might have woken up early from the notify fd, so drain the
             // socket to clear it.
             if wait_fds[0].received_read() {
-                log::trace!("woke up from waker");
+                tracing::trace!("woke up from waker");
 
                 // Read data out of the wake socket to clean the buffer. While
                 // it's possible that there's a lot of data in the buffer, it
@@ -475,7 +489,7 @@ impl AgentContext {
             }
         }
 
-        log::debug!("agent shutting down");
+        tracing::debug!("agent shutting down");
 
         self.requests.clear();
         self.multi.close()?;

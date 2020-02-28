@@ -89,7 +89,7 @@ impl ListCache {
                 // Parse the suffix list.
                 self.list = List::from_reader(response.body_mut())?;
                 self.last_updated = Some(Utc::now());
-                log::debug!("public suffix list updated");
+                tracing::debug!("public suffix list updated");
             }
 
             http::StatusCode::NOT_MODIFIED => {
@@ -97,7 +97,7 @@ impl ListCache {
                 self.last_updated = Some(Utc::now());
             }
 
-            status => log::warn!(
+            status => tracing::warn!(
                 "could not update public suffix list, got status code {}",
                 status,
             ),
@@ -139,7 +139,7 @@ fn with_cache<T>(f: impl FnOnce(&ListCache) -> T) -> T {
         // more.
         if cache.needs_refreshed() {
             if let Err(e) = cache.refresh() {
-                log::warn!("could not refresh public suffix list: {}", e);
+                tracing::warn!("could not refresh public suffix list: {}", e);
             }
         }
 
