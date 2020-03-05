@@ -23,11 +23,9 @@ jobs:
         uses: peter-evans/create-pull-request@v1.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          COMMIT_MESSAGE: |
-            Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
+          COMMIT_MESSAGE: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
           PULL_REQUEST_BRANCH: public-suffix-list/patch
-          PULL_REQUEST_TITLE: |
-            Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
+          PULL_REQUEST_TITLE: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
           PULL_REQUEST_LABELS: dependencies
           PULL_REQUEST_BODY: |
             Update Public Suffix List from [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }}) to [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).

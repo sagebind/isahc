@@ -2,9 +2,13 @@ categories:
   - title: "Security"
     label: security
   - title: "Added"
-    label: feature
+    labels:
+      - feature
+      - enhancement
   - title: "Fixed"
     label: bug
+  - title: "Dependency Updates"
+    label: dependencies
 change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
 no-changes-template: '- No changes'
 template: |
