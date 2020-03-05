@@ -488,14 +488,6 @@ impl AgentContext {
 mod tests {
     use super::*;
 
-    fn is_send<T: Send>() {}
-    fn is_sync<T: Sync>() {}
-
-    #[test]
-    fn traits() {
-        is_send::<Handle>();
-        is_sync::<Handle>();
-
-        is_send::<Message>();
-    }
+    static_assertions::assert_impl_all!(Handle: Send, Sync);
+    static_assertions::assert_impl_all!(Message: Send);
 }

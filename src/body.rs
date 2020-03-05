@@ -53,7 +53,7 @@ enum Inner {
     Bytes(Cursor<Bytes>),
 
     /// An asynchronous reader.
-    AsyncRead(Pin<Box<dyn AsyncRead + Send>>, Option<u64>),
+    AsyncRead(Pin<Box<dyn AsyncRead + Send + Sync>>, Option<u64>),
 }
 
 impl Body {
@@ -97,7 +97,7 @@ impl Body {
     ///
     /// The body will have an unknown length. When used as a request body,
     /// chunked transfer encoding might be used to send the request.
-    pub fn from_reader(read: impl AsyncRead + Send + 'static) -> Self {
+    pub fn from_reader(read: impl AsyncRead + Send + Sync + 'static) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), None))
     }
 
@@ -110,7 +110,7 @@ impl Body {
     /// Giving a value for `length` that doesn't actually match how much data
     /// the reader will produce may result in errors when sending the body in a
     /// request.
-    pub fn from_reader_sized(read: impl AsyncRead + Send + 'static, length: u64) -> Self {
+    pub fn from_reader_sized(read: impl AsyncRead + Send + Sync + 'static, length: u64) -> Self {
         Body(Inner::AsyncRead(Box::pin(read), Some(length)))
     }
 
@@ -235,12 +235,7 @@ impl fmt::Debug for Body {
 mod tests {
     use super::*;
 
-    fn is_send<T: Send>() {}
-
-    #[test]
-    fn traits() {
-        is_send::<Body>();
-    }
+    static_assertions::assert_impl_all!(Body: Send, Sync);
 
     #[test]
     fn empty_body() {

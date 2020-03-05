@@ -887,14 +887,6 @@ impl AsyncRead for ResponseBody {
 mod tests {
     use super::*;
 
-    fn is_send<T: Send>() {}
-    fn is_sync<T: Sync>() {}
-
-    #[test]
-    fn traits() {
-        is_send::<HttpClient>();
-        is_sync::<HttpClient>();
-
-        is_send::<HttpClientBuilder>();
-    }
+    static_assertions::assert_impl_all!(HttpClient: Send, Sync);
+    static_assertions::assert_impl_all!(HttpClientBuilder: Send);
 }
