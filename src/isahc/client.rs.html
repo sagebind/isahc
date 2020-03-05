@@ -890,14 +890,6 @@
 <span id="890">890</span>
 <span id="891">891</span>
 <span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
-<span id="897">897</span>
-<span id="898">898</span>
-<span id="899">899</span>
-<span id="900">900</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1788,16 +1780,8 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">fn</span> <span class="ident">is_send</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Send</span><span class="op">&gt;</span>() {}
-    <span class="kw">fn</span> <span class="ident">is_sync</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Sync</span><span class="op">&gt;</span>() {}
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">traits</span>() {
-        <span class="ident">is_send</span>::<span class="op">&lt;</span><span class="ident">HttpClient</span><span class="op">&gt;</span>();
-        <span class="ident">is_sync</span>::<span class="op">&lt;</span><span class="ident">HttpClient</span><span class="op">&gt;</span>();
-
-        <span class="ident">is_send</span>::<span class="op">&lt;</span><span class="ident">HttpClientBuilder</span><span class="op">&gt;</span>();
-    }
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">HttpClient</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">HttpClientBuilder</span>: <span class="ident">Send</span>);
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "isahc";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>

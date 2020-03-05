@@ -253,11 +253,6 @@
 <span id="253">253</span>
 <span id="254">254</span>
 <span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides types for working with request and response bodies.</span>
 
@@ -314,7 +309,7 @@
     <span class="ident">Bytes</span>(<span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Bytes</span><span class="op">&gt;</span>),
 
     <span class="doccomment">/// An asynchronous reader.</span>
-    <span class="ident">AsyncRead</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
+    <span class="ident">AsyncRead</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Body</span> {
@@ -358,7 +353,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The body will have an unknown length. When used as a request body,</span>
     <span class="doccomment">/// chunked transfer encoding might be used to send the request.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader</span>(<span class="ident">read</span>: <span class="kw">impl</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader</span>(<span class="ident">read</span>: <span class="kw">impl</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">AsyncRead</span>(<span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">read</span>), <span class="prelude-val">None</span>))
     }
 
@@ -371,7 +366,7 @@
     <span class="doccomment">/// Giving a value for `length` that doesn&#39;t actually match how much data</span>
     <span class="doccomment">/// the reader will produce may result in errors when sending the body in a</span>
     <span class="doccomment">/// request.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader_sized</span>(<span class="ident">read</span>: <span class="kw">impl</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>, <span class="ident">length</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader_sized</span>(<span class="ident">read</span>: <span class="kw">impl</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>, <span class="ident">length</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">AsyncRead</span>(<span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">read</span>), <span class="prelude-val">Some</span>(<span class="ident">length</span>)))
     }
 
@@ -496,12 +491,7 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">fn</span> <span class="ident">is_send</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Send</span><span class="op">&gt;</span>() {}
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">traits</span>() {
-        <span class="ident">is_send</span>::<span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>();
-    }
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">Body</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">empty_body</span>() {
