@@ -80,14 +80,14 @@
 //! functions in this module, including [`get`], [`post`], and [`send`]. These
 //! use a shared HTTP client instance with sane defaults, so it is easy to get
 //! up and running. They should work perfectly fine for many use-cases, so don't
-//! about graduating to more complex APIs if you don't need them.
+//! worry about graduating to more complex APIs if you don't need them.
 //!
 //! ## Request and response traits
 //!
 //! Isahc includes a number of traits in the [`prelude`] module that extend the
 //! [`Request`] and [`Response`] types with a plethora of extra methods that
-//! make common tasks convenient and allow you to make more advanced
-//! configuration.
+//! make common tasks convenient and allow you to configure more advanced
+//! connection and protocol details.
 //!
 //! Some key traits to read about include
 //! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].
@@ -105,13 +105,13 @@
 //!
 //! Requests are always executed asynchronously under the hood. This allows a
 //! single client to execute a large number of requests concurrently with
-//! minimal overhead.
+//! minimal overhead. Even synchronous applications can benefit!
 //!
-//! If you are writing an asynchronous application, you can additionally benefit
-//! from the async nature of the client by using the asynchronous methods
-//! available to prevent blocking threads in your code. All request methods have
-//! an asynchronous variant that ends with `_async` in the name. Here is our
-//! first example rewritten to use async/await syntax:
+//! If you are writing an asynchronous application, you can reap additional
+//! benefits from the async nature of the client by using the asynchronous
+//! methods available to prevent blocking threads in your code. All request
+//! methods have an asynchronous variant that ends with `_async` in the name.
+//! Here is our first example rewritten to use async/await syntax:
 //!
 //! ```no_run
 //! # async fn run() -> Result<(), isahc::Error> {
@@ -158,7 +158,7 @@
 //! ## `psl`
 //!
 //! Enable use of the Public Suffix List to filter out potentially malicious
-//! cross-domain cookies. Disabled by default.
+//! cross-domain cookies. Implies `cookies`, disabled by default.
 //!
 //! ## `spnego`
 //!
