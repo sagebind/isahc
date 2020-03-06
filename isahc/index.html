@@ -61,12 +61,12 @@ rest of the documentation for even more guides and examples.</p>
 functions in this module, including <a href="../isahc/fn.get.html" title="`get`"><code>get</code></a>, <a href="../isahc/fn.post.html" title="`post`"><code>post</code></a>, and <a href="../isahc/fn.send.html" title="`send`"><code>send</code></a>. These
 use a shared HTTP client instance with sane defaults, so it is easy to get
 up and running. They should work perfectly fine for many use-cases, so don't
-about graduating to more complex APIs if you don't need them.</p>
+worry about graduating to more complex APIs if you don't need them.</p>
 <h2 id="request-and-response-traits" class="section-header"><a href="#request-and-response-traits">Request and response traits</a></h2>
 <p>Isahc includes a number of traits in the <a href="../isahc/prelude/index.html" title="`prelude`"><code>prelude</code></a> module that extend the
 <a href="https://docs.rs/http/0.2.0/http/request/struct.Request.html" title="`Request`"><code>Request</code></a> and <a href="https://docs.rs/http/0.2.0/http/response/struct.Response.html" title="`Response`"><code>Response</code></a> types with a plethora of extra methods that
-make common tasks convenient and allow you to make more advanced
-configuration.</p>
+make common tasks convenient and allow you to configure more advanced
+connection and protocol details.</p>
 <p>Some key traits to read about include
 <a href="../isahc/config/trait.Configurable.html"><code>Configurable</code></a>, <a href="../isahc/trait.RequestExt.html" title="`RequestExt`"><code>RequestExt</code></a>, and <a href="../isahc/trait.ResponseExt.html" title="`ResponseExt`"><code>ResponseExt</code></a>.</p>
 <h2 id="custom-clients" class="section-header"><a href="#custom-clients">Custom clients</a></h2>
@@ -78,12 +78,12 @@ information on creating custom clients.</p>
 <h2 id="asynchronous-requests" class="section-header"><a href="#asynchronous-requests">Asynchronous requests</a></h2>
 <p>Requests are always executed asynchronously under the hood. This allows a
 single client to execute a large number of requests concurrently with
-minimal overhead.</p>
-<p>If you are writing an asynchronous application, you can additionally benefit
-from the async nature of the client by using the asynchronous methods
-available to prevent blocking threads in your code. All request methods have
-an asynchronous variant that ends with <code>_async</code> in the name. Here is our
-first example rewritten to use async/await syntax:</p>
+minimal overhead. Even synchronous applications can benefit!</p>
+<p>If you are writing an asynchronous application, you can reap additional
+benefits from the async nature of the client by using the asynchronous
+methods available to prevent blocking threads in your code. All request
+methods have an asynchronous variant that ends with <code>_async</code> in the name.
+Here is our first example rewritten to use async/await syntax:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered">
 <span class="kw">use</span> <span class="ident">isahc</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
@@ -113,7 +113,7 @@ see <a href="../isahc/config/struct.VersionNegotiation.html"><code>VersionNegoti
 <a href="https://serde.rs">serde</a>. Disabled by default.</p>
 <h2 id="psl" class="section-header"><a href="#psl"><code>psl</code></a></h2>
 <p>Enable use of the Public Suffix List to filter out potentially malicious
-cross-domain cookies. Disabled by default.</p>
+cross-domain cookies. Implies <code>cookies</code>, disabled by default.</p>
 <h2 id="spnego" class="section-header"><a href="#spnego"><code>spnego</code></a></h2>
 <p>Enable support for <a href="https://tools.ietf.org/html/rfc4559">SPNEGO-based HTTP
 authentication</a> (<code>negotiate</code> auth
