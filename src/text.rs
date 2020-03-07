@@ -3,7 +3,54 @@
 #![cfg(feature = "text-decoding")]
 
 use encoding_rs::{CoderResult, Encoding};
+use futures_io::AsyncRead;
+use futures_util::{
+    future::{FutureExt, LocalBoxFuture},
+    io::AsyncReadExt,
+};
 use http::Response;
+use std::{
+    future::Future,
+    io,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+// This macro abstracts over async and sync decoding, since the implementation
+// of decoding a stream into text is the same.
+macro_rules! decode_reader {
+    ($decoder:expr, $buf:ident, $read:expr) => {{
+        let mut decoder = $decoder;
+        let mut buf = [0; 8192];
+        let mut unread = 0;
+
+        loop {
+            let $buf = &mut buf[unread..];
+            let len = match $read {
+                Ok(0) => break,
+                Ok(len) => len,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
+
+            unread = decoder.push(&buf[..unread + len]).len();
+        }
+
+        Ok(decoder.finish(&buf[..unread]))
+    }};
+}
+
+/// A future returning a response body decoded as text.
+#[allow(missing_debug_implementations)]
+pub struct TextFuture<'a>(pub(crate) LocalBoxFuture<'a, io::Result<String>>);
+
+impl<'a> Future for TextFuture<'a> {
+    type Output = io::Result<String>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.as_mut().0.poll_unpin(cx)
+    }
+}
 
 /// A streaming text decoder that supports multiple encodings.
 pub(crate) struct Decoder {
@@ -43,6 +90,21 @@ impl Decoder {
         }
 
         Self::new(encoding_rs::UTF_8)
+    }
+
+    /// Consume this decoder to decode text from a given synchronous reader.
+    pub(crate) fn decode_reader(self, mut reader: impl io::Read) -> io::Result<String> {
+        decode_reader!(self, buf, reader.read(buf))
+    }
+
+    /// Consume this decoder to decode text from a given asynchronous reader.
+    pub(crate) fn decode_reader_async<'r, R>(self, mut reader: R) -> TextFuture<'r>
+    where
+        R: AsyncRead + Unpin + 'r,
+    {
+        TextFuture(Box::pin(async move {
+            decode_reader!(self, buf, reader.read(buf).await)
+        }))
     }
 
     /// Push additional bytes into the decoder, returning any trailing bytes
