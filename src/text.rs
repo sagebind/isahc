@@ -3,7 +3,66 @@
 #![cfg(feature = "text-decoding")]
 
 use encoding_rs::{CoderResult, Encoding};
+use futures_io::AsyncRead;
+use futures_util::{
+    future::{FutureExt, LocalBoxFuture},
+    io::AsyncReadExt,
+};
 use http::Response;
+use std::{
+    future::Future,
+    io,
+    marker::PhantomData,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+// This macro abstracts over async and sync decoding, since the implementation
+// of decoding a stream into text is the same.
+macro_rules! decode_reader {
+    ($decoder:expr, $buf:ident, $read:expr) => {{
+        let mut decoder = $decoder;
+        let mut buf = [0; 8192];
+        let mut unread = 0;
+
+        loop {
+            let $buf = &mut buf[unread..];
+            let len = match $read {
+                Ok(0) => break,
+                Ok(len) => len,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
+
+            unread = decoder.push(&buf[..unread + len]).len();
+        }
+
+        Ok(decoder.finish(&buf[..unread]))
+    }};
+}
+
+/// A future returning a response body decoded as text.
+#[allow(missing_debug_implementations)]
+pub struct TextFuture<'a, R> {
+    inner: LocalBoxFuture<'a, io::Result<String>>,
+    _phantom: PhantomData<R>,
+}
+
+impl<'a, R: Unpin> Future for TextFuture<'a, R> {
+    type Output = io::Result<String>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.as_mut().inner.poll_unpin(cx)
+    }
+}
+
+// Since we are boxing our future, we can't conditionally implement `Send` based
+// on whether the original future is `Send`. However, we know after inspection
+// that everything inside our implementation is `Send` except for the reader,
+// which may or may not be. We then put the reader in our wrapper future type
+// and conditionally implement `Send` if the reader is also `Send`.
+#[allow(unsafe_code)]
+unsafe impl<'r, R: Send> Send for TextFuture<'r, R> {}
 
 /// A streaming text decoder that supports multiple encodings.
 pub(crate) struct Decoder {
@@ -45,6 +104,24 @@ impl Decoder {
         Self::new(encoding_rs::UTF_8)
     }
 
+    /// Consume this decoder to decode text from a given synchronous reader.
+    pub(crate) fn decode_reader(self, mut reader: impl io::Read) -> io::Result<String> {
+        decode_reader!(self, buf, reader.read(buf))
+    }
+
+    /// Consume this decoder to decode text from a given asynchronous reader.
+    pub(crate) fn decode_reader_async<'r, R>(self, mut reader: R) -> TextFuture<'r, R>
+    where
+        R: AsyncRead + Unpin + 'r,
+    {
+        TextFuture {
+            inner: Box::pin(async move {
+                decode_reader!(self, buf, reader.read(buf).await)
+            }),
+            _phantom: PhantomData,
+        }
+    }
+
     /// Push additional bytes into the decoder, returning any trailing bytes
     /// that formed a partial character.
     pub(crate) fn push<'b>(&mut self, buf: &'b [u8]) -> &'b [u8] {
@@ -83,6 +160,9 @@ impl Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Body;
+
+    static_assertions::assert_impl_all!(TextFuture<'_, &mut Body>: Send);
 
     #[test]
     fn utf8_decode() {
