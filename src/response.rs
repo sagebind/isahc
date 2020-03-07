@@ -101,7 +101,7 @@ pub trait ResponseExt<T> {
     /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
     /// is by default.
     #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_>
+    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
         T: futures_io::AsyncRead + Unpin;
 
@@ -154,7 +154,7 @@ impl<T> ResponseExt<T> for Response<T> {
     }
 
     #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_>
+    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
         T: futures_io::AsyncRead + Unpin,
     {

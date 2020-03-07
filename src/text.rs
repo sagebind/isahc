@@ -12,6 +12,7 @@ use http::Response;
 use std::{
     future::Future,
     io,
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -42,15 +43,26 @@ macro_rules! decode_reader {
 
 /// A future returning a response body decoded as text.
 #[allow(missing_debug_implementations)]
-pub struct TextFuture<'a>(pub(crate) LocalBoxFuture<'a, io::Result<String>>);
+pub struct TextFuture<'a, R> {
+    inner: LocalBoxFuture<'a, io::Result<String>>,
+    _phantom: PhantomData<R>,
+}
 
-impl<'a> Future for TextFuture<'a> {
+impl<'a, R: Unpin> Future for TextFuture<'a, R> {
     type Output = io::Result<String>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().0.poll_unpin(cx)
+        self.as_mut().inner.poll_unpin(cx)
     }
 }
+
+// Since we are boxing our future, we can't conditionally implement `Send` based
+// on whether the original future is `Send`. However, we know after inspection
+// that everything inside our implementation is `Send` except for the reader,
+// which may or may not be. We then put the reader in our wrapper future type
+// and conditionally implement `Send` if the reader is also `Send`.
+#[allow(unsafe_code)]
+unsafe impl<'r, R: Send> Send for TextFuture<'r, R> {}
 
 /// A streaming text decoder that supports multiple encodings.
 pub(crate) struct Decoder {
@@ -98,13 +110,16 @@ impl Decoder {
     }
 
     /// Consume this decoder to decode text from a given asynchronous reader.
-    pub(crate) fn decode_reader_async<'r, R>(self, mut reader: R) -> TextFuture<'r>
+    pub(crate) fn decode_reader_async<'r, R>(self, mut reader: R) -> TextFuture<'r, R>
     where
         R: AsyncRead + Unpin + 'r,
     {
-        TextFuture(Box::pin(async move {
-            decode_reader!(self, buf, reader.read(buf).await)
-        }))
+        TextFuture {
+            inner: Box::pin(async move {
+                decode_reader!(self, buf, reader.read(buf).await)
+            }),
+            _phantom: PhantomData,
+        }
     }
 
     /// Push additional bytes into the decoder, returning any trailing bytes
@@ -145,6 +160,9 @@ impl Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Body;
+
+    static_assertions::assert_impl_all!(TextFuture<'_, &mut Body>: Send);
 
     #[test]
     fn utf8_decode() {
