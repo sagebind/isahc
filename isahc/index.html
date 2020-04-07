@@ -34,7 +34,7 @@ the request body:</p>
 <span class="ident">isahc</span>::<span class="ident">head</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
 <span class="ident">isahc</span>::<span class="ident">delete</span>(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</pre></div>
 <p>If you want to customize the request by adding headers, setting timeouts,
-etc, then you can create a <a href="https://docs.rs/http/0.2.0/http/request/struct.Request.html" title="prelude::Request"><code>Request</code></a> using a
+etc, then you can create a <a href="https://docs.rs/http/0.2.1/http/request/struct.Request.html" title="prelude::Request"><code>Request</code></a> using a
 builder-style fluent interface, then finishing it off with a
 <a href="../isahc/trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
 
@@ -64,7 +64,7 @@ up and running. They should work perfectly fine for many use-cases, so don't
 worry about graduating to more complex APIs if you don't need them.</p>
 <h2 id="request-and-response-traits" class="section-header"><a href="#request-and-response-traits">Request and response traits</a></h2>
 <p>Isahc includes a number of traits in the <a href="../isahc/prelude/index.html" title="`prelude`"><code>prelude</code></a> module that extend the
-<a href="https://docs.rs/http/0.2.0/http/request/struct.Request.html" title="`Request`"><code>Request</code></a> and <a href="https://docs.rs/http/0.2.0/http/response/struct.Response.html" title="`Response`"><code>Response</code></a> types with a plethora of extra methods that
+<a href="https://docs.rs/http/0.2.1/http/request/struct.Request.html" title="`Request`"><code>Request</code></a> and <a href="https://docs.rs/http/0.2.1/http/response/struct.Response.html" title="`Response`"><code>Response</code></a> types with a plethora of extra methods that
 make common tasks convenient and allow you to configure more advanced
 connection and protocol details.</p>
 <p>Some key traits to read about include
@@ -140,7 +140,7 @@ also log all incoming and outgoing data while in flight. This may come in
 handy if you are debugging code and need to see the exact data being sent to
 the server and being received.</p>
 </div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
-<table><tr><td><code>pub use <a class="mod" href="https://docs.rs/http/0.2.0/http/index.html" title="mod http">http</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr><td><code>pub use <a class="mod" href="https://docs.rs/http/0.2.1/http/index.html" title="mod http">http</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table><tr class='module-item'><td><a class="mod" href="auth/index.html" title='isahc::auth mod'>auth</a></td><td class='docblock-short'><p>Types for working with HTTP authentication methods.</p>
 </td></tr><tr class='module-item'><td><a class="mod" href="config/index.html" title='isahc::config mod'>config</a></td><td class='docblock-short'><p>Definition of all client and request configuration options.</p>
 </td></tr><tr class='module-item'><td><a class="mod" href="prelude/index.html" title='isahc::prelude mod'>prelude</a></td><td class='docblock-short'><p>A &quot;prelude&quot; for importing common Isahc types.</p>
