@@ -12,10 +12,11 @@ use crate::{
 };
 use futures_io::AsyncRead;
 use futures_util::{future::BoxFuture, pin_mut};
+use http::header::{HeaderName, HeaderValue};
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt,
     future::Future,
     io,
@@ -238,6 +239,63 @@ impl HttpClientBuilder {
         // requests in a multi handle so we do not expose it per-request to
         // avoid confusing behavior.
         self.configure(map)
+    }
+
+    /// Set a default header to be passed with every request
+    ///
+    /// NOTE: In case there is an error in parsing the HeaderName or HeaderValue
+    /// the tuple is silently discarded.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let client = HttpClient::builder()
+    ///     .default_header("some-header", "some-value")
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn default_header(
+        mut self,
+        key: impl TryInto<HeaderName>,
+        value: impl TryInto<HeaderValue>,
+    ) -> Self {
+        match key.try_into() {
+            Ok(key) => match value.try_into() {
+                Ok(value) => {
+                    if let Some(headers_map) = self.defaults.get_mut::<DefaultHeaderMap>() {
+                        headers_map.0.append(key, value);
+                    } else {
+                        let mut header = http::HeaderMap::with_capacity(1);
+                        header.insert(key, value);
+                        self.defaults.insert(DefaultHeaderMap(header));
+                    }
+                    self
+                }
+                Err(_e) => self,
+            },
+            Err(_e) => self,
+        }
+    }
+
+    /// Get the underlying HeaderMap from the current client-builder.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let mut builder = HttpClient::builder()
+    ///     .default_header("some-header", "some-value");
+    /// let header_opt = builder.default_headers_mut();
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn default_headers_mut(&mut self) -> Option<&mut http::header::HeaderMap<HeaderValue>> {
+        match self.defaults.get_mut::<DefaultHeaderMap>() {
+            Some(h) => Some(&mut h.0),
+            None => None,
+        }
     }
 
     /// Build an [`HttpClient`] using the configured options.
@@ -827,7 +885,13 @@ impl HttpClient {
             }
         }
 
-        // Set custom request headers.
+        // Check if user has setup headers in defaults already
+        if let Some(extension) = self.defaults.get::<DefaultHeaderMap>() {
+            for (name, value) in extension.0.iter() {
+                parts.headers.insert(name, value.clone());
+            }
+        }
+
         parts.headers.set_opt(&mut easy)?;
 
         Ok((easy, future))
@@ -889,4 +953,28 @@ mod tests {
 
     static_assertions::assert_impl_all!(HttpClient: Send, Sync);
     static_assertions::assert_impl_all!(HttpClientBuilder: Send);
+
+    #[test]
+    fn test_default_header() {
+        let _builder = HttpClientBuilder::new()
+            .default_header("some-key", "some-value")
+            .build();
+        match _builder {
+            Ok(_) => assert!(true),
+            Err(_) => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_default_headers_mut() {
+        let mut builder = HttpClientBuilder::new().default_header("some-key", "some-value");
+
+        let header_opt = builder.default_headers_mut();
+        match header_opt {
+            Some(header_map) => {
+                assert!(header_map.contains_key("some-key"));
+            }
+            None => assert!(false),
+        }
+    }
 }
