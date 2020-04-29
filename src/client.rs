@@ -16,7 +16,7 @@ use http::header::{HeaderName, HeaderValue};
 use http::{Request, Response};
 use lazy_static::lazy_static;
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt,
     future::Future,
     io,
@@ -59,6 +59,8 @@ pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
+    default_headers: http::HeaderMap<HeaderValue>,
+    error: Option<Error>,
 }
 
 impl Default for HttpClientBuilder {
@@ -85,6 +87,8 @@ impl HttpClientBuilder {
             agent_builder: AgentBuilder::default(),
             defaults,
             middleware: Vec::new(),
+            default_headers: http::HeaderMap::new(),
+            error: None,
         }
     }
 
@@ -256,27 +260,27 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn default_header(
-        mut self,
-        key: impl TryInto<HeaderName>,
-        value: impl TryInto<HeaderValue>,
-    ) -> Self {
-        match key.try_into() {
-            Ok(key) => match value.try_into() {
+    pub fn default_header<K, V>(mut self, key: K, value: V) -> Self
+    where
+        HeaderName: TryFrom<K>,
+        HeaderValue: TryFrom<V>,
+        <HeaderName as TryFrom<K>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+    {
+        match HeaderName::try_from(key) {
+            Ok(key) => match HeaderValue::try_from(value) {
                 Ok(value) => {
-                    if let Some(headers_map) = self.defaults.get_mut::<DefaultHeaderMap>() {
-                        headers_map.0.append(key, value);
-                    } else {
-                        let mut header = http::HeaderMap::with_capacity(1);
-                        header.insert(key, value);
-                        self.defaults.insert(DefaultHeaderMap(header));
-                    }
-                    self
+                    self.default_headers.insert(key, value);
                 }
-                Err(_e) => self,
+                Err(e) => {
+                    self.error = Some(e.into());
+                }
             },
-            Err(_e) => self,
+            Err(e) => {
+                self.error = Some(e.into());
+            }
         }
+        self
     }
 
     /// Get the underlying HeaderMap from the current client-builder.
@@ -291,21 +295,22 @@ impl HttpClientBuilder {
     /// let header_opt = builder.default_headers_mut();
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn default_headers_mut(&mut self) -> Option<&mut http::header::HeaderMap<HeaderValue>> {
-        match self.defaults.get_mut::<DefaultHeaderMap>() {
-            Some(h) => Some(&mut h.0),
-            None => None,
-        }
+    pub fn default_headers_mut(&mut self) -> &mut http::HeaderMap<HeaderValue> {
+        &mut self.default_headers
     }
 
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
     pub fn build(self) -> Result<HttpClient, Error> {
+        if let Some(err) = self.error {
+            return Err(err);
+        }
         Ok(HttpClient {
             agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             middleware: self.middleware,
+            default_headers: self.default_headers,
         })
     }
 }
@@ -401,6 +406,8 @@ pub struct HttpClient {
     defaults: http::Extensions,
     /// Any middleware implementations that requests should pass through.
     middleware: Vec<Box<dyn Middleware>>,
+
+    default_headers: http::HeaderMap<HeaderValue>,
 }
 
 impl HttpClient {
@@ -885,11 +892,9 @@ impl HttpClient {
             }
         }
 
-        // Check if user has setup headers in defaults already
-        if let Some(extension) = self.defaults.get::<DefaultHeaderMap>() {
-            for (name, value) in extension.0.iter() {
-                parts.headers.insert(name, value.clone());
-            }
+        // // Check if user has setup headers in defaults already
+        for (name, value) in self.default_headers.iter() {
+            parts.headers.insert(name, value.clone());
         }
 
         parts.headers.set_opt(&mut easy)?;
@@ -956,10 +961,10 @@ mod tests {
 
     #[test]
     fn test_default_header() {
-        let _builder = HttpClientBuilder::new()
+        let client = HttpClientBuilder::new()
             .default_header("some-key", "some-value")
             .build();
-        match _builder {
+        match client {
             Ok(_) => assert!(true),
             Err(_) => assert!(false),
         }
@@ -968,13 +973,19 @@ mod tests {
     #[test]
     fn test_default_headers_mut() {
         let mut builder = HttpClientBuilder::new().default_header("some-key", "some-value");
+        let headers_map = builder.default_headers_mut();
+        assert!(headers_map.len() == 1);
 
-        let header_opt = builder.default_headers_mut();
-        match header_opt {
-            Some(header_map) => {
-                assert!(header_map.contains_key("some-key"));
-            }
-            None => assert!(false),
-        }
+        let mut builder = HttpClientBuilder::new()
+            .default_header("some-key", "some-value1")
+            .default_header("some-key", "some-value2");
+        let headers_map = builder.default_headers_mut();
+
+        assert!(headers_map.get("some-key").unwrap() == "some-value2");
+        assert!(headers_map.len() == 1);
+
+        let mut builder = HttpClientBuilder::new();
+        let header_map = builder.default_headers_mut();
+        assert!(header_map.is_empty())
     }
 }

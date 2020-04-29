@@ -27,6 +27,10 @@ pub enum Error {
     InvalidCredentials,
     /// Validation error when constructing the request or parsing the response.
     InvalidHttpFormat(http::Error),
+    /// Invalid HeaderName
+    InvalidHttpHeaderName(http::header::InvalidHeaderName),
+    /// Invalid HeaderValue
+    InvalidHttpHeaderValue(http::header::InvalidHeaderValue),
     /// Invalid UTF-8 string error.
     InvalidUtf8,
     /// An unknown I/O error.
@@ -68,6 +72,8 @@ impl StdError for Error {
             Error::InvalidContentEncoding(Some(ref e)) => e,
             Error::InvalidCredentials => "credentials were rejected by the server",
             Error::InvalidHttpFormat(ref e) => e.description(),
+            Error::InvalidHttpHeaderName(ref e) => e.description(),
+            Error::InvalidHttpHeaderValue(ref e) => e.description(),
             Error::InvalidUtf8 => "bytes are not valid UTF-8",
             Error::Io(ref e) => e.description(),
             Error::NoResponse => "server did not send a response",
@@ -144,6 +150,20 @@ impl From<curl::MultiError> for Error {
 impl From<http::Error> for Error {
     fn from(error: http::Error) -> Error {
         Error::InvalidHttpFormat(error)
+    }
+}
+
+#[doc(hidden)]
+impl From<http::header::InvalidHeaderName> for Error {
+    fn from(error: http::header::InvalidHeaderName) -> Error {
+        Error::InvalidHttpHeaderName(error)
+    }
+}
+
+#[doc(hidden)]
+impl From<http::header::InvalidHeaderValue> for Error {
+    fn from(error: http::header::InvalidHeaderValue) -> Error {
+        Error::InvalidHttpHeaderValue(error)
     }
 }
 
