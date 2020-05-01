@@ -270,7 +270,7 @@ impl HttpClientBuilder {
         match HeaderName::try_from(key) {
             Ok(key) => match HeaderValue::try_from(value) {
                 Ok(value) => {
-                    self.default_headers.insert(key, value);
+                    self.default_headers.append(key, value);
                 }
                 Err(e) => {
                     self.error = Some(e.into());
@@ -892,9 +892,16 @@ impl HttpClient {
             }
         }
 
-        // // Check if user has setup headers in defaults already
-        for (name, value) in self.default_headers.iter() {
-            parts.headers.insert(name, value.clone());
+        // TODO (ansrivas):clean it up a bit
+        // We are checking here if header already contains the key, simply ignore it.
+        // In case the key wasn't present in parts.headers ensure that
+        // we have all the headers from default headers.
+        for (name, _) in self.default_headers.iter() {
+            if !parts.headers.contains_key(name) {
+                for v in self.default_headers.get_all(name).iter() {
+                    parts.headers.append(name, v.clone());
+                }
+            }
         }
 
         parts.headers.set_opt(&mut easy)?;
@@ -981,8 +988,8 @@ mod tests {
             .default_header("some-key", "some-value2");
         let headers_map = builder.default_headers_mut();
 
-        assert!(headers_map.get("some-key").unwrap() == "some-value2");
-        assert!(headers_map.len() == 1);
+        // assert!(headers_map.get("some-key").unwrap() == "some-value1");
+        assert!(headers_map.len() == 2);
 
         let mut builder = HttpClientBuilder::new();
         let header_map = builder.default_headers_mut();
