@@ -748,6 +748,3 @@ impl SetOpt for EnableMetrics {
         easy.progress(self.0)
     }
 }
-
-#[derive(Clone, Debug)]
-pub(crate) struct DefaultHeaderMap(pub(crate) http::HeaderMap<http::HeaderValue>);
