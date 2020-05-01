@@ -892,11 +892,10 @@ impl HttpClient {
             }
         }
 
-        // TODO (ansrivas):clean it up a bit
         // We are checking here if header already contains the key, simply ignore it.
         // In case the key wasn't present in parts.headers ensure that
         // we have all the headers from default headers.
-        for (name, _) in self.default_headers.iter() {
+        for name in self.default_headers.keys() {
             if !parts.headers.contains_key(name) {
                 for v in self.default_headers.get_all(name).iter() {
                     parts.headers.append(name, v.clone());
@@ -988,7 +987,6 @@ mod tests {
             .default_header("some-key", "some-value2");
         let headers_map = builder.default_headers_mut();
 
-        // assert!(headers_map.get("some-key").unwrap() == "some-value1");
         assert!(headers_map.len() == 2);
 
         let mut builder = HttpClientBuilder::new();
