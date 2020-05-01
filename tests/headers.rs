@@ -50,7 +50,7 @@ speculate::speculate! {
            .body(())
            .unwrap();
 
-           let _ = client.send(request).unwrap();
+        let _ = client.send(request).unwrap();
         m.assert();
     }
 
@@ -78,7 +78,7 @@ speculate::speculate! {
            .body(())
            .unwrap();
 
-           let _ = client.send(request).unwrap();
+        let _ = client.send(request).unwrap();
         m.assert();
     }
 
@@ -107,7 +107,7 @@ speculate::speculate! {
            .body(())
            .unwrap();
 
-           let _ = client.send(request).unwrap();
+        let _ = client.send(request).unwrap();
         m.assert();
     }
 
@@ -139,7 +139,7 @@ speculate::speculate! {
            .body(())
            .unwrap();
 
-           let _ = client.send(request).unwrap();
+        let _ = client.send(request).unwrap();
         m.assert();
     }
 }
