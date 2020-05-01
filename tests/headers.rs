@@ -34,8 +34,8 @@ speculate::speculate! {
             .match_header("host", host_header.as_ref())
             .match_header("accept", "*/*")
             .match_header("accept-encoding", "deflate, gzip")
-            .match_header("user-agent", "curl/7.69.1-DEV isahc/0.9.1")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            .match_header("user-agent", Matcher::Any)
             .match_header("X-header", "some-value1")
             .create();
 
@@ -61,8 +61,8 @@ speculate::speculate! {
             .match_header("host", host_header.as_ref())
             .match_header("accept", "*/*")
             .match_header("accept-encoding", "deflate, gzip")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
-
+            // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            .match_header("user-agent", Matcher::Any)
             .match_header("X-header", "some-value2")
             .create();
 
@@ -89,7 +89,8 @@ speculate::speculate! {
             .match_header("host", host_header.as_ref())
             .match_header("accept", "*/*")
             .match_header("accept-encoding", "deflate, gzip")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            .match_header("user-agent", Matcher::Any)
             .match_header("X-header", "some-value1")
             .match_header("X-header", "some-value2")
             .create();
@@ -120,8 +121,8 @@ speculate::speculate! {
             .match_header("host", host_header.as_ref())
             .match_header("accept", "*/*")
             .match_header("accept-encoding", "deflate, gzip")
-            .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
-
+            // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+            .match_header("user-agent", Matcher::Any)
             .match_header("X-header", "some-value3")
             .create();
 
