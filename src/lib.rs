@@ -246,6 +246,7 @@ mod text;
 
 pub mod auth;
 pub mod config;
+pub mod interceptors;
 
 pub use crate::{
     body::Body,
