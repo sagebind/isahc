@@ -148,6 +148,20 @@ impl From<http::Error> for Error {
 }
 
 #[doc(hidden)]
+impl From<http::header::InvalidHeaderName> for Error {
+    fn from(error: http::header::InvalidHeaderName) -> Error {
+        Error::InvalidHttpFormat(error.into())
+    }
+}
+
+#[doc(hidden)]
+impl From<http::header::InvalidHeaderValue> for Error {
+    fn from(error: http::header::InvalidHeaderValue) -> Error {
+        Error::InvalidHttpFormat(error.into())
+    }
+}
+
+#[doc(hidden)]
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         match error.kind() {
