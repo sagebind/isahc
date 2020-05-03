@@ -54,8 +54,12 @@ jobs:
           args: --features cookies,psl --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
-          CARGO_PROFILE_test_PANIC: abort
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests'
+          # CARGO_PROFILE_dev_OVERFLOW_CHECKS: 'false'
+          # CARGO_PROFILE_dev_PANIC: abort
+          # CARGO_PROFILE_test_OVERFLOW_CHECKS: 'false'
+          # CARGO_PROFILE_test_PANIC: abort
+          # RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off'
 
       - name: Install grcov
         run: |
