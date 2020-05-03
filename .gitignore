@@ -2,3 +2,6 @@
 target
 Cargo.lock
 *.code-workspace
+
+# Code coverage reports
+cobertura.xml
