@@ -54,11 +54,12 @@ jobs:
           args: --features cookies,psl --no-fail-fast
         env:
           CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+          CARGO_PROFILE_test_PANIC: abort
+          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests'
 
       - name: Install grcov
         run: |
-          curl -LSs https://github.com/mozilla/grcov/releases/download/v0.5.9/grcov-linux-x86_64.tar.bz2 | sudo tar xjf - -C /usr/local/bin
+          curl -LSs https://github.com/mozilla/grcov/releases/download/v0.5.13/grcov-linux-x86_64.tar.bz2 | sudo tar xjf - -C /usr/local/bin
 
       - uses: actions-rs/grcov@v0.1
 
