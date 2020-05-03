@@ -43,26 +43,13 @@ jobs:
         with:
           submodules: true
 
-      - uses: actions-rs/toolchain@v1
+      - name: Generate code coverage report
+        uses: actions-rs/tarpaulin@v0.1
         with:
-          toolchain: nightly
-          override: true
+          args: "--features cookies,psl"
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features cookies,psl --no-fail-fast
-        env:
-          CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads'
-
-      - name: Install grcov
-        run: |
-          curl -LSs https://github.com/mozilla/grcov/releases/download/v0.5.9/grcov-linux-x86_64.tar.bz2 | sudo tar xjf - -C /usr/local/bin
-
-      - uses: actions-rs/grcov@v0.1
-
-      - uses: codecov/codecov-action@v1
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./lcov.info
+          fail_ci_if_error: true
