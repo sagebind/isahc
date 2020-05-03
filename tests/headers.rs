@@ -82,34 +82,34 @@ speculate::speculate! {
         m.assert();
     }
 
-    test "multiple headers with same key can be inserted in HttpClient::builder" {
+    // test "multiple headers with same key can be inserted in HttpClient::builder" {
 
-        let host_header = server_url().replace("http://", "");
-        let m = mock("GET", "/")
-            .match_header("host", host_header.as_ref())
-            .match_header("accept", "*/*")
-            .match_header("accept-encoding", "deflate, gzip")
-            // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
-            .match_header("user-agent", Matcher::Any)
-            .match_header("X-header", "some-value1")
-            .match_header("X-header", "some-value2")
-            .create();
+    //     let host_header = server_url().replace("http://", "");
+    //     let m = mock("GET", "/")
+    //         .match_header("host", host_header.as_ref())
+    //         .match_header("accept", "*/*")
+    //         .match_header("accept-encoding", "deflate, gzip")
+    //         // .match_header("user-agent", Matcher::Regex(r"^curl/\S+ isahc/\S+$".into()))
+    //         .match_header("user-agent", Matcher::Any)
+    //         .match_header("X-header", "some-value1")
+    //         .match_header("X-header", "some-value2")
+    //         .create();
 
-        let client = HttpClient::builder()
-           .default_header("X-header", "some-value1")
-           .default_header("X-header", "some-value2")
-           .build()
-           .unwrap();
+    //     let client = HttpClient::builder()
+    //        .default_header("X-header", "some-value1")
+    //        .default_header("X-header", "some-value2")
+    //        .build()
+    //        .unwrap();
 
-        let request = Request::builder()
-           .method("GET")
-           .uri(server_url())
-           .body(())
-           .unwrap();
+    //     let request = Request::builder()
+    //        .method("GET")
+    //        .uri(server_url())
+    //        .body(())
+    //        .unwrap();
 
-        let _ = client.send(request).unwrap();
-        m.assert();
-    }
+    //     let _ = client.send(request).unwrap();
+    //     m.assert();
+    // }
 
 
 
