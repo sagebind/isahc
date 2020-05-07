@@ -46,7 +46,8 @@ jobs:
       - name: Generate code coverage report
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: "--features cookies,psl"
+          version: '0.11.1'
+          args: "--run-types Doctests Tests --features cookies,psl"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
