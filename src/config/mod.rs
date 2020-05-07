@@ -565,14 +565,14 @@ impl VersionNegotiation {
         }
     }
 
-    // /// Connect via HTTP/3. Failure to connect will not fall back to old
-    // /// versions.
-    // pub const fn http3() -> Self {
-    //     Self {
-    //         flag: curl::easy::HttpVersion::V3,
-    //         strict: true,
-    //     }
-    // }
+    /// Connect via HTTP/3. Failure to connect will not fall back to old
+    /// versions.
+    pub const fn http3() -> Self {
+        Self {
+            flag: curl::easy::HttpVersion::V3,
+            strict: true,
+        }
+    }
 }
 
 impl SetOpt for VersionNegotiation {
