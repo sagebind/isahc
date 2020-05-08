@@ -19,7 +19,7 @@ use http::{
 };
 use lazy_static::lazy_static;
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt,
     future::Future,
     io,
