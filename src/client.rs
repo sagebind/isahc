@@ -493,7 +493,7 @@ pub struct HttpClient {
     /// Any middleware implementations that requests should pass through.
     middleware: Vec<Box<dyn Middleware>>,
     /// Default headers to add to every request.
-    default_headers: http::HeaderMap<HeaderValue>,
+    default_headers: HeaderMap<HeaderValue>,
 }
 
 impl HttpClient {
