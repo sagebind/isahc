@@ -19,7 +19,7 @@ use http::{
 };
 use lazy_static::lazy_static;
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt,
     future::Future,
     io,
@@ -273,9 +273,9 @@ impl HttpClientBuilder {
     pub fn default_header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
         HeaderValue: TryFrom<V>,
-        <HeaderName as TryFrom<K>>::Error: Into<Error>,
-        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         match HeaderName::try_from(key) {
             Ok(key) => match HeaderValue::try_from(value) {
@@ -283,11 +283,11 @@ impl HttpClientBuilder {
                     self.default_headers.append(key, value);
                 }
                 Err(e) => {
-                    self.error = Some(e.into());
+                    self.error = Some(e.into().into());
                 }
             },
             Err(e) => {
-                self.error = Some(e.into());
+                self.error = Some(e.into().into());
             }
         }
         self
@@ -304,11 +304,13 @@ impl HttpClientBuilder {
     ///
     /// # Examples
     ///
+    /// Set default headers from a slice:
+    ///
     /// ```
     /// # use isahc::prelude::*;
     /// #
     /// let mut builder = HttpClient::builder()
-    ///     .default_headers(vec![
+    ///     .default_headers(&[
     ///         ("some-header", "value1"),
     ///         ("some-header", "value2"),
     ///         ("some-other-header", "some-other-value"),
@@ -330,17 +332,33 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn default_headers<I, K, V>(mut self, headers: I) -> Self
+    ///
+    /// Using a hashmap:
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// # use std::collections::HashMap;
+    /// #
+    /// let mut headers = HashMap::new();
+    /// headers.insert("some-header", "some-value");
+    ///
+    /// let mut builder = HttpClient::builder()
+    ///     .default_headers(headers)
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn default_headers<K, V, I, P>(mut self, headers: I) -> Self
     where
-        I: IntoIterator<Item = (K, V)>,
         HeaderName: TryFrom<K>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
         HeaderValue: TryFrom<V>,
-        <HeaderName as TryFrom<K>>::Error: Into<Error>,
-        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
+        I: IntoIterator<Item = P>,
+        P: HeaderPair<K, V>,
     {
         self.default_headers.clear();
 
-        for (key, value) in headers {
+        for (key, value) in headers.into_iter().map(HeaderPair::pair) {
             self = self.default_header(key, value);
         }
 
@@ -375,6 +393,26 @@ impl ConfigurableBase for HttpClientBuilder {
 impl fmt::Debug for HttpClientBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HttpClientBuilder").finish()
+    }
+}
+
+/// Helper trait for defining key-value pair types that can be dereferenced into
+/// a tuple from a reference.
+///
+/// This trait is sealed and cannot be implemented for types outside of Isahc.
+pub trait HeaderPair<K, V> {
+    fn pair(self) -> (K, V);
+}
+
+impl<K, V> HeaderPair<K, V> for (K, V) {
+    fn pair(self) -> (K, V) {
+        self
+    }
+}
+
+impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
+    fn pair(self) -> (K, V) {
+        (self.0, self.1)
     }
 }
 
