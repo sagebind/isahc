@@ -92,13 +92,6 @@ impl StdError for Error {
 }
 
 #[doc(hidden)]
-impl From<std::convert::Infallible> for Error {
-    fn from(error: std::convert::Infallible) -> Error {
-        error.into()
-    }
-}
-
-#[doc(hidden)]
 impl From<curl::Error> for Error {
     fn from(error: curl::Error) -> Error {
         if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {

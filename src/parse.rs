@@ -19,8 +19,7 @@ pub(crate) fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
     };
 
     let status_code = parts
-        .skip_while(|s| s.is_empty())
-        .next()
+        .find(|s| !s.is_empty())
         .map(StatusCode::from_bytes)?
         .ok()?;
 
