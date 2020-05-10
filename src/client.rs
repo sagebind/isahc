@@ -12,8 +12,11 @@ use crate::{
 };
 use futures_io::AsyncRead;
 use futures_util::{future::BoxFuture, pin_mut};
-use http::header::{HeaderName, HeaderValue};
-use http::{Request, Response};
+use http::{
+    Request,
+    Response,
+    header::{HeaderMap, HeaderName, HeaderValue},
+};
 use lazy_static::lazy_static;
 use std::{
     convert::TryFrom,
@@ -59,7 +62,7 @@ pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
     middleware: Vec<Box<dyn Middleware>>,
-    default_headers: http::HeaderMap<HeaderValue>,
+    default_headers: HeaderMap<HeaderValue>,
     error: Option<Error>,
 }
 
@@ -87,7 +90,7 @@ impl HttpClientBuilder {
             agent_builder: AgentBuilder::default(),
             defaults,
             middleware: Vec::new(),
-            default_headers: http::HeaderMap::new(),
+            default_headers: HeaderMap::new(),
             error: None,
         }
     }
@@ -245,10 +248,17 @@ impl HttpClientBuilder {
         self.configure(map)
     }
 
-    /// Set a default header to be passed with every request
+    /// Add a default header to be passed with every request.
     ///
-    /// NOTE: In case there is an error in parsing the HeaderName or HeaderValue
-    /// the tuple is silently discarded.
+    /// If a default header value is already defined for the given key, then a
+    /// second header value will be appended to the list and multiple header
+    /// values will be included in the request.
+    ///
+    /// If any values are defined for this header key on an outgoing request,
+    /// they will override any default header values.
+    ///
+    /// If the header key or value are malformed, [`HttpClientBuilder::build`]
+    /// will return an error.
     ///
     /// # Examples
     ///
@@ -263,9 +273,9 @@ impl HttpClientBuilder {
     pub fn default_header<K, V>(mut self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
         HeaderValue: TryFrom<V>,
-        <HeaderName as TryFrom<K>>::Error: Into<Error>,
-        <HeaderValue as TryFrom<V>>::Error: Into<Error>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
     {
         match HeaderName::try_from(key) {
             Ok(key) => match HeaderValue::try_from(value) {
@@ -273,30 +283,86 @@ impl HttpClientBuilder {
                     self.default_headers.append(key, value);
                 }
                 Err(e) => {
-                    self.error = Some(e.into());
+                    self.error = Some(e.into().into());
                 }
             },
             Err(e) => {
-                self.error = Some(e.into());
+                self.error = Some(e.into().into());
             }
         }
         self
     }
 
-    /// Get the underlying HeaderMap from the current client-builder.
+    /// Set the default headers to include in every request, replacing any
+    /// previously set default headers.
+    ///
+    /// Headers defined on an individual request always override headers in the
+    /// default map.
+    ///
+    /// If any header keys or values are malformed, [`HttpClientBuilder::build`]
+    /// will return an error.
     ///
     /// # Examples
+    ///
+    /// Set default headers from a slice:
     ///
     /// ```
     /// # use isahc::prelude::*;
     /// #
     /// let mut builder = HttpClient::builder()
-    ///     .default_header("some-header", "some-value");
-    /// let header_opt = builder.default_headers_mut();
+    ///     .default_headers(&[
+    ///         ("some-header", "value1"),
+    ///         ("some-header", "value2"),
+    ///         ("some-other-header", "some-other-value"),
+    ///     ])
+    ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn default_headers_mut(&mut self) -> &mut http::HeaderMap<HeaderValue> {
-        &mut self.default_headers
+    ///
+    /// Using an existing header map:
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// #
+    /// let mut headers = http::HeaderMap::new();
+    /// headers.append("some-header".parse::<http::header::HeaderName>()?, "some-value".parse()?);
+    ///
+    /// let mut builder = HttpClient::builder()
+    ///     .default_headers(&headers)
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// Using a hashmap:
+    ///
+    /// ```
+    /// # use isahc::prelude::*;
+    /// # use std::collections::HashMap;
+    /// #
+    /// let mut headers = HashMap::new();
+    /// headers.insert("some-header", "some-value");
+    ///
+    /// let mut builder = HttpClient::builder()
+    ///     .default_headers(headers)
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn default_headers<K, V, I, P>(mut self, headers: I) -> Self
+    where
+        HeaderName: TryFrom<K>,
+        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
+        HeaderValue: TryFrom<V>,
+        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
+        I: IntoIterator<Item = P>,
+        P: HeaderPair<K, V>,
+    {
+        self.default_headers.clear();
+
+        for (key, value) in headers.into_iter().map(HeaderPair::pair) {
+            self = self.default_header(key, value);
+        }
+
+        self
     }
 
     /// Build an [`HttpClient`] using the configured options.
@@ -327,6 +393,26 @@ impl ConfigurableBase for HttpClientBuilder {
 impl fmt::Debug for HttpClientBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HttpClientBuilder").finish()
+    }
+}
+
+/// Helper trait for defining key-value pair types that can be dereferenced into
+/// a tuple from a reference.
+///
+/// This trait is sealed and cannot be implemented for types outside of Isahc.
+pub trait HeaderPair<K, V> {
+    fn pair(self) -> (K, V);
+}
+
+impl<K, V> HeaderPair<K, V> for (K, V) {
+    fn pair(self) -> (K, V) {
+        self
+    }
+}
+
+impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
+    fn pair(self) -> (K, V) {
+        (self.0, self.1)
     }
 }
 
@@ -406,8 +492,8 @@ pub struct HttpClient {
     defaults: http::Extensions,
     /// Any middleware implementations that requests should pass through.
     middleware: Vec<Box<dyn Middleware>>,
-
-    default_headers: http::HeaderMap<HeaderValue>,
+    /// Default headers to add to every request.
+    default_headers: HeaderMap<HeaderValue>,
 }
 
 impl HttpClient {
@@ -979,18 +1065,18 @@ mod tests {
     #[test]
     fn test_default_headers_mut() {
         let mut builder = HttpClientBuilder::new().default_header("some-key", "some-value");
-        let headers_map = builder.default_headers_mut();
+        let headers_map = &mut builder.default_headers;
         assert!(headers_map.len() == 1);
 
         let mut builder = HttpClientBuilder::new()
             .default_header("some-key", "some-value1")
             .default_header("some-key", "some-value2");
-        let headers_map = builder.default_headers_mut();
+        let headers_map = &mut builder.default_headers;
 
         assert!(headers_map.len() == 2);
 
         let mut builder = HttpClientBuilder::new();
-        let header_map = builder.default_headers_mut();
+        let header_map = &mut builder.default_headers;
         assert!(header_map.is_empty())
     }
 }

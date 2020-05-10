@@ -92,6 +92,13 @@ impl StdError for Error {
 }
 
 #[doc(hidden)]
+impl From<std::convert::Infallible> for Error {
+    fn from(error: std::convert::Infallible) -> Error {
+        error.into()
+    }
+}
+
+#[doc(hidden)]
 impl From<curl::Error> for Error {
     fn from(error: curl::Error) -> Error {
         if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
@@ -144,20 +151,6 @@ impl From<curl::MultiError> for Error {
 impl From<http::Error> for Error {
     fn from(error: http::Error) -> Error {
         Error::InvalidHttpFormat(error)
-    }
-}
-
-#[doc(hidden)]
-impl From<http::header::InvalidHeaderName> for Error {
-    fn from(error: http::header::InvalidHeaderName) -> Error {
-        Error::InvalidHttpFormat(error.into())
-    }
-}
-
-#[doc(hidden)]
-impl From<http::header::InvalidHeaderValue> for Error {
-    fn from(error: http::header::InvalidHeaderValue) -> Error {
-        Error::InvalidHttpFormat(error.into())
     }
 }
 
