@@ -405,12 +405,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in the system defaults being used.
-    fn ssl_ciphers<I, T>(self, servers: I) -> Self
+    fn ssl_ciphers<I, T>(self, ciphers: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        self.configure(ssl::Ciphers::from_iter(servers.into_iter().map(T::into)))
+        self.configure(ssl::Ciphers::from_iter(ciphers.into_iter().map(T::into)))
     }
 
     /// Set various options for this request that control SSL/TLS behavior.
