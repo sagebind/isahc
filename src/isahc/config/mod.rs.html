@@ -1156,12 +1156,12 @@
     <span class="doccomment">/// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unset and will result in the system defaults being used.</span>
-    <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">servers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">ciphers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ssl</span>::<span class="ident">Ciphers</span>::<span class="ident">from_iter</span>(<span class="ident">servers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>)))
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ssl</span>::<span class="ident">Ciphers</span>::<span class="ident">from_iter</span>(<span class="ident">ciphers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>)))
     }
 
     <span class="doccomment">/// Set various options for this request that control SSL/TLS behavior.</span>
