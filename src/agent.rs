@@ -59,7 +59,7 @@ impl AgentBuilder {
         let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
         wake_socket.set_nonblocking(true)?;
         let wake_addr = wake_socket.local_addr()?;
-        let id = wake_addr.port();
+        let port = wake_addr.port();
         let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
         tracing::debug!("agent waker listening on {}", wake_addr);
 
@@ -74,7 +74,7 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = tracing::trace_span!("agent_thread", id);
+        let agent_span = tracing::debug_span!("agent_thread", port);
         agent_span.follows_from(tracing::Span::current());
 
         let handle = Handle {
@@ -82,7 +82,7 @@ impl AgentBuilder {
             waker: waker.clone(),
             join_handle: Mutex::new(Some(
                 thread::Builder::new()
-                    .name(format!("isahc-agent-{}", id))
+                    .name(format!("isahc-agent-{}", port))
                     .spawn(move || {
                         agent_span.in_scope(|| {
                             let mut multi = curl::multi::Multi::new();
@@ -459,8 +459,6 @@ impl AgentContext {
         let mut wait_fd_buf = [0; 1024];
 
         debug_assert_eq!(wait_fds.len(), 1);
-
-        tracing::debug!("agent ready");
 
         // Agent main loop.
         loop {

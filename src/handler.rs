@@ -92,10 +92,6 @@ unsafe impl Send for RequestHandler {}
 /// This is also used to keep track of the lifetime of the request.
 #[derive(Debug)]
 struct Shared {
-    /// The ID of the request that this handler is managing. Assigned by the
-    /// request agent.
-    id: AtomicCell<usize>,
-
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
 
@@ -113,7 +109,6 @@ impl RequestHandler {
     ) {
         let (sender, receiver) = futures_channel::oneshot::channel();
         let shared = Arc::new(Shared {
-            id: AtomicCell::new(usize::max_value()),
             waker: AtomicWaker::default(),
             completed: AtomicCell::new(false),
             response_body_dropped: AtomicCell::new(false),
@@ -121,7 +116,7 @@ impl RequestHandler {
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
-            span: tracing::trace_span!("handler", id = tracing::field::Empty),
+            span: tracing::debug_span!("handler", id = tracing::field::Empty),
             sender: Some(sender),
             shared: shared.clone(),
             request_body,
@@ -151,6 +146,24 @@ impl RequestHandler {
         (handler, future)
     }
 
+    /// Check whether debug info should be generated. This function is used to
+    /// determine whether to set the `verbose` curl option to true.
+    pub(crate) fn is_debug_enabled(&self) -> bool {
+        // To avoid having curl generate debug strings unnecessarily, we want to
+        // enable debug info only if:
+        //
+        // - a tracing subscriber is set and is interested in the current span,
+        // - or a logger is set that is enabled at debug or higher.
+        //
+        // This logic seems a little screwy when comparing to what the docs say,
+        // but it works.
+        if self.span.is_none() {
+            false
+        } else {
+            log::log_enabled!(log::Level::Debug)
+        }
+    }
+
     fn is_future_canceled(&self) -> bool {
         self.sender
             .as_ref()
@@ -173,11 +186,9 @@ impl RequestHandler {
         let _enter = self.span.enter();
 
         // Init should not be called more than once.
-        debug_assert!(self.shared.id.load() == usize::max_value());
         debug_assert!(self.request_body_waker.is_none());
         debug_assert!(self.response_body_waker.is_none());
 
-        self.shared.id.store(id);
         self.span.record("id", &id);
         self.handle = handle;
         self.request_body_waker = Some(request_waker);
@@ -186,17 +197,18 @@ impl RequestHandler {
 
     /// Handle a result produced by curl for this handler's current transfer.
     pub(crate) fn on_result(&mut self, result: Result<(), curl::Error>) {
-        tracing::trace_span!(parent: &self.span, "on_result").in_scope(move || {
-            self.shared.completed.store(true);
+        let span = tracing::trace_span!(parent: &self.span, "on_result");
+        let _enter = span.enter();
 
-            match result {
-                Ok(()) => self.flush_response_headers(),
-                Err(e) => {
-                    tracing::debug!("curl error: {}", e);
-                    self.complete(Err(e.into()));
-                }
+        self.shared.completed.store(true);
+
+        match result {
+            Ok(()) => self.flush_response_headers(),
+            Err(e) => {
+                tracing::debug!("curl error: {}", e);
+                self.complete(Err(e.into()));
             }
-        })
+        }
     }
 
     /// Mark the future as completed successfully with the response headers
@@ -233,26 +245,23 @@ impl RequestHandler {
 
     /// Complete the associated future with a result.
     fn complete(&mut self, result: Result<http::response::Builder, Error>) {
-        tracing::trace_span!(parent: &self.span, "complete").in_scope(move || {
-            if let Some(sender) = self.sender.take() {
-                if let Err(e) = result.as_ref() {
-                    tracing::warn!(
-                        "request completed with error [id={:?}]: {}",
-                        self.shared.id,
-                        e
-                    );
-                }
+        let span = tracing::trace_span!(parent: &self.span, "complete");
+        let _enter = span.enter();
 
-                match sender.send(result) {
-                    Ok(()) => {
-                        self.shared.waker.wake();
-                    }
-                    Err(_) => {
-                        tracing::debug!("request canceled by user [id={:?}]", self.shared.id);
-                    }
+        if let Some(sender) = self.sender.take() {
+            if let Err(e) = result.as_ref() {
+                tracing::warn!("request completed with error: {}", e);
+            }
+
+            match sender.send(result) {
+                Ok(()) => {
+                    self.shared.waker.wake();
+                }
+                Err(_) => {
+                    tracing::debug!("request canceled by user");
                 }
             }
-        })
+        }
     }
 
     #[allow(unsafe_code)]
@@ -285,46 +294,47 @@ impl curl::easy::Handler for RequestHandler {
             return false;
         }
 
-        tracing::trace_span!(parent: &self.span, "header").in_scope(move || {
-            // Curl calls this function for all lines in the response not part of
-            // the response body, not just for headers. We need to inspect the
-            // contents of the string in order to determine what it is and how to
-            // parse it, just as if we were reading from the socket of a HTTP/1.0 or
-            // HTTP/1.1 connection ourselves.
+        let span = tracing::trace_span!(parent: &self.span, "header");
+        let _enter = span.enter();
 
-            // Is this the status line?
-            if let Some((version, status)) = parse::parse_status_line(data) {
-                self.response_version = Some(version);
-                self.response_status_code = Some(status);
+        // Curl calls this function for all lines in the response not part of
+        // the response body, not just for headers. We need to inspect the
+        // contents of the string in order to determine what it is and how to
+        // parse it, just as if we were reading from the socket of a HTTP/1.0 or
+        // HTTP/1.1 connection ourselves.
 
-                // Also clear any pre-existing headers that might be left over from
-                // a previous intermediate response.
-                self.response_headers.clear();
+        // Is this the status line?
+        if let Some((version, status)) = parse::parse_status_line(data) {
+            self.response_version = Some(version);
+            self.response_status_code = Some(status);
 
-                return true;
-            }
+            // Also clear any pre-existing headers that might be left over from
+            // a previous intermediate response.
+            self.response_headers.clear();
 
-            // Is this a header line?
-            if let Some((name, value)) = parse::parse_header(data) {
-                self.response_headers.append(name, value);
-                return true;
-            }
+            return true;
+        }
 
-            // Is this the end of the response header?
-            if data == b"\r\n" {
-                // We will acknowledge the end of the header, but we can't complete
-                // our response future yet. If curl decides to follow a redirect,
-                // then this current response is not the final response and not the
-                // one we should complete with.
-                //
-                // Instead, we will complete the future when curl marks the transfer
-                // as complete, or when we start receiving a response body.
-                return true;
-            }
+        // Is this a header line?
+        if let Some((name, value)) = parse::parse_header(data) {
+            self.response_headers.append(name, value);
+            return true;
+        }
 
-            // Unknown header line we don't know how to parse.
-            false
-        })
+        // Is this the end of the response header?
+        if data == b"\r\n" {
+            // We will acknowledge the end of the header, but we can't complete
+            // our response future yet. If curl decides to follow a redirect,
+            // then this current response is not the final response and not the
+            // one we should complete with.
+            //
+            // Instead, we will complete the future when curl marks the transfer
+            // as complete, or when we start receiving a response body.
+            return true;
+        }
+
+        // Unknown header line we don't know how to parse.
+        false
     }
 
     /// Gets called by curl when attempting to send bytes of the request body.
@@ -334,26 +344,27 @@ impl curl::easy::Handler for RequestHandler {
             return Err(ReadError::Abort);
         }
 
-        tracing::trace_span!(parent: &self.span, "read").in_scope(move || {
-            // Create a task context using a waker provided by the agent so we can
-            // do an asynchronous read.
-            if let Some(waker) = self.request_body_waker.as_ref() {
-                let mut context = Context::from_waker(waker);
+        let span = tracing::trace_span!(parent: &self.span, "read");
+        let _enter = span.enter();
 
-                match Pin::new(&mut self.request_body).poll_read(&mut context, data) {
-                    Poll::Pending => Err(ReadError::Pause),
-                    Poll::Ready(Ok(len)) => Ok(len),
-                    Poll::Ready(Err(e)) => {
-                        tracing::error!("error reading request body: {}", e);
-                        Err(ReadError::Abort)
-                    }
+        // Create a task context using a waker provided by the agent so we can
+        // do an asynchronous read.
+        if let Some(waker) = self.request_body_waker.as_ref() {
+            let mut context = Context::from_waker(waker);
+
+            match Pin::new(&mut self.request_body).poll_read(&mut context, data) {
+                Poll::Pending => Err(ReadError::Pause),
+                Poll::Ready(Ok(len)) => Ok(len),
+                Poll::Ready(Err(e)) => {
+                    tracing::error!("error reading request body: {}", e);
+                    Err(ReadError::Abort)
                 }
-            } else {
-                // The request should never be started without calling init first.
-                tracing::error!("request has not been initialized!");
-                Err(ReadError::Abort)
             }
-        })
+        } else {
+            // The request should never be started without calling init first.
+            tracing::error!("request has not been initialized!");
+            Err(ReadError::Abort)
+        }
     }
 
     /// Gets called by curl when it wants to seek to a certain position in the
@@ -363,58 +374,57 @@ impl curl::easy::Handler for RequestHandler {
     /// seek, we can't do any async operations in this callback. That's why we
     /// only support trivial types of seeking.
     fn seek(&mut self, whence: io::SeekFrom) -> SeekResult {
-        tracing::trace_span!(parent: &self.span, "seek", whence = ?whence).in_scope(move || {
-            // If curl wants to seek to the beginning, there's a chance that we
-            // can do that.
-            if whence == io::SeekFrom::Start(0) && self.request_body.reset() {
-                SeekResult::Ok
-            } else {
-                tracing::warn!("seek requested for request body, but it is not supported");
-                // We can't do any other type of seek, sorry :(
-                SeekResult::CantSeek
-            }
-        })
+        let span = tracing::trace_span!(parent: &self.span, "seek", whence = ?whence);
+        let _enter = span.enter();
+
+        // If curl wants to seek to the beginning, there's a chance that we
+        // can do that.
+        if whence == io::SeekFrom::Start(0) && self.request_body.reset() {
+            SeekResult::Ok
+        } else {
+            tracing::warn!("seek requested for request body, but it is not supported");
+            // We can't do any other type of seek, sorry :(
+            SeekResult::CantSeek
+        }
     }
 
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        tracing::trace_span!(parent: &self.span, "write").in_scope(move || {
-            tracing::trace!("received {} bytes of data", data.len());
+        let span = tracing::trace_span!(parent: &self.span, "write");
+        let _enter = span.enter();
+        tracing::trace!("received {} bytes of data", data.len());
 
-            // Abort the request if it has been canceled.
-            if self.shared.response_body_dropped.load() {
-                return Ok(0);
-            }
+        // Abort the request if it has been canceled.
+        if self.shared.response_body_dropped.load() {
+            return Ok(0);
+        }
 
-            // Now that we've started receiving the response body, we know no more
-            // redirects can happen and we can complete the future safely.
-            self.flush_response_headers();
+        // Now that we've started receiving the response body, we know no more
+        // redirects can happen and we can complete the future safely.
+        self.flush_response_headers();
 
-            // Create a task context using a waker provided by the agent so we can
-            // do an asynchronous write.
-            if let Some(waker) = self.response_body_waker.as_ref() {
-                let mut context = Context::from_waker(waker);
+        // Create a task context using a waker provided by the agent so we can
+        // do an asynchronous write.
+        if let Some(waker) = self.response_body_waker.as_ref() {
+            let mut context = Context::from_waker(waker);
 
-                match Pin::new(&mut self.response_body_writer).poll_write(&mut context, data) {
-                    Poll::Pending => Err(WriteError::Pause),
-                    Poll::Ready(Ok(len)) => Ok(len),
-                    Poll::Ready(Err(e)) => {
-                        if e.kind() == io::ErrorKind::BrokenPipe {
-                            tracing::warn!(
-                            "failed to write response body because the response reader was dropped"
-                        );
-                        } else {
-                            tracing::error!("error writing response body to buffer: {}", e);
-                        }
-                        Ok(0)
+            match Pin::new(&mut self.response_body_writer).poll_write(&mut context, data) {
+                Poll::Pending => Err(WriteError::Pause),
+                Poll::Ready(Ok(len)) => Ok(len),
+                Poll::Ready(Err(e)) => {
+                    if e.kind() == io::ErrorKind::BrokenPipe {
+                        tracing::warn!("failed to write response body because the response reader was dropped");
+                    } else {
+                        tracing::error!("error writing response body to buffer: {}", e);
                     }
+                    Ok(0)
                 }
-            } else {
-                // The request should never be started without calling init first.
-                tracing::error!("request has not been initialized!");
-                Ok(0)
             }
-        })
+        } else {
+            // The request should never be started without calling init first.
+            tracing::error!("request has not been initialized!");
+            Ok(0)
+        }
     }
 
     /// Capture transfer progress updates from curl.
@@ -511,7 +521,7 @@ impl curl::easy::Handler for RequestHandler {
 
         match kind {
             InfoType::Text => {
-                tracing::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
+                tracing::debug!("{}", String::from_utf8_lossy(data).trim_end())
             }
             InfoType::HeaderIn | InfoType::DataIn => {
                 tracing::trace!(target: "isahc::wire", "<< {}", FormatAscii(data))
@@ -526,7 +536,7 @@ impl curl::easy::Handler for RequestHandler {
 
 impl fmt::Debug for RequestHandler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RequestHandler({:?})", self.shared.id)
+        write!(f, "RequestHandler")
     }
 }
 
