@@ -84,45 +84,44 @@ impl AgentBuilder {
                 thread::Builder::new()
                     .name(format!("isahc-agent-{}", port))
                     .spawn(move || {
-                        agent_span.in_scope(|| {
-                            let mut multi = curl::multi::Multi::new();
+                        let _enter = agent_span.enter();
+                        let mut multi = curl::multi::Multi::new();
 
-                            if max_connections > 0 {
-                                multi.set_max_total_connections(max_connections)?;
-                            }
+                        if max_connections > 0 {
+                            multi.set_max_total_connections(max_connections)?;
+                        }
 
-                            if max_connections_per_host > 0 {
-                                multi.set_max_host_connections(max_connections_per_host)?;
-                            }
+                        if max_connections_per_host > 0 {
+                            multi.set_max_host_connections(max_connections_per_host)?;
+                        }
 
-                            // Only set maxconnects if greater than 0, because 0 actually means unlimited.
-                            if connection_cache_size > 0 {
-                                multi.set_max_connects(connection_cache_size)?;
-                            }
+                        // Only set maxconnects if greater than 0, because 0 actually means unlimited.
+                        if connection_cache_size > 0 {
+                            multi.set_max_connects(connection_cache_size)?;
+                        }
 
-                            let agent = AgentContext {
-                                multi,
-                                multi_messages: crossbeam_channel::unbounded(),
-                                message_tx,
-                                message_rx,
-                                wake_socket,
-                                requests: Slab::new(),
-                                close_requested: false,
-                                waker,
-                            };
+                        let agent = AgentContext {
+                            multi,
+                            multi_messages: crossbeam_channel::unbounded(),
+                            message_tx,
+                            message_rx,
+                            wake_socket,
+                            requests: Slab::new(),
+                            close_requested: false,
+                            waker,
+                        };
 
-                            drop(wait_group_thread);
+                        drop(wait_group_thread);
 
-                            tracing::debug!("agent took {:?} to start up", create_start.elapsed());
+                        tracing::debug!("agent took {:?} to start up", create_start.elapsed());
 
-                            let result = agent.run();
+                        let result = agent.run();
 
-                            if let Err(e) = &result {
-                                tracing::error!("agent shut down with error: {}", e);
-                            }
+                        if let Err(e) = &result {
+                            tracing::error!("agent shut down with error: {}", e);
+                        }
 
-                            result
-                        })
+                        result
                     })?,
             )),
         };
