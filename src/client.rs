@@ -874,7 +874,7 @@ impl HttpClient {
         let mut easy = curl::easy::Easy2::new(handler);
 
         // Set whether curl should generate verbose debug data for us to log.
-        easy.verbose(dbg!(easy.get_ref().is_debug_enabled()))?;
+        easy.verbose(easy.get_ref().is_debug_enabled())?;
 
         easy.signal(false)?;
 
