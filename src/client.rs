@@ -801,6 +801,17 @@ impl HttpClient {
         );
 
         async move {
+            // We are checking here if header already contains the key, simply ignore it.
+            // In case the key wasn't present in parts.headers ensure that
+            // we have all the headers from default headers.
+            for name in self.default_headers.keys() {
+                if !request.headers().contains_key(name) {
+                    for v in self.default_headers.get_all(name).iter() {
+                        request.headers_mut().append(name, v.clone());
+                    }
+                }
+            }
+
             // Set default user agent if not specified.
             request
                 .headers_mut()
@@ -991,17 +1002,6 @@ impl HttpClient {
                     "Transfer-Encoding",
                     http::header::HeaderValue::from_static("chunked"),
                 );
-            }
-        }
-
-        // We are checking here if header already contains the key, simply ignore it.
-        // In case the key wasn't present in parts.headers ensure that
-        // we have all the headers from default headers.
-        for name in self.default_headers.keys() {
-            if !parts.headers.contains_key(name) {
-                for v in self.default_headers.get_all(name).iter() {
-                    parts.headers.append(name, v.clone());
-                }
             }
         }
 

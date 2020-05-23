@@ -27,6 +27,22 @@ speculate::speculate! {
         m.assert();
     }
 
+    // Issue [#190](https://github.com/sagebind/isahc/issues/190)
+    test "override client default user agent" {
+        let client = HttpClient::builder()
+           .default_header("user-agent", "foo")
+           .build()
+           .unwrap();
+
+        let m = mock("GET", "/")
+            .match_header("user-agent", "foo")
+            .create();
+
+        client.get(server_url()).unwrap();
+
+        m.assert();
+    }
+
     test "header can be inserted in HttpClient::builder" {
 
         let host_header = server_url().replace("http://", "");
