@@ -1080,6 +1080,22 @@
 <span id="1080">1080</span>
 <span id="1081">1081</span>
 <span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1110,6 +1126,7 @@
     <span class="ident">sync</span>::<span class="ident">Arc</span>,
     <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>},
 };
+<span class="kw">use</span> <span class="ident">tracing_futures</span>::<span class="ident">Instrument</span>;
 
 <span class="macro">lazy_static</span><span class="macro">!</span> {
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">USER_AGENT</span>: <span class="ident">String</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(
@@ -1451,6 +1468,7 @@
     <span class="doccomment">/// Build an [`HttpClient`] using the configured options.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
+    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">skip</span>(<span class="self">self</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HttpClient</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">error</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
@@ -1583,6 +1601,7 @@
     <span class="doccomment">/// Create a new HTTP client using the default configuration.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
+    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">HttpClientBuilder</span>::<span class="ident">default</span>().<span class="ident">build</span>()
     }
@@ -1590,6 +1609,7 @@
     <span class="doccomment">/// Get a reference to a global client instance.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// TODO: Stabilize.</span>
+    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">shared</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="macro">lazy_static</span><span class="macro">!</span> {
             <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SHARED</span>: <span class="ident">HttpClient</span> <span class="op">=</span>
@@ -1827,6 +1847,7 @@
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">request</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>).<span class="ident">join</span>()
     }
@@ -1854,76 +1875,85 @@
     <span class="doccomment">/// assert!(response.status().is_success());</span>
     <span class="doccomment">/// # Ok(()) }</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_async</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into</span>::<span class="ident">into</span>);
-
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>))
+        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into</span>::<span class="ident">into</span>)))
     }
 
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">send_builder_async</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">builder</span>: <span class="ident">http</span>::<span class="ident">request</span>::<span class="ident">Builder</span>,
         <span class="ident">body</span>: <span class="ident">Body</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="kw">await</span> })
+        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> {
+            <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="kw">await</span>
+        })
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Set default user agent if not specified.</span>
-        <span class="ident">request</span>
-            .<span class="ident">headers_mut</span>()
-            .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
-            .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">info_span</span><span class="macro">!</span>(
+            <span class="string">&quot;send_async&quot;</span>,
+            <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
+            <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
+        );
 
-        <span class="comment">// Apply any request middleware, starting with the outermost one.</span>
-        <span class="kw">for</span> <span class="ident">middleware</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">middleware</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-            <span class="ident">request</span> <span class="op">=</span> <span class="ident">middleware</span>.<span class="ident">filter_request</span>(<span class="ident">request</span>);
-        }
+        <span class="kw">async</span> <span class="kw">move</span> {
+            <span class="comment">// Set default user agent if not specified.</span>
+            <span class="ident">request</span>
+                .<span class="ident">headers_mut</span>()
+                .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
+                .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
 
-        <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
-        <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Send the request to the agent to be executed.</span>
-        <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Await for the response headers.</span>
-        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="kw">await</span><span class="question-mark">?</span>;
-
-        <span class="comment">// If a Content-Length header is present, include that information in</span>
-        <span class="comment">// the body as well.</span>
-        <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
-
-        <span class="comment">// Convert the reader into an opaque Body.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
-                <span class="ident">inner</span>: <span class="ident">reader</span>,
-                <span class="comment">// Extend the lifetime of the agent by including a reference</span>
-                <span class="comment">// to its handle in the response body.</span>
-                <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
-            };
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
-                <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
-            } <span class="kw">else</span> {
-                <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
+            <span class="comment">// Apply any request middleware, starting with the outermost one.</span>
+            <span class="kw">for</span> <span class="ident">middleware</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">middleware</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
+                <span class="ident">request</span> <span class="op">=</span> <span class="ident">middleware</span>.<span class="ident">filter_request</span>(<span class="ident">request</span>);
             }
-        });
 
-        <span class="comment">// Apply response middleware, starting with the innermost</span>
-        <span class="comment">// one.</span>
-        <span class="kw">for</span> <span class="ident">middleware</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">middleware</span>.<span class="ident">iter</span>() {
-            <span class="ident">response</span> <span class="op">=</span> <span class="ident">middleware</span>.<span class="ident">filter_response</span>(<span class="ident">response</span>);
-        }
+            <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
+            <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
+            <span class="comment">// Send the request to the agent to be executed.</span>
+            <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+
+            <span class="comment">// Await for the response headers.</span>
+            <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="kw">await</span><span class="question-mark">?</span>;
+
+            <span class="comment">// If a Content-Length header is present, include that information in</span>
+            <span class="comment">// the body as well.</span>
+            <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
+                .<span class="ident">headers</span>()
+                .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
+
+            <span class="comment">// Convert the reader into an opaque Body.</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
+                    <span class="ident">inner</span>: <span class="ident">reader</span>,
+                    <span class="comment">// Extend the lifetime of the agent by including a reference</span>
+                    <span class="comment">// to its handle in the response body.</span>
+                    <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
+                };
+
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
+                    <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                } <span class="kw">else</span> {
+                    <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
+                }
+            });
+
+            <span class="comment">// Apply response middleware, starting with the innermost</span>
+            <span class="comment">// one.</span>
+            <span class="kw">for</span> <span class="ident">middleware</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">middleware</span>.<span class="ident">iter</span>() {
+                <span class="ident">response</span> <span class="op">=</span> <span class="ident">middleware</span>.<span class="ident">filter_response</span>(<span class="ident">response</span>);
+            }
+
+            <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
+        }.<span class="ident">instrument</span>(<span class="ident">span</span>).<span class="kw">await</span>
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">cognitive_complexity</span>)]</span>
     <span class="kw">fn</span> <span class="ident">create_easy_handle</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
@@ -1942,7 +1972,9 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">easy</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>::<span class="ident">new</span>(<span class="ident">handler</span>);
 
-        <span class="ident">easy</span>.<span class="ident">verbose</span>(<span class="ident">log</span>::<span class="macro">log_enabled</span><span class="macro">!</span>(<span class="ident">log</span>::<span class="ident">Level</span>::<span class="ident">Debug</span>))<span class="question-mark">?</span>;
+        <span class="comment">// Set whether curl should generate verbose debug data for us to log.</span>
+        <span class="ident">easy</span>.<span class="ident">verbose</span>(<span class="ident">easy</span>.<span class="ident">get_ref</span>().<span class="ident">is_debug_enabled</span>())<span class="question-mark">?</span>;
+
         <span class="ident">easy</span>.<span class="ident">signal</span>(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Macro to apply all config values given in the request or in defaults.</span>
@@ -2164,4 +2196,4 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "isahc";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "isahc";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
