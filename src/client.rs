@@ -27,6 +27,7 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
+use tracing_futures::Instrument;
 
 lazy_static! {
     static ref USER_AGENT: String = format!(
@@ -368,6 +369,7 @@ impl HttpClientBuilder {
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
+    #[tracing::instrument(skip(self))]
     pub fn build(self) -> Result<HttpClient, Error> {
         if let Some(err) = self.error {
             return Err(err);
@@ -500,6 +502,7 @@ impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
     /// If the client fails to initialize, an error will be returned.
+    #[tracing::instrument]
     pub fn new() -> Result<Self, Error> {
         HttpClientBuilder::default().build()
     }
@@ -507,6 +510,7 @@ impl HttpClient {
     /// Get a reference to a global client instance.
     ///
     /// TODO: Stabilize.
+    #[tracing::instrument]
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
             static ref SHARED: HttpClient =
@@ -744,6 +748,7 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
+    #[tracing::instrument(skip(self, request))]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
         self.send_async(request).join()
     }
@@ -771,76 +776,85 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// # Ok(()) }
     /// ```
+    #[inline]
     pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
-        let request = request.map(Into::into);
-
-        ResponseFuture::new(self.send_async_inner(request))
+        ResponseFuture::new(self.send_async_inner(request.map(Into::into)))
     }
 
+    #[inline]
     fn send_builder_async(
         &self,
         builder: http::request::Builder,
         body: Body,
     ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
+        ResponseFuture::new(async move {
+            self.send_async_inner(builder.body(body)?).await
+        })
     }
 
     /// Actually send the request. All the public methods go through here.
     async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
-        // Set default user agent if not specified.
-        request
-            .headers_mut()
-            .entry(http::header::USER_AGENT)
-            .or_insert(USER_AGENT.parse().unwrap());
+        let span = tracing::info_span!(
+            "send_async",
+            method = ?request.method(),
+            uri = ?request.uri(),
+        );
 
-        // Apply any request middleware, starting with the outermost one.
-        for middleware in self.middleware.iter().rev() {
-            request = middleware.filter_request(request);
-        }
+        async move {
+            // Set default user agent if not specified.
+            request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
 
-        // Create and configure a curl easy handle to fulfil the request.
-        let (easy, future) = self.create_easy_handle(request)?;
-
-        // Send the request to the agent to be executed.
-        self.agent.submit_request(easy)?;
-
-        // Await for the response headers.
-        let response = future.await?;
-
-        // If a Content-Length header is present, include that information in
-        // the body as well.
-        let content_length = response
-            .headers()
-            .get(http::header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse().ok());
-
-        // Convert the reader into an opaque Body.
-        let mut response = response.map(|reader| {
-            let body = ResponseBody {
-                inner: reader,
-                // Extend the lifetime of the agent by including a reference
-                // to its handle in the response body.
-                _agent: self.agent.clone(),
-            };
-
-            if let Some(len) = content_length {
-                Body::from_reader_sized(body, len)
-            } else {
-                Body::from_reader(body)
+            // Apply any request middleware, starting with the outermost one.
+            for middleware in self.middleware.iter().rev() {
+                request = middleware.filter_request(request);
             }
-        });
 
-        // Apply response middleware, starting with the innermost
-        // one.
-        for middleware in self.middleware.iter() {
-            response = middleware.filter_response(response);
-        }
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = self.create_easy_handle(request)?;
 
-        Ok(response)
+            // Send the request to the agent to be executed.
+            self.agent.submit_request(easy)?;
+
+            // Await for the response headers.
+            let response = future.await?;
+
+            // If a Content-Length header is present, include that information in
+            // the body as well.
+            let content_length = response
+                .headers()
+                .get(http::header::CONTENT_LENGTH)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse().ok());
+
+            // Convert the reader into an opaque Body.
+            let mut response = response.map(|reader| {
+                let body = ResponseBody {
+                    inner: reader,
+                    // Extend the lifetime of the agent by including a reference
+                    // to its handle in the response body.
+                    _agent: self.agent.clone(),
+                };
+
+                if let Some(len) = content_length {
+                    Body::from_reader_sized(body, len)
+                } else {
+                    Body::from_reader(body)
+                }
+            });
+
+            // Apply response middleware, starting with the innermost
+            // one.
+            for middleware in self.middleware.iter() {
+                response = middleware.filter_response(response);
+            }
+
+            Ok(response)
+        }.instrument(span).await
     }
 
-    #[allow(clippy::cognitive_complexity)]
     fn create_easy_handle(
         &self,
         request: Request<Body>,
@@ -859,7 +873,9 @@ impl HttpClient {
 
         let mut easy = curl::easy::Easy2::new(handler);
 
-        easy.verbose(log::log_enabled!(log::Level::Debug))?;
+        // Set whether curl should generate verbose debug data for us to log.
+        easy.verbose(easy.get_ref().is_debug_enabled())?;
+
         easy.signal(false)?;
 
         // Macro to apply all config values given in the request or in defaults.

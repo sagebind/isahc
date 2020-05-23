@@ -35,6 +35,15 @@ use std::{
 /// If dropped before the response is finished, the associated future will be
 /// completed with an `Aborted` error.
 pub(crate) struct RequestHandler {
+    /// A tracing span for grouping log events under. Since a request is
+    /// processed asynchronously inside an agent thread, this span helps
+    /// maintain a link to the parent context where the request is actually
+    /// initiated.
+    ///
+    /// We enter and exit this span whenever curl invokes one of our callbacks
+    /// to make progress on this request.
+    span: tracing::Span,
+
     /// State shared by the handler and its future.
     shared: Arc<Shared>,
 
@@ -83,10 +92,6 @@ unsafe impl Send for RequestHandler {}
 /// This is also used to keep track of the lifetime of the request.
 #[derive(Debug)]
 struct Shared {
-    /// The ID of the request that this handler is managing. Assigned by the
-    /// request agent.
-    id: AtomicCell<usize>,
-
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
 
@@ -104,7 +109,6 @@ impl RequestHandler {
     ) {
         let (sender, receiver) = futures_channel::oneshot::channel();
         let shared = Arc::new(Shared {
-            id: AtomicCell::new(usize::max_value()),
             waker: AtomicWaker::default(),
             completed: AtomicCell::new(false),
             response_body_dropped: AtomicCell::new(false),
@@ -112,6 +116,7 @@ impl RequestHandler {
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
+            span: tracing::debug_span!("handler", id = tracing::field::Empty),
             sender: Some(sender),
             shared: shared.clone(),
             request_body,
@@ -141,6 +146,24 @@ impl RequestHandler {
         (handler, future)
     }
 
+    /// Check whether debug info should be generated. This function is used to
+    /// determine whether to set the `verbose` curl option to true.
+    pub(crate) fn is_debug_enabled(&self) -> bool {
+        // To avoid having curl generate debug strings unnecessarily, we want to
+        // enable debug info only if:
+        //
+        // - a tracing subscriber is set and is interested in the current span,
+        // - or a logger is set that is enabled at debug or higher.
+        //
+        // This logic seems a little screwy when comparing to what the docs say,
+        // but it works.
+        if self.span.is_none() {
+            false
+        } else {
+            log::log_enabled!(log::Level::Debug)
+        }
+    }
+
     fn is_future_canceled(&self) -> bool {
         self.sender
             .as_ref()
@@ -160,13 +183,13 @@ impl RequestHandler {
         request_waker: Waker,
         response_waker: Waker,
     ) {
+        let _enter = self.span.enter();
+
         // Init should not be called more than once.
-        debug_assert!(self.shared.id.load() == usize::max_value());
         debug_assert!(self.request_body_waker.is_none());
         debug_assert!(self.response_body_waker.is_none());
 
-        log::debug!("initializing handler for request [id={}]", id);
-        self.shared.id.store(id);
+        self.span.record("id", &id);
         self.handle = handle;
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);
@@ -174,12 +197,15 @@ impl RequestHandler {
 
     /// Handle a result produced by curl for this handler's current transfer.
     pub(crate) fn on_result(&mut self, result: Result<(), curl::Error>) {
+        let span = tracing::trace_span!(parent: &self.span, "on_result");
+        let _enter = span.enter();
+
         self.shared.completed.store(true);
 
         match result {
             Ok(()) => self.flush_response_headers(),
             Err(e) => {
-                log::debug!("curl error: {}", e);
+                tracing::debug!("curl error: {}", e);
                 self.complete(Err(e.into()));
             }
         }
@@ -219,13 +245,12 @@ impl RequestHandler {
 
     /// Complete the associated future with a result.
     fn complete(&mut self, result: Result<http::response::Builder, Error>) {
+        let span = tracing::trace_span!(parent: &self.span, "complete");
+        let _enter = span.enter();
+
         if let Some(sender) = self.sender.take() {
             if let Err(e) = result.as_ref() {
-                log::warn!(
-                    "request completed with error [id={:?}]: {}",
-                    self.shared.id,
-                    e
-                );
+                tracing::warn!("request completed with error: {}", e);
             }
 
             match sender.send(result) {
@@ -233,7 +258,7 @@ impl RequestHandler {
                     self.shared.waker.wake();
                 }
                 Err(_) => {
-                    log::debug!("request canceled by user [id={:?}]", self.shared.id);
+                    tracing::debug!("request canceled by user");
                 }
             }
         }
@@ -268,6 +293,9 @@ impl curl::easy::Handler for RequestHandler {
         if self.is_future_canceled() {
             return false;
         }
+
+        let span = tracing::trace_span!(parent: &self.span, "header");
+        let _enter = span.enter();
 
         // Curl calls this function for all lines in the response not part of
         // the response body, not just for headers. We need to inspect the
@@ -316,6 +344,9 @@ impl curl::easy::Handler for RequestHandler {
             return Err(ReadError::Abort);
         }
 
+        let span = tracing::trace_span!(parent: &self.span, "read");
+        let _enter = span.enter();
+
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous read.
         if let Some(waker) = self.request_body_waker.as_ref() {
@@ -325,13 +356,13 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Pending => Err(ReadError::Pause),
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
-                    log::error!("error reading request body: {}", e);
+                    tracing::error!("error reading request body: {}", e);
                     Err(ReadError::Abort)
                 }
             }
         } else {
             // The request should never be started without calling init first.
-            log::error!("request has not been initialized!");
+            tracing::error!("request has not been initialized!");
             Err(ReadError::Abort)
         }
     }
@@ -343,12 +374,15 @@ impl curl::easy::Handler for RequestHandler {
     /// seek, we can't do any async operations in this callback. That's why we
     /// only support trivial types of seeking.
     fn seek(&mut self, whence: io::SeekFrom) -> SeekResult {
+        let span = tracing::trace_span!(parent: &self.span, "seek", whence = ?whence);
+        let _enter = span.enter();
+
         // If curl wants to seek to the beginning, there's a chance that we
         // can do that.
         if whence == io::SeekFrom::Start(0) && self.request_body.reset() {
             SeekResult::Ok
         } else {
-            log::warn!("seek requested for request body, but it is not supported");
+            tracing::warn!("seek requested for request body, but it is not supported");
             // We can't do any other type of seek, sorry :(
             SeekResult::CantSeek
         }
@@ -356,7 +390,9 @@ impl curl::easy::Handler for RequestHandler {
 
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        log::trace!("received {} bytes of data", data.len());
+        let span = tracing::trace_span!(parent: &self.span, "write");
+        let _enter = span.enter();
+        tracing::trace!("received {} bytes of data", data.len());
 
         // Abort the request if it has been canceled.
         if self.shared.response_body_dropped.load() {
@@ -377,18 +413,16 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        log::warn!(
-                            "failed to write response body because the response reader was dropped"
-                        );
+                        tracing::warn!("failed to write response body because the response reader was dropped");
                     } else {
-                        log::error!("error writing response body to buffer: {}", e);
+                        tracing::error!("error writing response body to buffer: {}", e);
                     }
                     Ok(0)
                 }
             }
         } else {
             // The request should never be started without calling init first.
-            log::error!("request has not been initialized!");
+            tracing::error!("request has not been initialized!");
             Ok(0)
         }
     }
@@ -472,6 +506,8 @@ impl curl::easy::Handler for RequestHandler {
     /// Since we're using the log crate, this callback normalizes the debug info
     /// and writes it to our log.
     fn debug(&mut self, kind: InfoType, data: &[u8]) {
+        let _enter = self.span.enter();
+
         struct FormatAscii<T>(T);
 
         impl<T: AsRef<[u8]>> fmt::Display for FormatAscii<T> {
@@ -485,13 +521,13 @@ impl curl::easy::Handler for RequestHandler {
 
         match kind {
             InfoType::Text => {
-                log::debug!(target: "isahc::curl", "{}", String::from_utf8_lossy(data).trim_end())
+                tracing::debug!("{}", String::from_utf8_lossy(data).trim_end())
             }
             InfoType::HeaderIn | InfoType::DataIn => {
-                log::trace!(target: "isahc::wire", "<< {}", FormatAscii(data))
+                tracing::trace!(target: "isahc::wire", "<< {}", FormatAscii(data))
             }
             InfoType::HeaderOut | InfoType::DataOut => {
-                log::trace!(target: "isahc::wire", ">> {}", FormatAscii(data))
+                tracing::trace!(target: "isahc::wire", ">> {}", FormatAscii(data))
             }
             _ => (),
         }
@@ -500,7 +536,7 @@ impl curl::easy::Handler for RequestHandler {
 
 impl fmt::Debug for RequestHandler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RequestHandler({:?})", self.shared.id)
+        write!(f, "RequestHandler")
     }
 }
 
