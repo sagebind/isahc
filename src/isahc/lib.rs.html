@@ -428,6 +428,9 @@
 <span id="428">428</span>
 <span id="429">429</span>
 <span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
@@ -619,10 +622,13 @@
 <span class="doccomment">//! Enable the new middleware API. Unstable until the API is finalized. This an</span>
 <span class="doccomment">//! unstable feature whose interface may change between patch releases.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! # Logging</span>
+<span class="doccomment">//! # Logging and tracing</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Isahc logs quite a bit of useful information at various levels using the</span>
-<span class="doccomment">//! [log](https://docs.rs/log) crate.</span>
+<span class="doccomment">//! Isahc logs quite a bit of useful information at various levels compatible</span>
+<span class="doccomment">//! with the [log](https://docs.rs/log) crate. For even more in-depth</span>
+<span class="doccomment">//! diagnostics, you can use a [tracing](https://docs.rs/tracing) subscriber to</span>
+<span class="doccomment">//! track log events grouped by individual requests. This can be especially</span>
+<span class="doccomment">//! useful if you are sending multiple requests concurrently.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will</span>
 <span class="doccomment">//! also log all incoming and outgoing data while in flight. This may come in</span>
