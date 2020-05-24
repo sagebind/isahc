@@ -188,10 +188,13 @@
 //! Enable the new middleware API. Unstable until the API is finalized. This an
 //! unstable feature whose interface may change between patch releases.
 //!
-//! # Logging
+//! # Logging and tracing
 //!
-//! Isahc logs quite a bit of useful information at various levels using the
-//! [log](https://docs.rs/log) crate.
+//! Isahc logs quite a bit of useful information at various levels compatible
+//! with the [log](https://docs.rs/log) crate. For even more in-depth
+//! diagnostics, you can use a [tracing](https://docs.rs/tracing) subscriber to
+//! track log events grouped by individual requests. This can be especially
+//! useful if you are sending multiple requests concurrently.
 //!
 //! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in
