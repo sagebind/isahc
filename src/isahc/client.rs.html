@@ -1900,6 +1900,17 @@
         );
 
         <span class="kw">async</span> <span class="kw">move</span> {
+            <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
+            <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
+            <span class="comment">// we have all the headers from default headers.</span>
+            <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
+                    <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
+                        <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
+                    }
+                }
+            }
+
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
                 .<span class="ident">headers_mut</span>()
@@ -2090,17 +2101,6 @@
                     <span class="string">&quot;Transfer-Encoding&quot;</span>,
                     <span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">HeaderValue</span>::<span class="ident">from_static</span>(<span class="string">&quot;chunked&quot;</span>),
                 );
-            }
-        }
-
-        <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
-        <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
-        <span class="comment">// we have all the headers from default headers.</span>
-        <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">parts</span>.<span class="ident">headers</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
-                    <span class="ident">parts</span>.<span class="ident">headers</span>.<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
-                }
             }
         }
 
