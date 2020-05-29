@@ -65,9 +65,9 @@
 //! # Ok::<(), isahc::Error>(())
 //! ```
 //!
-//! Check out the
+//! For even more examples used in complete programs, please check out the
 //! [examples](https://github.com/sagebind/isahc/tree/master/examples) directory
-//! in the project sources for even more examples.
+//! in the project repo.
 //!
 //! # Feature tour
 //!

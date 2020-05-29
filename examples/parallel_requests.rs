@@ -2,7 +2,10 @@
 //! simultaneously with no extra cost. Concurrent requests may be made in the
 //! same thread, or from different threads as in this example.
 //!
-//! We're using Rayon here to make parallelism easy.
+//! We're using [rayon] here to make parallelism easy.
+//!
+//! [rayon]: https://github.com/rayon-rs/rayon
+
 use isahc::prelude::*;
 use rayon::prelude::*;
 use std::env;
