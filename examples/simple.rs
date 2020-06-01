@@ -1,14 +1,18 @@
+//! A very basic example program that sends a GET request and prints out the
+//! response from the server.
+
 use isahc::prelude::*;
 
 fn main() -> Result<(), isahc::Error> {
-    let client = HttpClient::new()?;
-    let mut response = client.get("http://example.org")?;
+    // Send a GET request and wait for the response headers.
+    // Must be `mut` so we can read the response body.
+    let mut response = isahc::get("http://example.org")?;
 
+    // Print some basic info about the response to standard output.
     println!("Status: {}", response.status());
-    println!("Headers:\n{:?}", response.headers());
+    println!("Headers: {:#?}", response.headers());
 
-    // Copy the response body directly to stdout.
-    // std::io::copy(response.body_mut(), &mut std::io::stdout())?;
+    // Read the response body as text into a string and print it.
     print!("{}", response.text()?);
 
     Ok(())

@@ -51,16 +51,28 @@ Safe Rust bindings to libcurl are provided by the [curl crate], which you can us
 
 ## [Documentation]
 
-Please check out the [documentation] for details on what Isahc can do and how to use it. To get you started, here is a really simple example that spits out the response body from https://example.org:
+Please check out the [documentation] for details on what Isahc can do and how to use it. To get you started, here is a really simple, complete example that spits out the response body from https://example.org:
 
 ```rust
-// Send a GET request and wait for the response headers.
-let mut response = isahc::get("https://example.org")?;
-// Read the response body into a string and print it to standard output.
-println!("{}", response.text()?);
+use isahc::prelude::*;
+
+fn main() -> Result<(), isahc::Error> {
+    // Send a GET request and wait for the response headers.
+    // Must be `mut` so we can read the response body.
+    let mut response = isahc::get("http://example.org")?;
+
+    // Print some basic info about the response to standard output.
+    println!("Status: {}", response.status());
+    println!("Headers: {:#?}", response.headers());
+
+    // Read the response body as text into a string and print it.
+    print!("{}", response.text()?);
+
+    Ok(())
+}
 ```
 
-Click [here](https://sagebind.github.io/isahc/isahc/) for built documentation from the latest `master` build.
+Click [here][documentation] for documentation on the latest version. You can also click [here](https://sagebind.github.io/isahc/isahc/) for built documentation from the latest unreleased `master` build.
 
 ## Installation
 

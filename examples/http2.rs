@@ -1,5 +1,10 @@
-use isahc::config::VersionNegotiation;
-use isahc::prelude::*;
+//! This example simply demonstrates HTTP/2 support by making a request that
+//! enforces usage of HTTP/2.
+
+use isahc::{
+    config::VersionNegotiation,
+    prelude::*,
+};
 
 fn main() -> Result<(), isahc::Error> {
     let response = Request::get("https://nghttp2.org")
@@ -8,7 +13,7 @@ fn main() -> Result<(), isahc::Error> {
         .map_err(Into::into)
         .and_then(isahc::send)?;
 
-    println!("{:?}", response.headers());
+    println!("{:#?}", response.headers());
 
     Ok(())
 }

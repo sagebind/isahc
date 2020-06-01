@@ -1,6 +1,13 @@
 //! A simple command line utility that downloads a file into the void. It
 //! demonstrates how the metrics API can be used to implement an interactive
 //! progress bar.
+//!
+//! Command line options are parsed with [structopt] and the progress bar itself
+//! rendered with [indicatif], both excellent libraries for writing command line
+//! programs!
+//!
+//! [indicatif]: https://github.com/mitsuhiko/indicatif
+//! [structopt]: https://github.com/TeXitoi/structopt
 
 use indicatif::{FormattedDuration, HumanBytes, ProgressBar, ProgressStyle};
 use isahc::prelude::*;

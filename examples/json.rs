@@ -1,5 +1,11 @@
-// This example uses the json feature. As such you should enable it in your Cargo.toml
-// For example, add this line in your `[dependencies]` section : `isahc = { version ="*", features = ["json"]}`
+//! This example uses the `json` crate feature. As such you should enable it in
+//! your Cargo.toml. For example, add this line in your `[dependencies]`
+//! section:
+//!
+//! ```toml
+//! isahc = { version = "*", features = ["json"]}
+//! ```
+
 use isahc::prelude::*;
 
 #[derive(Debug, serde::Serialize)]
