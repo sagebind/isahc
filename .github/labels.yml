@@ -1,38 +1,41 @@
+- name: breaking
+  description: Requires breaking backwards compatibility
+  color: ba68c8
 - name: bug
-  description: ""
+  description: Something is borken
   color: e57373
 - name: build
-  description: ""
+  description: Build or CI process
   color: dce775
 - name: dependencies
   description: Pull requests that update a dependency file
   color: dce775
 - name: documentation
-  description: ""
+  description: Documentation changes
   color: dce775
 - name: enhancement
-  description: ""
+  description: Make a feature better
   color: 64b5f6
 - name: feature
   description: A new feature!
   color: 81c784
 - name: good first issue
-  description: ""
+  description: Something not too complex
   color: ffd54f
 - name: help wanted
   description: ""
   color: ffd54f
 - name: performance
-  description: ""
+  description: An enhancement or problem with performance
   color: 64b5f6
 - name: question
-  description: ""
+  description: Just asking
   color: ba68c8
 - name: security
-  description: ""
+  description: A security concern or vulnerability
   color: e57373
 - name: upstream
-  description: ""
+  description: Caused by an upstream dependency
   color: f7ae7e
 
 # meta
