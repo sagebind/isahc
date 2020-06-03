@@ -369,7 +369,7 @@ impl HttpClientBuilder {
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "trace", skip(self))]
     pub fn build(self) -> Result<HttpClient, Error> {
         if let Some(err) = self.error {
             return Err(err);
@@ -502,7 +502,7 @@ impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
     /// If the client fails to initialize, an error will be returned.
-    #[tracing::instrument]
+    #[tracing::instrument(level = "trace")]
     pub fn new() -> Result<Self, Error> {
         HttpClientBuilder::default().build()
     }
@@ -510,7 +510,7 @@ impl HttpClient {
     /// Get a reference to a global client instance.
     ///
     /// TODO: Stabilize.
-    #[tracing::instrument]
+    #[tracing::instrument(level = "trace")]
     pub(crate) fn shared() -> &'static Self {
         lazy_static! {
             static ref SHARED: HttpClient =
@@ -748,7 +748,7 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    #[tracing::instrument(skip(self, request))]
+    #[tracing::instrument(level = "trace", skip(self, request))]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
         self.send_async(request).join()
     }
@@ -794,7 +794,7 @@ impl HttpClient {
 
     /// Actually send the request. All the public methods go through here.
     async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
-        let span = tracing::info_span!(
+        let span = tracing::trace_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
