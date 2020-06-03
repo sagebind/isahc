@@ -74,7 +74,7 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = tracing::debug_span!("agent_thread", port);
+        let agent_span = tracing::trace_span!("agent_thread", port);
         agent_span.follows_from(tracing::Span::current());
 
         let handle = Handle {
