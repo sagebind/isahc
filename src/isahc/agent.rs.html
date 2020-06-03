@@ -579,7 +579,7 @@
 
         <span class="comment">// Create a span for the agent thread that outlives this method call,</span>
         <span class="comment">// but rather was caused by it.</span>
-        <span class="kw">let</span> <span class="ident">agent_span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;agent_thread&quot;</span>, <span class="ident">port</span>);
+        <span class="kw">let</span> <span class="ident">agent_span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="string">&quot;agent_thread&quot;</span>, <span class="ident">port</span>);
         <span class="ident">agent_span</span>.<span class="ident">follows_from</span>(<span class="ident">tracing</span>::<span class="ident">Span</span>::<span class="ident">current</span>());
 
         <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">Handle</span> {

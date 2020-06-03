@@ -695,7 +695,7 @@
         <span class="kw">let</span> (<span class="ident">response_body_reader</span>, <span class="ident">response_body_writer</span>) <span class="op">=</span> <span class="ident">pipe</span>::<span class="ident">pipe</span>();
 
         <span class="kw">let</span> <span class="ident">handler</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">span</span>: <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;handler&quot;</span>, <span class="ident">id</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="ident">field</span>::<span class="ident">Empty</span>),
+            <span class="ident">span</span>: <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="string">&quot;handler&quot;</span>, <span class="ident">id</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="ident">field</span>::<span class="ident">Empty</span>),
             <span class="ident">sender</span>: <span class="prelude-val">Some</span>(<span class="ident">sender</span>),
             <span class="ident">shared</span>: <span class="ident">shared</span>.<span class="ident">clone</span>(),
             <span class="ident">request_body</span>,
@@ -736,7 +736,7 @@
         <span class="comment">//</span>
         <span class="comment">// This logic seems a little screwy when comparing to what the docs say,</span>
         <span class="comment">// but it works.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">span</span>.<span class="ident">is_none</span>() {
+        <span class="kw">if</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;handler&quot;</span>).<span class="ident">is_none</span>() {
             <span class="bool-val">false</span>
         } <span class="kw">else</span> {
             <span class="ident">log</span>::<span class="macro">log_enabled</span><span class="macro">!</span>(<span class="ident">log</span>::<span class="ident">Level</span>::<span class="ident">Debug</span>)
