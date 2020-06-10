@@ -501,7 +501,6 @@
 <span id="501">501</span>
 <span id="502">502</span>
 <span id="503">503</span>
-<span id="504">504</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -994,7 +993,6 @@
         <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent shutting down&quot;</span>);
 
         <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">clear</span>();
-        <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">close</span>()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
