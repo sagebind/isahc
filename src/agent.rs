@@ -489,7 +489,6 @@ impl AgentContext {
         tracing::debug!("agent shutting down");
 
         self.requests.clear();
-        self.multi.close()?;
 
         Ok(())
     }
