@@ -1,5 +1,7 @@
 //! Types for error handling.
 
+#![allow(deprecated)]
+
 use std::error::Error as StdError;
 use std::fmt;
 use std::io;
