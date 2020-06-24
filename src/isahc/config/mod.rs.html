@@ -1316,14 +1316,14 @@
         }
     }
 
-    <span class="comment">// /// Connect via HTTP/3. Failure to connect will not fall back to old</span>
-    <span class="comment">// /// versions.</span>
-    <span class="comment">// pub const fn http3() -&gt; Self {</span>
-    <span class="comment">//     Self {</span>
-    <span class="comment">//         flag: curl::easy::HttpVersion::V3,</span>
-    <span class="comment">//         strict: true,</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
+    <span class="doccomment">/// Connect via HTTP/3. Failure to connect will not fall back to old</span>
+    <span class="doccomment">/// versions.</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http3</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V3</span>,
+            <span class="ident">strict</span>: <span class="bool-val">true</span>,
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
