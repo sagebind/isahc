@@ -61,7 +61,7 @@ version = "0.3"
 optional = true
 
 [dependencies.parking_lot]
-version = "0.10"
+version = "0.11"
 optional = true
 
 [dependencies.publicsuffix]
