@@ -10,6 +10,7 @@ repository = "https://github.com/sagebind/isahc"
 documentation = "https://docs.rs/isahc/"
 readme = "README.md"
 edition = "2018"
+exclude = [".*", "benchmarks", "media", "src/cookies/psl/list/*/"]
 
 [package.metadata.docs.rs]
 features = ["cookies", "json"]

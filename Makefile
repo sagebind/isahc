@@ -9,4 +9,3 @@ test:
 .PHONY: bench
 bench:
 	cargo bench -p isahc-benchmarks
-
