@@ -5,17 +5,12 @@ pub(crate) fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
     let mut parts = line.split(u8::is_ascii_whitespace);
 
     let version = match parts.next()? {
+        b"HTTP/3" => Version::HTTP_3,
         b"HTTP/2" => Version::HTTP_2,
         b"HTTP/1.1" => Version::HTTP_11,
         b"HTTP/1.0" => Version::HTTP_10,
         b"HTTP/0.9" => Version::HTTP_09,
-        bytes => {
-            if bytes.starts_with(b"HTTP/") {
-                Version::default()
-            } else {
-                return None;
-            }
-        }
+        _ => return None,
     };
 
     let status_code = parts
@@ -76,6 +71,10 @@ mod tests {
             parse_status_line(b"HTTP/2 200\r\n"),
             Some((Version::HTTP_2, StatusCode::OK,))
         );
+        assert_eq!(
+            parse_status_line(b"HTTP/3 200\r\n"),
+            Some((Version::HTTP_3, StatusCode::OK,))
+        );
     }
 
     #[test]
@@ -88,6 +87,7 @@ mod tests {
             parse_status_line(b" HTTP/1.1 500 Internal Server Error\r\n"),
             None
         );
+        assert_eq!(parse_status_line(b"HTTP/4 200\r\n"), None);
     }
 
     #[test]
