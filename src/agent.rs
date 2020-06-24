@@ -55,6 +55,18 @@ impl AgentBuilder {
     pub(crate) fn spawn(&self) -> Result<Handle, Error> {
         let create_start = Instant::now();
 
+        // Initialize libcurl, if necessary, on the current thread.
+        //
+        // Note that as of 0.4.30, the curl crate will attempt to do this for us
+        // on the main thread automatically at program start on most targets,
+        // but on other targets must still be initialized on the main thread. We
+        // do this here in the hope that the user builds an `HttpClient` on the
+        // main thread (as opposed to waiting for `Multi::new()` to do it for
+        // us below, which we _know_ is not on the main thread).
+        //
+        // See #189.
+        curl::init();
+
         // Create an UDP socket for the agent thread to listen for wakeups on.
         let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
         wake_socket.set_nonblocking(true)?;
