@@ -101,12 +101,13 @@ Non-goals:
 
 ## License
 
-This project's source code and documentation is licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
+This project's source code and documentation are licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
 
-The "Isahc" logo and mascot may only be used as required for reasonable and customary use in describing the Isahc project and in redistribution of the project.
+The Isahc logo and related assets are licensed under a [Creative Commons Attribution 4.0 International License][cc-by]. See [LICENSE-CC-BY](LICENSE-CC-BY) for details.
 
 
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
 [chttp]: https://crates.io/crates/chttp
 [curl crate]: https://crates.io/crates/curl
 [documentation]: https://docs.rs/isahc
