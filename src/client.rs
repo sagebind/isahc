@@ -115,6 +115,7 @@ impl HttpClientBuilder {
         self.middleware_impl(crate::cookies::CookieJar::default())
     }
 
+    // #[cfg(feature = "unstable-interceptor")]
     /// Add a request interceptor to the client.
     pub fn interceptor(mut self, interceptor: impl Interceptor) -> Self {
         self.interceptors.push(Box::new(interceptor));
@@ -813,77 +814,87 @@ impl HttpClient {
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
+    async fn send_async_inner(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
         );
 
-        async move {
-            // We are checking here if header already contains the key, simply ignore it.
-            // In case the key wasn't present in parts.headers ensure that
-            // we have all the headers from default headers.
-            for name in self.default_headers.keys() {
-                if !request.headers().contains_key(name) {
-                    for v in self.default_headers.get_all(name).iter() {
-                        request.headers_mut().append(name, v.clone());
+        let client = self;
+
+        let mut cx = interceptors::Context {
+            invoker: Arc::new(move |mut request| {
+                // let span = span;
+                Box::pin(async move {
+                    // We are checking here if header already contains the key, simply ignore it.
+                    // In case the key wasn't present in parts.headers ensure that
+                    // we have all the headers from default headers.
+                    for name in client.default_headers.keys() {
+                        if !request.headers().contains_key(name) {
+                            for v in self.default_headers.get_all(name).iter() {
+                                request.headers_mut().append(name, v.clone());
+                            }
+                        }
                     }
-                }
-            }
 
-            // Set default user agent if not specified.
-            request
-                .headers_mut()
-                .entry(http::header::USER_AGENT)
-                .or_insert(USER_AGENT.parse().unwrap());
+                    // Set default user agent if not specified.
+                    request
+                        .headers_mut()
+                        .entry(http::header::USER_AGENT)
+                        .or_insert(USER_AGENT.parse().unwrap());
 
-            // Apply any request middleware, starting with the outermost one.
-            for middleware in self.middleware.iter().rev() {
-                request = middleware.filter_request(request);
-            }
+                    // Apply any request middleware, starting with the outermost one.
+                    for middleware in client.middleware.iter().rev() {
+                        request = middleware.filter_request(request);
+                    }
 
-            // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.create_easy_handle(request)?;
+                    // Create and configure a curl easy handle to fulfil the request.
+                    let (easy, future) = client.create_easy_handle(request)?;
 
-            // Send the request to the agent to be executed.
-            self.agent.submit_request(easy)?;
+                    // Send the request to the agent to be executed.
+                    client.agent.submit_request(easy)?;
 
-            // Await for the response headers.
-            let response = future.await?;
+                    // Await for the response headers.
+                    let response = future.await?;
 
-            // If a Content-Length header is present, include that information in
-            // the body as well.
-            let content_length = response
-                .headers()
-                .get(http::header::CONTENT_LENGTH)
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse().ok());
+                    // If a Content-Length header is present, include that information in
+                    // the body as well.
+                    let content_length = response
+                        .headers()
+                        .get(http::header::CONTENT_LENGTH)
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|v| v.parse().ok());
 
-            // Convert the reader into an opaque Body.
-            let mut response = response.map(|reader| {
-                let body = ResponseBody {
-                    inner: reader,
-                    // Extend the lifetime of the agent by including a reference
-                    // to its handle in the response body.
-                    _agent: self.agent.clone(),
-                };
+                    // Convert the reader into an opaque Body.
+                    let mut response = response.map(|reader| {
+                        let body = ResponseBody {
+                            inner: reader,
+                            // Extend the lifetime of the agent by including a reference
+                            // to its handle in the response body.
+                            _agent: client.agent.clone(),
+                        };
 
-                if let Some(len) = content_length {
-                    Body::from_reader_sized(body, len)
-                } else {
-                    Body::from_reader(body)
-                }
-            });
+                        if let Some(len) = content_length {
+                            Body::from_reader_sized(body, len)
+                        } else {
+                            Body::from_reader(body)
+                        }
+                    });
 
-            // Apply response middleware, starting with the innermost
-            // one.
-            for middleware in self.middleware.iter() {
-                response = middleware.filter_response(response);
-            }
+                    // Apply response middleware, starting with the innermost
+                    // one.
+                    for middleware in self.middleware.iter() {
+                        response = middleware.filter_response(response);
+                    }
 
-            Ok(response)
-        }.instrument(span).await
+                    Ok(response)
+                }.instrument(span.clone()))
+            }),
+            interceptors: &self.interceptors,
+        };
+
+        cx.send(request).await
     }
 
     fn create_easy_handle(
