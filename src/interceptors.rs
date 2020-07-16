@@ -1,19 +1,111 @@
+//! HTTP client interceptor API.
+//!
+//! This module provides the core types and functions for defining and working
+//! with interceptors. Interceptors are handlers that augment HTTP client
+//! functionality by decorating HTTP calls with custom logic.
+
 use crate::{Body, Error};
 use futures_util::future::BoxFuture;
 use http::{Request, Response};
-use std::{future::Future, sync::Arc};
+use std::{
+    error::Error as StdError,
+    fmt,
+    sync::Arc,
+};
 
-type InterceptorResult = Result<Response<Body>, Box<dyn std::error::Error>>;
-pub type InterceptorFuture<'a> = BoxFuture<'a, InterceptorResult>;
+/// Defines an inline interceptor using a closure-like syntax.
+///
+/// Closures are not supported due to a limitation in Rust's type inference.
+#[cfg(feature = "unstable-interceptors")]
+#[macro_export]
+macro_rules! interceptor {
+    ($request:ident, $cx:ident, $body:expr) => {{
+        async fn interceptor(
+            mut $request: $crate::http::Request<$crate::Body>,
+            $cx: $crate::interceptors::Context<'_>,
+        ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn std::error::Error>> {
+            (move || async move {
+                $body
+            })().await.map_err(Into::into)
+        }
 
-pub struct Context<'a> {
-    pub(crate) invoker: Arc<dyn (Fn(Request<Body>) -> BoxFuture<'a, Result<Response<Body>, Error>>) + Send + Sync + 'a>,
-    pub(crate) interceptors: &'a [Box<dyn Interceptor>],
+        interceptor
+    }};
 }
 
-impl<'a> Context<'a> {
+/// Base trait for interceptors.
+///
+/// Since clients may be used to send requests concurrently, all interceptors
+/// must be synchronized and must be able to account for multiple requests being
+/// made in parallel.
+pub trait Interceptor: Send + Sync {
+    /// The type of error returned by this interceptor.
+    type Err: Into<Box<dyn StdError>>;
+
+    /// Intercept a request, returning a response.
+    ///
+    /// The returned future is allowed to borrow the interceptor for the
+    /// duration of its execution.
+    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
+}
+
+/// The type of future returned by an interceptor.
+pub type InterceptorFuture<'a, E> = BoxFuture<'a, Result<Response<Body>, E>>;
+
+/// Type-erased interceptor object.
+pub(crate) struct InterceptorObj<'a>(Box<dyn DynInterceptor + 'a>);
+
+impl<'a> InterceptorObj<'a> {
+    pub(crate) fn new(interceptor: impl Interceptor + 'a) -> Self {
+        Self(Box::new(interceptor))
+    }
+}
+
+impl Interceptor for InterceptorObj<'_> {
+    type Err = Box<dyn StdError>;
+
+    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+        self.0.dyn_intercept(request, cx)
+    }
+}
+
+/// Object-safe version of the interceptor used for type erasure.
+trait DynInterceptor: Send + Sync {
+    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn StdError>>;
+}
+
+impl<I> DynInterceptor for I
+where
+    I: Interceptor
+{
+    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn StdError>> {
+        Box::pin(async move {
+            self.intercept(request, cx).await.map_err(Into::into)
+        })
+    }
+}
+
+impl<E, F> Interceptor for F
+where
+    E: Into<Box<dyn StdError>>,
+    F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
+{
+    type Err = E;
+
+    fn intercept<'a>(&self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+        Box::pin(self.call(request, cx))
+    }
+}
+
+/// Execution context for an interceptor.
+pub struct Context<'a> {
+    pub(crate) invoker: Arc<dyn (Fn(Request<Body>) -> InterceptorFuture<'a, Error>) + Send + Sync + 'a>,
+    pub(crate) interceptors: &'a [InterceptorObj<'static>],
+}
+
+impl Context<'_> {
     /// Send a request.
-    pub async fn send(&mut self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
         if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
@@ -26,22 +118,9 @@ impl<'a> Context<'a> {
     }
 }
 
-/// Base trait for middleware.
-///
-/// Since clients may be used to send requests concurrently, all middleware must
-/// be synchronized and must be able to account for multiple requests being made
-/// in parallel.
-pub trait Interceptor: Send + Sync + 'static {
-    /// Intercept a request, returning a response.
-    fn intercept<'a>(&self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a>;
-}
-
-impl<F> Interceptor for F
-where
-    F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = InterceptorResult> + Send + Sync + 'static,
-{
-    fn intercept<'a>(&self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a> {
-        Box::pin(self.call(request, cx))
+impl fmt::Debug for Context<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Context").finish()
     }
 }
 

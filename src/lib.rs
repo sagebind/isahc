@@ -178,15 +178,16 @@
 //! Enable support for decoding text-based responses in various charsets into
 //! strings. Enabled by default.
 //!
-//! ## Preview APIs
+//! ## Unstable APIs
 //!
 //! There are also some features that enable new incubating APIs that do not
 //! have stability guarantees:
 //!
-//! ### `middleware-api-preview`
+//! ### `unstable-interceptors`
 //!
-//! Enable the new middleware API. Unstable until the API is finalized. This an
-//! unstable feature whose interface may change between patch releases.
+//! Enable the new interceptors API (replaces the old unstable middleware API).
+//! Unstable until the API is finalized. This an unstable feature whose
+//! interface may change between patch releases.
 //!
 //! # Logging and tracing
 //!
@@ -226,12 +227,6 @@ use std::convert::TryFrom;
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
-#[cfg(feature = "middleware-api-preview")]
-pub mod middleware;
-#[cfg(not(feature = "middleware-api-preview"))]
-#[allow(unreachable_pub, unused)]
-mod middleware;
-
 mod agent;
 mod body;
 mod client;
@@ -246,7 +241,12 @@ mod text;
 
 pub mod auth;
 pub mod config;
+
+#[cfg(feature = "unstable-interceptors")]
 pub mod interceptors;
+#[cfg(not(feature = "unstable-interceptors"))]
+#[allow(unreachable_pub, unused)]
+pub(crate) mod interceptors;
 
 pub use crate::{
     body::Body,

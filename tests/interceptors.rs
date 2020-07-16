@@ -1,5 +1,7 @@
+#![cfg(feature = "unstable-interceptors")]
+
 use isahc::HttpClient;
-use mockito::{mock, server_url, Matcher};
+use mockito::{mock, server_url};
 
 speculate::speculate! {
     before {
@@ -9,22 +11,11 @@ speculate::speculate! {
     test "change HTTP method with interceptor" {
         let m = mock("HEAD", "/").create();
 
-        async fn intercept(mut request: http::Request<isahc::Body>, mut cx: isahc::interceptors::Context<'_>) -> Result<isahc::http::Response<isahc::Body>, Box<dyn std::error::Error>> {
-            *request.method_mut() = http::Method::HEAD;
-            Ok(cx.send(request).await?)
-        }
-
-        // let intercept = |mut request: http::Request<isahc::Body>, mut cx: isahc::interceptors::Context<'_>| Box::pin(async {
-        //     *request.method_mut() = http::Method::HEAD;
-        //     Ok(cx.send(request).await?)
-        // });
-
         let client = HttpClient::builder()
-            // .interceptor(move |mut request: http::Request<isahc::Body>, mut cx: isahc::interceptors::Context<'_>| async move {
-            //     *request.method_mut() = http::Method::HEAD;
-            //     Ok(cx.send(request).await?)
-            // })
-            .interceptor(intercept)
+            .interceptor(isahc::interceptor!(request, cx, {
+                *request.method_mut() = http::Method::HEAD;
+                cx.send(request).await
+            }))
             .build()
             .unwrap();
 

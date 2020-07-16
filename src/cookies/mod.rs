@@ -4,7 +4,12 @@
 //!
 //! Everything in this module requires the `cookies` feature to be enabled.
 
-use crate::{middleware::Middleware, response::ResponseExt, Body};
+use crate::{
+    Error,
+    response::ResponseExt,
+    Body,
+    interceptors::{Interceptor, InterceptorFuture, Context},
+};
 use chrono::prelude::*;
 use chrono::Duration;
 use http::{Request, Response, Uri};
@@ -263,9 +268,7 @@ impl CookieJar {
             Some(values.join("; "))
         }
     }
-}
 
-impl Middleware for CookieJar {
     fn filter_request(&self, mut request: Request<Body>) -> Request<Body> {
         if let Some(header) = self.get_cookies(request.uri()) {
             request
@@ -303,6 +306,16 @@ impl Middleware for CookieJar {
         }
 
         response
+    }
+}
+
+impl Interceptor for CookieJar {
+    type Err = Error;
+
+    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+        Box::pin(async move {
+            Ok(self.filter_response(cx.send(self.filter_request(request)).await?))
+        })
     }
 }
 
