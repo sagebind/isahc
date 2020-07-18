@@ -22,12 +22,14 @@ use std::{
     time::Duration,
 };
 
+pub(crate) mod dial;
 pub(crate) mod dns;
 pub(crate) mod internal;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
 
+pub use dial::{Dial, DialParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
@@ -204,6 +206,25 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
         self.configure(interface.into())
+    }
+
+    /// Specify a socket to connect to instead of the using the host and port
+    /// defined in the request URI.
+    ///
+    /// # Examples
+    ///
+    /// Connect to a UNIX socket:
+    ///
+    /// ```
+    /// use isahc::prelude::*;
+    /// use isahc::config::Dial;
+    /// let request = Request::get("http://localhost/containers")
+    ///     .dial("unix://path/to/my.sock".parse::<Dial>()?)
+    ///     .body(())?;
+    /// # Ok::<(), Box<std::error::Error>>(())
+    /// ```
+    fn dial(self, dial: impl Into<Dial>) -> Self {
+        self.configure(dial.into())
     }
 
     /// Set a proxy to use for requests.

@@ -28,6 +28,7 @@ spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 text-decoding = ["encoding_rs", "mime"]
 middleware-api-preview = []
+unstable-dial-ip = []
 
 [dependencies]
 bytes = "0.5"
