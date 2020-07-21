@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/config/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/config/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -748,6 +748,14 @@
 <span id="748">748</span>
 <span id="749">749</span>
 <span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -812,14 +820,14 @@
     <span class="doccomment">///     .expect_err(&quot;page should time out&quot;);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">Timeout</span>(<span class="ident">timeout</span>))
     }
 
     <span class="doccomment">/// Set a timeout for the initial connection phase.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If not set, a connect timeout of 300 seconds will be used.</span>
-    <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ConnectTimeout</span>(<span class="ident">timeout</span>))
     }
 
@@ -844,7 +852,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">version_negotiation</span>(<span class="self">self</span>, <span class="ident">negotiation</span>: <span class="ident">VersionNegotiation</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">version_negotiation</span>(<span class="self">self</span>, <span class="ident">negotiation</span>: <span class="ident">VersionNegotiation</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">negotiation</span>)
     }
 
@@ -872,12 +880,12 @@
     <span class="doccomment">///     .expect_err(&quot;too many redirects&quot;);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">redirect_policy</span>(<span class="self">self</span>, <span class="ident">policy</span>: <span class="ident">RedirectPolicy</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">redirect_policy</span>(<span class="self">self</span>, <span class="ident">policy</span>: <span class="ident">RedirectPolicy</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">policy</span>)
     }
 
     <span class="doccomment">/// Update the `Referer` header automatically when following redirects.</span>
-    <span class="kw">fn</span> <span class="ident">auto_referer</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">auto_referer</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">redirect</span>::<span class="ident">AutoReferer</span>)
     }
 
@@ -900,7 +908,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">authentication</span>)
     }
 
@@ -908,17 +916,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This setting will do nothing unless you also set one or more</span>
     <span class="doccomment">/// authentication methods using [`Configurable::authentication`].</span>
-    <span class="kw">fn</span> <span class="ident">credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">credentials</span>)
     }
 
     <span class="doccomment">/// Enable TCP keepalive with a given probe interval.</span>
-    <span class="kw">fn</span> <span class="ident">tcp_keepalive</span>(<span class="self">self</span>, <span class="ident">interval</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">tcp_keepalive</span>(<span class="self">self</span>, <span class="ident">interval</span>: <span class="ident">Duration</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">TcpKeepAlive</span>(<span class="ident">interval</span>))
     }
 
     <span class="doccomment">/// Enables the `TCP_NODELAY` option on connect.</span>
-    <span class="kw">fn</span> <span class="ident">tcp_nodelay</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">tcp_nodelay</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">TcpNoDelay</span>)
     }
 
@@ -953,7 +961,7 @@
     <span class="doccomment">///     .body(())?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">interface</span>(<span class="self">self</span>, <span class="ident">interface</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">interface</span>(<span class="self">self</span>, <span class="ident">interface</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">interface</span>.<span class="ident">into</span>())
     }
 
@@ -998,7 +1006,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), Box&lt;std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">proxy</span>(<span class="self">self</span>, <span class="ident">proxy</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">proxy</span>(<span class="self">self</span>, <span class="ident">proxy</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">proxy</span>::<span class="ident">Proxy</span>(<span class="ident">proxy</span>.<span class="ident">into</span>()))
     }
 
@@ -1015,7 +1023,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">proxy_blacklist</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">hosts</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">fn</span> <span class="ident">proxy_blacklist</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">hosts</span>: <span class="ident">I</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1043,7 +1051,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), Box&lt;std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">proxy_authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">proxy_authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">proxy</span>::<span class="ident">Proxy</span>(<span class="ident">authentication</span>))
     }
 
@@ -1052,21 +1060,21 @@
     <span class="doccomment">/// This setting will do nothing unless you also set one or more proxy</span>
     <span class="doccomment">/// authentication methods using</span>
     <span class="doccomment">/// [`Configurable::proxy_authentication`].</span>
-    <span class="kw">fn</span> <span class="ident">proxy_credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">proxy_credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">proxy</span>::<span class="ident">Proxy</span>(<span class="ident">credentials</span>))
     }
 
     <span class="doccomment">/// Set a maximum upload speed for the request body, in bytes per second.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unlimited.</span>
-    <span class="kw">fn</span> <span class="ident">max_upload_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">max_upload_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">MaxUploadSpeed</span>(<span class="ident">max</span>))
     }
 
     <span class="doccomment">/// Set a maximum download speed for the response body, in bytes per second.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unlimited.</span>
-    <span class="kw">fn</span> <span class="ident">max_download_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">max_download_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">MaxDownloadSpeed</span>(<span class="ident">max</span>))
     }
 
@@ -1075,7 +1083,7 @@
     <span class="doccomment">/// By default this option is not set and the system&#39;s built-in DNS resolver</span>
     <span class="doccomment">/// is used. This option can only be used if libcurl is compiled with</span>
     <span class="doccomment">/// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.</span>
-    <span class="kw">fn</span> <span class="ident">dns_servers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">servers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">fn</span> <span class="ident">dns_servers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">servers</span>: <span class="ident">I</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
@@ -1119,7 +1127,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">ssl_client_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">ClientCertificate</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">ssl_client_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">ClientCertificate</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">certificate</span>)
     }
 
@@ -1145,7 +1153,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">ssl_ca_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">CaCertificate</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">ssl_ca_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">CaCertificate</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">certificate</span>)
     }
 
@@ -1156,7 +1164,7 @@
     <span class="doccomment">/// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unset and will result in the system defaults being used.</span>
-    <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">ciphers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">ciphers</span>: <span class="ident">I</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1200,7 +1208,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">ssl_options</span>(<span class="self">self</span>, <span class="ident">options</span>: <span class="ident">SslOption</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">ssl_options</span>(<span class="self">self</span>, <span class="ident">options</span>: <span class="ident">SslOption</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">options</span>)
     }
 
@@ -1219,18 +1227,26 @@
     <span class="doccomment">/// Disabling metrics may be necessary for absolute peak performance.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// By default metrics are disabled.</span>
-    <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">EnableMetrics</span>(<span class="ident">enable</span>))
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">http</span>::<span class="ident">HeaderMap</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
 
         <span class="kw">for</span> (<span class="ident">name</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">header</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>());
-            <span class="ident">headers</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="ident">header</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">header_value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">expect</span>(<span class="string">&quot;request header value is not valid UTF-8!&quot;</span>);
+
+            <span class="comment">// libcurl requires a special syntax to set a header with an</span>
+            <span class="comment">// explicit empty value. See</span>
+            <span class="comment">// https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.</span>
+            <span class="ident">headers</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw">if</span> <span class="ident">header_value</span>.<span class="ident">trim</span>().<span class="ident">is_empty</span>() {
+                <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{};&quot;</span>, <span class="ident">name</span>.<span class="ident">as_str</span>())
+            } <span class="kw">else</span> {
+                <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}:{}&quot;</span>, <span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">header_value</span>)
+            })<span class="question-mark">?</span>;
         }
 
         <span class="ident">easy</span>.<span class="ident">http_headers</span>(<span class="ident">headers</span>)
@@ -1255,7 +1271,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span>::<span class="ident">latest_compatible</span>()
     }
 }
@@ -1274,7 +1290,7 @@
     <span class="doccomment">/// Insecure connections always use HTTP/1.x since there is no standard</span>
     <span class="doccomment">/// mechanism for a server to declare support for insecure HTTP versions,</span>
     <span class="doccomment">/// and only HTTP/1.x and HTTP/2 support insecure transfers.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">latest_compatible</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">latest_compatible</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="comment">// In curl land, this basically the most lenient option. Alt-Svc is</span>
             <span class="comment">// used to upgrade to newer versions, and old versions are used if</span>
@@ -1285,7 +1301,7 @@
     }
 
     <span class="doccomment">/// Connect via HTTP/1.0 and do not attempt to use a higher version.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http10</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http10</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V10</span>,
             <span class="ident">strict</span>: <span class="bool-val">true</span>,
@@ -1293,7 +1309,7 @@
     }
 
     <span class="doccomment">/// Connect via HTTP/1.1 and do not attempt to use a higher version.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http11</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http11</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V11</span>,
             <span class="ident">strict</span>: <span class="bool-val">true</span>,
@@ -1309,7 +1325,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This strategy is often referred to as [HTTP/2 with Prior</span>
     <span class="doccomment">/// Knowledge](https://http2.github.io/http2-spec/#known-http).</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http2</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http2</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V2PriorKnowledge</span>,
             <span class="ident">strict</span>: <span class="bool-val">true</span>,
@@ -1318,7 +1334,7 @@
 
     <span class="doccomment">/// Connect via HTTP/3. Failure to connect will not fall back to old</span>
     <span class="doccomment">/// versions.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http3</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http3</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">flag</span>: <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">HttpVersion</span>::<span class="ident">V3</span>,
             <span class="ident">strict</span>: <span class="bool-val">true</span>,
@@ -1327,7 +1343,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="self">self</span>.<span class="ident">flag</span>) {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">strict</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
@@ -1355,7 +1371,7 @@
 <span class="kw">impl</span> <span class="ident">NetworkInterface</span> {
     <span class="doccomment">/// Bind to whatever the networking stack finds suitable. This is the</span>
     <span class="doccomment">/// default behavior.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">any</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">any</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">interface</span>: <span class="prelude-val">None</span> }
     }
 
@@ -1371,7 +1387,7 @@
     <span class="doccomment">/// let wifi = NetworkInterface::name(&quot;wlan0&quot;);</span>
     <span class="doccomment">/// ```</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="ident">name</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="ident">name</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;if!{}&quot;</span>, <span class="ident">name</span>.<span class="ident">as_ref</span>())),
         }
@@ -1387,7 +1403,7 @@
     <span class="doccomment">/// let local = NetworkInterface::host(&quot;server.local&quot;);</span>
     <span class="doccomment">/// let addr = NetworkInterface::host(&quot;192.168.1.2&quot;);</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host</span>(<span class="ident">host</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host</span>(<span class="ident">host</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;host!{}&quot;</span>, <span class="ident">host</span>.<span class="ident">as_ref</span>())),
         }
@@ -1395,13 +1411,13 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span>::<span class="ident">any</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;host!{}&quot;</span>, <span class="ident">ip</span>)),
         }
@@ -1409,16 +1425,16 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">interface</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">interface</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">easy</span>.<span class="ident">interface</span>(<span class="ident">interface</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">interface</span>) <span class="op">=&gt;</span> <span class="ident">easy</span>.<span class="ident">interface</span>(<span class="ident">interface</span>),
 
             <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.</span>
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">unsafe</span> {
+            <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="kw">unsafe</span> {
                 <span class="kw">match</span> <span class="ident">curl_sys</span>::<span class="ident">curl_easy_setopt</span>(<span class="ident">easy</span>.<span class="ident">raw</span>(), <span class="ident">curl_sys</span>::<span class="ident">CURLOPT_INTERFACE</span>, <span class="number">0</span>) {
-                    <span class="ident">curl_sys</span>::<span class="ident">CURLE_OK</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-                    <span class="ident">code</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">curl</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">code</span>)),
+                    <span class="ident">curl_sys</span>::<span class="ident">CURLE_OK</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
+                    <span class="ident">code</span> <span class="op">=&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">curl</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">code</span>)),
                 }
             },
         }
@@ -1429,7 +1445,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Timeout</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Duration</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Timeout</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">timeout</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -1438,7 +1454,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ConnectTimeout</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Duration</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">ConnectTimeout</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">connect_timeout</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -1447,7 +1463,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TcpKeepAlive</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Duration</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">TcpKeepAlive</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">tcp_keepalive</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="ident">easy</span>.<span class="ident">tcp_keepintvl</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
@@ -1457,7 +1473,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TcpNoDelay</span>;
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">TcpNoDelay</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">tcp_nodelay</span>(<span class="bool-val">true</span>)
     }
 }
@@ -1466,7 +1482,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MaxUploadSpeed</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">u64</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">MaxUploadSpeed</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">max_send_speed</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -1475,7 +1491,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MaxDownloadSpeed</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">u64</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">MaxDownloadSpeed</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">max_recv_speed</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -1486,7 +1502,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CloseConnection</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">bool</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">CloseConnection</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">forbid_reuse</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
@@ -1495,7 +1511,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EnableMetrics</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">bool</span>);
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">EnableMetrics</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">progress</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
