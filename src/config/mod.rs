@@ -478,8 +478,16 @@ impl SetOpt for http::HeaderMap {
         let mut headers = curl::easy::List::new();
 
         for (name, value) in self.iter() {
-            let header = format!("{}: {}", name.as_str(), value.to_str().unwrap());
-            headers.append(&header)?;
+            let header_value = value.to_str().expect("request header value is not valid UTF-8!");
+
+            // libcurl requires a special syntax to set a header with an
+            // explicit empty value. See
+            // https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.
+            headers.append(&if header_value.trim().is_empty() {
+                format!("{};", name.as_str())
+            } else {
+                format!("{}:{}", name.as_str(), header_value)
+            })?;
         }
 
         easy.http_headers(headers)

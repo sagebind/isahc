@@ -27,6 +27,38 @@ speculate::speculate! {
         m.assert();
     }
 
+    // Issue [#209](https://github.com/sagebind/isahc/issues/209)
+    test "setting an empty header sends a header with no value" {
+        let m = mock("GET", "/")
+            .match_header("an-empty-header", "")
+            .create();
+
+        Request::get(server_url())
+            .header("an-empty-header", "")
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        m.assert();
+    }
+
+    // Issue [#209](https://github.com/sagebind/isahc/issues/209)
+    test "setting a blank header sends a header with no value" {
+        let m = mock("GET", "/")
+            .match_header("an-empty-header", "")
+            .create();
+
+        Request::get(server_url())
+            .header("an-empty-header", "    ")
+            .body(())
+            .unwrap()
+            .send()
+            .unwrap();
+
+        m.assert();
+    }
+
     // Issue [#190](https://github.com/sagebind/isahc/issues/190)
     test "override client default user agent" {
         let client = HttpClient::builder()
@@ -44,7 +76,6 @@ speculate::speculate! {
     }
 
     test "header can be inserted in HttpClient::builder" {
-
         let host_header = server_url().replace("http://", "");
         let m = mock("GET", "/")
             .match_header("host", host_header.as_ref())
@@ -71,7 +102,6 @@ speculate::speculate! {
     }
 
     test "headers in Request::builder must override headers in HttpClient::builder" {
-
         let host_header = server_url().replace("http://", "");
         let m = mock("GET", "/")
             .match_header("host", host_header.as_ref())
@@ -99,7 +129,6 @@ speculate::speculate! {
     }
 
     // test "multiple headers with same key can be inserted in HttpClient::builder" {
-
     //     let host_header = server_url().replace("http://", "");
     //     let m = mock("GET", "/")
     //         .match_header("host", host_header.as_ref())
@@ -127,11 +156,7 @@ speculate::speculate! {
     //     m.assert();
     // }
 
-
-
-
     test "headers in Request::builder must override multiple headers in HttpClient::builder" {
-
         let host_header = server_url().replace("http://", "");
         let m = mock("GET", "/")
             .match_header("host", host_header.as_ref())
