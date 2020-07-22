@@ -213,13 +213,13 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// # Examples
     ///
-    /// Connect to a UNIX socket:
+    /// Connect to a Unix socket:
     ///
     /// ```
     /// use isahc::prelude::*;
     /// use isahc::config::Dial;
     /// let request = Request::get("http://localhost/containers")
-    ///     .dial("unix://path/to/my.sock".parse::<Dial>()?)
+    ///     .dial(Dial::unix_socket("/path/to/my.sock"))
     ///     .body(())?;
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```

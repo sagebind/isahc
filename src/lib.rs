@@ -235,6 +235,7 @@ mod middleware;
 mod agent;
 mod body;
 mod client;
+mod curlext;
 mod error;
 mod handler;
 mod metrics;

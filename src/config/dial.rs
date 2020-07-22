@@ -1,13 +1,14 @@
 //! Configuration for customizing how connections are established and sockets
 //! are opened.
 
+use crate::curlext::EasyExt;
 use super::SetOpt;
 use curl::easy::Easy2;
 use http::Uri;
 use std::{
     convert::TryFrom,
     fmt,
-    path::Path,
+    path::PathBuf,
     str::FromStr,
 };
 
@@ -30,7 +31,7 @@ impl std::error::Error for DialParseError {}
 ///
 /// # Examples
 ///
-/// Connect to a UNIX socket:
+/// Connect to a Unix socket:
 ///
 /// ```
 /// use isahc::config::Dial;
@@ -44,19 +45,27 @@ pub struct Dial(Inner);
 #[derive(Debug, Eq, PartialEq)]
 enum Inner {
     Default,
+
     #[cfg(feature = "unstable-dial-ip")]
     IpSocket(String),
-    UnixSocket(String),
+
+    #[cfg(unix)]
+    UnixSocket(PathBuf),
 }
 
 impl Dial {
-    /// Connect to a UNIX socket described by a file.
-    pub fn unix_socket(path: impl AsRef<Path>) -> Result<Self, DialParseError> {
-        if let Some(s) = path.as_ref().to_str() {
-            Ok(Self(Inner::UnixSocket(s.to_owned())))
-        } else {
-            Err(DialParseError(()))
-        }
+    /// Connect to a Unix socket described by a file.
+    ///
+    /// The path given is not checked ahead of time for correctness or that the
+    /// socket exists. If the socket is invalid an error will be returned when a
+    /// request attempt is made.
+    ///
+    /// # Availability
+    ///
+    /// This function is only available on Unix.
+    #[cfg(unix)]
+    pub fn unix_socket(path: impl Into<PathBuf>) -> Self {
+        Self(Inner::UnixSocket(path.into()))
     }
 
     /// Connect to the given IP socket.
@@ -94,8 +103,9 @@ impl FromStr for Dial {
                 .map_err(|_| DialParseError(()));
         }
 
+        #[cfg(unix)]
         if s.starts_with("unix:") {
-            return Self::unix_socket(&s[5..]);
+            return Ok(Self::unix_socket(&s[5..]));
         }
 
         Err(DialParseError(()))
@@ -128,29 +138,20 @@ impl TryFrom<Uri> for Dial {
 }
 
 impl SetOpt for Dial {
-    #[allow(unsafe_code)]
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match &self.0 {
-            // Do nothing, as promised.
-            Inner::Default => Ok(()),
+        #[cfg(feature = "unstable-dial-ip")]
+        easy.connect_to(match &self.0 {
+            Inner::IpSocket(addr) => Some(addr.as_str()),
+            _ => None,
+        })?;
 
-            // TODO: Make safe interface upstream.
-            #[cfg(feature = "unstable-dial-ip")]
-            Inner::IpSocket(addr) => unsafe {
-                let data = std::ffi::CString::new(addr.as_str())?;
+        #[cfg(unix)]
+        easy.unix_socket_path(match &self.0 {
+            Inner::UnixSocket(path) => Some(path),
+            _ => None,
+        })?;
 
-                // TODO: This leaks.
-                let slist = curl_sys::curl_slist_append(std::ptr::null_mut(), data.as_ptr());
-
-                match curl_sys::curl_easy_setopt(easy.raw(), 243, slist) {
-                    curl_sys::CURLE_OK => Ok(()),
-                    code => Err(curl::Error::new(code)),
-                }
-            }
-
-            // Set the UNIX socket path.
-            Inner::UnixSocket(path) => easy.unix_socket(path.as_str()),
-        }
+        Ok(())
     }
 }
 
@@ -162,6 +163,6 @@ mod tests {
     fn parse_unix_socket_uri() {
         let dial = "unix://path/to/my.sock".parse::<Dial>().unwrap();
 
-        assert_eq!(dial.0, Inner::UnixSocket("//path/to/my.sock".to_owned()));
+        assert_eq!(dial.0, Inner::UnixSocket("//path/to/my.sock".into()));
     }
 }

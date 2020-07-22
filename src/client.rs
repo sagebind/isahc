@@ -910,6 +910,7 @@ impl HttpClient {
                 TcpKeepAlive,
                 TcpNoDelay,
                 NetworkInterface,
+                Dial,
                 RedirectPolicy,
                 redirect::AutoReferer,
                 Authentication,
