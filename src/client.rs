@@ -954,8 +954,8 @@ impl HttpClient {
             }
             // HEAD requests do not wait for a response payload.
             (&http::Method::HEAD, has_body) => {
-                easy.upload(has_body)?;
                 easy.nobody(true)?;
+                easy.upload(has_body)?;
                 easy.custom_request("HEAD")?;
             }
             // POST requests have special redirect behavior.
