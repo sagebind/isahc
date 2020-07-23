@@ -8,7 +8,6 @@ use std::{
     convert::TryFrom,
     fmt,
     net::SocketAddr,
-    path::PathBuf,
     str::FromStr,
 };
 
@@ -31,6 +30,7 @@ impl std::error::Error for DialParseError {}
 /// Connect to a Unix socket:
 ///
 /// ```
+/// # #![cfg(unix)]
 /// use isahc::config::Dial;
 ///
 /// let unix_socket = "unix://path/to/my.sock".parse::<Dial>()?;
@@ -46,7 +46,7 @@ enum Inner {
     IpSocket(String),
 
     #[cfg(unix)]
-    UnixSocket(PathBuf),
+    UnixSocket(std::path::PathBuf),
 }
 
 impl Dial {
@@ -60,7 +60,7 @@ impl Dial {
     ///
     /// This function is only available on Unix.
     #[cfg(unix)]
-    pub fn unix_socket(path: impl Into<PathBuf>) -> Self {
+    pub fn unix_socket(path: impl Into<std::path::PathBuf>) -> Self {
         Self(Inner::UnixSocket(path.into()))
     }
 
@@ -155,9 +155,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_unix_socket_uri() {
-        let dial = "unix://path/to/my.sock".parse::<Dial>().unwrap();
+    fn parse_tcp_socket_and_port_uri() {
+        let dial = "tcp:127.0.0.1:1200".parse::<Dial>().unwrap();
 
-        assert_eq!(dial.0, Inner::UnixSocket("//path/to/my.sock".into()));
+        assert_eq!(dial.0, Inner::IpSocket("::127.0.0.1:1200".into()));
+    }
+
+    #[test]
+    fn parse_invalid_tcp_uri() {
+        let result = "tcp:127.0.0.1-1200".parse::<Dial>();
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn parse_unix_socket_uri() {
+        let dial = "unix:/path/to/my.sock".parse::<Dial>().unwrap();
+
+        assert_eq!(dial.0, Inner::UnixSocket("/path/to/my.sock".into()));
     }
 }
