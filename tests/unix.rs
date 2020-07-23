@@ -5,7 +5,7 @@ use isahc::{
     config::Dial,
 };
 use std::{
-    io::Write,
+    io::{self, Write},
     os::unix::net::UnixListener,
     thread,
 };
@@ -23,7 +23,18 @@ speculate::speculate! {
 
         thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            stream.write_all(include_bytes!("unix_socket_response.http")).unwrap();
+            let mut reader = stream.try_clone().unwrap();
+
+            thread::spawn(move || {
+                io::copy(&mut reader, &mut io::sink()).unwrap();
+            });
+
+            stream.write_all(b"\
+                HTTP/1.1 200 OK\r\n\
+                Content-Length: 8\r\n\
+                \r\n\
+                success\n\
+            ").unwrap();
         });
 
         let mut response = Request::get("http://localhost")

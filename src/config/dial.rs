@@ -1,19 +1,16 @@
 //! Configuration for customizing how connections are established and sockets
 //! are opened.
 
-use crate::curlext::EasyExt;
 use super::SetOpt;
-use curl::easy::Easy2;
+use curl::easy::{Easy2, List};
 use http::Uri;
 use std::{
     convert::TryFrom,
     fmt,
+    net::SocketAddr,
     path::PathBuf,
     str::FromStr,
 };
-
-#[cfg(feature = "unstable-dial-ip")]
-use std::net::SocketAddr;
 
 /// An error which can be returned when parsing a dial address.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -46,7 +43,6 @@ pub struct Dial(Inner);
 enum Inner {
     Default,
 
-    #[cfg(feature = "unstable-dial-ip")]
     IpSocket(String),
 
     #[cfg(unix)]
@@ -69,7 +65,6 @@ impl Dial {
     }
 
     /// Connect to the given IP socket.
-    #[cfg(feature = "unstable-dial-ip")]
     pub fn addr(socket_addr: impl Into<SocketAddr>) -> Self {
         // Create a string in the format CURLOPT_CONNECT_TO expects.
         Self(Inner::IpSocket(format!("::{}", socket_addr.into())))
@@ -82,7 +77,6 @@ impl Default for Dial {
     }
 }
 
-#[cfg(feature = "unstable-dial-ip")]
 impl From<SocketAddr> for Dial {
     fn from(socket_addr: SocketAddr) -> Self {
         Self::addr(socket_addr)
@@ -93,7 +87,6 @@ impl FromStr for Dial {
     type Err = DialParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        #[cfg(feature = "unstable-dial-ip")]
         if s.starts_with("tcp:") {
             let addr_str = s[4..].trim_start_matches("/");
 
@@ -139,11 +132,13 @@ impl TryFrom<Uri> for Dial {
 
 impl SetOpt for Dial {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        #[cfg(feature = "unstable-dial-ip")]
-        easy.connect_to(match &self.0 {
-            Inner::IpSocket(addr) => Some(addr.as_str()),
-            _ => None,
-        })?;
+        let mut connect_to = List::new();
+
+        if let Inner::IpSocket(addr) = &self.0 {
+            connect_to.append(addr)?;
+        }
+
+        easy.connect_to(connect_to)?;
 
         #[cfg(unix)]
         easy.unix_socket_path(match &self.0 {
