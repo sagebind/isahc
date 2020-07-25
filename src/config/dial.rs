@@ -32,6 +32,9 @@ impl std::error::Error for DialParseError {}
 /// - `unix`: Connect to a Unix socket located on the file system, like
 ///   `unix:/path/to/my.sock`. This is only supported on Unix.
 ///
+/// The [`Default`] dialer uses the hostname and port specified in each request
+/// as normal.
+///
 /// # Examples
 ///
 /// Connect to a Unix socket URI:
@@ -125,7 +128,11 @@ impl FromStr for Dial {
 
         #[cfg(unix)]
         if s.starts_with("unix:") {
-            return Ok(Self::unix_socket(&s[5..]));
+            // URI paths are always absolute.
+            let mut path = std::path::PathBuf::from("/");
+            path.push(&s[5..].trim_start_matches("/"));
+
+            return Ok(Self(Inner::UnixSocket(path)));
         }
 
         Err(DialParseError(()))
