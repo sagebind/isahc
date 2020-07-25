@@ -25,15 +25,22 @@ impl std::error::Error for DialParseError {}
 
 /// A custom address or dialer for connecting to a host.
 ///
+/// A dialer can be created from a URI-like string using [`FromStr`]. The
+/// following URI schemes are supported:
+///
+/// - `tcp`: Connect to a TCP address and port pair, like `tcp:127.0.0.1:8080`.
+/// - `unix`: Connect to a Unix socket located on the file system, like
+///   `unix:/path/to/my.sock`. This is only supported on Unix.
+///
 /// # Examples
 ///
-/// Connect to a Unix socket:
+/// Connect to a Unix socket URI:
 ///
 /// ```
 /// # #![cfg(unix)]
 /// use isahc::config::Dial;
 ///
-/// let unix_socket = "unix://path/to/my.sock".parse::<Dial>()?;
+/// let unix_socket = "unix:/path/to/my.sock".parse::<Dial>()?;
 /// # Ok::<(), isahc::config::DialParseError>(())
 /// ```
 #[derive(Debug)]
@@ -50,6 +57,32 @@ enum Inner {
 }
 
 impl Dial {
+    /// Connect to the given IP socket.
+    ///
+    /// Any value that can be converted into a [`SocketAddr`] can be given as an
+    /// argument; check the [`SocketAddr`] documentation for a complete list.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::Dial;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let dial = Dial::ip_socket((Ipv4Addr::LOCALHOST, 8080));
+    /// ```
+    ///
+    /// ```
+    /// use isahc::config::Dial;
+    /// use std::net::SocketAddr;
+    ///
+    /// let dial = Dial::ip_socket("0.0.0.0:8765".parse::<SocketAddr>()?);
+    /// # Ok::<(), std::net::AddrParseError>(())
+    /// ```
+    pub fn ip_socket(addr: impl Into<SocketAddr>) -> Self {
+        // Create a string in the format CURLOPT_CONNECT_TO expects.
+        Self(Inner::IpSocket(format!("::{}", addr.into())))
+    }
+
     /// Connect to a Unix socket described by a file.
     ///
     /// The path given is not checked ahead of time for correctness or that the
@@ -63,12 +96,6 @@ impl Dial {
     pub fn unix_socket(path: impl Into<std::path::PathBuf>) -> Self {
         Self(Inner::UnixSocket(path.into()))
     }
-
-    /// Connect to the given IP socket.
-    pub fn addr(socket_addr: impl Into<SocketAddr>) -> Self {
-        // Create a string in the format CURLOPT_CONNECT_TO expects.
-        Self(Inner::IpSocket(format!("::{}", socket_addr.into())))
-    }
 }
 
 impl Default for Dial {
@@ -79,7 +106,7 @@ impl Default for Dial {
 
 impl From<SocketAddr> for Dial {
     fn from(socket_addr: SocketAddr) -> Self {
-        Self::addr(socket_addr)
+        Self::ip_socket(socket_addr)
     }
 }
 
@@ -92,7 +119,7 @@ impl FromStr for Dial {
 
             return addr_str
                 .parse::<SocketAddr>()
-                .map(Self::addr)
+                .map(Self::ip_socket)
                 .map_err(|_| DialParseError(()));
         }
 

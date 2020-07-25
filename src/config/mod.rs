@@ -213,15 +213,36 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// # Examples
     ///
-    /// Connect to a Unix socket:
+    /// Connecting to a Unix socket:
     ///
     /// ```
-    /// use isahc::prelude::*;
-    /// use isahc::config::Dial;
+    /// # #![cfg(unix)]
+    /// use isahc::{
+    ///     config::Dial,
+    ///     prelude::*,
+    /// };
+    ///
     /// let request = Request::get("http://localhost/containers")
     ///     .dial(Dial::unix_socket("/path/to/my.sock"))
     ///     .body(())?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// Connecting to a specific Internet socket address:
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::Dial,
+    ///     prelude::*,
+    /// };
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let request = Request::get("http://exmaple.org")
+    ///     // Actually issue the request to localhost on port 8080. The host
+    ///     // header will remain unchanged.
+    ///     .dial(Dial::ip_socket((Ipv4Addr::LOCALHOST, 8080)))
+    ///     .body(())?;
+    /// # Ok::<(), isahc::Error>(())
     /// ```
     fn dial(self, dial: impl Into<Dial>) -> Self {
         self.configure(dial.into())
