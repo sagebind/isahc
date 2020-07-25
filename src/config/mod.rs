@@ -216,12 +216,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Connecting to a Unix socket:
     ///
     /// ```
-    /// # #![cfg(unix)]
     /// use isahc::{
     ///     config::Dial,
     ///     prelude::*,
     /// };
     ///
+    /// # #[cfg(unix)]
     /// let request = Request::get("http://localhost/containers")
     ///     .dial(Dial::unix_socket("/path/to/my.sock"))
     ///     .body(())?;

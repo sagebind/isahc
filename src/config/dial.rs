@@ -40,9 +40,9 @@ impl std::error::Error for DialParseError {}
 /// Connect to a Unix socket URI:
 ///
 /// ```
-/// # #![cfg(unix)]
 /// use isahc::config::Dial;
 ///
+/// # #[cfg(unix)]
 /// let unix_socket = "unix:/path/to/my.sock".parse::<Dial>()?;
 /// # Ok::<(), isahc::config::DialParseError>(())
 /// ```
@@ -91,6 +91,14 @@ impl Dial {
     /// The path given is not checked ahead of time for correctness or that the
     /// socket exists. If the socket is invalid an error will be returned when a
     /// request attempt is made.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::Dial;
+    ///
+    /// let docker = Dial::unix_socket("/var/run/docker.sock");
+    /// ```
     ///
     /// # Availability
     ///
