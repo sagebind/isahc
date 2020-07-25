@@ -2053,8 +2053,8 @@
             }
             <span class="comment">// HEAD requests do not wait for a response payload.</span>
             (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">HEAD</span>, <span class="ident">has_body</span>) <span class="op">=&gt;</span> {
-                <span class="ident">easy</span>.<span class="ident">upload</span>(<span class="ident">has_body</span>)<span class="question-mark">?</span>;
                 <span class="ident">easy</span>.<span class="ident">nobody</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                <span class="ident">easy</span>.<span class="ident">upload</span>(<span class="ident">has_body</span>)<span class="question-mark">?</span>;
                 <span class="ident">easy</span>.<span class="ident">custom_request</span>(<span class="string">&quot;HEAD&quot;</span>)<span class="question-mark">?</span>;
             }
             <span class="comment">// POST requests have special redirect behavior.</span>
