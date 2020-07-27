@@ -116,7 +116,7 @@ impl RequestHandler {
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
-            span: tracing::trace_span!("handler", id = tracing::field::Empty),
+            span: tracing::debug_span!("handler", id = tracing::field::Empty),
             sender: Some(sender),
             shared: shared.clone(),
             request_body,
@@ -157,7 +157,7 @@ impl RequestHandler {
         //
         // This logic seems a little screwy when comparing to what the docs say,
         // but it works.
-        if tracing::debug_span!("handler").is_none() {
+        if self.span.is_none() {
             false
         } else {
             log::log_enabled!(log::Level::Debug)
