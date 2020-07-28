@@ -13,15 +13,15 @@ use std::{
 
 /// An error which can be returned when parsing a dial address.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DialParseError(());
+pub struct DialerParseError(());
 
-impl fmt::Display for DialParseError {
+impl fmt::Display for DialerParseError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str("invalid dial address syntax")
     }
 }
 
-impl std::error::Error for DialParseError {}
+impl std::error::Error for DialerParseError {}
 
 /// A custom address or dialer for connecting to a host.
 ///
@@ -40,14 +40,14 @@ impl std::error::Error for DialParseError {}
 /// Connect to a Unix socket URI:
 ///
 /// ```
-/// use isahc::config::Dial;
+/// use isahc::config::Dialer;
 ///
 /// # #[cfg(unix)]
-/// let unix_socket = "unix:/path/to/my.sock".parse::<Dial>()?;
-/// # Ok::<(), isahc::config::DialParseError>(())
+/// let unix_socket = "unix:/path/to/my.sock".parse::<Dialer>()?;
+/// # Ok::<(), isahc::config::DialerParseError>(())
 /// ```
 #[derive(Debug)]
-pub struct Dial(Inner);
+pub struct Dialer(Inner);
 
 #[derive(Debug, Eq, PartialEq)]
 enum Inner {
@@ -59,7 +59,7 @@ enum Inner {
     UnixSocket(std::path::PathBuf),
 }
 
-impl Dial {
+impl Dialer {
     /// Connect to the given IP socket.
     ///
     /// Any value that can be converted into a [`SocketAddr`] can be given as an
@@ -68,17 +68,17 @@ impl Dial {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::Dial;
+    /// use isahc::config::Dialer;
     /// use std::net::Ipv4Addr;
     ///
-    /// let dial = Dial::ip_socket((Ipv4Addr::LOCALHOST, 8080));
+    /// let dialer = Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080));
     /// ```
     ///
     /// ```
-    /// use isahc::config::Dial;
+    /// use isahc::config::Dialer;
     /// use std::net::SocketAddr;
     ///
-    /// let dial = Dial::ip_socket("0.0.0.0:8765".parse::<SocketAddr>()?);
+    /// let dialer = Dialer::ip_socket("0.0.0.0:8765".parse::<SocketAddr>()?);
     /// # Ok::<(), std::net::AddrParseError>(())
     /// ```
     pub fn ip_socket(addr: impl Into<SocketAddr>) -> Self {
@@ -95,9 +95,9 @@ impl Dial {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::Dial;
+    /// use isahc::config::Dialer;
     ///
-    /// let docker = Dial::unix_socket("/var/run/docker.sock");
+    /// let docker = Dialer::unix_socket("/var/run/docker.sock");
     /// ```
     ///
     /// # Availability
@@ -109,20 +109,20 @@ impl Dial {
     }
 }
 
-impl Default for Dial {
+impl Default for Dialer {
     fn default() -> Self {
         Self(Inner::Default)
     }
 }
 
-impl From<SocketAddr> for Dial {
+impl From<SocketAddr> for Dialer {
     fn from(socket_addr: SocketAddr) -> Self {
         Self::ip_socket(socket_addr)
     }
 }
 
-impl FromStr for Dial {
-    type Err = DialParseError;
+impl FromStr for Dialer {
+    type Err = DialerParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.starts_with("tcp:") {
@@ -131,7 +131,7 @@ impl FromStr for Dial {
             return addr_str
                 .parse::<SocketAddr>()
                 .map(Self::ip_socket)
-                .map_err(|_| DialParseError(()));
+                .map_err(|_| DialerParseError(()));
         }
 
         #[cfg(unix)]
@@ -143,28 +143,28 @@ impl FromStr for Dial {
             return Ok(Self(Inner::UnixSocket(path)));
         }
 
-        Err(DialParseError(()))
+        Err(DialerParseError(()))
     }
 }
 
-impl TryFrom<&'_ str> for Dial {
-    type Error = DialParseError;
+impl TryFrom<&'_ str> for Dialer {
+    type Error = DialerParseError;
 
     fn try_from(str: &str) -> Result<Self, Self::Error> {
         str.parse()
     }
 }
 
-impl TryFrom<String> for Dial {
-    type Error = DialParseError;
+impl TryFrom<String> for Dialer {
+    type Error = DialerParseError;
 
     fn try_from(string: String) -> Result<Self, Self::Error> {
         string.parse()
     }
 }
 
-impl TryFrom<Uri> for Dial {
-    type Error = DialParseError;
+impl TryFrom<Uri> for Dialer {
+    type Error = DialerParseError;
 
     fn try_from(uri: Uri) -> Result<Self, Self::Error> {
         // Not the most efficient implementation, but straightforward.
@@ -172,7 +172,7 @@ impl TryFrom<Uri> for Dial {
     }
 }
 
-impl SetOpt for Dial {
+impl SetOpt for Dialer {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         let mut connect_to = List::new();
 
@@ -198,14 +198,14 @@ mod tests {
 
     #[test]
     fn parse_tcp_socket_and_port_uri() {
-        let dial = "tcp:127.0.0.1:1200".parse::<Dial>().unwrap();
+        let dial = "tcp:127.0.0.1:1200".parse::<Dialer>().unwrap();
 
         assert_eq!(dial.0, Inner::IpSocket("::127.0.0.1:1200".into()));
     }
 
     #[test]
     fn parse_invalid_tcp_uri() {
-        let result = "tcp:127.0.0.1-1200".parse::<Dial>();
+        let result = "tcp:127.0.0.1-1200".parse::<Dialer>();
 
         assert!(result.is_err());
     }
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn parse_unix_socket_uri() {
-        let dial = "unix:/path/to/my.sock".parse::<Dial>().unwrap();
+        let dial = "unix:/path/to/my.sock".parse::<Dialer>().unwrap();
 
         assert_eq!(dial.0, Inner::UnixSocket("/path/to/my.sock".into()));
     }

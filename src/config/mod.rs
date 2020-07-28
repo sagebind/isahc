@@ -29,7 +29,7 @@ pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
 
-pub use dial::{Dial, DialParseError};
+pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
@@ -217,13 +217,13 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// ```
     /// use isahc::{
-    ///     config::Dial,
+    ///     config::Dialer,
     ///     prelude::*,
     /// };
     ///
     /// # #[cfg(unix)]
     /// let request = Request::get("http://localhost/containers")
-    ///     .dial(Dial::unix_socket("/path/to/my.sock"))
+    ///     .dial(Dialer::unix_socket("/path/to/my.sock"))
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
@@ -232,7 +232,7 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// ```
     /// use isahc::{
-    ///     config::Dial,
+    ///     config::Dialer,
     ///     prelude::*,
     /// };
     /// use std::net::Ipv4Addr;
@@ -240,12 +240,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// let request = Request::get("http://exmaple.org")
     ///     // Actually issue the request to localhost on port 8080. The host
     ///     // header will remain unchanged.
-    ///     .dial(Dial::ip_socket((Ipv4Addr::LOCALHOST, 8080)))
+    ///     .dial(Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080)))
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn dial(self, dial: impl Into<Dial>) -> Self {
-        self.configure(dial.into())
+    fn dial(self, dialer: impl Into<Dialer>) -> Self {
+        self.configure(dialer.into())
     }
 
     /// Set a proxy to use for requests.

@@ -2,7 +2,7 @@
 
 use isahc::{
     prelude::*,
-    config::Dial,
+    config::Dialer,
 };
 use std::{
     io::{self, Write},
@@ -38,7 +38,7 @@ speculate::speculate! {
         });
 
         let mut response = Request::get("http://localhost")
-            .dial(Dial::unix_socket(socket_path))
+            .dial(Dialer::unix_socket(socket_path))
             .body(())
             .unwrap()
             .send()
