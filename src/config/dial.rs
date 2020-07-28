@@ -198,9 +198,9 @@ mod tests {
 
     #[test]
     fn parse_tcp_socket_and_port_uri() {
-        let dial = "tcp:127.0.0.1:1200".parse::<Dialer>().unwrap();
+        let dialer = "tcp:127.0.0.1:1200".parse::<Dialer>().unwrap();
 
-        assert_eq!(dial.0, Inner::IpSocket("::127.0.0.1:1200".into()));
+        assert_eq!(dialer.0, Inner::IpSocket("::127.0.0.1:1200".into()));
     }
 
     #[test]
@@ -213,8 +213,17 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn parse_unix_socket_uri() {
-        let dial = "unix:/path/to/my.sock".parse::<Dialer>().unwrap();
+        let dialer = "unix:/path/to/my.sock".parse::<Dialer>().unwrap();
 
-        assert_eq!(dial.0, Inner::UnixSocket("/path/to/my.sock".into()));
+        assert_eq!(dialer.0, Inner::UnixSocket("/path/to/my.sock".into()));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn from_unix_socket_uri() {
+        let uri = "unix://path/to/my.sock".parse::<http::Uri>().unwrap();
+        let dialer = Dialer::try_from(uri).unwrap();
+
+        assert_eq!(dialer.0, Inner::UnixSocket("/path/to/my.sock".into()));
     }
 }
