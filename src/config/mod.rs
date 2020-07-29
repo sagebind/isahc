@@ -22,12 +22,14 @@ use std::{
     time::Duration,
 };
 
+pub(crate) mod dial;
 pub(crate) mod dns;
 pub(crate) mod internal;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
 
+pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
@@ -204,6 +206,46 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
         self.configure(interface.into())
+    }
+
+    /// Specify a socket to connect to instead of the using the host and port
+    /// defined in the request URI.
+    ///
+    /// # Examples
+    ///
+    /// Connecting to a Unix socket:
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::Dialer,
+    ///     prelude::*,
+    /// };
+    ///
+    /// # #[cfg(unix)]
+    /// let request = Request::get("http://localhost/containers")
+    ///     .dial(Dialer::unix_socket("/path/to/my.sock"))
+    ///     .body(())?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// Connecting to a specific Internet socket address:
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::Dialer,
+    ///     prelude::*,
+    /// };
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let request = Request::get("http://exmaple.org")
+    ///     // Actually issue the request to localhost on port 8080. The host
+    ///     // header will remain unchanged.
+    ///     .dial(Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080)))
+    ///     .body(())?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn dial(self, dialer: impl Into<Dialer>) -> Self {
+        self.configure(dialer.into())
     }
 
     /// Set a proxy to use for requests.
