@@ -495,6 +495,20 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(options)
     }
 
+    /// Enable or disable sending HTTP header names in Title-Case instead of
+    /// lowercase form.
+    ///
+    /// This option only affects user-supplied headers and does not affect
+    /// low-level headers that are automatically supplied for HTTP protocol
+    /// details, such as `Connection` and `Host` (unless you override such a
+    /// header yourself).
+    ///
+    /// This option has no effect when using HTTP/2 or newer where headers are
+    /// required to be lowercase.
+    fn title_case_headers(self, enable: bool) -> Self {
+        self.configure(TitleCaseHeaders(enable))
+    }
+
     /// Enable or disable comprehensive per-request metrics collection.
     ///
     /// When enabled, detailed timing metrics will be tracked while a request is
@@ -512,27 +526,6 @@ pub trait Configurable: internal::ConfigurableBase {
     /// By default metrics are disabled.
     fn metrics(self, enable: bool) -> Self {
         self.configure(EnableMetrics(enable))
-    }
-}
-
-impl SetOpt for http::HeaderMap {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        let mut headers = curl::easy::List::new();
-
-        for (name, value) in self.iter() {
-            let header_value = value.to_str().expect("request header value is not valid UTF-8!");
-
-            // libcurl requires a special syntax to set a header with an
-            // explicit empty value. See
-            // https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.
-            headers.append(&if header_value.trim().is_empty() {
-                format!("{};", name.as_str())
-            } else {
-                format!("{}:{}", name.as_str(), header_value)
-            })?;
-        }
-
-        easy.http_headers(headers)
     }
 }
 
@@ -798,3 +791,7 @@ impl SetOpt for EnableMetrics {
         easy.progress(self.0)
     }
 }
+
+/// Send header names as title case instead of lowercase.
+#[derive(Clone, Debug)]
+pub(crate) struct TitleCaseHeaders(pub(crate) bool);

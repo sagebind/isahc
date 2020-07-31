@@ -49,6 +49,44 @@ pub(crate) fn parse_header(line: &[u8]) -> Option<(HeaderName, HeaderValue)> {
     Some((name, value))
 }
 
+pub(crate) fn to_curl_string(
+    name: &HeaderName,
+    value: &HeaderValue,
+    title_case: bool,
+) -> String {
+    let header_value = value.to_str().expect("request header value is not valid UTF-8!");
+
+    let mut string = String::new();
+
+    if title_case {
+        let name_bytes: &[u8] = name.as_ref();
+        let mut at_start_of_word = true;
+
+        for &byte in name_bytes {
+            if at_start_of_word {
+                string.push(byte.to_ascii_uppercase().into());
+            } else {
+                string.push(byte.into());
+            }
+
+            at_start_of_word = !byte.is_ascii_alphanumeric();
+        }
+    } else {
+        string.push_str(name.as_str());
+    }
+
+    // libcurl requires a special syntax to set a header with an explicit empty
+    // value. See https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.
+    if header_value.trim().is_empty() {
+        string.push(';');
+    } else {
+        string.push(':');
+        string.push_str(header_value);
+    }
+
+    string
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +163,29 @@ mod tests {
         assert_eq!(parse_header(b": bar"), None);
         assert_eq!(parse_header(b"a\nheader: bar"), None);
         assert_eq!(parse_header(b"foo : bar\r"), None);
+    }
+
+    #[test]
+    fn normal_header_to_curl_string() {
+        let name = "User-Agent".parse().unwrap();
+        let value = "foo".parse().unwrap();
+
+        assert_eq!(to_curl_string(&name, &value, false), "user-agent:foo");
+    }
+
+    #[test]
+    fn blank_header_to_curl_string() {
+        let name = "User-Agent".parse().unwrap();
+        let value = "".parse().unwrap();
+
+        assert_eq!(to_curl_string(&name, &value, false), "user-agent;");
+    }
+
+    #[test]
+    fn normal_header_to_curl_string_title_case() {
+        let name = "User-Agent".parse().unwrap();
+        let value = "foo".parse().unwrap();
+
+        assert_eq!(to_curl_string(&name, &value, true), "User-Agent:foo");
     }
 }

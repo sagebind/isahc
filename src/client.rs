@@ -6,6 +6,7 @@ use crate::{
     config::internal::{ConfigurableBase, SetOpt},
     config::*,
     handler::{RequestHandler, ResponseBodyReader},
+    headers,
     middleware::Middleware,
     task::Join,
     Body, Error,
@@ -1004,7 +1005,19 @@ impl HttpClient {
             }
         }
 
-        parts.headers.set_opt(&mut easy)?;
+        // Generate a header list for curl.
+        let mut headers = curl::easy::List::new();
+
+        let title_case = parts.extensions.get::<TitleCaseHeaders>()
+            .or_else(|| self.defaults.get())
+            .map(|v| v.0)
+            .unwrap_or(false);
+
+        for (name, value) in parts.headers.iter() {
+            headers.append(&headers::to_curl_string(name, value, title_case))?;
+        }
+
+        easy.http_headers(headers)?;
 
         Ok((easy, future))
     }
