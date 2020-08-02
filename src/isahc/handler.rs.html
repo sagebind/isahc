@@ -577,7 +577,7 @@
 <span id="577">577</span>
 <span id="578">578</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">parse</span>, <span class="ident">response</span>::<span class="ident">EffectiveUri</span>, <span class="ident">Body</span>, <span class="ident">Error</span>, <span class="ident">Metrics</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">headers</span>, <span class="ident">response</span>::<span class="ident">EffectiveUri</span>, <span class="ident">Body</span>, <span class="ident">Error</span>, <span class="ident">Metrics</span>};
 <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">InfoType</span>, <span class="ident">ReadError</span>, <span class="ident">SeekResult</span>, <span class="ident">WriteError</span>};
 <span class="kw">use</span> <span class="ident">curl_sys</span>::<span class="ident">CURL</span>;
@@ -883,7 +883,7 @@
         <span class="comment">// HTTP/1.1 connection ourselves.</span>
 
         <span class="comment">// Is this the status line?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">version</span>, <span class="ident">status</span>)) <span class="op">=</span> <span class="ident">parse</span>::<span class="ident">parse_status_line</span>(<span class="ident">data</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">version</span>, <span class="ident">status</span>)) <span class="op">=</span> <span class="ident">headers</span>::<span class="ident">parse_status_line</span>(<span class="ident">data</span>) {
             <span class="self">self</span>.<span class="ident">response_version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
             <span class="self">self</span>.<span class="ident">response_status_code</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">status</span>);
 
@@ -895,7 +895,7 @@
         }
 
         <span class="comment">// Is this a header line?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">parse</span>::<span class="ident">parse_header</span>(<span class="ident">data</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">headers</span>::<span class="ident">parse_header</span>(<span class="ident">data</span>) {
             <span class="self">self</span>.<span class="ident">response_headers</span>.<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">value</span>);
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }

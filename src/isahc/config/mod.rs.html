@@ -795,9 +795,6 @@
 <span id="795">795</span>
 <span id="796">796</span>
 <span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -1296,6 +1293,20 @@
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">options</span>)
     }
 
+    <span class="doccomment">/// Enable or disable sending HTTP header names in Title-Case instead of</span>
+    <span class="doccomment">/// lowercase form.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This option only affects user-supplied headers and does not affect</span>
+    <span class="doccomment">/// low-level headers that are automatically supplied for HTTP protocol</span>
+    <span class="doccomment">/// details, such as `Connection` and `Host` (unless you override such a</span>
+    <span class="doccomment">/// header yourself).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This option has no effect when using HTTP/2 or newer where headers are</span>
+    <span class="doccomment">/// required to be lowercase.</span>
+    <span class="kw">fn</span> <span class="ident">title_case_headers</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">TitleCaseHeaders</span>(<span class="ident">enable</span>))
+    }
+
     <span class="doccomment">/// Enable or disable comprehensive per-request metrics collection.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// When enabled, detailed timing metrics will be tracked while a request is</span>
@@ -1313,27 +1324,6 @@
     <span class="doccomment">/// By default metrics are disabled.</span>
     <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">EnableMetrics</span>(<span class="ident">enable</span>))
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">http</span>::<span class="ident">HeaderMap</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
-
-        <span class="kw">for</span> (<span class="ident">name</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">header_value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">expect</span>(<span class="string">&quot;request header value is not valid UTF-8!&quot;</span>);
-
-            <span class="comment">// libcurl requires a special syntax to set a header with an</span>
-            <span class="comment">// explicit empty value. See</span>
-            <span class="comment">// https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.</span>
-            <span class="ident">headers</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw">if</span> <span class="ident">header_value</span>.<span class="ident">trim</span>().<span class="ident">is_empty</span>() {
-                <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{};&quot;</span>, <span class="ident">name</span>.<span class="ident">as_str</span>())
-            } <span class="kw">else</span> {
-                <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}:{}&quot;</span>, <span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">header_value</span>)
-            })<span class="question-mark">?</span>;
-        }
-
-        <span class="ident">easy</span>.<span class="ident">http_headers</span>(<span class="ident">headers</span>)
     }
 }
 
@@ -1599,5 +1589,9 @@
         <span class="ident">easy</span>.<span class="ident">progress</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
+
+<span class="doccomment">/// Send header names as title case instead of lowercase.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TitleCaseHeaders</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">bool</span>);
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "isahc";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>
