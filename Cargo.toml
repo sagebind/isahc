@@ -99,9 +99,12 @@ structopt = "0.3"
 tempfile = "3.1"
 tracing-subscriber = "0.2"
 
+[dev-dependencies.isahc-test-util]
+path = "test-util"
+
 [[example]]
 name = "json"
 required-features = ["json", "serde/derive"]
 
 [workspace]
-members = ["benchmarks"]
+members = ["benchmarks", "test-util"]
