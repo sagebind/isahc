@@ -172,12 +172,56 @@
 <span id="172">172</span>
 <span id="173">173</span>
 <span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Metrics</span>;
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Response</span>, <span class="ident">Uri</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>::<span class="ident">File</span>,
     <span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">Read</span>, <span class="ident">Write</span>},
+    <span class="ident">net</span>::<span class="ident">SocketAddr</span>,
     <span class="ident">path</span>::<span class="ident">Path</span>,
 };
 
@@ -190,6 +234,36 @@
     <span class="doccomment">/// This information is only available if populated by the HTTP client that</span>
     <span class="doccomment">/// produced the response.</span>
     <span class="kw">fn</span> <span class="ident">effective_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uri</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Get the local socket address of the last-used connection involved in</span>
+    <span class="doccomment">/// this request, if known.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Multiple connections may be involved in a request, such as with</span>
+    <span class="doccomment">/// redirects.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method only makes sense with a normal Internet request. If some</span>
+    <span class="doccomment">/// other kind of transport is used to perform the request, such as a Unix</span>
+    <span class="doccomment">/// socket, then this method will return `None`.</span>
+    <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Get the remote socket address of the last-used connection involved in</span>
+    <span class="doccomment">/// this request, if known.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Multiple connections may be involved in a request, such as with</span>
+    <span class="doccomment">/// redirects.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method only makes sense with a normal Internet request. If some</span>
+    <span class="doccomment">/// other kind of transport is used to perform the request, such as a Unix</span>
+    <span class="doccomment">/// socket, then this method will return `None`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Addresses and proxies</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The address returned by this method is the IP address and port that the</span>
+    <span class="doccomment">/// client _connected to_ and not necessarily the real address of the origin</span>
+    <span class="doccomment">/// server. Forward and reverse proxies between the caller and the server</span>
+    <span class="doccomment">/// can cause the address to be returned to reflect the address of the</span>
+    <span class="doccomment">/// nearest proxy rather than the server.</span>
+    <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// If request metrics are enabled for this particular transfer, return a</span>
     <span class="doccomment">/// metrics object containing a live view of currently available data.</span>
@@ -309,6 +383,14 @@
         <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">EffectiveUri</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">v</span>.<span class="number">0</span>)
     }
 
+    <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">LocalAddr</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RemoteAddr</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
+    }
+
     <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Metrics</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>()
     }
@@ -347,5 +429,9 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EffectiveUri</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Uri</span>);
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">LocalAddr</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">SocketAddr</span>);
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RemoteAddr</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">SocketAddr</span>);
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "isahc";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
