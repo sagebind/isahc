@@ -3,6 +3,7 @@ use http::{Response, Uri};
 use std::{
     fs::File,
     io::{self, Read, Write},
+    net::SocketAddr,
     path::Path,
 };
 
@@ -15,6 +16,36 @@ pub trait ResponseExt<T> {
     /// This information is only available if populated by the HTTP client that
     /// produced the response.
     fn effective_uri(&self) -> Option<&Uri>;
+
+    /// Get the local socket address of the last-used connection involved in
+    /// this request, if known.
+    ///
+    /// Multiple connections may be involved in a request, such as with
+    /// redirects.
+    ///
+    /// This method only makes sense with a normal Internet request. If some
+    /// other kind of transport is used to perform the request, such as a Unix
+    /// socket, then this method will return `None`.
+    fn local_addr(&self) -> Option<SocketAddr>;
+
+    /// Get the remote socket address of the last-used connection involved in
+    /// this request, if known.
+    ///
+    /// Multiple connections may be involved in a request, such as with
+    /// redirects.
+    ///
+    /// This method only makes sense with a normal Internet request. If some
+    /// other kind of transport is used to perform the request, such as a Unix
+    /// socket, then this method will return `None`.
+    ///
+    /// # Addresses and proxies
+    ///
+    /// The address returned by this method is the IP address and port that the
+    /// client _connected to_ and not necessarily the real address of the origin
+    /// server. Forward and reverse proxies between the caller and the server
+    /// can cause the address to be returned to reflect the address of the
+    /// nearest proxy rather than the server.
+    fn remote_addr(&self) -> Option<SocketAddr>;
 
     /// If request metrics are enabled for this particular transfer, return a
     /// metrics object containing a live view of currently available data.
@@ -134,6 +165,14 @@ impl<T> ResponseExt<T> for Response<T> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
     }
 
+    fn local_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<LocalAddr>().map(|v| v.0)
+    }
+
+    fn remote_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<RemoteAddr>().map(|v| v.0)
+    }
+
     fn metrics(&self) -> Option<&Metrics> {
         self.extensions().get()
     }
@@ -172,3 +211,7 @@ impl<T> ResponseExt<T> for Response<T> {
 }
 
 pub(crate) struct EffectiveUri(pub(crate) Uri);
+
+pub(crate) struct LocalAddr(pub(crate) SocketAddr);
+
+pub(crate) struct RemoteAddr(pub(crate) SocketAddr);

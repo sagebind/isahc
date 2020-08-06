@@ -1,4 +1,10 @@
-use crate::{headers, response::EffectiveUri, Body, Error, Metrics};
+#![allow(unsafe_code)]
+
+use crate::{
+    headers,
+    response::{EffectiveUri, LocalAddr, RemoteAddr},
+    Body, Error, Metrics,
+};
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
@@ -9,11 +15,13 @@ use http::{Response, Uri};
 use sluice::pipe;
 use std::{
     ascii,
+    convert::TryInto,
     ffi::CStr,
     fmt,
     future::Future,
     io,
-    os::raw::c_char,
+    net::SocketAddr,
+    os::raw::{c_char, c_long},
     pin::Pin,
     ptr,
     sync::Arc,
@@ -84,7 +92,6 @@ pub(crate) struct RequestHandler {
 }
 
 // Would be send implicitly except for the raw CURL pointer.
-#[allow(unsafe_code)]
 unsafe impl Send for RequestHandler {}
 
 /// State shared by the handler and its future.
@@ -233,6 +240,14 @@ impl RequestHandler {
                 builder = builder.extension(EffectiveUri(uri));
             }
 
+            if let Some(addr) = self.get_local_addr() {
+                builder = builder.extension(LocalAddr(addr));
+            }
+
+            if let Some(addr) = self.get_primary_addr() {
+                builder = builder.extension(RemoteAddr(addr));
+            }
+
             // Include metrics in response, but only if it was created. If
             // metrics are disabled then it won't have been created.
             if let Some(metrics) = self.metrics.clone() {
@@ -264,25 +279,120 @@ impl RequestHandler {
         }
     }
 
-    #[allow(unsafe_code)]
     fn get_effective_uri(&mut self) -> Option<Uri> {
-        Some(self.handle)
-            .filter(|ptr| !ptr.is_null())
-            .and_then(|handle| unsafe {
-                let mut ptr = ptr::null::<c_char>();
+        if self.handle.is_null() {
+            return None;
+        }
 
-                if curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
-                    != curl_sys::CURLE_OK
-                {
-                    None
-                } else {
-                    Some(ptr)
-                }
-            })
-            .filter(|ptr| !ptr.is_null())
-            .map(|ptr| unsafe { CStr::from_ptr(ptr) })
-            .and_then(|cstr| cstr.to_str().ok())
-            .and_then(|s| s.parse().ok())
+        let mut ptr = ptr::null::<c_char>();
+
+        unsafe {
+            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
+                != curl_sys::CURLE_OK
+            {
+                return None;
+            }
+        }
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        unsafe { CStr::from_ptr(ptr) }.to_bytes().try_into().ok()
+    }
+
+    fn get_primary_addr(&mut self) -> Option<SocketAddr> {
+        let ip = self.get_primary_ip()?.parse().ok()?;
+        let port = self.get_primary_port()?;
+
+        Some(SocketAddr::new(ip, port))
+    }
+
+    fn get_primary_ip(&mut self) -> Option<&str> {
+        if self.handle.is_null() {
+            return None;
+        }
+
+        let mut ptr = ptr::null::<c_char>();
+
+        unsafe {
+            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_PRIMARY_IP, &mut ptr)
+                != curl_sys::CURLE_OK
+            {
+                return None;
+            }
+        }
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        unsafe { CStr::from_ptr(ptr) }.to_str().ok()
+    }
+
+    fn get_primary_port(&mut self) -> Option<u16> {
+        if self.handle.is_null() {
+            return None;
+        }
+
+        let mut port: c_long = 0;
+
+        unsafe {
+            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_PRIMARY_PORT, &mut port)
+                != curl_sys::CURLE_OK
+            {
+                return None;
+            }
+        }
+
+        Some(port as u16)
+    }
+
+    fn get_local_addr(&mut self) -> Option<SocketAddr> {
+        let ip = self.get_local_ip()?.parse().ok()?;
+        let port = self.get_local_port()?;
+
+        Some(SocketAddr::new(ip, port))
+    }
+
+    fn get_local_ip(&mut self) -> Option<&str> {
+        if self.handle.is_null() {
+            return None;
+        }
+
+        let mut ptr = ptr::null::<c_char>();
+
+        unsafe {
+            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_LOCAL_IP, &mut ptr)
+                != curl_sys::CURLE_OK
+            {
+                return None;
+            }
+        }
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        unsafe { CStr::from_ptr(ptr) }.to_str().ok()
+    }
+
+    fn get_local_port(&mut self) -> Option<u16> {
+        if self.handle.is_null() {
+            return None;
+        }
+
+        let mut port: c_long = 0;
+
+        unsafe {
+            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_LOCAL_PORT, &mut port)
+                != curl_sys::CURLE_OK
+            {
+                return None;
+            }
+        }
+
+        Some(port as u16)
     }
 }
 
@@ -428,7 +538,6 @@ impl curl::easy::Handler for RequestHandler {
     }
 
     /// Capture transfer progress updates from curl.
-    #[allow(unsafe_code)]
     fn progress(&mut self, dltotal: f64, dlnow: f64, ultotal: f64, ulnow: f64) -> bool {
         // Initialize metrics if required.
         let metrics = self.metrics.get_or_insert_with(Metrics::new);
