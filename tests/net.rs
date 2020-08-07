@@ -7,8 +7,7 @@ speculate::speculate! {
         env_logger::try_init().ok();
     }
 
-    #[ignore = "getsockname not enabled yet upstream"]
-    test "client_addr returns expected address" {
+    test "local_addr returns expected address" {
         let m = mock("GET", "/").create();
 
         let response = isahc::get(server_url()).unwrap();
@@ -19,7 +18,7 @@ speculate::speculate! {
         assert!(response.local_addr().unwrap().port() > 0);
     }
 
-    test "server_addr returns expected address" {
+    test "remote_addr returns expected address" {
         let m = mock("GET", "/").create();
 
         let response = isahc::get(server_url()).unwrap();
