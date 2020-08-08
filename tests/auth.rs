@@ -61,7 +61,7 @@ fn negotiate_on_windows_provides_a_token() {
         }
     );
 
-    let response = Request::get(server_url())
+    let response = Request::get(endpoint.url())
         .authentication(Authentication::negotiate())
         .body(())
         .unwrap()
