@@ -34,34 +34,31 @@ fn basic_auth_sends_authorization_header() {
 #[cfg(feature = "spnego")]
 #[test]
 fn negotiate_auth_exists() {
-    let endpoint = endpoint!(
-        status_code: 401,
-        headers {
-            "WWW-Authenticate": "Negotiate",
-        }
-    );
+    let m = mockito::mock("GET", "/")
+        .with_status(401)
+        .with_header("WWW-Authenticate", "Negotiate")
+        .create();
 
-    Request::get(endpoint.url())
+    Request::get(mockito::server_url())
         .authentication(Authentication::negotiate())
         .body(())
         .unwrap()
         .send()
         .unwrap();
 
-    assert_eq!(endpoint.requests().len(), 1);
+    m.assert();
 }
 
 #[cfg(all(feature = "spnego", windows))]
 #[test]
 fn negotiate_on_windows_provides_a_token() {
-    let endpoint = endpoint!(
-        status_code: 200,
-        headers {
-            "WWW-Authenticate": "Negotiate",
-        }
-    );
+    let m = mockito::mock("GET", "/")
+        .match_header("Authorization", mockito::Matcher::Regex(r"Negotiate \w+=*".into()))
+        .with_status(200)
+        .with_header("WWW-Authenticate", "Negotiate")
+        .create();
 
-    let response = Request::get(endpoint.url())
+    let response = Request::get(mockito::server_url())
         .authentication(Authentication::negotiate())
         .body(())
         .unwrap()
@@ -69,6 +66,6 @@ fn negotiate_on_windows_provides_a_token() {
         .unwrap();
 
     assert_eq!(response.status(), 200);
-    assert_eq!(endpoint.requests().len(), 1);
-    endpoint.request().expect_header("Authorization", r"Negotiate \w+=*"); // base64
+
+    m.assert();
 }
