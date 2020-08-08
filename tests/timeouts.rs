@@ -1,21 +1,23 @@
 use isahc::prelude::*;
-use mockito::{mock, server_url};
-use std::thread::sleep;
-use std::time::Duration;
+use std::{
+    thread::sleep,
+    time::Duration,
+};
+use testserver::endpoint;
 
 /// Issue #3
 #[test]
 fn request_errors_if_read_timeout_is_reached() {
     // Spawn a slow server.
-    let m = mock("POST", "/")
-        .with_body_from_fn(|_| {
+    let endpoint = endpoint! {
+        body: |writer| {
             sleep(Duration::from_secs(1));
-            Ok(())
-        })
-        .create();
+            writer.write_all(b"hello world")
+        },
+    };
 
     // Send a request with a timeout.
-    let result = Request::post(server_url())
+    let result = Request::post(endpoint.url())
         .timeout(Duration::from_millis(500))
         .body("hello world")
         .unwrap()
@@ -28,6 +30,4 @@ fn request_errors_if_read_timeout_is_reached() {
             panic!("expected timeout error, got {:?}", e);
         }
     }
-
-    m.assert();
 }

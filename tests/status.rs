@@ -1,5 +1,5 @@
-use mockito::{mock, server_url};
 use test_case::test_case;
+use testserver::endpoint;
 
 #[test_case(200)]
 #[test_case(202)]
@@ -15,12 +15,12 @@ use test_case::test_case;
 #[test_case(500)]
 #[test_case(503)]
 fn returns_correct_response_code(status: u16) {
-    let m = mock("GET", "/")
-        .with_status(status as usize)
-        .create();
+    let endpoint = endpoint! {
+        status_code: status,
+    };
 
-    let response = isahc::get(server_url()).unwrap();
+    let response = isahc::get(endpoint.url()).unwrap();
 
     assert_eq!(response.status(), status);
-    m.assert();
+    assert_eq!(endpoint.requests().len(), 1);
 }

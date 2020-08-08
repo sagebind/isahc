@@ -1,30 +1,24 @@
 use isahc::prelude::*;
-use mockito::{mock, server_address, server_url};
 use std::net::Ipv4Addr;
+use testserver::endpoint;
 
-speculate::speculate! {
-    before {
-        env_logger::try_init().ok();
-    }
+#[test]
+fn local_addr_returns_expected_address() {
+    let endpoint = endpoint!();
 
-    test "local_addr returns expected address" {
-        let m = mock("GET", "/").create();
+    let response = isahc::get(endpoint.url()).unwrap();
 
-        let response = isahc::get(server_url()).unwrap();
+    assert_eq!(endpoint.requests().len(), 1);
+    assert_eq!(response.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
+    assert!(response.local_addr().unwrap().port() > 0);
+}
 
-        m.assert();
+#[test]
+fn remote_addr_returns_expected_address() {
+    let endpoint = endpoint!();
 
-        assert_eq!(response.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
-        assert!(response.local_addr().unwrap().port() > 0);
-    }
+    let response = isahc::get(endpoint.url()).unwrap();
 
-    test "remote_addr returns expected address" {
-        let m = mock("GET", "/").create();
-
-        let response = isahc::get(server_url()).unwrap();
-
-        m.assert();
-
-        assert_eq!(response.remote_addr(), Some(server_address()));
-    }
+    assert_eq!(endpoint.requests().len(), 1);
+    assert_eq!(response.remote_addr(), Some(endpoint.addr()));
 }

@@ -1,36 +1,38 @@
 use isahc::config::RedirectPolicy;
 use isahc::prelude::*;
-use mockito::{mock, server_url};
+use testserver::endpoint;
 
 #[test]
 fn response_301_no_follow() {
-    let m = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let endpoint = endpoint! {
+        status_code: 301,
+        headers {
+            "location": "/foo",
+        }
+    };
 
-    let response = isahc::get(server_url()).unwrap();
+    let response = isahc::get(endpoint.url()).unwrap();
 
     assert_eq!(response.status(), 301);
-    assert_eq!(response.headers()["Location"], "/2");
-    assert_eq!(response.effective_uri().unwrap().path(), "/");
-
-    m.assert();
+    assert_eq!(response.headers()["Location"], "/foo");
+    assert_eq!(response.effective_uri().unwrap().to_string(), endpoint.url());
 }
 
 #[test]
 fn response_301_auto_follow() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let endpoint2 = endpoint! {
+        status_code: 200,
+        body: "ok",
+    };
 
-    let m2 = mock("GET", "/2")
-        .with_status(200)
-        .with_body("ok")
-        .create();
+    let endpoint1 = endpoint! {
+        status_code: 301,
+        headers {
+            "location": endpoint2.url(),
+        }
+    };
 
-    let mut response = Request::get(server_url())
+    let mut response = Request::get(endpoint1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -39,27 +41,31 @@ fn response_301_auto_follow() {
 
     assert_eq!(response.status(), 200);
     assert_eq!(response.text().unwrap(), "ok");
-    assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    assert_eq!(response.effective_uri().unwrap().to_string(), endpoint2.url());
 
-    m1.assert();
-    m2.assert();
+    assert_eq!(endpoint1.request().method, "GET");
+    assert_eq!(endpoint2.request().method, "GET");
 }
 
 #[test]
 fn headers_are_reset_every_redirect() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/b")
-        .with_header("X-Foo", "aaa")
-        .with_header("X-Bar", "zzz")
-        .create();
+    let endpoint1 = endpoint! {
+        headers {
+            "X-Foo": "bbb",
+            "X-Baz": "zzz",
+        }
+    };
 
-    let m2 = mock("GET", "/b")
-        .with_header("X-Foo", "bbb")
-        .with_header("X-Baz", "zzz")
-        .create();
+    let endpoint2 = endpoint! {
+        status_code: 301,
+        headers {
+            "Location": endpoint1.url(),
+            "X-Foo": "aaa",
+            "X-Bar": "zzz",
+        }
+    };
 
-    let response = Request::get(server_url())
+    let response = Request::get(endpoint2.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -70,21 +76,19 @@ fn headers_are_reset_every_redirect() {
     assert_eq!(response.headers()["X-Foo"], "bbb");
     assert_eq!(response.headers()["X-Baz"], "zzz");
     assert!(!response.headers().contains_key("X-Bar"));
-
-    m1.assert();
-    m2.assert();
 }
 
 #[test]
 fn a_303_redirect_changes_post_to_get() {
-    let m1 = mock("POST", "/")
-        .with_status(303)
-        .with_header("Location", "/2")
-        .create();
+    let endpoint2 = endpoint!();
+    let endpoint1 = endpoint! {
+        status_code: 303,
+        headers {
+            "Location": endpoint2.url(),
+        }
+    };
 
-    let m2 = mock("GET", "/2").create();
-
-    let response = Request::post(server_url())
+    let response = Request::post(endpoint1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -92,26 +96,30 @@ fn a_303_redirect_changes_post_to_get() {
         .unwrap();
 
     assert_eq!(response.status(), 200);
-    assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    assert_eq!(response.effective_uri().unwrap().to_string(), endpoint2.url());
 
-    m1.assert();
-    m2.assert();
+    assert_eq!(endpoint1.request().method, "POST");
+    assert_eq!(endpoint2.request().method, "GET");
 }
 
 #[test]
 fn redirect_limit_is_respected() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let endpoint3 = endpoint!();
+    let endpoint2 = endpoint! {
+        status_code: 301,
+        headers {
+            "Location": endpoint3.url(),
+        }
+    };
+    let endpoint1 = endpoint! {
+        status_code: 301,
+        headers {
+            "Location": endpoint2.url(),
+        }
+    };
 
-    let m2 = mock("GET", "/2")
-        .with_status(301)
-        .with_header("Location", "/")
-        .create();
-
-    let result = Request::get(server_url())
-        .redirect_policy(RedirectPolicy::Limit(5))
+    let result = Request::get(endpoint1.url())
+        .redirect_policy(RedirectPolicy::Limit(1))
         .body(())
         .unwrap()
         .send();
@@ -123,28 +131,22 @@ fn redirect_limit_is_respected() {
     });
 
     // After request (limit + 1) that returns a redirect should error.
-    m1.expect(3);
-    m2.expect(3);
+    assert_eq!(endpoint1.requests().len(), 1);
+    assert_eq!(endpoint2.requests().len(), 1);
+    assert_eq!(endpoint3.requests().len(), 0);
 }
 
 #[test]
 fn auto_referer_sets_expected_header() {
-    let m1 = mock("GET", "/a")
-        .with_status(301)
-        .with_header("Location", "/b")
-        .create();
+    let endpoint2 = endpoint!();
+    let endpoint1 = endpoint! {
+        status_code: 301,
+        headers {
+            "location": endpoint2.url(),
+        }
+    };
 
-    let m2 = mock("GET", "/b")
-        .with_status(301)
-        .with_header("Location", "/c")
-        .match_header("Referer", (server_url() + "/a").as_str())
-        .create();
-
-    let m3 = mock("GET", "/c")
-        .match_header("Referer", (server_url() + "/b").as_str())
-        .create();
-
-    Request::get(server_url() + "/a")
+    Request::get(endpoint1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .auto_referer()
         .body(())
@@ -152,7 +154,6 @@ fn auto_referer_sets_expected_header() {
         .send()
         .unwrap();
 
-    m1.assert();
-    m2.assert();
-    m3.assert();
+    assert_eq!(endpoint1.requests().len(), 1);
+    endpoint2.request().expect_header("Referer", endpoint1.url());
 }

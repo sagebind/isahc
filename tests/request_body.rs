@@ -1,7 +1,7 @@
 use isahc::prelude::*;
 use isahc::Body;
-use mockito::{mock, server_url};
 use test_case::test_case;
+use testserver::endpoint;
 
 #[test_case("GET")]
 #[test_case("HEAD")]
@@ -12,22 +12,20 @@ use test_case::test_case;
 #[test_case("FOOBAR")]
 fn request_with_body_of_known_size(method: &str) {
     let body = "MyVariableOne=ValueOne&MyVariableTwo=ValueTwo";
-
-    let m = mock(method, "/")
-        .match_header("content-type", "application/x-www-form-urlencoded")
-        .match_body(body)
-        .create();
+    let endpoint = endpoint!();
 
     Request::builder()
         .method(method)
-        .uri(server_url())
+        .uri(endpoint.url())
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .unwrap()
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(endpoint.request().method, method);
+    endpoint.request().expect_header("content-type", "application/x-www-form-urlencoded");
+    endpoint.request().expect_body(body);
 }
 
 #[test_case("GET")]
@@ -39,15 +37,11 @@ fn request_with_body_of_known_size(method: &str) {
 #[test_case("FOOBAR")]
 fn request_with_body_of_unknown_size_uses_chunked_encoding(method: &str) {
     let body = "foo";
-
-    let m = mock(method, "/")
-        .match_header("transfer-encoding", "chunked")
-        .match_body(body)
-        .create();
+    let endpoint = endpoint!();
 
     Request::builder()
         .method(method)
-        .uri(server_url())
+        .uri(endpoint.url())
         // This header should be ignored
         .header("transfer-encoding", "identity")
         .body(Body::from_reader(body.as_bytes()))
@@ -55,7 +49,9 @@ fn request_with_body_of_unknown_size_uses_chunked_encoding(method: &str) {
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(endpoint.request().method, method);
+    endpoint.request().expect_header("transfer-encoding", "chunked");
+    endpoint.request().expect_body(body);
 }
 
 #[ignore]
@@ -67,14 +63,11 @@ fn request_with_body_of_unknown_size_uses_chunked_encoding(method: &str) {
 #[test_case("PATCH")]
 #[test_case("FOOBAR")]
 fn content_length_header_takes_precedence_over_body_objects_length(method: &str) {
-    let m = mock(method, "/")
-        .match_header("content-length", "3")
-        .match_body("abc") // Truncated to 3 bytes
-        .create();
+    let endpoint = endpoint!();
 
     Request::builder()
         .method(method)
-        .uri(server_url())
+        .uri(endpoint.url())
         // Override given body's length
         .header("content-length", "3")
         .body("abc123")
@@ -82,5 +75,7 @@ fn content_length_header_takes_precedence_over_body_objects_length(method: &str)
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(endpoint.request().method, method);
+    endpoint.request().expect_header("content-length", "3");
+    endpoint.request().expect_body("abc"); // truncated to 3 bytes
 }
