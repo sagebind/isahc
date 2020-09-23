@@ -76,6 +76,7 @@ speculate::speculate! {
     }
 
     // Issue [#205](https://github.com/sagebind/isahc/issues/205)
+    #[ignore]
     test "set title case headers to true" {
         let client = HttpClient::builder()
            .default_header("foo-BAR", "baz")
