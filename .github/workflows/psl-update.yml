@@ -7,7 +7,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           submodules: true
 
@@ -20,14 +20,14 @@ jobs:
           echo "::set-output name=new-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v1.6.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-          COMMIT_MESSAGE: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
-          PULL_REQUEST_BRANCH: public-suffix-list/patch
-          PULL_REQUEST_TITLE: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
-          PULL_REQUEST_LABELS: dependencies
-          PULL_REQUEST_BODY: |
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
+          commit-message: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
+          branch: public-suffix-list/patch
+          title: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
+          labels: dependencies
+          body: |
             Update Public Suffix List from [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }}) to [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).
 
             This pull request was generated automatically. If you close this pull request, I won't bother you again until the next automatically scheduled update.
