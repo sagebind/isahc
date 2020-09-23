@@ -2,157 +2,157 @@ use isahc::config::RedirectPolicy;
 use isahc::prelude::*;
 use mockito::{mock, server_url};
 
-speculate::speculate! {
-    before {
-        env_logger::try_init().ok();
-    }
+#[test]
+fn response_301_no_follow() {
+    let m = mock("GET", "/")
+        .with_status(301)
+        .with_header("Location", "/2")
+        .create();
 
-    test "response 301 no follow" {
-        let m = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+    let response = isahc::get(server_url()).unwrap();
 
-        let response = isahc::get(server_url()).unwrap();
+    assert_eq!(response.status(), 301);
+    assert_eq!(response.headers()["Location"], "/2");
+    assert_eq!(response.effective_uri().unwrap().path(), "/");
 
-        assert_eq!(response.status(), 301);
-        assert_eq!(response.headers()["Location"], "/2");
-        assert_eq!(response.effective_uri().unwrap().path(), "/");
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn response_301_auto_follow() {
+    let m1 = mock("GET", "/")
+        .with_status(301)
+        .with_header("Location", "/2")
+        .create();
 
-    test "response 301 auto follow" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+    let m2 = mock("GET", "/2")
+        .with_status(200)
+        .with_body("ok")
+        .create();
 
-        let m2 = mock("GET", "/2")
-            .with_status(200)
-            .with_body("ok")
-            .create();
+    let mut response = Request::get(server_url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
 
-        let mut response = Request::get(server_url())
-            .redirect_policy(RedirectPolicy::Follow)
-            .body(())
-            .unwrap()
-            .send()
-            .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.text().unwrap(), "ok");
+    assert_eq!(response.effective_uri().unwrap().path(), "/2");
 
-        assert_eq!(response.status(), 200);
-        assert_eq!(response.text().unwrap(), "ok");
-        assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    m1.assert();
+    m2.assert();
+}
 
-        m1.assert();
-        m2.assert();
-    }
+#[test]
+fn headers_are_reset_every_redirect() {
+    let m1 = mock("GET", "/")
+        .with_status(301)
+        .with_header("Location", "/b")
+        .with_header("X-Foo", "aaa")
+        .with_header("X-Bar", "zzz")
+        .create();
 
-    test "headers are reset every redirect" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/b")
-            .with_header("X-Foo", "aaa")
-            .with_header("X-Bar", "zzz")
-            .create();
+    let m2 = mock("GET", "/b")
+        .with_header("X-Foo", "bbb")
+        .with_header("X-Baz", "zzz")
+        .create();
 
-        let m2 = mock("GET", "/b")
-            .with_header("X-Foo", "bbb")
-            .with_header("X-Baz", "zzz")
-            .create();
+    let response = Request::get(server_url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
 
-        let response = Request::get(server_url())
-            .redirect_policy(RedirectPolicy::Follow)
-            .body(())
-            .unwrap()
-            .send()
-            .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["X-Foo"], "bbb");
+    assert_eq!(response.headers()["X-Baz"], "zzz");
+    assert!(!response.headers().contains_key("X-Bar"));
 
-        assert_eq!(response.status(), 200);
-        assert_eq!(response.headers()["X-Foo"], "bbb");
-        assert_eq!(response.headers()["X-Baz"], "zzz");
-        assert!(!response.headers().contains_key("X-Bar"));
+    m1.assert();
+    m2.assert();
+}
 
-        m1.assert();
-        m2.assert();
-    }
+#[test]
+fn _303_redirect_changes_post_to_get() {
+    let m1 = mock("POST", "/")
+        .with_status(303)
+        .with_header("Location", "/2")
+        .create();
 
-    test "303 redirect changes POST to GET" {
-        let m1 = mock("POST", "/")
-            .with_status(303)
-            .with_header("Location", "/2")
-            .create();
+    let m2 = mock("GET", "/2").create();
 
-        let m2 = mock("GET", "/2").create();
+    let response = Request::post(server_url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
 
-        let response = Request::post(server_url())
-            .redirect_policy(RedirectPolicy::Follow)
-            .body(())
-            .unwrap()
-            .send()
-            .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.effective_uri().unwrap().path(), "/2");
 
-        assert_eq!(response.status(), 200);
-        assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    m1.assert();
+    m2.assert();
+}
 
-        m1.assert();
-        m2.assert();
-    }
+#[test]
+fn redirect_limit_is_respected() {
+    let m1 = mock("GET", "/")
+        .with_status(301)
+        .with_header("Location", "/2")
+        .create();
 
-    test "redirect limit is respected" {
-        let m1 = mock("GET", "/")
-            .with_status(301)
-            .with_header("Location", "/2")
-            .create();
+    let m2 = mock("GET", "/2")
+        .with_status(301)
+        .with_header("Location", "/")
+        .create();
 
-        let m2 = mock("GET", "/2")
-            .with_status(301)
-            .with_header("Location", "/")
-            .create();
+    let result = Request::get(server_url())
+        .redirect_policy(RedirectPolicy::Limit(5))
+        .body(())
+        .unwrap()
+        .send();
 
-        let result = Request::get(server_url())
-            .redirect_policy(RedirectPolicy::Limit(5))
-            .body(())
-            .unwrap()
-            .send();
+    // Request should error with too many redirects.
+    assert!(match result {
+        Err(isahc::Error::TooManyRedirects) => true,
+        _ => false,
+    });
 
-        // Request should error with too many redirects.
-        assert!(match result {
-            Err(isahc::Error::TooManyRedirects) => true,
-            _ => false,
-        });
+    // After request (limit + 1) that returns a redirect should error.
+    m1.expect(3);
+    m2.expect(3);
+}
 
-        // After request (limit + 1) that returns a redirect should error.
-        m1.expect(3);
-        m2.expect(3);
-    }
+#[test]
+fn auto_referer_sets_expected_header() {
+    let m1 = mock("GET", "/a")
+        .with_status(301)
+        .with_header("Location", "/b")
+        .create();
 
-    test "auto referer sets expected header" {
-        let m1 = mock("GET", "/a")
-            .with_status(301)
-            .with_header("Location", "/b")
-            .create();
+    let m2 = mock("GET", "/b")
+        .with_status(301)
+        .with_header("Location", "/c")
+        .match_header("Referer", (server_url() + "/a").as_str())
+        .create();
 
-        let m2 = mock("GET", "/b")
-            .with_status(301)
-            .with_header("Location", "/c")
-            .match_header("Referer", (server_url() + "/a").as_str())
-            .create();
+    let m3 = mock("GET", "/c")
+        .match_header("Referer", (server_url() + "/b").as_str())
+        .create();
 
-        let m3 = mock("GET", "/c")
-            .match_header("Referer", (server_url() + "/b").as_str())
-            .create();
+    Request::get(server_url() + "/a")
+        .redirect_policy(RedirectPolicy::Follow)
+        .auto_referer()
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
 
-        Request::get(server_url() + "/a")
-            .redirect_policy(RedirectPolicy::Follow)
-            .auto_referer()
-            .body(())
-            .unwrap()
-            .send()
-            .unwrap();
-
-        m1.assert();
-        m2.assert();
-        m3.assert();
-    }
+    m1.assert();
+    m2.assert();
+    m3.assert();
 }

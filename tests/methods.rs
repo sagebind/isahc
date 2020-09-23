@@ -1,62 +1,62 @@
 use isahc::prelude::*;
 use mockito::{mock, server_url};
 
-speculate::speculate! {
-    before {
-        env_logger::try_init().ok();
-    }
+#[test]
+fn get_request() {
+    let m = mock("GET", "/").create();
 
-    test "GET request" {
-        let m = mock("GET", "/").create();
+    isahc::get(server_url()).unwrap();
 
-        isahc::get(server_url()).unwrap();
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn head_request() {
+    let m = mock("HEAD", "/").create();
 
-    test "HEAD request" {
-        let m = mock("HEAD", "/").create();
+    isahc::head(server_url()).unwrap();
 
-        isahc::head(server_url()).unwrap();
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn post_request() {
+    let m = mock("POST", "/").create();
 
-    test "POST request" {
-        let m = mock("POST", "/").create();
+    isahc::post(server_url(), ()).unwrap();
 
-        isahc::post(server_url(), ()).unwrap();
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn put_request() {
+    let m = mock("PUT", "/").create();
 
-    test "PUT request" {
-        let m = mock("PUT", "/").create();
+    isahc::put(server_url(), ()).unwrap();
 
-        isahc::put(server_url(), ()).unwrap();
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn delete_request() {
+    let m = mock("DELETE", "/").create();
 
-    test "DELETE request" {
-        let m = mock("DELETE", "/").create();
+    isahc::delete(server_url()).unwrap();
 
-        isahc::delete(server_url()).unwrap();
+    m.assert();
+}
 
-        m.assert();
-    }
+#[test]
+fn arbitrary_foobar_request() {
+    let m = mock("FOOBAR", "/").create();
 
-    test "arbitrary FOOBAR request" {
-        let m = mock("FOOBAR", "/").create();
+    Request::builder()
+        .method("FOOBAR")
+        .uri(server_url())
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
 
-        Request::builder()
-            .method("FOOBAR")
-            .uri(server_url())
-            .body(())
-            .unwrap()
-            .send()
-            .unwrap();
-
-        m.assert();
-    }
+    m.assert();
 }
