@@ -13,7 +13,7 @@ use std::{
     collections::VecDeque,
     io::Cursor,
     net::SocketAddr,
-    sync::Arc,
+    sync::{Arc, Barrier},
     thread,
 };
 use tiny_http::Server;
@@ -88,12 +88,17 @@ impl MockBuilder {
     pub fn build(mut self) -> Mock {
         let server = Arc::new(Server::http("127.0.0.1:0").unwrap());
         let (requests_tx, requests_rx) = crossbeam_channel::unbounded();
+        let ready_barrier = Arc::new(Barrier::new(2));
 
         {
             let server = server.clone();
+            let ready_barrier = ready_barrier.clone();
 
             thread::spawn(move || {
-                for request in server.incoming_requests() {
+                let iter = server.incoming_requests();
+                ready_barrier.wait();
+
+                for request in iter {
                     // Build a record of the request received.
                     let mock_request = Request {
                         method: request.method().to_string(),
@@ -129,6 +134,8 @@ impl MockBuilder {
                 }
             });
         }
+
+        ready_barrier.wait();
 
         Mock {
             server,
