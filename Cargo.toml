@@ -100,12 +100,12 @@ tempfile = "3.1"
 test-case = "1.0"
 tracing-subscriber = "0.2"
 
-[dev-dependencies.isahc-test-util]
-path = "test-util"
+[dev-dependencies.testserver]
+path = "testserver"
 
 [[example]]
 name = "json"
 required-features = ["json", "serde/derive"]
 
 [workspace]
-members = ["benchmarks", "test-util"]
+members = ["benchmarks", "testserver"]

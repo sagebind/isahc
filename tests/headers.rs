@@ -76,7 +76,6 @@ fn override_client_default_user_agent() {
 }
 
 // Issue [#205](https://github.com/sagebind/isahc/issues/205)
-#[ignore]
 #[test]
 fn set_title_case_headers_to_true() {
     let client = HttpClient::builder()
@@ -85,8 +84,7 @@ fn set_title_case_headers_to_true() {
         .build()
         .unwrap();
 
-    let m = isahc_test_util::Mock::builder()
-        .build();
+    let m = testserver::Mock::default();
 
     client.get(m.url()).unwrap();
 
