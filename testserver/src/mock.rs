@@ -142,11 +142,11 @@ impl<R: Responder> Mock<R> {
             body: Some(body),
         };
 
-        let response = self.respond(mock_request.clone());
+        self.requests.lock().unwrap().push_back(mock_request.clone());
+
+        let response = self.respond(mock_request);
 
         request.respond(response.into_http_response()).unwrap();
-
-        self.requests.lock().unwrap().push_back(mock_request);
     }
 
     fn handle_api_request(&self, request: &tiny_http::Request) -> Option<tiny_http::Response<Cursor<Vec<u8>>>> {
