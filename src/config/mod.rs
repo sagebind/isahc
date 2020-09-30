@@ -132,6 +132,24 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(redirect::AutoReferer)
     }
 
+    /// Enable or disable automatic decompression of the response body for
+    /// various compression algorithms as returned by the server in the
+    /// [`Content-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding)
+    /// response header.
+    ///
+    /// If set to true (the default), Isahc will automatically and transparently
+    /// decode the HTTP response body for known and available compression
+    /// algorithms. If the server returns a response with an unknown or
+    /// unavailable encoding, Isahc will return an
+    /// [`InvalidContentEncoding`](crate::Error::InvalidContentEncoding) error.
+    ///
+    /// If you do not specify a specific value for the
+    /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
+    /// header, Isahc will set one for you automatically based on this option.
+    fn automatic_decompression(self, decompress: bool) -> Self {
+        self.configure(AutomaticDecompression(decompress))
+    }
+
     /// Set one or more default HTTP authentication methods to attempt to use
     /// when authenticating with the server.
     ///
@@ -780,6 +798,30 @@ pub(crate) struct CloseConnection(pub(crate) bool);
 impl SetOpt for CloseConnection {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.forbid_reuse(self.0)
+    }
+}
+
+/// Enable or disable automatically decompressing the response body.
+#[derive(Clone, Debug)]
+pub(crate) struct AutomaticDecompression(pub(crate) bool);
+
+impl SetOpt for AutomaticDecompression {
+    #[allow(unsafe_code)]
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        if self.0 {
+            // Enable automatic decompression, and also populate the
+            // Accept-Encoding header with all supported encodings if not
+            // explicitly set.
+            easy.accept_encoding("")
+        } else {
+            // Use raw FFI because safe wrapper doesn't let us set to null.
+            unsafe {
+                match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_ACCEPT_ENCODING, 0) {
+                    curl_sys::CURLE_OK => Ok(()),
+                    code => Err(curl::Error::new(code)),
+                }
+            }
+        }
     }
 }
 
