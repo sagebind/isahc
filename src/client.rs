@@ -85,6 +85,10 @@ impl HttpClientBuilder {
         // Always start out with latest compatible HTTP version.
         defaults.insert(VersionNegotiation::default());
 
+        // Enable automatic decompression by default for convenience (and
+        // maintain backwards compatibility).
+        defaults.insert(AutomaticDecompression(true));
+
         // Erase curl's default auth method of Basic.
         defaults.insert(Authentication::default());
 
@@ -914,6 +918,7 @@ impl HttpClient {
                 Dialer,
                 RedirectPolicy,
                 redirect::AutoReferer,
+                AutomaticDecompression,
                 Authentication,
                 Credentials,
                 MaxUploadSpeed,
@@ -934,17 +939,6 @@ impl HttpClient {
                 EnableMetrics,
             ]
         );
-
-        // Enable automatic response decoding, unless overridden by the user via
-        // a custom Accept-Encoding value.
-        easy.accept_encoding(
-            parts
-                .headers
-                .get("Accept-Encoding")
-                .and_then(|value| value.to_str().ok())
-                // Empty string tells curl to fill in all supported encodings.
-                .unwrap_or(""),
-        )?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.

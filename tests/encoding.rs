@@ -26,6 +26,35 @@ fn gzip_encoded_response_is_decoded_automatically() {
 }
 
 #[test]
+fn request_gzip_without_automatic_decompression() {
+    let body = "hello world";
+    let mut body_encoded = Vec::new();
+
+    GzEncoder::new(body.as_bytes(), Compression::default())
+        .read_to_end(&mut body_encoded)
+        .unwrap();
+
+    let m = mock("GET", "/")
+        .match_header("Accept-Encoding", "gzip")
+        .with_header("Content-Encoding", "gzip")
+        .with_body(&body_encoded)
+        .create();
+
+    let mut response = Request::get(server_url())
+        .header("Accept-Encoding", "gzip")
+        .automatic_decompression(false)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
+    let mut body_received = Vec::new();
+    response.body_mut().read_to_end(&mut body_received).unwrap();
+
+    assert_eq!(body_received, body_encoded);
+    m.assert();
+}
+
+#[test]
 fn deflate_encoded_response_is_decoded_automatically() {
     let body = "hello world";
     let mut body_encoded = Vec::new();
