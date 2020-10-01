@@ -1103,12 +1103,6 @@
 <span id="1102">1102</span>
 <span id="1103">1103</span>
 <span id="1104">1104</span>
-<span id="1105">1105</span>
-<span id="1106">1106</span>
-<span id="1107">1107</span>
-<span id="1108">1108</span>
-<span id="1109">1109</span>
-<span id="1110">1110</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1196,6 +1190,10 @@
 
         <span class="comment">// Always start out with latest compatible HTTP version.</span>
         <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">VersionNegotiation</span>::<span class="ident">default</span>());
+
+        <span class="comment">// Enable automatic decompression by default for convenience (and</span>
+        <span class="comment">// maintain backwards compatibility).</span>
+        <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">AutomaticDecompression</span>(<span class="bool-val">true</span>));
 
         <span class="comment">// Erase curl&#39;s default auth method of Basic.</span>
         <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">Authentication</span>::<span class="ident">default</span>());
@@ -2026,6 +2024,7 @@
                 <span class="ident">Dialer</span>,
                 <span class="ident">RedirectPolicy</span>,
                 <span class="ident">redirect</span>::<span class="ident">AutoReferer</span>,
+                <span class="ident">AutomaticDecompression</span>,
                 <span class="ident">Authentication</span>,
                 <span class="ident">Credentials</span>,
                 <span class="ident">MaxUploadSpeed</span>,
@@ -2046,17 +2045,6 @@
                 <span class="ident">EnableMetrics</span>,
             ]
         );
-
-        <span class="comment">// Enable automatic response decoding, unless overridden by the user via</span>
-        <span class="comment">// a custom Accept-Encoding value.</span>
-        <span class="ident">easy</span>.<span class="ident">accept_encoding</span>(
-            <span class="ident">parts</span>
-                .<span class="ident">headers</span>
-                .<span class="ident">get</span>(<span class="string">&quot;Accept-Encoding&quot;</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">value</span><span class="op">|</span> <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
-                <span class="comment">// Empty string tells curl to fill in all supported encodings.</span>
-                .<span class="ident">unwrap_or</span>(<span class="string">&quot;&quot;</span>),
-        )<span class="question-mark">?</span>;
 
         <span class="comment">// Set the HTTP method to use. Curl ties in behavior with the request</span>
         <span class="comment">// method, so we need to configure this carefully.</span>
