@@ -22,6 +22,9 @@
 - name: good first issue
   description: Something not too complex
   color: ffd54f
+- name: Hacktoberfest
+  description: Good first issue for Hacktoberfest
+  color: 9c4668
 - name: help wanted
   description: ""
   color: ffd54f
