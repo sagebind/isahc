@@ -1,14 +1,14 @@
 use regex::Regex;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MockRequest {
+pub struct Request {
     pub method: String,
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<Vec<u8>>,
 }
 
-impl MockRequest {
+impl Request {
     pub fn get_header(&self, name: impl AsRef<str>) -> impl Iterator<Item = String> + '_ {
         let name_lower = name.as_ref().to_lowercase();
 

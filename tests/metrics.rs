@@ -1,34 +1,30 @@
 use isahc::prelude::*;
-use mockito::{mock, server_url};
-use std::{io, thread, time::Duration};
+use std::{io, time::Duration};
+use testserver::mock;
 
 #[test]
 fn metrics_are_disabled_by_default() {
-    let m = mock("GET", "/").create();
+    let m = mock!();
 
-    let response = isahc::get(server_url()).unwrap();
+    let response = isahc::get(m.url()).unwrap();
 
+    assert!(!m.requests().is_empty());
     assert!(response.metrics().is_none());
-
-    m.assert();
 }
 
 #[test]
 fn enabling_metrics_causes_metrics_to_be_collected() {
-    let m = mock("POST", "/")
-        .with_body_from_fn(|body| {
-            thread::sleep(Duration::from_millis(10));
-            body.write_all(b"hello world")?;
-            Ok(())
-        })
-        .create();
+    let m = mock! {
+        delay: 10ms,
+        body: "hello world",
+    };
 
     let client = isahc::HttpClient::builder()
         .metrics(true)
         .build()
         .unwrap();
 
-    let mut response = client.send(Request::post(server_url())
+    let mut response = client.send(Request::post(m.url())
         .body("hello server")
         .unwrap())
         .unwrap();
@@ -41,6 +37,4 @@ fn enabling_metrics_causes_metrics_to_be_collected() {
 
     assert_eq!(metrics.download_progress().0, 11);
     assert!(metrics.total_time() > Duration::default());
-
-    m.assert();
 }

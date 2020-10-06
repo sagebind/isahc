@@ -1,50 +1,49 @@
 use crossbeam_utils::thread;
 use isahc::prelude::*;
-use mockito::{mock, server_address, server_url};
 use std::{
     io::{BufRead, BufReader, Write},
     net::{Shutdown, IpAddr, TcpListener, TcpStream},
 };
+use testserver::mock;
 
 #[test]
 fn no_proxy() {
-    let m = mock("GET", "/").create();
+    let m = mock!();
 
-    Request::get(server_url())
+    Request::get(m.url())
         .proxy(None)
         .body(())
         .unwrap()
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(m.requests().len(), 1);
 }
 
 #[test]
 fn http_proxy() {
     // URI of our test server, which we will treat as a proxy.
-    let proxy = server_url().parse::<http::Uri>().unwrap();
+    let m = mock!();
+    let proxy = m.url().parse::<http::Uri>().unwrap();
+
     // Fake upstream URI to connect to.
     let upstream = "http://127.0.0.2:1234/".parse::<http::Uri>().unwrap();
 
-    // We should receive the request instead, following the HTTP proxy
-    // protocol. The request-target should be the absolute URI of our
-    // upstream request target (see [RFC
-    // 7230](https://tools.ietf.org/html/rfc7230), sections 5.3 and 5.7).
-    let m = mock("GET", upstream.to_string().as_str())
-        // Host should be the upstream authority, not the proxy host.
-        .match_header("host", upstream.authority().unwrap().as_str())
-        .match_header("proxy-connection", "Keep-Alive")
-        .create();
-
-    Request::get(upstream)
+    Request::get(upstream.clone())
         .proxy(proxy)
         .body(())
         .unwrap()
         .send()
         .unwrap();
 
-    m.assert();
+    // We should receive the request instead, following the HTTP proxy
+    // protocol. The request-target should be the absolute URI of our
+    // upstream request target (see [RFC
+    // 7230](https://tools.ietf.org/html/rfc7230), sections 5.3 and 5.7).
+    assert_eq!(m.request().url, upstream.to_string());
+    // Host should be the upstream authority, not the proxy host.
+    m.request().expect_header("host", upstream.authority().unwrap().as_str());
+    m.request().expect_header("proxy-connection", "Keep-Alive");
 }
 
 #[test]
@@ -60,14 +59,14 @@ fn socks4_proxy() {
         .build()
         .unwrap();
 
-    let upstream_port = server_address().port();
-    let upstream_ip = match server_address().ip() {
+    // Set up our upstream HTTP test server.
+    let m = mock!();
+    let upstream_addr = m.addr();
+    let upstream_port = upstream_addr.port();
+    let upstream_ip = match m.addr().ip() {
         IpAddr::V4(ip) => ip,
         _ => panic!(),
     };
-
-    // Set up our upstream HTTP test server.
-    let m = mock("GET", "/").create();
 
     // Set up a scope to clean up background threads.
     thread::scope(move |s| {
@@ -102,7 +101,7 @@ fn socks4_proxy() {
             }
 
             // Connect to upstream.
-            let upstream = TcpStream::connect(server_address()).unwrap();
+            let upstream = TcpStream::connect(upstream_addr).unwrap();
 
             // Send response packet.
             client_writer.write_all(&[0, 0x5a, 0, 0, 0, 0, 0, 0]).unwrap();
@@ -120,7 +119,8 @@ fn socks4_proxy() {
         });
 
         // Send a request...
-        Request::get(server_url())
+        Request::get(m.url())
+            .header("connection", "close")
             .proxy(proxy_uri)
             .body(())
             .unwrap()
@@ -128,7 +128,9 @@ fn socks4_proxy() {
             .unwrap();
 
         // ...expecting to receive it through the proxy.
-        m.assert();
+        assert_eq!(m.requests().len(), 1);
+
+        drop(m);
     }).unwrap();
 }
 
@@ -136,10 +138,10 @@ fn socks4_proxy() {
 fn proxy_blacklist_works() {
     // This time, the proxy is the fake one.
     let proxy = "http://127.0.0.2:1234/".parse::<http::Uri>().unwrap();
-    // Our test server is upstream (we don't expect the proxy to be used).
-    let upstream = server_url().parse::<http::Uri>().unwrap();
 
-    let m = mock("GET", "/").create();
+    // Our test server is upstream (we don't expect the proxy to be used).
+    let m = mock!();
+    let upstream = m.url().parse::<http::Uri>().unwrap();
 
     Request::get(&upstream)
         .proxy(proxy)
@@ -150,5 +152,5 @@ fn proxy_blacklist_works() {
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(m.requests().len(), 1);
 }
