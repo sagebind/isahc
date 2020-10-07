@@ -42,6 +42,7 @@ fn http_proxy() {
 }
 
 #[test]
+#[cfg_attr(tarpaulin, ignore)]
 fn socks4_proxy() {
     // Set up a simple SOCKS4 proxy.
     let proxy_server = Socks4Server::new("127.0.0.1:0").unwrap();
