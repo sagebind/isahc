@@ -8,4 +8,5 @@ publish = false
 [dependencies]
 humantime = "2"
 regex = "1.3"
+threadpool = "1.8"
 tiny_http = "0.7"

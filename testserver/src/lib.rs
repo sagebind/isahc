@@ -3,6 +3,8 @@ mod request;
 mod responder;
 mod response;
 
+pub mod socks4;
+
 pub use mock::Mock;
 pub use request::Request;
 pub use responder::Responder;
