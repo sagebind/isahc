@@ -1,8 +1,10 @@
-use flate2::read::{DeflateEncoder, GzEncoder};
-use flate2::Compression;
+use flate2::{
+    read::{DeflateEncoder, GzEncoder},
+    Compression,
+};
 use isahc::prelude::*;
-use mockito::{mock, server_url};
 use std::io::Read;
+use testserver::mock;
 
 #[test]
 fn gzip_encoded_response_is_decoded_automatically() {
@@ -13,16 +15,17 @@ fn gzip_encoded_response_is_decoded_automatically() {
         .read_to_end(&mut body_encoded)
         .unwrap();
 
-    let m = mock("GET", "/")
-        .match_header("Accept-Encoding", "deflate, gzip")
-        .with_header("Content-Encoding", "gzip")
-        .with_body(&body_encoded)
-        .create();
+    let m = mock! {
+        headers {
+            "Content-Encoding": "gzip",
+        }
+        body: body_encoded.clone(),
+    };
 
-    let mut response = isahc::get(server_url()).unwrap();
+    let mut response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.text().unwrap(), body);
-    m.assert();
+    m.request().expect_header("Accept-Encoding", "deflate, gzip");
 }
 
 #[test]
@@ -34,13 +37,17 @@ fn request_gzip_without_automatic_decompression() {
         .read_to_end(&mut body_encoded)
         .unwrap();
 
-    let m = mock("GET", "/")
-        .match_header("Accept-Encoding", "gzip")
-        .with_header("Content-Encoding", "gzip")
-        .with_body(&body_encoded)
-        .create();
+    let m = {
+        let body_encoded = body_encoded.clone();
+        mock! {
+            headers {
+                "Content-Encoding": "gzip",
+            }
+            body: body_encoded.clone(),
+        }
+    };
 
-    let mut response = Request::get(server_url())
+    let mut response = Request::get(m.url())
         .header("Accept-Encoding", "gzip")
         .automatic_decompression(false)
         .body(())
@@ -51,7 +58,7 @@ fn request_gzip_without_automatic_decompression() {
     response.body_mut().read_to_end(&mut body_received).unwrap();
 
     assert_eq!(body_received, body_encoded);
-    m.assert();
+    m.request().expect_header("Accept-Encoding", "gzip");
 }
 
 #[test]
@@ -63,16 +70,17 @@ fn deflate_encoded_response_is_decoded_automatically() {
         .read_to_end(&mut body_encoded)
         .unwrap();
 
-    let m = mock("GET", "/")
-        .match_header("Accept-Encoding", "deflate, gzip")
-        .with_header("Content-Encoding", "deflate")
-        .with_body(&body_encoded)
-        .create();
+    let m = mock! {
+        headers {
+            "Content-Encoding": "deflate",
+        }
+        body: body_encoded.clone(),
+    };
 
-    let mut response = isahc::get(server_url()).unwrap();
+    let mut response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.text().unwrap(), body);
-    m.assert();
+    m.request().expect_header("Accept-Encoding", "deflate, gzip");
 }
 
 #[test]
@@ -84,13 +92,14 @@ fn content_is_decoded_even_if_not_listed_as_accepted() {
         .read_to_end(&mut body_encoded)
         .unwrap();
 
-    let m = mock("GET", "/")
-        .match_header("Accept-Encoding", "deflate")
-        .with_header("Content-Encoding", "gzip")
-        .with_body(&body_encoded)
-        .create();
+    let m = mock! {
+        headers {
+            "Content-Encoding": "gzip",
+        }
+        body: body_encoded.clone(),
+    };
 
-    let mut response = Request::get(server_url())
+    let mut response = Request::get(m.url())
         .header("Accept-Encoding", "deflate")
         .body(())
         .unwrap()
@@ -98,17 +107,19 @@ fn content_is_decoded_even_if_not_listed_as_accepted() {
         .unwrap();
 
     assert_eq!(response.text().unwrap(), body);
-    m.assert();
+    m.request().expect_header("Accept-Encoding", "deflate");
 }
 
 #[test]
 fn unknown_content_encoding_returns_error() {
-    let m = mock("GET", "/")
-        .with_header("Content-Encoding", "foo")
-        .with_body("hello world")
-        .create();
+    let m = mock! {
+        headers {
+            "Content-Encoding": "foo",
+        }
+        body: "hello world",
+    };
 
-    let result = Request::get(server_url())
+    let result = Request::get(m.url())
         .header("Accept-Encoding", "deflate")
         .body(())
         .unwrap()
@@ -119,5 +130,5 @@ fn unknown_content_encoding_returns_error() {
         _ => panic!("expected unknown encoding error, instead got {:?}", result),
     };
 
-    m.assert();
+    m.request().expect_header("Accept-Encoding", "deflate");
 }

@@ -8,9 +8,9 @@
 //! semantically and are far more complex to deal with.
 
 use crate::{
-    request::MockRequest,
+    request::Request,
     responder::*,
-    response::MockResponse,
+    response::Response,
 };
 use std::{
     collections::VecDeque,
@@ -25,7 +25,7 @@ use tiny_http::Server;
 /// A mock HTTP endpoint.
 pub struct Mock<R> {
     server: Arc<Server>,
-    requests: Arc<Mutex<VecDeque<MockRequest>>>,
+    requests: Arc<Mutex<VecDeque<Request>>>,
     responder: Arc<R>,
 }
 
@@ -57,20 +57,21 @@ impl<R: Responder> Mock<R> {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}", self.addr())
+        format!("http://{}/", self.addr())
     }
 
     /// Get the first request received by this mock.
-    pub fn request(&self) -> MockRequest {
-        self.requests.lock()
+    pub fn request(&self) -> Request {
+        let request = self.requests.lock()
             .unwrap()
             .get(0)
-            .expect("no request received")
-            .clone()
+            .cloned();
+
+        request.expect("no request received")
     }
 
     /// Get all requests received by this mock.
-    pub fn requests(&self) -> Vec<MockRequest> {
+    pub fn requests(&self) -> Vec<Request> {
         self.requests.lock().unwrap().iter().cloned().collect()
     }
 
@@ -103,15 +104,16 @@ impl<R: Responder> Mock<R> {
         panic!("mock server did not become ready after 9 tries");
     }
 
-    fn respond(&self, request: MockRequest) -> MockResponse {
+    fn respond(&self, request: Request) -> Response {
         if let Some(response) = self.responder.respond(request.clone()) {
             return response;
         }
 
-        MockResponse {
+        Response {
             status_code: 404,
             headers: Vec::new(),
             body: Vec::new(),
+            transfer_encoding: false,
         }
     }
 
@@ -132,13 +134,13 @@ impl<R: Responder> Mock<R> {
         request.as_reader().read_to_end(&mut body).unwrap();
 
         // Build a record of the request received.
-        let mock_request = MockRequest {
+        let mock_request = Request {
             method: request.method().to_string(),
             url: request.url().to_string(),
             headers: request.headers()
-                .iter()
-                .map(|header| (header.field.to_string(), header.value.to_string()))
-                .collect(),
+            .iter()
+            .map(|header| (header.field.to_string(), header.value.to_string()))
+            .collect(),
             body: Some(body),
         };
 

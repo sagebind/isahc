@@ -1,36 +1,43 @@
-use isahc::config::RedirectPolicy;
-use isahc::prelude::*;
-use mockito::{mock, server_url};
+use isahc::{
+    config::RedirectPolicy,
+    prelude::*,
+};
+use testserver::mock;
 
 #[test]
 fn response_301_no_follow() {
-    let m = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let m = mock! {
+        status: 301,
+        headers {
+            "Location": "/2",
+        }
+    };
 
-    let response = isahc::get(server_url()).unwrap();
+    let response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.status(), 301);
     assert_eq!(response.headers()["Location"], "/2");
     assert_eq!(response.effective_uri().unwrap().path(), "/");
 
-    m.assert();
+    assert!(!m.requests().is_empty());
 }
 
 #[test]
 fn response_301_auto_follow() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let m2 = mock! {
+        status: 200,
+        body: "ok",
+    };
+    let location = m2.url();
 
-    let m2 = mock("GET", "/2")
-        .with_status(200)
-        .with_body("ok")
-        .create();
+    let m1 = mock! {
+        status: 301,
+        headers {
+            "Location": location,
+        }
+    };
 
-    let mut response = Request::get(server_url())
+    let mut response = Request::get(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -39,27 +46,33 @@ fn response_301_auto_follow() {
 
     assert_eq!(response.status(), 200);
     assert_eq!(response.text().unwrap(), "ok");
-    assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    m1.assert();
-    m2.assert();
+    assert!(!m1.requests().is_empty());
+    assert!(!m2.requests().is_empty());
 }
 
 #[test]
 fn headers_are_reset_every_redirect() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/b")
-        .with_header("X-Foo", "aaa")
-        .with_header("X-Bar", "zzz")
-        .create();
+    let m2 = mock! {
+        status: 200,
+        headers {
+            "X-Foo": "bbb",
+            "X-Baz": "zzz",
+        }
+    };
+    let location = m2.url();
 
-    let m2 = mock("GET", "/b")
-        .with_header("X-Foo", "bbb")
-        .with_header("X-Baz", "zzz")
-        .create();
+    let m1 = mock! {
+        status: 301,
+        headers {
+            "Location": location,
+            "X-Foo": "aaa",
+            "X-Bar": "zzz",
+        }
+    };
 
-    let response = Request::get(server_url())
+    let response = Request::get(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -71,20 +84,23 @@ fn headers_are_reset_every_redirect() {
     assert_eq!(response.headers()["X-Baz"], "zzz");
     assert!(!response.headers().contains_key("X-Bar"));
 
-    m1.assert();
-    m2.assert();
+    assert!(!m1.requests().is_empty());
+    assert!(!m2.requests().is_empty());
 }
 
 #[test]
 fn _303_redirect_changes_post_to_get() {
-    let m1 = mock("POST", "/")
-        .with_status(303)
-        .with_header("Location", "/2")
-        .create();
+    let m2 = mock!();
+    let location = m2.url();
 
-    let m2 = mock("GET", "/2").create();
+    let m1 = mock! {
+        status: 303,
+        headers {
+            "Location": location,
+        }
+    };
 
-    let response = Request::post(server_url())
+    let response = Request::post(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(())
         .unwrap()
@@ -92,25 +108,22 @@ fn _303_redirect_changes_post_to_get() {
         .unwrap();
 
     assert_eq!(response.status(), 200);
-    assert_eq!(response.effective_uri().unwrap().path(), "/2");
+    assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    m1.assert();
-    m2.assert();
+    assert_eq!(m1.request().method, "POST");
+    assert_eq!(m2.request().method, "GET");
 }
 
 #[test]
 fn redirect_limit_is_respected() {
-    let m1 = mock("GET", "/")
-        .with_status(301)
-        .with_header("Location", "/2")
-        .create();
+    let m = mock! {
+        status: 301,
+        headers {
+            "Location": "/next",
+        }
+    };
 
-    let m2 = mock("GET", "/2")
-        .with_status(301)
-        .with_header("Location", "/")
-        .create();
-
-    let result = Request::get(server_url())
+    let result = Request::get(m.url())
         .redirect_policy(RedirectPolicy::Limit(5))
         .body(())
         .unwrap()
@@ -123,28 +136,34 @@ fn redirect_limit_is_respected() {
     });
 
     // After request (limit + 1) that returns a redirect should error.
-    m1.expect(3);
-    m2.expect(3);
+    assert_eq!(m.requests().len(), 6);
 }
 
 #[test]
 fn auto_referer_sets_expected_header() {
-    let m1 = mock("GET", "/a")
-        .with_status(301)
-        .with_header("Location", "/b")
-        .create();
+    let m3 = mock!();
 
-    let m2 = mock("GET", "/b")
-        .with_status(301)
-        .with_header("Location", "/c")
-        .match_header("Referer", (server_url() + "/a").as_str())
-        .create();
+    let m2 = {
+        let location = m3.url();
+        mock! {
+            status: 301,
+            headers {
+                "Location": location,
+            }
+        }
+    };
 
-    let m3 = mock("GET", "/c")
-        .match_header("Referer", (server_url() + "/b").as_str())
-        .create();
+    let m1 = {
+        let location = m2.url();
+        mock! {
+            status: 301,
+            headers {
+                "Location": location,
+            }
+        }
+    };
 
-    Request::get(server_url() + "/a")
+    Request::get(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .auto_referer()
         .body(())
@@ -152,7 +171,6 @@ fn auto_referer_sets_expected_header() {
         .send()
         .unwrap();
 
-    m1.assert();
-    m2.assert();
-    m3.assert();
+    m2.request().expect_header("Referer", m1.url());
+    m3.request().expect_header("Referer", m2.url());
 }

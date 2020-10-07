@@ -39,15 +39,20 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           submodules: true
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          default: true
 
       - name: Generate code coverage report
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: '0.13.3'
-          args: "--run-types Doctests Tests --features cookies,psl"
+          args: "-p isahc --run-types Doctests Tests --features cookies,psl"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

@@ -1,62 +1,62 @@
 use isahc::prelude::*;
-use mockito::{mock, server_url};
+use testserver::mock;
 
 #[test]
 fn get_request() {
-    let m = mock("GET", "/").create();
+    let m = mock!();
 
-    isahc::get(server_url()).unwrap();
+    isahc::get(m.url()).unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "GET");
 }
 
 #[test]
 fn head_request() {
-    let m = mock("HEAD", "/").create();
+    let m = mock!();
 
-    isahc::head(server_url()).unwrap();
+    isahc::head(m.url()).unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "HEAD");
 }
 
 #[test]
 fn post_request() {
-    let m = mock("POST", "/").create();
+    let m = mock!();
 
-    isahc::post(server_url(), ()).unwrap();
+    isahc::post(m.url(), ()).unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "POST");
 }
 
 #[test]
 fn put_request() {
-    let m = mock("PUT", "/").create();
+    let m = mock!();
 
-    isahc::put(server_url(), ()).unwrap();
+    isahc::put(m.url(), ()).unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "PUT");
 }
 
 #[test]
 fn delete_request() {
-    let m = mock("DELETE", "/").create();
+    let m = mock!();
 
-    isahc::delete(server_url()).unwrap();
+    isahc::delete(m.url()).unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "DELETE");
 }
 
 #[test]
 fn arbitrary_foobar_request() {
-    let m = mock("FOOBAR", "/").create();
+    let m = mock!();
 
     Request::builder()
         .method("FOOBAR")
-        .uri(server_url())
+        .uri(m.url())
         .body(())
         .unwrap()
         .send()
         .unwrap();
 
-    m.assert();
+    assert_eq!(m.request().method, "FOOBAR");
 }
