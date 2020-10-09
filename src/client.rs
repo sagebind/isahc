@@ -109,7 +109,9 @@ impl HttpClientBuilder {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
-        self.middleware_impl(crate::cookies::CookieJar::default())
+        self
+            .configure(crate::cookies::CookieJar::default())
+            .middleware_impl(crate::cookies::middleware::CookieMiddleware)
     }
 
     /// Add a middleware layer to the client.
