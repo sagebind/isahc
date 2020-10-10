@@ -23,6 +23,7 @@ impl Middleware for CookieMiddleware {
 
     /// Extracts cookies set via the Set-Cookie header.
     fn filter_response(&self, response: Response<Body>) -> Response<Body> {
+        // TODO: Clone cookie jar from request into response.
         if let Some(jar) = response.extensions().get::<CookieJar>() {
             if response.headers().contains_key(http::header::SET_COOKIE) {
                 let cookies = response

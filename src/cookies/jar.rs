@@ -11,14 +11,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-type CookieJar2Obj = Box<dyn CookieJar2 + Send + Sync + 'static>;
-
-pub trait CookieJar2 {
-    fn get(&self, uri: &Uri) -> Option<Cookie>;
-
-    fn insert(&self, cookies: &[Cookie]);
-}
-
 /// Provides automatic cookie session management using an in-memory cookie
 /// store.
 ///

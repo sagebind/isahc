@@ -142,15 +142,6 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(jar)
     }
 
-    #[cfg(feature = "cookies")]
-    fn cookie_jar2<J>(self, jar: J) -> Self
-    where
-        J: crate::cookies::CookieJar2 + Send + Sync + 'static,
-    {
-        let jar: Box<dyn crate::cookies::CookieJar2 + Send + Sync + 'static> = Box::new(jar);
-        self.configure(jar)
-    }
-
     /// Enable or disable automatic decompression of the response body for
     /// various compression algorithms as returned by the server in the
     /// [`Content-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding)
