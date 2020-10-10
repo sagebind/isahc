@@ -109,7 +109,7 @@ impl HttpClientBuilder {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
-        self.interceptor(crate::cookies::CookieJar::default())
+        self.interceptor_impl(crate::cookies::CookieJar::default())
     }
 
     /// Add a request interceptor to the client.
@@ -120,14 +120,12 @@ impl HttpClientBuilder {
     /// [`unstable-interceptors`](index.html#unstable-interceptors) feature is
     /// enabled.
     #[cfg(feature = "unstable-interceptors")]
-    pub fn interceptor(mut self, interceptor: impl Interceptor + 'static) -> Self {
-        self.interceptors.push(InterceptorObj::new(interceptor));
-        self
+    #[inline]
+    pub fn interceptor(self, interceptor: impl Interceptor + 'static) -> Self {
+        self.interceptor_impl(interceptor)
     }
 
-    #[cfg(not(feature = "unstable-interceptors"))]
-    #[allow(unused)]
-    pub(crate) fn interceptor(mut self, interceptor: impl Interceptor + 'static) -> Self {
+    pub(crate) fn interceptor_impl(mut self, interceptor: impl Interceptor + 'static) -> Self {
         self.interceptors.push(InterceptorObj::new(interceptor));
         self
     }

@@ -20,6 +20,22 @@ use std::{
 #[macro_export]
 macro_rules! interceptor {
     ($request:ident, $cx:ident, $body:expr) => {{
+        struct Impl;
+
+        impl $crate::interceptors::Interceptor for Impl {
+            type Err = Box<dyn std::error::Error>;
+
+            fn intercept<'a>(
+                &'a self,
+                mut $request: $crate::http::Request<$crate::Body>,
+                $cx: $crate::interceptors::Context<'a>,
+            ) -> $crate::interceptors::InterceptorFuture<'a, Self::Err> {
+                Box::pin(async move {
+                    $body.map_err(Into::into)
+                })
+            }
+        }
+
         async fn interceptor(
             mut $request: $crate::http::Request<$crate::Body>,
             $cx: $crate::interceptors::Context<'_>,
@@ -106,10 +122,10 @@ pub struct Context<'a> {
 impl Context<'_> {
     /// Send a request.
     pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
-        if let Some(interceptor) = self.interceptors.first() {
+        if let ([interceptor], rest) = self.interceptors.split_at(1) {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
-                interceptors: &self.interceptors[1..],
+                interceptors: rest,
             };
             Ok(interceptor.intercept(request, inner_context).await.unwrap())
         } else {
