@@ -122,10 +122,10 @@ pub struct Context<'a> {
 impl Context<'_> {
     /// Send a request.
     pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
-        if let ([interceptor], rest) = self.interceptors.split_at(1) {
+        if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
-                interceptors: rest,
+                interceptors: &self.interceptors[1..],
             };
             Ok(interceptor.intercept(request, inner_context).await.unwrap())
         } else {
