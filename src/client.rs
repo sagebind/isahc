@@ -125,6 +125,7 @@ impl HttpClientBuilder {
         self.interceptor_impl(interceptor)
     }
 
+    #[allow(unused)]
     pub(crate) fn interceptor_impl(mut self, interceptor: impl Interceptor + 'static) -> Self {
         self.interceptors.push(InterceptorObj::new(interceptor));
         self

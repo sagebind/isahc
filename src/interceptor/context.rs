@@ -13,7 +13,8 @@ pub struct Context<'a> {
 }
 
 impl Context<'_> {
-    /// Send a request.
+    /// Send a request asynchronously, executing the next interceptor in the
+    /// chain, if any.
     pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
         if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {

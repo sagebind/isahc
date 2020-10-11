@@ -3,6 +3,25 @@
 //! This module provides the core types and functions for defining and working
 //! with interceptors. Interceptors are handlers that augment HTTP client
 //! functionality by decorating HTTP calls with custom logic.
+//!
+//! Known issues:
+//!
+//! - [`from_fn`] doesn't work as desired. The trait bounds are too ambiguous
+//!   for the compiler to infer for closures, and since the return type is
+//!   generic over a lifetime, there's no way to give the return type the
+//!   correct name using current Rust syntax.
+//! - [`InterceptorObj`] wraps the returned future in an extra box.
+//! - If an interceptor returns a custom error, it is stringified and wrapped in
+//!   `Error::Curl`. We should introduce a new error variant that boxes the
+//!   error and also records the type of the interceptor that created the error
+//!   for visibility. But we can't add a new variant right now without a BC
+//!   break. See [#182](https://github.com/sagebind/isahc/issues/182).
+///
+/// # Availability
+///
+/// This module is only available when the
+/// [`unstable-interceptors`](../index.html#unstable-interceptors) feature is
+/// enabled.
 
 use crate::Body;
 use futures_util::future::BoxFuture;
