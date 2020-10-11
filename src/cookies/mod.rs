@@ -8,7 +8,7 @@ use crate::{
     Error,
     response::ResponseExt,
     Body,
-    interceptors::{Interceptor, InterceptorFuture, Context},
+    interceptor::{Interceptor, InterceptorFuture, Context},
 };
 use chrono::prelude::*;
 use chrono::Duration;
