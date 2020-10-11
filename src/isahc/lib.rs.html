@@ -432,6 +432,7 @@
 <span id="431">431</span>
 <span id="432">432</span>
 <span id="433">433</span>
+<span id="434">434</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
@@ -613,15 +614,16 @@
 <span class="doccomment">//! Enable support for decoding text-based responses in various charsets into</span>
 <span class="doccomment">//! strings. Enabled by default.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## Preview APIs</span>
+<span class="doccomment">//! ## Unstable APIs</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! There are also some features that enable new incubating APIs that do not</span>
 <span class="doccomment">//! have stability guarantees:</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ### `middleware-api-preview`</span>
+<span class="doccomment">//! ### `unstable-interceptors`</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Enable the new middleware API. Unstable until the API is finalized. This an</span>
-<span class="doccomment">//! unstable feature whose interface may change between patch releases.</span>
+<span class="doccomment">//! Enable the new interceptors API (replaces the old unstable middleware API).</span>
+<span class="doccomment">//! Unstable until the API is finalized. This an unstable feature whose</span>
+<span class="doccomment">//! interface may change between patch releases.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Logging and tracing</span>
 <span class="doccomment">//!</span>
@@ -661,12 +663,6 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cookies</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;middleware-api-preview&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;middleware-api-preview&quot;</span>))]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unreachable_pub</span>, <span class="ident">unused</span>)]</span>
-<span class="kw">mod</span> <span class="ident">middleware</span>;
-
 <span class="kw">mod</span> <span class="ident">agent</span>;
 <span class="kw">mod</span> <span class="ident">body</span>;
 <span class="kw">mod</span> <span class="ident">client</span>;
@@ -681,6 +677,12 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">auth</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">interceptor</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>))]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unreachable_pub</span>, <span class="ident">unused</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">interceptor</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body</span>::<span class="ident">Body</span>,
