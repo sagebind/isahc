@@ -7,7 +7,7 @@ use crate::{
     config::*,
     handler::{RequestHandler, ResponseBodyReader},
     headers,
-    interceptors::{self, Interceptor, InterceptorObj},
+    interceptor::{self, Interceptor, InterceptorObj},
     task::Join,
     Body, Error,
 };
@@ -63,7 +63,7 @@ lazy_static! {
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     defaults: http::Extensions,
-    interceptors: Vec<InterceptorObj<'static>>,
+    interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
     error: Option<Error>,
 }
@@ -500,7 +500,7 @@ pub struct HttpClient {
     defaults: http::Extensions,
 
     /// Registered interceptors that requests should pass through.
-    interceptors: Vec<InterceptorObj<'static>>,
+    interceptors: Vec<InterceptorObj>,
 
     /// Default headers to add to every request.
     default_headers: HeaderMap<HeaderValue>,
@@ -808,7 +808,7 @@ impl HttpClient {
             uri = ?request.uri(),
         );
 
-        let cx = interceptors::Context {
+        let cx = interceptor::Context {
             invoker: Arc::new(move |mut request| {
                 Box::pin(async move {
                     // We are checking here if header already contains the key, simply ignore it.

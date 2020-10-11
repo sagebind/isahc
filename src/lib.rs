@@ -243,10 +243,10 @@ pub mod auth;
 pub mod config;
 
 #[cfg(feature = "unstable-interceptors")]
-pub mod interceptors;
+pub mod interceptor;
 #[cfg(not(feature = "unstable-interceptors"))]
 #[allow(unreachable_pub, unused)]
-pub(crate) mod interceptors;
+pub(crate) mod interceptor;
 
 pub use crate::{
     body::Body,

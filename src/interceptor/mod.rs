@@ -4,14 +4,19 @@
 //! with interceptors. Interceptors are handlers that augment HTTP client
 //! functionality by decorating HTTP calls with custom logic.
 
-use crate::{Body, Error};
+use crate::Body;
 use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use std::{
-    error::Error as StdError,
+    error::Error,
     fmt,
-    sync::Arc,
 };
+
+mod context;
+mod obj;
+
+pub use self::context::Context;
+pub(crate) use self::obj::InterceptorObj;
 
 /// Defines an inline interceptor using a closure-like syntax.
 ///
@@ -20,32 +25,16 @@ use std::{
 #[macro_export]
 macro_rules! interceptor {
     ($request:ident, $cx:ident, $body:expr) => {{
-        struct Impl;
-
-        impl $crate::interceptors::Interceptor for Impl {
-            type Err = Box<dyn std::error::Error>;
-
-            fn intercept<'a>(
-                &'a self,
-                mut $request: $crate::http::Request<$crate::Body>,
-                $cx: $crate::interceptors::Context<'a>,
-            ) -> $crate::interceptors::InterceptorFuture<'a, Self::Err> {
-                Box::pin(async move {
-                    $body.map_err(Into::into)
-                })
-            }
-        }
-
         async fn interceptor(
             mut $request: $crate::http::Request<$crate::Body>,
-            $cx: $crate::interceptors::Context<'_>,
+            $cx: $crate::interceptor::Context<'_>,
         ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn std::error::Error>> {
             (move || async move {
                 $body
             })().await.map_err(Into::into)
         }
 
-        interceptor
+        $crate::interceptor::from_fn(interceptor)
     }};
 }
 
@@ -56,7 +45,7 @@ macro_rules! interceptor {
 /// made in parallel.
 pub trait Interceptor: Send + Sync {
     /// The type of error returned by this interceptor.
-    type Err: Into<Box<dyn StdError>>;
+    type Err: Into<Box<dyn Error>>;
 
     /// Intercept a request, returning a response.
     ///
@@ -68,75 +57,34 @@ pub trait Interceptor: Send + Sync {
 /// The type of future returned by an interceptor.
 pub type InterceptorFuture<'a, E> = BoxFuture<'a, Result<Response<Body>, E>>;
 
-/// Type-erased interceptor object.
-pub(crate) struct InterceptorObj<'a>(Box<dyn DynInterceptor + 'a>);
-
-impl<'a> InterceptorObj<'a> {
-    pub(crate) fn new(interceptor: impl Interceptor + 'a) -> Self {
-        Self(Box::new(interceptor))
-    }
-}
-
-impl Interceptor for InterceptorObj<'_> {
-    type Err = Box<dyn StdError>;
-
-    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
-        self.0.dyn_intercept(request, cx)
-    }
-}
-
-/// Object-safe version of the interceptor used for type erasure.
-trait DynInterceptor: Send + Sync {
-    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn StdError>>;
-}
-
-impl<I> DynInterceptor for I
+/// Creates an interceptor from an arbitrary closure or function.
+pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
 where
-    I: Interceptor
+    F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
+    E: Into<Box<dyn Error>>,
 {
-    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn StdError>> {
-        Box::pin(async move {
-            self.intercept(request, cx).await.map_err(Into::into)
-        })
-    }
+    InterceptorFn(f)
 }
 
-impl<E, F> Interceptor for F
+/// An interceptor created from an arbitrary closure or function. See
+/// [`from_fn`] for details.
+pub struct InterceptorFn<F>(F);
+
+impl<E, F> Interceptor for InterceptorFn<F>
 where
-    E: Into<Box<dyn StdError>>,
+    E: Into<Box<dyn Error>>,
     F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
 {
     type Err = E;
 
     fn intercept<'a>(&self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
-        Box::pin(self.call(request, cx))
+        Box::pin(self.0.call(request, cx))
     }
 }
 
-/// Execution context for an interceptor.
-pub struct Context<'a> {
-    pub(crate) invoker: Arc<dyn (Fn(Request<Body>) -> InterceptorFuture<'a, Error>) + Send + Sync + 'a>,
-    pub(crate) interceptors: &'a [InterceptorObj<'static>],
-}
-
-impl Context<'_> {
-    /// Send a request.
-    pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
-        if let Some(interceptor) = self.interceptors.first() {
-            let inner_context = Self {
-                invoker: self.invoker.clone(),
-                interceptors: &self.interceptors[1..],
-            };
-            Ok(interceptor.intercept(request, inner_context).await.unwrap())
-        } else {
-            (self.invoker)(request).await
-        }
-    }
-}
-
-impl fmt::Debug for Context<'_> {
+impl<F: fmt::Debug> fmt::Debug for InterceptorFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Context").finish()
+        self.0.fmt(f)
     }
 }
 
