@@ -1,3 +1,5 @@
+#![cfg(feature = "unstable-interceptors")]
+
 use isahc::HttpClient;
 use testserver::mock;
 

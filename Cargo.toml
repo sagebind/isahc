@@ -102,12 +102,9 @@ tracing-subscriber = "0.2"
 [dev-dependencies.testserver]
 path = "testserver"
 
-[dev-dependencies.testutil]
-path = "testutil"
-
 [[example]]
 name = "json"
 required-features = ["json", "serde/derive"]
 
 [workspace]
-members = ["benchmarks", "testserver", "testutil"]
+members = ["benchmarks", "testserver"]
