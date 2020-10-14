@@ -14,9 +14,8 @@ use crate::{
 use futures_io::AsyncRead;
 use futures_util::{future::BoxFuture, pin_mut};
 use http::{
-    Request,
-    Response,
     header::{HeaderMap, HeaderName, HeaderValue},
+    Request, Response,
 };
 use lazy_static::lazy_static;
 use std::{
@@ -27,6 +26,7 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
+    time::Duration,
 };
 use tracing_futures::Instrument;
 
@@ -128,6 +128,23 @@ impl HttpClientBuilder {
     #[allow(unused)]
     pub(crate) fn interceptor_impl(mut self, interceptor: impl Interceptor + 'static) -> Self {
         self.interceptors.push(InterceptorObj::new(interceptor));
+        self
+    }
+
+    /// Set the maximum time-to-live (TTL) for connections to remain in the
+    /// connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is
+    /// reusable, it is added to the connection cache to be reused to reduce
+    /// latency for future requests. This option controls how long such
+    /// connections should be still considered valid before being discarded.
+    ///
+    /// Old connections have a high risk of not working any more and thus
+    /// attempting to use them wastes time if the server has disconnected.
+    ///
+    /// The default TTL is 118 seconds.
+    pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
+        self.defaults.insert(MaxAgeConn(ttl));
         self
     }
 
@@ -796,9 +813,7 @@ impl HttpClient {
         builder: http::request::Builder,
         body: Body,
     ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move {
-            self.send_async_inner(builder.body(body)?).await
-        })
+        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
     }
 
     /// Actually send the request. All the public methods go through here.
@@ -811,57 +826,60 @@ impl HttpClient {
 
         let cx = interceptor::Context {
             invoker: Arc::new(move |mut request| {
-                Box::pin(async move {
-                    // We are checking here if header already contains the key, simply ignore it.
-                    // In case the key wasn't present in parts.headers ensure that
-                    // we have all the headers from default headers.
-                    for name in self.default_headers.keys() {
-                        if !request.headers().contains_key(name) {
-                            for v in self.default_headers.get_all(name).iter() {
-                                request.headers_mut().append(name, v.clone());
+                Box::pin(
+                    async move {
+                        // We are checking here if header already contains the key, simply ignore it.
+                        // In case the key wasn't present in parts.headers ensure that
+                        // we have all the headers from default headers.
+                        for name in self.default_headers.keys() {
+                            if !request.headers().contains_key(name) {
+                                for v in self.default_headers.get_all(name).iter() {
+                                    request.headers_mut().append(name, v.clone());
+                                }
                             }
                         }
+
+                        // Set default user agent if not specified.
+                        request
+                            .headers_mut()
+                            .entry(http::header::USER_AGENT)
+                            .or_insert(USER_AGENT.parse().unwrap());
+
+                        // Create and configure a curl easy handle to fulfil the request.
+                        let (easy, future) = self.create_easy_handle(request)?;
+
+                        // Send the request to the agent to be executed.
+                        self.agent.submit_request(easy)?;
+
+                        // Await for the response headers.
+                        let response = future.await?;
+
+                        // If a Content-Length header is present, include that information in
+                        // the body as well.
+                        let content_length = response
+                            .headers()
+                            .get(http::header::CONTENT_LENGTH)
+                            .and_then(|v| v.to_str().ok())
+                            .and_then(|v| v.parse().ok());
+
+                        // Convert the reader into an opaque Body.
+                        Ok(response.map(|reader| {
+                            let body = ResponseBody {
+                                inner: reader,
+                                // Extend the lifetime of the agent by including a reference
+                                // to its handle in the response body.
+                                _agent: self.agent.clone(),
+                            };
+
+                            if let Some(len) = content_length {
+                                Body::from_reader_sized(body, len)
+                            } else {
+                                Body::from_reader(body)
+                            }
+                        }))
                     }
-
-                    // Set default user agent if not specified.
-                    request
-                        .headers_mut()
-                        .entry(http::header::USER_AGENT)
-                        .or_insert(USER_AGENT.parse().unwrap());
-
-                    // Create and configure a curl easy handle to fulfil the request.
-                    let (easy, future) = self.create_easy_handle(request)?;
-
-                    // Send the request to the agent to be executed.
-                    self.agent.submit_request(easy)?;
-
-                    // Await for the response headers.
-                    let response = future.await?;
-
-                    // If a Content-Length header is present, include that information in
-                    // the body as well.
-                    let content_length = response
-                        .headers()
-                        .get(http::header::CONTENT_LENGTH)
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|v| v.parse().ok());
-
-                    // Convert the reader into an opaque Body.
-                    Ok(response.map(|reader| {
-                        let body = ResponseBody {
-                            inner: reader,
-                            // Extend the lifetime of the agent by including a reference
-                            // to its handle in the response body.
-                            _agent: self.agent.clone(),
-                        };
-
-                        if let Some(len) = content_length {
-                            Body::from_reader_sized(body, len)
-                        } else {
-                            Body::from_reader(body)
-                        }
-                    }))
-                }.instrument(span.clone()))
+                    .instrument(span.clone()),
+                )
             }),
             interceptors: &self.interceptors,
         };
@@ -919,6 +937,7 @@ impl HttpClient {
                 AutomaticDecompression,
                 Authentication,
                 Credentials,
+                MaxAgeConn,
                 MaxUploadSpeed,
                 MaxDownloadSpeed,
                 VersionNegotiation,
@@ -1000,7 +1019,9 @@ impl HttpClient {
         // Generate a header list for curl.
         let mut headers = curl::easy::List::new();
 
-        let title_case = parts.extensions.get::<TitleCaseHeaders>()
+        let title_case = parts
+            .extensions
+            .get::<TitleCaseHeaders>()
             .or_else(|| self.defaults.get())
             .map(|v| v.0)
             .unwrap_or(false);
