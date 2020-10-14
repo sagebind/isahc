@@ -32,7 +32,7 @@ unstable-interceptors = []
 
 [dependencies]
 bytes = "0.5"
-crossbeam-channel = "0.4"
+crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
 curl = "0.4.31"
 curl-sys = "0.4.34"
