@@ -6,7 +6,7 @@
 
 mod cookie;
 mod jar;
-pub(crate) mod middleware;
+pub(crate) mod interceptor;
 mod response;
 
 #[cfg(feature = "psl")]

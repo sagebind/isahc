@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::{
     client::ResponseFuture,
     config::{internal::ConfigurableBase, Configurable},
@@ -52,6 +54,38 @@ impl<T> RequestExt<T> for Request<T> {
         T: Into<Body>,
     {
         crate::send_async(self)
+    }
+}
+
+pub trait RequestBuilderExt {
+    fn cookie(self, name: &str, value: &str) -> Self;
+}
+
+impl RequestBuilderExt for http::request::Builder {
+    fn cookie(mut self, name: &str, value: &str) -> Self {
+        if let Some(headers) = self.headers_mut() {
+            if let Some(header_value) = headers.get_mut(http::header::COOKIE) {
+                let mut new_header_value = header_value.as_bytes().to_vec();
+                new_header_value.push(b';');
+                new_header_value.push(b' ');
+                new_header_value.extend_from_slice(name.as_bytes());
+                new_header_value.push(b'=');
+                new_header_value.extend_from_slice(value.as_bytes());
+
+                if let Ok(new_header_value) = new_header_value.try_into() {
+                    *header_value = new_header_value;
+                }
+            } else {
+                let mut new_header_value = Vec::new();
+                new_header_value.extend_from_slice(name.as_bytes());
+                new_header_value.push(b'=');
+                new_header_value.extend_from_slice(value.as_bytes());
+
+                self = self.header(http::header::COOKIE, new_header_value);
+            }
+        }
+
+        self
     }
 }
 

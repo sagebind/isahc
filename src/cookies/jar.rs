@@ -42,6 +42,15 @@ impl CookieJar {
         self.cookies.write().unwrap().clear();
     }
 
+    pub(crate) fn get(&self, uri: &Uri) -> impl IntoIterator<Item=(String, String)> {
+        let jar = self.cookies.read().unwrap();
+
+        jar.values()
+            .filter(|cookie| cookie.matches(uri))
+            .map(|cookie| (cookie.name.clone(), cookie.value.clone()))
+            .collect::<Vec<_>>()
+    }
+
     pub(crate) fn get_cookies(&self, uri: &Uri) -> Option<String> {
         let jar = self.cookies.read().unwrap();
 

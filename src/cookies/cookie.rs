@@ -10,6 +10,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 #[derive(Debug)]
 pub struct Cookie {
     /// The name of the cookie.
+    /// TODO: Validate legal characters.
     pub(crate) name: String,
     /// The cookie value.
     pub(crate) value: String,

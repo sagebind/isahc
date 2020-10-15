@@ -19,7 +19,7 @@ features = ["cookies", "json"]
 status = "actively-developed"
 
 [features]
-default = ["cookies", "psl", "http2", "static-curl", "text-decoding"]
+default = ["http2", "static-curl", "text-decoding"]
 cookies = ["chrono"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]

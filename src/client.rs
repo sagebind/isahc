@@ -109,9 +109,7 @@ impl HttpClientBuilder {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
-        self
-            .configure(crate::cookies::CookieJar::default())
-            .interceptor_impl(crate::cookies::middleware::CookieMiddleware)
+        self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(Default::default()))
     }
 
     /// Add a request interceptor to the client.

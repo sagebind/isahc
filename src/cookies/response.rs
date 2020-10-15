@@ -9,6 +9,9 @@ pub trait CookieAwareResponse {
     /// that were explicitly returned by the server in this response.
     fn cookies(&self);
 
+    /// Get the value of a cookie by name.
+    fn cookie(&self, name: &str) -> Option<String>;
+
     /// Get the cookie jar associated with this response, if any.
     ///
     /// The cookie jar is set either by the request that produced this response
@@ -22,6 +25,10 @@ pub trait CookieAwareResponse {
 impl<T> CookieAwareResponse for Response<T> {
     fn cookies(&self) {
 
+    }
+
+    fn cookie(&self, name: &str) -> Option<String> {
+        None
     }
 
     fn cookie_jar(&self) -> Option<&CookieJar> {
