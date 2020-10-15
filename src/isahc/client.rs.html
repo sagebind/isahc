@@ -1101,6 +1101,27 @@
 <span id="1100">1100</span>
 <span id="1101">1101</span>
 <span id="1102">1102</span>
+<span id="1103">1103</span>
+<span id="1104">1104</span>
+<span id="1105">1105</span>
+<span id="1106">1106</span>
+<span id="1107">1107</span>
+<span id="1108">1108</span>
+<span id="1109">1109</span>
+<span id="1110">1110</span>
+<span id="1111">1111</span>
+<span id="1112">1112</span>
+<span id="1113">1113</span>
+<span id="1114">1114</span>
+<span id="1115">1115</span>
+<span id="1116">1116</span>
+<span id="1117">1117</span>
+<span id="1118">1118</span>
+<span id="1119">1119</span>
+<span id="1120">1120</span>
+<span id="1121">1121</span>
+<span id="1122">1122</span>
+<span id="1123">1123</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1118,9 +1139,8 @@
 <span class="kw">use</span> <span class="ident">futures_io</span>::<span class="ident">AsyncRead</span>;
 <span class="kw">use</span> <span class="ident">futures_util</span>::{<span class="ident">future</span>::<span class="ident">BoxFuture</span>, <span class="ident">pin_mut</span>};
 <span class="kw">use</span> <span class="ident">http</span>::{
-    <span class="ident">Request</span>,
-    <span class="ident">Response</span>,
     <span class="ident">header</span>::{<span class="ident">HeaderMap</span>, <span class="ident">HeaderName</span>, <span class="ident">HeaderValue</span>},
+    <span class="ident">Request</span>, <span class="ident">Response</span>,
 };
 <span class="kw">use</span> <span class="ident">lazy_static</span>::<span class="ident">lazy_static</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -1131,6 +1151,7 @@
     <span class="ident">pin</span>::<span class="ident">Pin</span>,
     <span class="ident">sync</span>::<span class="ident">Arc</span>,
     <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>},
+    <span class="ident">time</span>::<span class="ident">Duration</span>,
 };
 <span class="kw">use</span> <span class="ident">tracing_futures</span>::<span class="ident">Instrument</span>;
 
@@ -1232,6 +1253,23 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">interceptor_impl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">interceptor</span>: <span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">push</span>(<span class="ident">InterceptorObj</span>::<span class="ident">new</span>(<span class="ident">interceptor</span>));
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set the maximum time-to-live (TTL) for connections to remain in the</span>
+    <span class="doccomment">/// connection cache.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// After requests are completed, if the underlying connection is</span>
+    <span class="doccomment">/// reusable, it is added to the connection cache to be reused to reduce</span>
+    <span class="doccomment">/// latency for future requests. This option controls how long such</span>
+    <span class="doccomment">/// connections should be still considered valid before being discarded.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Old connections have a high risk of not working any more and thus</span>
+    <span class="doccomment">/// attempting to use them wastes time if the server has disconnected.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The default TTL is 118 seconds.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_ttl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ttl</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">MaxAgeConn</span>(<span class="ident">ttl</span>));
         <span class="self">self</span>
     }
 
@@ -1900,9 +1938,7 @@
         <span class="ident">builder</span>: <span class="ident">http</span>::<span class="ident">request</span>::<span class="ident">Builder</span>,
         <span class="ident">body</span>: <span class="ident">Body</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="ident">async</span> <span class="kw">move</span> {
-            <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="ident">await</span>
-        })
+        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="ident">async</span> <span class="kw">move</span> { <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">body</span>)<span class="question-mark">?</span>).<span class="ident">await</span> })
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
@@ -1915,57 +1951,60 @@
 
         <span class="kw">let</span> <span class="ident">cx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
             <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">request</span><span class="op">|</span> {
-                <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> {
-                    <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
-                    <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
-                    <span class="comment">// we have all the headers from default headers.</span>
-                    <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
-                        <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                            <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
-                                <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
+                <span class="ident">Box</span>::<span class="ident">pin</span>(
+                    <span class="ident">async</span> <span class="kw">move</span> {
+                        <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
+                        <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
+                        <span class="comment">// we have all the headers from default headers.</span>
+                        <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
+                                <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
+                                    <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
+                                }
                             }
                         }
+
+                        <span class="comment">// Set default user agent if not specified.</span>
+                        <span class="ident">request</span>
+                            .<span class="ident">headers_mut</span>()
+                            .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
+                            .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
+
+                        <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
+                        <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Send the request to the agent to be executed.</span>
+                        <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Await for the response headers.</span>
+                        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
+
+                        <span class="comment">// If a Content-Length header is present, include that information in</span>
+                        <span class="comment">// the body as well.</span>
+                        <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
+                            .<span class="ident">headers</span>()
+                            .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
+                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
+                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
+
+                        <span class="comment">// Convert the reader into an opaque Body.</span>
+                        <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
+                            <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
+                                <span class="ident">inner</span>: <span class="ident">reader</span>,
+                                <span class="comment">// Extend the lifetime of the agent by including a reference</span>
+                                <span class="comment">// to its handle in the response body.</span>
+                                <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
+                            };
+
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
+                                <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                            } <span class="kw">else</span> {
+                                <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
+                            }
+                        }))
                     }
-
-                    <span class="comment">// Set default user agent if not specified.</span>
-                    <span class="ident">request</span>
-                        .<span class="ident">headers_mut</span>()
-                        .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
-                        .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
-
-                    <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
-                    <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
-
-                    <span class="comment">// Send the request to the agent to be executed.</span>
-                    <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
-
-                    <span class="comment">// Await for the response headers.</span>
-                    <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
-
-                    <span class="comment">// If a Content-Length header is present, include that information in</span>
-                    <span class="comment">// the body as well.</span>
-                    <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
-                        .<span class="ident">headers</span>()
-                        .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
-                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
-                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
-
-                    <span class="comment">// Convert the reader into an opaque Body.</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
-                            <span class="ident">inner</span>: <span class="ident">reader</span>,
-                            <span class="comment">// Extend the lifetime of the agent by including a reference</span>
-                            <span class="comment">// to its handle in the response body.</span>
-                            <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
-                        };
-
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
-                            <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
-                        } <span class="kw">else</span> {
-                            <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
-                        }
-                    }))
-                }.<span class="ident">instrument</span>(<span class="ident">span</span>.<span class="ident">clone</span>()))
+                    .<span class="ident">instrument</span>(<span class="ident">span</span>.<span class="ident">clone</span>()),
+                )
             }),
             <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interceptors</span>,
         };
@@ -2023,6 +2062,7 @@
                 <span class="ident">AutomaticDecompression</span>,
                 <span class="ident">Authentication</span>,
                 <span class="ident">Credentials</span>,
+                <span class="ident">MaxAgeConn</span>,
                 <span class="ident">MaxUploadSpeed</span>,
                 <span class="ident">MaxDownloadSpeed</span>,
                 <span class="ident">VersionNegotiation</span>,
@@ -2104,7 +2144,9 @@
         <span class="comment">// Generate a header list for curl.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
 
-        <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">parts</span>.<span class="ident">extensions</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TitleCaseHeaders</span><span class="op">&gt;</span>()
+        <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">parts</span>
+            .<span class="ident">extensions</span>
+            .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TitleCaseHeaders</span><span class="op">&gt;</span>()
             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
