@@ -28,12 +28,12 @@ spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
-middleware-api-preview = []
+unstable-interceptors = []
 
 [dependencies]
 bytes = "0.5"
-crossbeam-channel = "0.4"
-crossbeam-utils = "0.7"
+crossbeam-channel = "0.5"
+crossbeam-utils = "0.8"
 curl = "0.4.31"
 curl-sys = "0.4.34"
 futures-channel = "0.3"

@@ -800,6 +800,15 @@ impl SetOpt for MaxDownloadSpeed {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct MaxAgeConn(pub(crate) Duration);
+
+impl SetOpt for MaxAgeConn {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.maxage_conn(self.0)
+    }
+}
+
 /// Close the connection when the request completes instead of returning it to
 /// the connection cache.
 #[derive(Clone, Debug)]
