@@ -1,18 +1,18 @@
 //! Cookie state management.
 //!
-//! This module provides a cookie jar implementation conforming to RFC 6265.
+//! # Availability
 //!
-//! Everything in this module requires the `cookies` feature to be enabled.
+//! This module is only available when the [`cookies`](index.html#cookies)
+//! feature is enabled.
 
 mod cookie;
 mod jar;
 pub(crate) mod interceptor;
-mod response;
 
 #[cfg(feature = "psl")]
 mod psl;
 
 pub use self::{
-    cookie::Cookie,
+    cookie::{Cookie, ParseError},
     jar::*,
 };

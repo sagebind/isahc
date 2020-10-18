@@ -1,131 +1,78 @@
-use super::psl;
-use chrono::{
-    prelude::*,
-    Duration,
+use chrono::{prelude::*, Duration};
+use std::{
+    error::Error,
+    fmt,
+    str::{self, FromStr},
 };
-use http::Uri;
-use std::net::{Ipv4Addr, Ipv6Addr};
+
+/// An error which can occur when attempting to parse a cookie string.
+#[derive(Debug)]
+pub struct ParseError(());
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid cookie string syntax")
+    }
+}
+
+impl Error for ParseError {}
 
 /// Information stored about an HTTP cookie.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Cookie {
     /// The name of the cookie.
-    /// TODO: Validate legal characters.
-    pub(crate) name: String,
+    name: String,
+
     /// The cookie value.
-    pub(crate) value: String,
+    value: String,
+
     /// The domain the cookie belongs to.
-    pub(crate) domain: String,
+    pub(crate) domain: Option<String>,
+
     /// A path prefix that this cookie belongs to.
-    pub(crate) path: String,
+    pub(crate) path: Option<String>,
+
     /// True if the cookie is marked as secure (limited in scope to HTTPS).
-    pub(crate) secure: bool,
-    /// True if the cookie is a host-only cookie (i.e. the request's host must
-    /// exactly match the domain of the cookie).
-    pub(crate) host_only: bool,
+    secure: bool,
+
     /// Time when this cookie expires. If not present, then this is a session
     /// cookie that expires when the current client session ends.
     pub(crate) expiration: Option<DateTime<Utc>>,
 }
 
 impl Cookie {
-    /// Parse a cookie from a Set-Cookie header value, within the context of the
-    /// given URI.
-    pub(crate) fn parse(header: &str, uri: &Uri) -> Option<Self> {
-        let mut attributes = header
-            .split(';')
-            .map(str::trim)
-            .map(|item| item.splitn(2, '=').map(str::trim));
+    /// Parse a cookie from a cookie string, as defined in [RFC 6265, section
+    /// 4.2.1](https://tools.ietf.org/html/rfc6265#section-4.2.1). This can be
+    /// used to parse `Set-Cookie` header values, but not `Cookie` header
+    /// values, which follow a slightly different syntax.
+    ///
+    /// If the given value is not a valid cookie string, an error is returned.
+    /// Note that unknown attributes do not cause a parsing error, and are
+    /// simply ignored (as per [RFC 6265, section
+    /// 4.1.2](https://tools.ietf.org/html/rfc6265#section-4.1.2)).
+    pub(crate) fn parse<T>(header: T) -> Result<Self, ParseError>
+    where
+        T: AsRef<[u8]>,
+    {
+        Self::parse_impl(header.as_ref())
+    }
 
-        let mut first_pair = attributes.next()?;
+    /// Get the name of the cookie.
+    #[inline]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
-        let cookie_name = first_pair.next()?.into();
-        let cookie_value = first_pair.next()?.into();
-        let mut cookie_domain = None;
-        let mut cookie_path = None;
-        let mut cookie_secure = false;
-        let mut cookie_expiration = None;
+    /// Get the value of the cookie.
+    #[inline]
+    pub fn value(&self) -> &str {
+        &self.value
+    }
 
-        // Look for known attribute names and parse them. Note that there are
-        // multiple attributes in the spec that we don't parse right now because
-        // we do not care about them, including HttpOnly and SameSite.
-        for mut attribute in attributes {
-            let name = attribute.next()?;
-            let value = attribute.next();
-
-            if name.eq_ignore_ascii_case("Expires") {
-                if cookie_expiration.is_none() {
-                    if let Some(value) = value {
-                        if let Ok(time) = DateTime::parse_from_rfc2822(value) {
-                            cookie_expiration = Some(time.with_timezone(&Utc));
-                        }
-                    }
-                }
-            } else if name.eq_ignore_ascii_case("Domain") {
-                cookie_domain = value
-                    .map(|s| s.trim_start_matches('.'))
-                    .map(str::to_lowercase);
-            } else if name.eq_ignore_ascii_case("Max-Age") {
-                if let Some(value) = value {
-                    if let Ok(seconds) = value.parse() {
-                        cookie_expiration = Some(Utc::now() + Duration::seconds(seconds));
-                    }
-                }
-            } else if name.eq_ignore_ascii_case("Path") {
-                cookie_path = value.map(ToOwned::to_owned);
-            } else if name.eq_ignore_ascii_case("Secure") {
-                cookie_secure = true;
-            }
-        }
-
-        // Perform some validations on the domain.
-        if let Some(domain) = cookie_domain.as_ref() {
-            // The given domain must domain-match the origin.
-            // https://tools.ietf.org/html/rfc6265#section-5.3.6
-            if !Cookie::domain_matches(uri.host()?, domain) {
-                tracing::warn!(
-                    "cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'",
-                    cookie_name,
-                    uri.host()?,
-                    domain
-                );
-                return None;
-            }
-
-            // Drop cookies for top-level domains.
-            if !domain.contains('.') {
-                tracing::warn!(
-                    "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
-                    cookie_name,
-                    domain
-                );
-                return None;
-            }
-
-            // Check the PSL for bad domain suffixes if available.
-            // https://tools.ietf.org/html/rfc6265#section-5.3.5
-            #[cfg(feature = "psl")]
-            {
-                if psl::is_public_suffix(domain) {
-                    tracing::warn!(
-                        "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
-                        cookie_name,
-                        domain
-                    );
-                    return None;
-                }
-            }
-        }
-
-        Some(Self {
-            name: cookie_name,
-            value: cookie_value,
-            secure: cookie_secure,
-            expiration: cookie_expiration,
-            host_only: cookie_domain.is_none(),
-            domain: cookie_domain.or_else(|| uri.host().map(ToOwned::to_owned))?,
-            path: cookie_path.unwrap_or_else(|| Cookie::default_path(uri).to_owned()),
-        })
+    /// Get whether this cookie was marked as being secure only.
+    #[inline]
+    pub(crate) fn is_secure(&self) -> bool {
+        self.secure
     }
 
     pub(crate) fn is_expired(&self) -> bool {
@@ -135,167 +82,151 @@ impl Cookie {
         }
     }
 
-    pub(crate) fn key(&self) -> String {
-        format!("{}.{}.{}", self.domain, self.path, self.name)
-    }
+    fn parse_impl(header: &[u8]) -> Result<Self, ParseError> {
+        let mut attributes = trim_left_ascii(header)
+            .split(|&byte| byte == b';')
+            .map(trim_left_ascii);
 
-    // http://tools.ietf.org/html/rfc6265#section-5.4
-    pub(crate) fn matches(&self, uri: &Uri) -> bool {
-        if self.secure && uri.scheme() != Some(&::http::uri::Scheme::HTTPS) {
-            return false;
-        }
+        let first_pair =
+            split_at_first(attributes.next().ok_or(ParseError(()))?, &b'=').ok_or(ParseError(()))?;
 
-        let request_host = uri.host().unwrap_or("");
+        let cookie_name = parse_token(first_pair.0)?.into();
+        let cookie_value = parse_cookie_value(first_pair.1)?.into();
+        let mut cookie_domain = None;
+        let mut cookie_path = None;
+        let mut cookie_secure = false;
+        let mut cookie_expiration = None;
 
-        if self.host_only {
-            if !self.domain.eq_ignore_ascii_case(request_host) {
-                return false;
+        // Look for known attribute names and parse them. Note that there are
+        // multiple attributes in the spec that we don't parse right now because we
+        // do not care about them, including HttpOnly and SameSite.
+        for attribute in attributes {
+            if let Some((name, value)) = split_at_first(attribute, &b'=') {
+                if name.eq_ignore_ascii_case(b"Expires") {
+                    if cookie_expiration.is_none() {
+                        if let Ok(value) = str::from_utf8(value) {
+                            if let Ok(time) = DateTime::parse_from_rfc2822(value) {
+                                cookie_expiration = Some(time.with_timezone(&Utc));
+                            }
+                        }
+                    }
+                } else if name.eq_ignore_ascii_case(b"Domain") {
+                    if let Ok(value) = str::from_utf8(value) {
+                        cookie_domain = Some(value.trim_start_matches('.').to_lowercase());
+                    }
+                } else if name.eq_ignore_ascii_case(b"Max-Age") {
+                    if let Ok(value) = str::from_utf8(value) {
+                        if let Ok(seconds) = value.parse() {
+                            cookie_expiration = Some(Utc::now() + Duration::seconds(seconds));
+                        }
+                    }
+                } else if name.eq_ignore_ascii_case(b"Path") {
+                    if let Ok(value) = str::from_utf8(value) {
+                        cookie_path = Some(value.to_owned());
+                    }
+                }
+            } else if attribute.eq_ignore_ascii_case(b"Secure") {
+                cookie_secure = true;
             }
-        } else if !Cookie::domain_matches(request_host, &self.domain) {
-            return false;
         }
 
-        if !Cookie::path_matches(uri.path(), &self.path) {
-            return false;
-        }
+        Ok(Self {
+            name: cookie_name,
+            value: cookie_value,
+            secure: cookie_secure,
+            expiration: cookie_expiration,
+            domain: cookie_domain,
+            path: cookie_path,
+        })
+    }
+}
 
-        if self.is_expired() {
-            return false;
-        }
+impl FromStr for Cookie {
+    type Err = ParseError;
 
-        true
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
+// https://tools.ietf.org/html/rfc6265#section-4.1.1
+#[allow(unsafe_code)]
+fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
+    // Strip quotes, but only if in a legal pair.
+    if bytes.starts_with(b"\"") && bytes.ends_with(b"\"") {
+        bytes = &bytes[1..bytes.len() - 2];
     }
 
-    // http://tools.ietf.org/html/rfc6265#section-5.1.3
-    pub(crate) fn domain_matches(string: &str, domain_string: &str) -> bool {
-        if domain_string.eq_ignore_ascii_case(string) {
-            return true;
-        }
-
-        let string = &string.to_lowercase();
-        let domain_string = &domain_string.to_lowercase();
-
-        string.ends_with(domain_string)
-            && string.as_bytes()[string.len() - domain_string.len() - 1] == b'.'
-            && string.parse::<Ipv4Addr>().is_err()
-            && string.parse::<Ipv6Addr>().is_err()
+    // Validate the bytes are all legal cookie octets.
+    if !bytes.iter().copied().all(is_cookie_octet) {
+        return Err(ParseError(()));
     }
 
-    // http://tools.ietf.org/html/rfc6265#section-5.1.4
-    pub(crate) fn path_matches(request_path: &str, cookie_path: &str) -> bool {
-        if request_path == cookie_path {
-            return true;
-        }
+    // Safety: We know that the given bytes are valid US-ASCII at this point, so
+    // therefore it is also valid UTF-8.
+    Ok(unsafe { str::from_utf8_unchecked(bytes) })
+}
 
-        if request_path.starts_with(cookie_path)
-            && (cookie_path.ends_with('/') || request_path[cookie_path.len()..].starts_with('/'))
-        {
-            return true;
-        }
+// https://tools.ietf.org/html/rfc2616#section-2.2
+#[allow(unsafe_code)]
+fn parse_token(bytes: &[u8]) -> Result<&str, ParseError> {
+    const SEPARATORS: &[u8] = b"()<>@,;:\\\"/[]?={} \t";
 
-        false
+    for byte in bytes {
+        if !byte.is_ascii() || byte.is_ascii_control() || SEPARATORS.contains(byte) {
+            return Err(ParseError(()));
+        }
     }
 
-    // http://tools.ietf.org/html/rfc6265#section-5.1.4
-    fn default_path(uri: &Uri) -> &str {
-        // Step 2
-        if !uri.path().starts_with('/') {
-            return "/";
-        }
+    // Safety: We know that the given bytes are valid US-ASCII at this point, so
+    // therefore it is also valid UTF-8.
+    Ok(unsafe { str::from_utf8_unchecked(bytes) })
+}
 
-        // Step 3
-        let rightmost_slash_idx = uri.path().rfind('/').unwrap();
-        if rightmost_slash_idx == 0 {
-            // There's only one slash; it's the first character.
-            return "/";
-        }
-
-        // Step 4
-        &uri.path()[..rightmost_slash_idx]
+fn is_cookie_octet(byte: u8) -> bool {
+    match byte {
+        0x21 | 0x23..=0x2B | 0x2D..=0x3A | 0x3C..=0x5B | 0x5D..=0x7E => true,
+        _ => false,
     }
+}
+
+fn trim_left_ascii(mut ascii: &[u8]) -> &[u8] {
+    while ascii.first() == Some(&b' ') {
+        ascii = &ascii[1..];
+    }
+
+    ascii
+}
+
+fn split_at_first<'a, T: PartialEq>(slice: &'a [T], separator: &T) -> Option<(&'a [T], &'a [T])> {
+    for (i, value) in slice.iter().enumerate() {
+        if value == separator {
+            return Some((&slice[..i], &slice[i + 1..]));
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn parse_cookie(header: &str, uri: &str) -> Option<Cookie> {
-        Cookie::parse(header, &uri.parse().unwrap())
-    }
-
     #[test]
     fn parse_set_cookie_header() {
-        let cookie = parse_cookie(
-            "foo=bar; path=/sub;Secure ; expires =Wed, 21 Oct 2015 07:28:00 GMT",
-            "https://baz.com",
-        )
-        .unwrap();
+        let cookie =
+            "foo=bar; path=/sub;Secure; DOMAIN=baz.com;expires=Wed, 21 Oct 2015 07:28:00 GMT"
+                .parse::<Cookie>()
+                .unwrap();
 
         assert_eq!(cookie.name, "foo");
         assert_eq!(cookie.value, "bar");
-        assert_eq!(cookie.path, "/sub");
-        assert_eq!(cookie.domain, "baz.com");
+        assert_eq!(cookie.path.as_deref(), Some("/sub"));
+        assert_eq!(cookie.domain.as_deref(), Some("baz.com"));
         assert!(cookie.secure);
-        assert!(cookie.host_only);
         assert_eq!(
             cookie.expiration.as_ref().map(|t| t.timestamp()),
             Some(1_445_412_480)
         );
-    }
-
-    #[test]
-    fn cookie_domain_not_allowed() {
-        assert!(parse_cookie("foo=bar", "https://bar.baz.com").is_some());
-        assert!(parse_cookie("foo=bar; domain=bar.baz.com", "https://bar.baz.com").is_some());
-        assert!(parse_cookie("foo=bar; domain=baz.com", "https://bar.baz.com").is_some());
-        assert!(parse_cookie("foo=bar; domain=www.bar.baz.com", "https://bar.baz.com").is_none());
-
-        // TLDs are not allowed.
-        assert!(parse_cookie("foo=bar; domain=com", "https://bar.baz.com").is_none());
-        assert!(parse_cookie("foo=bar; domain=.com", "https://bar.baz.com").is_none());
-
-        // If the public suffix list is enabled, also exercise that validation.
-        if cfg!(feature = "psl") {
-            // wi.us is a public suffix
-            assert!(parse_cookie("foo=bar; domain=wi.us", "https://www.state.wi.us").is_none());
-        }
-    }
-
-    #[test]
-    fn domain_matches() {
-        for case in &[
-            ("127.0.0.1", "127.0.0.1", true),
-            (".127.0.0.1", "127.0.0.1", true),
-            ("bar.com", "bar.com", true),
-            ("baz.com", "bar.com", false),
-            ("baz.bar.com", "bar.com", true),
-            ("www.baz.com", "baz.com", true),
-            ("baz.bar.com", "com", true),
-        ] {
-            assert_eq!(Cookie::domain_matches(case.0, case.1), case.2);
-        }
-    }
-
-    #[test]
-    fn path_matches() {
-        for case in &[
-            ("/foo", "/foo", true),
-            ("/Foo", "/foo", false),
-            ("/fo", "/foo", false),
-            ("/foo/bar", "/foo", true),
-            ("/foo/bar/baz", "/foo", true),
-            ("/foo/bar//baz", "/foo", true),
-            ("/foobar", "/foo", false),
-            ("/foo", "/foo/bar", false),
-            ("/foobar", "/foo/bar", false),
-            ("/foo/bar", "/foo/bar", true),
-            ("/foo/bar/", "/foo/bar", true),
-            ("/foo/bar/baz", "/foo/bar", true),
-            ("/foo/bar", "/foo/bar/", false),
-            ("/foo/bar/", "/foo/bar/", true),
-            ("/foo/bar/baz", "/foo/bar/", true),
-        ] {
-            assert_eq!(Cookie::path_matches(case.0, case.1), case.2);
-        }
     }
 }

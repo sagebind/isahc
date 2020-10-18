@@ -4,7 +4,6 @@
 use super::{Cookie, CookieJar};
 use crate::{
     interceptor::{Context, Interceptor, InterceptorFuture},
-    request::RequestBuilderExt,
     response::ResponseExt,
     Body,
     Error,
@@ -45,10 +44,14 @@ impl Interceptor for CookieInterceptor {
                     .insert(http::header::COOKIE, header.parse().unwrap());
             }
 
+            let request_uri = request.uri().clone();
             let mut response = ctx.send(request).await?;
 
             // Persist cookies returned from the server, if any.
             if response.headers().contains_key(http::header::SET_COOKIE) {
+                let request_uri = response.effective_uri()
+                    .unwrap_or(&request_uri);
+
                 let cookies = response
                     .headers()
                     .get_all(http::header::SET_COOKIE)
@@ -59,17 +62,14 @@ impl Interceptor for CookieInterceptor {
                             None
                         })
                     })
-                    .filter_map(|header| {
-                        response
-                            .effective_uri()
-                            .and_then(|uri| Cookie::parse(header, uri))
-                            .or_else(|| {
-                                tracing::warn!("could not parse Set-Cookie header");
-                                None
-                            })
-                    });
+                    .filter_map(|header| header.parse::<Cookie>().ok().or_else(|| {
+                        tracing::warn!("could not parse Set-Cookie header");
+                        None
+                    }));
 
-                jar.add(cookies);
+                for cookie in cookies {
+                    jar.set(cookie, request_uri);
+                }
             }
 
             // Attach cookie jar to response for user inspection.
