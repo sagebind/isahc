@@ -47,6 +47,16 @@ pub trait ResponseExt<T> {
     /// nearest proxy rather than the server.
     fn remote_addr(&self) -> Option<SocketAddr>;
 
+    /// Get the configured cookie jar used for persisting cookies from this
+    /// response, if any.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar>;
+
     /// If request metrics are enabled for this particular transfer, return a
     /// metrics object containing a live view of currently available data.
     ///
@@ -171,6 +181,11 @@ impl<T> ResponseExt<T> for Response<T> {
 
     fn remote_addr(&self) -> Option<SocketAddr> {
         self.extensions().get::<RemoteAddr>().map(|v| v.0)
+    }
+
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
+        self.extensions().get()
     }
 
     fn metrics(&self) -> Option<&Metrics> {

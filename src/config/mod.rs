@@ -137,9 +137,14 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// A cookie jar can be shared across multiple requests or with an entire
     /// client, allowing cookies to be persisted across multiple requests.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
     #[cfg(feature = "cookies")]
-    fn cookie_jar(self, jar: crate::cookies::CookieJar) -> Self {
-        self.configure(jar)
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.configure(cookie_jar)
     }
 
     /// Enable or disable automatic decompression of the response body for

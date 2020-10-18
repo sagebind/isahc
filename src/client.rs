@@ -109,7 +109,9 @@ impl HttpClientBuilder {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
-        self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(Default::default()))
+        // Note: this method is now essentially the same as setting a default
+        // cookie jar, but remains for backwards compatibility.
+        self.cookie_jar(Default::default())
     }
 
     /// Add a request interceptor to the client.
@@ -406,7 +408,12 @@ impl HttpClientBuilder {
     }
 }
 
-impl Configurable for HttpClientBuilder {}
+impl Configurable for HttpClientBuilder {
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(cookie_jar))
+    }
+}
 
 impl ConfigurableBase for HttpClientBuilder {
     fn configure(mut self, option: impl Send + Sync + 'static) -> Self {

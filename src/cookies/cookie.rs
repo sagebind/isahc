@@ -37,7 +37,7 @@ pub struct Cookie {
 
     /// Time when this cookie expires. If not present, then this is a session
     /// cookie that expires when the current client session ends.
-    pub(crate) expiration: Option<DateTime<Utc>>,
+    expiration: Option<DateTime<Utc>>,
 }
 
 impl Cookie {
