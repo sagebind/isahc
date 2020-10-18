@@ -47,11 +47,11 @@ pub(crate) use self::obj::InterceptorObj;
 #[cfg(feature = "unstable-interceptors")]
 #[macro_export]
 macro_rules! interceptor {
-    ($request:ident, $cx:ident, $body:expr) => {{
+    ($request:ident, $ctx:ident, $body:expr) => {{
         async fn interceptor(
             mut $request: $crate::http::Request<$crate::Body>,
-            $cx: $crate::interceptor::Context<'_>,
-        ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn std::error::Error>> {
+            $ctx: $crate::interceptor::Context<'_>,
+        ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn ::std::error::Error>> {
             (move || async move {
                 $body
             })().await.map_err(Into::into)
@@ -74,7 +74,7 @@ pub trait Interceptor: Send + Sync {
     ///
     /// The returned future is allowed to borrow the interceptor for the
     /// duration of its execution.
-    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
+    fn intercept<'a>(&'a self, request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
 }
 
 /// The type of future returned by an interceptor.
@@ -100,8 +100,8 @@ where
 {
     type Err = E;
 
-    fn intercept<'a>(&self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
-        Box::pin(self.0.call(request, cx))
+    fn intercept<'a>(&self, request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+        Box::pin(self.0.call(request, ctx))
     }
 }
 

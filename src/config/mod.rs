@@ -132,6 +132,21 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(redirect::AutoReferer)
     }
 
+    /// Set a cookie jar to use to accept, store, and supply cookies for
+    /// incoming responses and outgoing requests.
+    ///
+    /// A cookie jar can be shared across multiple requests or with an entire
+    /// client, allowing cookies to be persisted across multiple requests.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.configure(cookie_jar)
+    }
+
     /// Enable or disable automatic decompression of the response body for
     /// various compression algorithms as returned by the server in the
     /// [`Content-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding)

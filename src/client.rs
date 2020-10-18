@@ -66,6 +66,12 @@ pub struct HttpClientBuilder {
     interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
     error: Option<Error>,
+
+    #[cfg(feature = "cookies")]
+    cookie_support: bool,
+
+    #[cfg(feature = "cookies")]
+    cookie_jar: Option<crate::cookies::CookieJar>,
 }
 
 impl Default for HttpClientBuilder {
@@ -98,6 +104,12 @@ impl HttpClientBuilder {
             interceptors: Vec::new(),
             default_headers: HeaderMap::new(),
             error: None,
+
+            #[cfg(feature = "cookies")]
+            cookie_support: false,
+
+            #[cfg(feature = "cookies")]
+            cookie_jar: None,
         }
     }
 
@@ -109,7 +121,9 @@ impl HttpClientBuilder {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookies(self) -> Self {
-        self.interceptor_impl(crate::cookies::CookieJar::default())
+        // Note: this method is now essentially the same as setting a default
+        // cookie jar, but remains for backwards compatibility.
+        self.cookie_jar(Default::default())
     }
 
     /// Add a request interceptor to the client.
@@ -392,21 +406,41 @@ impl HttpClientBuilder {
     /// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
+    #[allow(unused_mut)]
     #[tracing::instrument(level = "debug", skip(self))]
-    pub fn build(self) -> Result<HttpClient, Error> {
+    pub fn build(mut self) -> Result<HttpClient, Error> {
         if let Some(err) = self.error {
             return Err(err);
         }
+
+        #[cfg(feature = "cookies")]
+        {
+            if self.cookie_support {
+                let jar = self.cookie_jar.clone();
+                self = self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(jar));
+            }
+        }
+
         Ok(HttpClient {
             agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             interceptors: self.interceptors,
             default_headers: self.default_headers,
+
+            #[cfg(feature = "cookies")]
+            cookie_jar: self.cookie_jar,
         })
     }
 }
 
-impl Configurable for HttpClientBuilder {}
+impl Configurable for HttpClientBuilder {
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(mut self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.cookie_jar = Some(cookie_jar);
+        self.cookie_support = true;
+        self
+    }
+}
 
 impl ConfigurableBase for HttpClientBuilder {
     fn configure(mut self, option: impl Send + Sync + 'static) -> Self {
@@ -522,6 +556,10 @@ pub struct HttpClient {
 
     /// Default headers to add to every request.
     default_headers: HeaderMap<HeaderValue>,
+
+    /// Configured cookie jar, if any.
+    #[cfg(feature = "cookies")]
+    cookie_jar: Option<crate::cookies::CookieJar>,
 }
 
 impl HttpClient {
@@ -548,6 +586,17 @@ impl HttpClient {
     /// Create a new [`HttpClientBuilder`] for building a custom client.
     pub fn builder() -> HttpClientBuilder {
         HttpClientBuilder::default()
+    }
+
+    /// Get the configured cookie jar for this HTTP client, if any.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
+    #[cfg(feature = "cookies")]
+    pub fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
+        self.cookie_jar.as_ref()
     }
 
     /// Send a GET request to the given URI.
