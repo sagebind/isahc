@@ -847,6 +847,21 @@
 <span id="846">846</span>
 <span id="847">847</span>
 <span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -980,6 +995,21 @@
     <span class="doccomment">/// Update the `Referer` header automatically when following redirects.</span>
     <span class="kw">fn</span> <span class="ident">auto_referer</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">redirect</span>::<span class="ident">AutoReferer</span>)
+    }
+
+    <span class="doccomment">/// Set a cookie jar to use to accept, store, and supply cookies for</span>
+    <span class="doccomment">/// incoming responses and outgoing requests.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// A cookie jar can be shared across multiple requests or with an entire</span>
+    <span class="doccomment">/// client, allowing cookies to be persisted across multiple requests.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
+    <span class="doccomment">/// feature is enabled.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">cookie_jar</span>)
     }
 
     <span class="doccomment">/// Enable or disable automatic decompression of the response body for</span>

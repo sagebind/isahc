@@ -1122,6 +1122,55 @@
 <span id="1121">1121</span>
 <span id="1122">1122</span>
 <span id="1123">1123</span>
+<span id="1124">1124</span>
+<span id="1125">1125</span>
+<span id="1126">1126</span>
+<span id="1127">1127</span>
+<span id="1128">1128</span>
+<span id="1129">1129</span>
+<span id="1130">1130</span>
+<span id="1131">1131</span>
+<span id="1132">1132</span>
+<span id="1133">1133</span>
+<span id="1134">1134</span>
+<span id="1135">1135</span>
+<span id="1136">1136</span>
+<span id="1137">1137</span>
+<span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
+<span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
+<span id="1163">1163</span>
+<span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1191,6 +1240,12 @@
     <span class="ident">interceptors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InterceptorObj</span><span class="op">&gt;</span>,
     <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>,
     <span class="ident">error</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span>,
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="ident">cookie_support</span>: <span class="ident">bool</span>,
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
@@ -1223,6 +1278,12 @@
             <span class="ident">interceptors</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span>::<span class="ident">new</span>(),
             <span class="ident">error</span>: <span class="prelude-val">None</span>,
+
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+            <span class="ident">cookie_support</span>: <span class="bool-val">false</span>,
+
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+            <span class="ident">cookie_jar</span>: <span class="prelude-val">None</span>,
         }
     }
 
@@ -1234,7 +1295,9 @@
     <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookies</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span>::<span class="ident">default</span>())
+        <span class="comment">// Note: this method is now essentially the same as setting a default</span>
+        <span class="comment">// cookie jar, but remains for backwards compatibility.</span>
+        <span class="self">self</span>.<span class="ident">cookie_jar</span>(<span class="ident">Default</span>::<span class="ident">default</span>())
     }
 
     <span class="doccomment">/// Add a request interceptor to the client.</span>
@@ -1517,21 +1580,41 @@
     <span class="doccomment">/// Build an [`HttpClient`] using the configured options.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
     <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HttpClient</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HttpClient</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">error</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
         }
+
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+        {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cookie_support</span> {
+                <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">clone</span>();
+                <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">interceptor</span>::<span class="ident">CookieInterceptor</span>::<span class="ident">new</span>(<span class="ident">jar</span>));
+            }
+        }
+
         <span class="prelude-val">Ok</span>(<span class="ident">HttpClient</span> {
             <span class="ident">agent</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>),
             <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
             <span class="ident">default_headers</span>: <span class="self">self</span>.<span class="ident">default_headers</span>,
+
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+            <span class="ident">cookie_jar</span>: <span class="self">self</span>.<span class="ident">cookie_jar</span>,
         })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Configurable</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {}
+<span class="kw">impl</span> <span class="ident">Configurable</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">cookie_jar</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">cookie_jar</span>);
+        <span class="self">self</span>.<span class="ident">cookie_support</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="self">self</span>
+    }
+}
 
 <span class="kw">impl</span> <span class="ident">ConfigurableBase</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
     <span class="kw">fn</span> <span class="ident">configure</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">option</span>: <span class="kw">impl</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
@@ -1647,6 +1730,10 @@
 
     <span class="doccomment">/// Default headers to add to every request.</span>
     <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// Configured cookie jar, if any.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">HttpClient</span> {
@@ -1673,6 +1760,17 @@
     <span class="doccomment">/// Create a new [`HttpClientBuilder`] for building a custom client.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HttpClientBuilder</span> {
         <span class="ident">HttpClientBuilder</span>::<span class="ident">default</span>()
+    }
+
+    <span class="doccomment">/// Get the configured cookie jar for this HTTP client, if any.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Availability</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
+    <span class="doccomment">/// feature is enabled.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// Send a GET request to the given URI.</span>
