@@ -88,7 +88,7 @@ default-features = false
 features = ["std", "std-future"]
 
 [dev-dependencies]
-env_logger = "0.7"
+env_logger = "0.8"
 flate2 = "1.0"
 futures = "0.3"
 indicatif = "0.15"
