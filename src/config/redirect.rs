@@ -11,8 +11,10 @@ pub enum RedirectPolicy {
     ///
     /// This is the default policy.
     None,
+
     /// Follow all redirects automatically.
     Follow,
+
     /// Follow redirects automatically up to a maximum number of redirects.
     Limit(u32),
 }
@@ -25,18 +27,18 @@ impl Default for RedirectPolicy {
 
 impl SetOpt for RedirectPolicy {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match self {
-            RedirectPolicy::Follow => {
-                easy.follow_location(true)?;
-            }
-            RedirectPolicy::Limit(max) => {
-                easy.follow_location(true)?;
-                easy.max_redirections(*max)?;
-            }
-            RedirectPolicy::None => {
-                easy.follow_location(false)?;
-            }
-        }
+        // match self {
+        //     RedirectPolicy::Follow => {
+        //         easy.follow_location(true)?;
+        //     }
+        //     RedirectPolicy::Limit(max) => {
+        //         easy.follow_location(true)?;
+        //         easy.max_redirections(*max)?;
+        //     }
+        //     RedirectPolicy::None => {
+        //         easy.follow_location(false)?;
+        //     }
+        // }
 
         Ok(())
     }
@@ -47,6 +49,7 @@ pub(crate) struct AutoReferer;
 
 impl SetOpt for AutoReferer {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.autoreferer(true)
+        // easy.autoreferer(true)
+        Ok(())
     }
 }

@@ -8,14 +8,14 @@ use std::{
 
 /// Execution context for an interceptor.
 pub struct Context<'a> {
-    pub(crate) invoker: Arc<dyn (Fn(Request<Body>) -> InterceptorFuture<'a, Error>) + Send + Sync + 'a>,
+    pub(crate) invoker: Arc<dyn Invoke + Send + Sync + 'a>,
     pub(crate) interceptors: &'a [InterceptorObj],
 }
 
-impl Context<'_> {
+impl<'a> Context<'a> {
     /// Send a request asynchronously, executing the next interceptor in the
     /// chain, if any.
-    pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    pub async fn send(&'a self, request: &'a mut Request<Body>) -> Result<Response<Body>, Error> {
         if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
@@ -35,7 +35,7 @@ impl Context<'_> {
                 },
             }
         } else {
-            (self.invoker)(request).await
+            self.invoker.invoke(request).await
         }
     }
 }
@@ -44,4 +44,8 @@ impl fmt::Debug for Context<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context").finish()
     }
+}
+
+pub(crate) trait Invoke {
+    fn invoke<'a>(&'a self, request: &'a mut Request<Body>) -> InterceptorFuture<'a, Error>;
 }

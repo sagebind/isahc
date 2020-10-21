@@ -234,6 +234,7 @@ mod error;
 mod handler;
 mod headers;
 mod metrics;
+mod redirect;
 mod request;
 mod response;
 mod task;

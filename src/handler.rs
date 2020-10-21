@@ -2,6 +2,7 @@
 
 use crate::{
     headers,
+    redirect::RedirectUri,
     response::{EffectiveUri, LocalAddr, RemoteAddr},
     Body, Error, Metrics,
 };
@@ -20,6 +21,7 @@ use std::{
     fmt,
     future::Future,
     io,
+    mem,
     net::SocketAddr,
     os::raw::{c_char, c_long},
     pin::Pin,
@@ -27,6 +29,8 @@ use std::{
     sync::Arc,
     task::{Context, Poll, Waker},
 };
+
+pub(crate) struct RequestBody(pub(crate) Body);
 
 /// Manages the state of a single request/response life cycle.
 ///
@@ -240,6 +244,10 @@ impl RequestHandler {
                 builder = builder.extension(EffectiveUri(uri));
             }
 
+            if let Some(uri) = self.get_redirect_uri() {
+                builder = builder.extension(RedirectUri(uri));
+            }
+
             if let Some(addr) = self.get_local_addr() {
                 builder = builder.extension(LocalAddr(addr));
             }
@@ -247,6 +255,10 @@ impl RequestHandler {
             if let Some(addr) = self.get_primary_addr() {
                 builder = builder.extension(RemoteAddr(addr));
             }
+
+            // Keep the request body around in case interceptors need access to
+            // it. Otherwise we're just going to drop it later.
+            builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
 
             // Include metrics in response, but only if it was created. If
             // metrics are disabled then it won't have been created.
@@ -280,6 +292,14 @@ impl RequestHandler {
     }
 
     fn get_effective_uri(&mut self) -> Option<Uri> {
+        self.get_uri(curl_sys::CURLINFO_EFFECTIVE_URL)
+    }
+
+    fn get_redirect_uri(&mut self) -> Option<Uri> {
+        self.get_uri(curl_sys::CURLINFO_REDIRECT_URL)
+    }
+
+    fn get_uri(&mut self, info: curl_sys::CURLINFO) -> Option<Uri> {
         if self.handle.is_null() {
             return None;
         }
@@ -287,7 +307,7 @@ impl RequestHandler {
         let mut ptr = ptr::null::<c_char>();
 
         unsafe {
-            if curl_sys::curl_easy_getinfo(self.handle, curl_sys::CURLINFO_EFFECTIVE_URL, &mut ptr)
+            if curl_sys::curl_easy_getinfo(self.handle, info, &mut ptr)
                 != curl_sys::CURLE_OK
             {
                 return None;

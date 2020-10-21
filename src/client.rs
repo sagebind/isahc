@@ -432,6 +432,8 @@ impl HttpClientBuilder {
             return Err(err);
         }
 
+        self = self.interceptor_impl(crate::redirect::RedirectInterceptor);
+
         #[cfg(feature = "cookies")]
         {
             let jar = self.cookie_jar.clone();
@@ -882,7 +884,7 @@ impl HttpClient {
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
@@ -890,71 +892,18 @@ impl HttpClient {
         );
 
         let ctx = interceptor::Context {
-            invoker: Arc::new(move |mut request| {
-                Box::pin(
-                    async move {
-                        // We are checking here if header already contains the key, simply ignore it.
-                        // In case the key wasn't present in parts.headers ensure that
-                        // we have all the headers from default headers.
-                        for name in self.default_headers.keys() {
-                            if !request.headers().contains_key(name) {
-                                for v in self.default_headers.get_all(name).iter() {
-                                    request.headers_mut().append(name, v.clone());
-                                }
-                            }
-                        }
-
-                        // Set default user agent if not specified.
-                        request
-                            .headers_mut()
-                            .entry(http::header::USER_AGENT)
-                            .or_insert(USER_AGENT.parse().unwrap());
-
-                        // Create and configure a curl easy handle to fulfil the request.
-                        let (easy, future) = self.create_easy_handle(request)?;
-
-                        // Send the request to the agent to be executed.
-                        self.agent.submit_request(easy)?;
-
-                        // Await for the response headers.
-                        let response = future.await?;
-
-                        // If a Content-Length header is present, include that information in
-                        // the body as well.
-                        let content_length = response
-                            .headers()
-                            .get(http::header::CONTENT_LENGTH)
-                            .and_then(|v| v.to_str().ok())
-                            .and_then(|v| v.parse().ok());
-
-                        // Convert the reader into an opaque Body.
-                        Ok(response.map(|reader| {
-                            let body = ResponseBody {
-                                inner: reader,
-                                // Extend the lifetime of the agent by including a reference
-                                // to its handle in the response body.
-                                _agent: self.agent.clone(),
-                            };
-
-                            if let Some(len) = content_length {
-                                Body::from_reader_sized(body, len)
-                            } else {
-                                Body::from_reader(body)
-                            }
-                        }))
-                    }
-                    .instrument(span.clone()),
-                )
-            }),
+            invoker: Arc::new(self),
             interceptors: &self.interceptors,
         };
 
-        ctx.send(request).await
+        ctx.send(&mut request)
+            .instrument(span)
+            .await
     }
 
     fn create_easy_handle(
         &self,
-        request: Request<Body>,
+        request: &mut Request<Body>,
     ) -> Result<
         (
             curl::easy::Easy2<RequestHandler>,
@@ -963,7 +912,8 @@ impl HttpClient {
         Error,
     > {
         // Prepare the request plumbing.
-        let (mut parts, body) = request.into_parts();
+        // let (mut parts, body) = request.into_parts();
+        let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
         let (handler, future) = RequestHandler::new(body);
@@ -988,7 +938,7 @@ impl HttpClient {
 
         set_opts!(
             &mut easy,
-            parts.extensions,
+            request.extensions(),
             self.defaults,
             [
                 Timeout,
@@ -1025,7 +975,7 @@ impl HttpClient {
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
         #[allow(indirect_structural_match)]
-        match (&parts.method, has_body) {
+        match (request.method(), has_body) {
             // Normal GET request.
             (&http::Method::GET, false) => {
                 easy.get(true)?;
@@ -1049,7 +999,7 @@ impl HttpClient {
             }
         }
 
-        easy.url(&parts.uri.to_string())?;
+        easy.url(&request.uri().to_string())?;
 
         // If the request has a body, then we either need to tell curl how large
         // the body is if we know it, or tell curl to use chunked encoding. If
@@ -1057,15 +1007,15 @@ impl HttpClient {
         if has_body {
             // Use length given in Content-Length header, or the size defined by
             // the body itself.
-            let body_length = parts
-                .headers
+            let body_length = request
+                .headers()
                 .get("Content-Length")
                 .and_then(|value| value.to_str().ok())
                 .and_then(|value| value.parse().ok())
                 .or(body_length);
 
             if let Some(len) = body_length {
-                if parts.method == http::Method::POST {
+                if request.method() == http::Method::POST {
                     easy.post_field_size(len)?;
                 } else {
                     easy.in_filesize(len)?;
@@ -1074,7 +1024,7 @@ impl HttpClient {
                 // Set the Transfer-Encoding header to instruct curl to use
                 // chunked encoding. Replaces any existing values that may be
                 // incorrect.
-                parts.headers.insert(
+                request.headers_mut().insert(
                     "Transfer-Encoding",
                     http::header::HeaderValue::from_static("chunked"),
                 );
@@ -1084,20 +1034,78 @@ impl HttpClient {
         // Generate a header list for curl.
         let mut headers = curl::easy::List::new();
 
-        let title_case = parts
-            .extensions
+        let title_case = request
+            .extensions()
             .get::<TitleCaseHeaders>()
             .or_else(|| self.defaults.get())
             .map(|v| v.0)
             .unwrap_or(false);
 
-        for (name, value) in parts.headers.iter() {
+        for (name, value) in request.headers().iter() {
             headers.append(&headers::to_curl_string(name, value, title_case))?;
         }
 
         easy.http_headers(headers)?;
 
         Ok((easy, future))
+    }
+}
+
+impl crate::interceptor::Invoke for &HttpClient {
+    fn invoke<'a>(&'a self, request: &'a mut Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
+        Box::pin(
+            async move {
+                // We are checking here if header already contains the key, simply ignore it.
+                // In case the key wasn't present in parts.headers ensure that
+                // we have all the headers from default headers.
+                for name in self.default_headers.keys() {
+                    if !request.headers().contains_key(name) {
+                        for v in self.default_headers.get_all(name).iter() {
+                            request.headers_mut().append(name, v.clone());
+                        }
+                    }
+                }
+
+                // Set default user agent if not specified.
+                request
+                    .headers_mut()
+                    .entry(http::header::USER_AGENT)
+                    .or_insert(USER_AGENT.parse().unwrap());
+
+                // Create and configure a curl easy handle to fulfil the request.
+                let (easy, future) = self.create_easy_handle(request)?;
+
+                // Send the request to the agent to be executed.
+                self.agent.submit_request(easy)?;
+
+                // Await for the response headers.
+                let response = future.await?;
+
+                // If a Content-Length header is present, include that information in
+                // the body as well.
+                let content_length = response
+                    .headers()
+                    .get(http::header::CONTENT_LENGTH)
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse().ok());
+
+                // Convert the reader into an opaque Body.
+                Ok(response.map(|reader| {
+                    let body = ResponseBody {
+                        inner: reader,
+                        // Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        _agent: self.agent.clone(),
+                    };
+
+                    if let Some(len) = content_length {
+                        Body::from_reader_sized(body, len)
+                    } else {
+                        Body::from_reader(body)
+                    }
+                }))
+            }
+        )
     }
 }
 
