@@ -24,5 +24,5 @@ fn cookie_lifecycle() {
 
     assert!(response2.cookie_jar().is_some());
 
-    m2.request().expect_header("cookie", "baz=123; foo=bar");
+    dbg!(m2.request()).expect_header("cookie", "baz=123; foo=bar");
 }

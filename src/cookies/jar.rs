@@ -1,4 +1,4 @@
-use super::{psl, Cookie};
+use super::Cookie;
 use http::Uri;
 use std::{
     collections::HashSet,
@@ -17,15 +17,25 @@ use std::{
 /// This cookie jar implementation seeks to conform to the rules for client
 /// state management as described in [RFC
 /// 6265](https://tools.ietf.org/html/rfc6265).
+///
+/// # Domain isolation
+///
+/// Cookies are isolated from each other based on the domain and path they are
+/// received from. As such, most methods require you to specify a URI, since
+/// unrelated websites can have cookies with the same name without conflict.
 #[derive(Clone, Debug, Default)]
 pub struct CookieJar {
-    /// A map of cookies.
     cookies: Arc<RwLock<HashSet<CookieWithContext>>>,
 }
 
 impl CookieJar {
+    /// Create a new, empty cookie jar.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get a cookie by name for the given URI.
-    pub fn get(&self, uri: &Uri, cookie_name: &str) -> Option<Cookie> {
+    pub fn get_by_name(&self, uri: &Uri, cookie_name: &str) -> Option<Cookie> {
         self.cookies
             .read()
             .unwrap()
@@ -34,6 +44,31 @@ impl CookieJar {
             .filter(|cookie| cookie.cookie.name() == cookie_name)
             .map(|c| c.cookie.clone())
             .next()
+    }
+
+    /// Get a copy of all the cookies in the jar that match the given URI.
+    ///
+    /// The returned collection contains a copy of all the cookies matching the
+    /// URI at the time this function was called. The collection is not a "live"
+    /// view into the cookie jar; concurrent changes made to the jar (cookies
+    /// inserted or removed) will not be reflected in the collection.
+    pub fn get_for_uri(&self, uri: &Uri) -> impl IntoIterator<Item = Cookie> {
+        let jar = self.cookies.read().unwrap();
+
+        let mut cookies = jar.iter()
+            .filter(|cookie| cookie.matches(uri))
+            .map(|c| c.cookie.clone())
+            .collect::<Vec<_>>();
+
+        // Cookies should be returned in lexical order.
+        cookies.sort_by(|a, b| a.name().cmp(b.name()));
+
+        cookies
+    }
+
+    /// Remove all cookies from this cookie jar.
+    pub fn clear(&self) {
+        self.cookies.write().unwrap().clear();
     }
 
     /// Set a cookie for the given absolute request URI.
@@ -51,7 +86,7 @@ impl CookieJar {
         };
 
         // Perform some validations on the domain.
-        if let Some(domain) = cookie.domain.as_ref() {
+        if let Some(domain) = cookie.domain() {
             // The given domain must domain-match the origin.
             // https://tools.ietf.org/html/rfc6265#section-5.3.6
             if !domain_matches(request_host, domain) {
@@ -78,7 +113,7 @@ impl CookieJar {
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
             #[cfg(feature = "psl")]
             {
-                if psl::is_public_suffix(domain) {
+                if super::psl::is_public_suffix(domain) {
                     tracing::warn!(
                         "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                         cookie.name(),
@@ -91,12 +126,12 @@ impl CookieJar {
 
         let cookie_with_context = CookieWithContext {
             domain_value: cookie
-                .domain
-                .clone()
+                .domain()
+                .map(ToOwned::to_owned)
                 .unwrap_or_else(|| request_host.to_owned()),
             path_value: cookie
-                .path
-                .clone()
+                .path()
+                .map(ToOwned::to_owned)
                 .unwrap_or_else(|| default_path(request_uri).to_owned()),
             cookie,
         };
@@ -109,37 +144,6 @@ impl CookieJar {
         jar.retain(|cookie| !cookie.cookie.is_expired());
 
         true
-    }
-
-    /// Remove all cookies from this cookie jar.
-    pub fn clear(&self) {
-        self.cookies.write().unwrap().clear();
-    }
-
-    pub(crate) fn get_all(&self, uri: &Uri) -> impl IntoIterator<Item = Cookie> {
-        let jar = self.cookies.read().unwrap();
-
-        jar.iter()
-            .filter(|cookie| cookie.matches(uri))
-            .map(|c| c.cookie.clone())
-            .collect::<Vec<_>>()
-    }
-
-    pub(crate) fn get_cookies(&self, uri: &Uri) -> Option<String> {
-        let mut values: Vec<String> = self
-            .get_all(uri)
-            .into_iter()
-            .map(|cookie| format!("{}={}", cookie.name(), cookie.value()))
-            .collect();
-
-        if values.is_empty() {
-            None
-        } else {
-            // Cookies should be returned in lexical order.
-            values.sort();
-
-            Some(values.join("; "))
-        }
     }
 }
 
@@ -167,7 +171,7 @@ impl CookieWithContext {
     /// True if the cookie is a host-only cookie (i.e. the request's host must
     /// exactly match the domain of the cookie).
     fn is_host_only(&self) -> bool {
-        self.cookie.domain.is_none()
+        self.cookie.domain().is_none()
     }
 
     // http://tools.ietf.org/html/rfc6265#section-5.4
@@ -274,29 +278,29 @@ mod tests {
         let jar = CookieJar::default();
 
         assert!(jar.set(
-            "foo=bar".parse().unwrap(),
+            Cookie::parse("foo=bar").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
         assert!(jar.set(
-            "foo=bar; domain=bar.baz.com".parse().unwrap(),
+            Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
         assert!(jar.set(
-            "foo=bar; domain=baz.com".parse().unwrap(),
+            Cookie::parse("foo=bar; domain=baz.com").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
         assert!(!jar.set(
-            "foo=bar; domain=www.bar.baz.com".parse().unwrap(),
+            Cookie::parse("foo=bar; domain=www.bar.baz.com").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
 
         // TLDs are not allowed.
         assert!(!jar.set(
-            "foo=bar; domain=com".parse().unwrap(),
+            Cookie::parse("foo=bar; domain=com").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
         assert!(!jar.set(
-            "foo=bar; domain=.com".parse().unwrap(),
+            Cookie::parse("foo=bar; domain=.com").unwrap(),
             &"https://bar.baz.com".parse().unwrap()
         ));
 
@@ -304,7 +308,7 @@ mod tests {
         if cfg!(feature = "psl") {
             // wi.us is a public suffix
             assert!(!jar.set(
-                "foo=bar; domain=wi.us".parse().unwrap(),
+                Cookie::parse("foo=bar; domain=wi.us").unwrap(),
                 &"https://www.state.wi.us".parse().unwrap()
             ));
         }
@@ -315,19 +319,16 @@ mod tests {
         let uri: Uri = "https://example.com/foo".parse().unwrap();
         let jar = CookieJar::default();
 
-        jar.set("foo=bar".parse().unwrap(), &uri);
+        jar.set(Cookie::parse("foo=bar").unwrap(), &uri);
 
-        assert_eq!(jar.get_cookies(&uri).unwrap(), "foo=bar");
-        assert_eq!(jar.get(&uri, "foo").unwrap().value(), "bar");
+        assert_eq!(jar.get_by_name(&uri, "foo").unwrap(), "bar");
 
         jar.set(
-            "foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT"
-                .parse()
-                .unwrap(),
+            Cookie::parse("foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT").unwrap(),
             &uri,
         );
 
-        assert_eq!(jar.get_cookies(&uri), None);
+        assert!(jar.get_for_uri(&uri).into_iter().next().is_none());
     }
 
     #[test_case("127.0.0.1", "127.0.0.1", true)]

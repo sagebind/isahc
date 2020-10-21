@@ -103,6 +103,10 @@ tracing-subscriber = "0.2"
 path = "testserver"
 
 [[example]]
+name = "cookies"
+required-features = ["cookies"]
+
+[[example]]
 name = "json"
 required-features = ["json", "serde/derive"]
 

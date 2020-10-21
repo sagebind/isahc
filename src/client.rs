@@ -68,9 +68,6 @@ pub struct HttpClientBuilder {
     error: Option<Error>,
 
     #[cfg(feature = "cookies")]
-    cookie_support: bool,
-
-    #[cfg(feature = "cookies")]
     cookie_jar: Option<crate::cookies::CookieJar>,
 }
 
@@ -106,14 +103,36 @@ impl HttpClientBuilder {
             error: None,
 
             #[cfg(feature = "cookies")]
-            cookie_support: false,
-
-            #[cfg(feature = "cookies")]
             cookie_jar: None,
         }
     }
 
-    /// Enable persistent cookie handling using a cookie jar.
+    /// Enable persistent cookie handling for all requests using this client
+    /// using a shared cookie jar.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use isahc::prelude::*;
+    /// #
+    /// // Create a client with a cookie jar.
+    /// let client = HttpClient::builder()
+    ///     .cookies()
+    ///     .build()?;
+    ///
+    /// // Make a request that sets a cookie.
+    /// let uri = "http://httpbin.org/cookies/set?foo=bar".parse()?;
+    /// client.get(&uri)?;
+    ///
+    /// // Get the cookie from the cookie jar.
+    /// let cookie = client.cookie_jar()
+    ///     .unwrap()
+    ///     .get_by_name(&uri, "foo")
+    ///     .unwrap();
+    /// assert_eq!(cookie, "bar");
+    ///
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     ///
     /// # Availability
     ///
@@ -415,10 +434,8 @@ impl HttpClientBuilder {
 
         #[cfg(feature = "cookies")]
         {
-            if self.cookie_support {
-                let jar = self.cookie_jar.clone();
-                self = self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(jar));
-            }
+            let jar = self.cookie_jar.clone();
+            self = self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(jar));
         }
 
         Ok(HttpClient {
@@ -437,7 +454,6 @@ impl Configurable for HttpClientBuilder {
     #[cfg(feature = "cookies")]
     fn cookie_jar(mut self, cookie_jar: crate::cookies::CookieJar) -> Self {
         self.cookie_jar = Some(cookie_jar);
-        self.cookie_support = true;
         self
     }
 }
@@ -873,7 +889,7 @@ impl HttpClient {
             uri = ?request.uri(),
         );
 
-        let cx = interceptor::Context {
+        let ctx = interceptor::Context {
             invoker: Arc::new(move |mut request| {
                 Box::pin(
                     async move {
@@ -933,7 +949,7 @@ impl HttpClient {
             interceptors: &self.interceptors,
         };
 
-        cx.send(request).await
+        ctx.send(request).await
     }
 
     fn create_easy_handle(

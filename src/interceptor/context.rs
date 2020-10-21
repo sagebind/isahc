@@ -25,9 +25,14 @@ impl Context<'_> {
             match interceptor.intercept(request, inner_context).await {
                 Ok(response) => Ok(response),
 
-                // TODO: Introduce a new error variant for errors caused by an
-                // interceptor. This is a temporary hack.
-                Err(e) => Err(Error::Curl(e.to_string())),
+                // If the error is an Isahc error, return it directly.
+                Err(e) => match e.downcast::<Error>() {
+                    Ok(e) => Err(*e),
+
+                    // TODO: Introduce a new error variant for errors caused by an
+                    // interceptor. This is a temporary hack.
+                    Err(e) => Err(Error::Curl(e.to_string())),
+                },
             }
         } else {
             (self.invoker)(request).await

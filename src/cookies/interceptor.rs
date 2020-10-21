@@ -9,6 +9,7 @@ use crate::{
     Error,
 };
 use http::Request;
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub(crate) struct CookieInterceptor {
@@ -37,12 +38,29 @@ impl Interceptor for CookieInterceptor {
                 .or_else(|| self.cookie_jar.clone());
 
             if let Some(jar) = jar.as_ref() {
-                // Set the outgoing cookie header.
-                if let Some(header) = jar.get_cookies(request.uri()) {
-                    // TODO: Don't clobber any manually-set cookies already present.
-                    request
-                        .headers_mut()
-                        .insert(http::header::COOKIE, header.parse().unwrap());
+                // Get the outgoing cookie header.
+                let mut cookie_string = request.headers_mut()
+                    .remove(http::header::COOKIE)
+                    .map(|value| value.as_bytes().to_vec())
+                    .unwrap_or_default();
+
+                // Append cookies in the jar to the cookie header value.
+                for cookie in jar.get_for_uri(request.uri()) {
+                    if !cookie_string.is_empty() {
+                        cookie_string.extend_from_slice(b"; ");
+                    }
+
+                    cookie_string.extend_from_slice(cookie.name().as_bytes());
+                    cookie_string.push(b'=');
+                    cookie_string.extend_from_slice(cookie.value().as_bytes());
+                }
+
+                if !cookie_string.is_empty() {
+                    if let Ok(header_value) = cookie_string.try_into() {
+                        request
+                            .headers_mut()
+                            .insert(http::header::COOKIE, header_value);
+                    }
                 }
             }
 
@@ -65,7 +83,7 @@ impl Interceptor for CookieInterceptor {
                                 None
                             })
                         })
-                        .filter_map(|header| header.parse::<Cookie>().ok().or_else(|| {
+                        .filter_map(|header| Cookie::parse(header).ok().or_else(|| {
                             tracing::warn!("could not parse Set-Cookie header");
                             None
                         }));
