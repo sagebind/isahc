@@ -884,7 +884,7 @@ impl HttpClient {
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
+    async fn send_async_inner(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
@@ -896,14 +896,14 @@ impl HttpClient {
             interceptors: &self.interceptors,
         };
 
-        ctx.send(&mut request)
+        ctx.send(request)
             .instrument(span)
             .await
     }
 
     fn create_easy_handle(
         &self,
-        request: &mut Request<Body>,
+        mut request: Request<Body>,
     ) -> Result<
         (
             curl::easy::Easy2<RequestHandler>,
@@ -1052,7 +1052,7 @@ impl HttpClient {
 }
 
 impl crate::interceptor::Invoke for &HttpClient {
-    fn invoke<'a>(&'a self, request: &'a mut Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
+    fn invoke<'a>(&'a self, mut request: Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
         Box::pin(
             async move {
                 // We are checking here if header already contains the key, simply ignore it.

@@ -52,7 +52,7 @@ pub(crate) use self::{
 macro_rules! interceptor {
     ($request:ident, $ctx:ident, $body:expr) => {{
         async fn interceptor(
-            mut $request: &'_ mut $crate::http::Request<$crate::Body>,
+            mut $request: $crate::http::Request<$crate::Body>,
             $ctx: $crate::interceptor::Context<'_>,
         ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn ::std::error::Error>> {
             (move || async move {
@@ -77,7 +77,7 @@ pub trait Interceptor: Send + Sync {
     ///
     /// The returned future is allowed to borrow the interceptor for the
     /// duration of its execution.
-    fn intercept<'a>(&'a self, request: &'a mut Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
+    fn intercept<'a>(&'a self, request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
 }
 
 /// The type of future returned by an interceptor.
@@ -86,7 +86,7 @@ pub type InterceptorFuture<'a, E> = BoxFuture<'a, Result<Response<Body>, E>>;
 /// Creates an interceptor from an arbitrary closure or function.
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
 where
-    F: for<'a> private::AsyncFn2<&'a mut Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
+    F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
     E: Into<Box<dyn Error>>,
 {
     InterceptorFn(f)
@@ -99,11 +99,11 @@ pub struct InterceptorFn<F>(F);
 impl<E, F> Interceptor for InterceptorFn<F>
 where
     E: Into<Box<dyn Error>>,
-    F: for<'a> private::AsyncFn2<&'a mut Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
+    F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
 {
     type Err = E;
 
-    fn intercept<'a>(&self, request: &'a mut Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept<'a>(&self, request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(self.0.call(request, ctx))
     }
 }

@@ -7,6 +7,12 @@ use http::{Request, Response};
 
 /// Extension methods on an HTTP request.
 pub trait RequestExt<T> {
+    /// Create a new request builder with the method, URI, and headers cloned
+    /// from this request.
+    ///
+    /// Note that third-party extensions are not cloned.
+    fn to_builder(&self) -> http::request::Builder;
+
     /// Send the HTTP request synchronously using the default client.
     ///
     /// This is a convenience method that is equivalent to
@@ -40,6 +46,64 @@ pub trait RequestExt<T> {
 }
 
 impl<T> RequestExt<T> for Request<T> {
+    fn to_builder(&self) -> http::request::Builder {
+        let mut builder = Request::builder()
+            .method(self.method().clone())
+            .uri(self.uri().clone())
+            .version(self.version());
+
+        *builder.headers_mut().unwrap() = self.headers().clone();
+
+        // Clone known extensions.
+        macro_rules! try_clone_extension {
+            ($extensions:expr, $builder:expr, [$($ty:ty,)*]) => {{
+                let extensions = $extensions;
+                $(
+                    if let Some(extension) = extensions.get::<$ty>() {
+                        $builder = $builder.extension(extension.clone());
+                    }
+                )*
+            }}
+        }
+
+        try_clone_extension!(
+            self.extensions(),
+            builder,
+            [
+                crate::config::Timeout,
+                crate::config::ConnectTimeout,
+                crate::config::TcpKeepAlive,
+                crate::config::TcpNoDelay,
+                crate::config::NetworkInterface,
+                crate::config::Dialer,
+                crate::config::RedirectPolicy,
+                crate::config::redirect::AutoReferer,
+                crate::config::AutomaticDecompression,
+                crate::auth::Authentication,
+                crate::auth::Credentials,
+                crate::config::MaxAgeConn,
+                crate::config::MaxUploadSpeed,
+                crate::config::MaxDownloadSpeed,
+                crate::config::VersionNegotiation,
+                crate::config::proxy::Proxy<Option<http::Uri>>,
+                crate::config::proxy::Blacklist,
+                crate::config::proxy::Proxy<crate::auth::Authentication>,
+                crate::config::proxy::Proxy<crate::auth::Credentials>,
+                crate::config::DnsCache,
+                crate::config::dns::ResolveMap,
+                crate::config::dns::Servers,
+                crate::config::ssl::Ciphers,
+                crate::config::ClientCertificate,
+                crate::config::CaCertificate,
+                crate::config::SslOption,
+                crate::config::CloseConnection,
+                crate::config::EnableMetrics,
+            ]
+        );
+
+        builder
+    }
+
     fn send(self) -> Result<Response<Body>, Error>
     where
         T: Into<Body>,

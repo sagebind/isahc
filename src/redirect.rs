@@ -1,12 +1,12 @@
 use crate::{
     config::RedirectPolicy,
+    handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
-    response::ResponseExt,
+    request::RequestExt,
     Body,
     Error,
 };
 use http::{Request, Uri};
-use std::convert::TryInto;
 
 /// How many redirects to follow by default if a limit is not specified. We
 /// don't actually allow infinite redirects as that could result in a dangerous
@@ -23,7 +23,7 @@ pub(crate) struct RedirectInterceptor;
 impl Interceptor for RedirectInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(&'a self, request: &'a mut Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept<'a>(&'a self, request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(async move {
             // Get the redirect policy for this request.
             let policy = request.extensions()
@@ -35,6 +35,13 @@ impl Interceptor for RedirectInterceptor {
             if policy == RedirectPolicy::None {
                 return ctx.send(request).await;
             }
+
+            let auto_referer = request.extensions()
+                .get::<crate::config::redirect::AutoReferer>()
+                .is_some();
+
+            // Make a copy of the request before sending it.
+            let mut request_builder = request.to_builder();
 
             // Send the request to get the ball rolling.
             let mut response = ctx.send(request).await?;
@@ -56,18 +63,32 @@ impl Interceptor for RedirectInterceptor {
                 }
 
                 // Set referer header.
-                if request.extensions().get::<crate::config::redirect::AutoReferer>().is_some() {
-                    if let Ok(header_value) = request.uri().to_string().try_into() {
-                        request.headers_mut().insert(http::header::REFERER, header_value);
-                    }
+                if auto_referer {
+                    let referer = request_builder.uri_ref().unwrap().to_string();
+                    request_builder = request_builder.header(http::header::REFERER, referer);
                 }
 
                 if response.status() == 303 {
-                    *request.method_mut() = http::Method::GET;
+                    request_builder = request_builder.method(http::Method::GET);
                 }
 
-                // TODO: Filter out certain headers.
-                *request.uri_mut() = redirect_uri;
+                let mut request_body = response.extensions_mut()
+                    .remove::<RequestBody>()
+                    .map(|v| v.0)
+                    .unwrap_or_default();
+
+                if !request_body.reset() {
+                    // TODO: We can't re-send this...
+                    unimplemented!();
+                }
+
+                let request = request_builder.uri(redirect_uri)
+                    .body(request_body)?;
+
+                // Keep another clone of the request again.
+                request_builder = request.to_builder();
+
+                // Send the redirected request.
                 response = ctx.send(request).await?;
 
                 redirect_count += 1;
