@@ -39,7 +39,10 @@ mod context;
 mod obj;
 
 pub use self::context::Context;
-pub(crate) use self::obj::InterceptorObj;
+pub(crate) use self::{
+    context::Invoke,
+    obj::InterceptorObj,
+};
 
 /// Defines an inline interceptor using a closure-like syntax.
 ///

@@ -46,10 +46,10 @@ impl std::error::Error for DialerParseError {}
 /// let unix_socket = "unix:/path/to/my.sock".parse::<Dialer>()?;
 /// # Ok::<(), isahc::config::DialerParseError>(())
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Dialer(Inner);
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum Inner {
     Default,
 
