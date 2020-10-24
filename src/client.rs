@@ -98,7 +98,13 @@ impl HttpClientBuilder {
         Self {
             agent_builder: AgentBuilder::default(),
             defaults,
-            interceptors: Vec::new(),
+            interceptors: vec![
+                // Add redirect support. Note that this is _always_ the first,
+                // and thus the outermost, interceptor. Also note that this does
+                // not enable redirect following, it just implements support for
+                // it, if a request asks for it.
+                InterceptorObj::new(crate::redirect::RedirectInterceptor),
+            ],
             default_headers: HeaderMap::new(),
             error: None,
 
@@ -431,8 +437,6 @@ impl HttpClientBuilder {
         if let Some(err) = self.error {
             return Err(err);
         }
-
-        self = self.interceptor_impl(crate::redirect::RedirectInterceptor);
 
         #[cfg(feature = "cookies")]
         {
@@ -947,8 +951,6 @@ impl HttpClient {
                 TcpNoDelay,
                 NetworkInterface,
                 Dialer,
-                RedirectPolicy,
-                redirect::AutoReferer,
                 AutomaticDecompression,
                 Authentication,
                 Credentials,

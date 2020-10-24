@@ -2,6 +2,7 @@ use isahc::{
     config::RedirectPolicy,
     prelude::*,
 };
+use test_case::test_case;
 use testserver::mock;
 
 #[test]
@@ -88,13 +89,15 @@ fn headers_are_reset_every_redirect() {
     assert!(!m2.requests().is_empty());
 }
 
-#[test]
-fn _303_redirect_changes_post_to_get() {
+#[test_case(301)]
+#[test_case(302)]
+#[test_case(303)]
+fn redirect_changes_post_to_get(status: u16) {
     let m2 = mock!();
     let location = m2.url();
 
     let m1 = mock! {
-        status: 303,
+        status: status,
         headers {
             "Location": location,
         }
@@ -112,6 +115,58 @@ fn _303_redirect_changes_post_to_get() {
 
     assert_eq!(m1.request().method, "POST");
     assert_eq!(m2.request().method, "GET");
+}
+
+#[test_case(307)]
+#[test_case(308)]
+fn redirect_also_sends_post(status: u16) {
+    let m2 = mock!();
+    let location = m2.url();
+
+    let m1 = mock! {
+        status: status,
+        headers {
+            "Location": location,
+        }
+    };
+
+    let response = Request::post(m1.url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
+
+    assert_eq!(m1.request().method, "POST");
+    assert_eq!(m2.request().method, "POST");
+}
+
+#[test]
+fn redirect_non_rewindable_body_returns_error() {
+    let m2 = mock!();
+    let location = m2.url();
+
+    let m1 = mock! {
+        status: 307,
+        headers {
+            "Location": location,
+        }
+    };
+
+    // Create a streaming body of unknown size.
+    let upload_stream = Body::from_reader(Body::from_bytes(b"hello world"));
+
+    let result = Request::post(m1.url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(upload_stream)
+        .unwrap()
+        .send();
+
+    assert!(matches!(result, Err(isahc::Error::RequestBodyError(_))));
+    assert_eq!(m1.request().method, "POST");
 }
 
 #[test]

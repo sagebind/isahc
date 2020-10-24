@@ -52,12 +52,16 @@ impl Interceptor for RedirectInterceptor {
                 _ => DEFAULT_REDIRECT_LIMIT,
             };
 
-            // Check for redirects.
+            // Check for redirects. If a redirect should happen, then curl will
+            // return a URI to redirect to, which the request handler will
+            // attach to the response as this extension.
             while let Some(RedirectUri(redirect_uri)) = response.extensions_mut().remove::<RedirectUri>() {
+                // Sanity check.
                 if !response.status().is_redirection() {
                     break;
                 }
 
+                // If we've reached the limit, return an error as requested.
                 if redirect_count >= limit {
                     return Err(Error::TooManyRedirects);
                 }
@@ -68,24 +72,37 @@ impl Interceptor for RedirectInterceptor {
                     request_builder = request_builder.header(http::header::REFERER, referer);
                 }
 
-                if response.status() == 303 {
+                // Check if we should change the request method into a GET. HTTP
+                // specs don't really say one way or another when this should
+                // happen for most status codes, so we just mimic curl's
+                // behavior here since it is so common.
+                if response.status() == 301 || response.status() == 302 || response.status() == 303 {
                     request_builder = request_builder.method(http::Method::GET);
                 }
 
+                // Grab the request body back from the internal handler, as we
+                // might need to send it again (if possible...)
                 let mut request_body = response.extensions_mut()
                     .remove::<RequestBody>()
                     .map(|v| v.0)
                     .unwrap_or_default();
 
+                // Redirect handling is tricky when we are uploading something.
+                // If we can, reset the body stream to the beginning. This might
+                // work if the body to upload is an in-memory byte buffer, but
+                // for arbitrary streams we can't do this.
+                //
+                // There's not really a good way of handling this gracefully, so
+                // we just return an error so that the user knows about it.
                 if !request_body.reset() {
-                    // TODO: We can't re-send this...
-                    unimplemented!();
+                    return Err(Error::RequestBodyError(Some(String::from("could not follow redirect because request body is not rewindable"))));
                 }
 
                 let request = request_builder.uri(redirect_uri)
                     .body(request_body)?;
 
-                // Keep another clone of the request again.
+                // Keep another clone of the request around again, in case we
+                // need to follow yet another redirect.
                 request_builder = request.to_builder();
 
                 // Send the redirected request.
