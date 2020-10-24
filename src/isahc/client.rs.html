@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
                 <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
@@ -1187,6 +1187,16 @@
 <span id="1186">1186</span>
 <span id="1187">1187</span>
 <span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1288,7 +1298,13 @@
         <span class="self">Self</span> {
             <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>::<span class="ident">default</span>(),
             <span class="ident">defaults</span>,
-            <span class="ident">interceptors</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">interceptors</span>: <span class="macro">vec</span><span class="macro">!</span>[
+                <span class="comment">// Add redirect support. Note that this is _always_ the first,</span>
+                <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
+                <span class="comment">// not enable redirect following, it just implements support for</span>
+                <span class="comment">// it, if a request asks for it.</span>
+                <span class="ident">InterceptorObj</span>::<span class="ident">new</span>(<span class="kw">crate</span>::<span class="ident">redirect</span>::<span class="ident">RedirectInterceptor</span>),
+            ],
             <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span>::<span class="ident">new</span>(),
             <span class="ident">error</span>: <span class="prelude-val">None</span>,
 
@@ -2080,71 +2096,18 @@
         );
 
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
-            <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">request</span><span class="op">|</span> {
-                <span class="ident">Box</span>::<span class="ident">pin</span>(
-                    <span class="ident">async</span> <span class="kw">move</span> {
-                        <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
-                        <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
-                        <span class="comment">// we have all the headers from default headers.</span>
-                        <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
-                            <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                                <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
-                                    <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
-                                }
-                            }
-                        }
-
-                        <span class="comment">// Set default user agent if not specified.</span>
-                        <span class="ident">request</span>
-                            .<span class="ident">headers_mut</span>()
-                            .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
-                            .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
-
-                        <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
-                        <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
-
-                        <span class="comment">// Send the request to the agent to be executed.</span>
-                        <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
-
-                        <span class="comment">// Await for the response headers.</span>
-                        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
-
-                        <span class="comment">// If a Content-Length header is present, include that information in</span>
-                        <span class="comment">// the body as well.</span>
-                        <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
-                            .<span class="ident">headers</span>()
-                            .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
-                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
-                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
-
-                        <span class="comment">// Convert the reader into an opaque Body.</span>
-                        <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
-                            <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
-                                <span class="ident">inner</span>: <span class="ident">reader</span>,
-                                <span class="comment">// Extend the lifetime of the agent by including a reference</span>
-                                <span class="comment">// to its handle in the response body.</span>
-                                <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
-                            };
-
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
-                                <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
-                            } <span class="kw">else</span> {
-                                <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
-                            }
-                        }))
-                    }
-                    .<span class="ident">instrument</span>(<span class="ident">span</span>.<span class="ident">clone</span>()),
-                )
-            }),
+            <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>),
             <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interceptors</span>,
         };
 
-        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="ident">await</span>
+        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>)
+            .<span class="ident">instrument</span>(<span class="ident">span</span>)
+            .<span class="ident">await</span>
     }
 
     <span class="kw">fn</span> <span class="ident">create_easy_handle</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>
         (
             <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>,
@@ -2153,7 +2116,8 @@
         <span class="ident">Error</span>,
     <span class="op">&gt;</span> {
         <span class="comment">// Prepare the request plumbing.</span>
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">parts</span>, <span class="ident">body</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">into_parts</span>();
+        <span class="comment">// let (mut parts, body) = request.into_parts();</span>
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">take</span>(<span class="ident">request</span>.<span class="ident">body_mut</span>());
         <span class="kw">let</span> <span class="ident">has_body</span> <span class="op">=</span> <span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>();
         <span class="kw">let</span> <span class="ident">body_length</span> <span class="op">=</span> <span class="ident">body</span>.<span class="ident">len</span>();
         <span class="kw">let</span> (<span class="ident">handler</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="ident">RequestHandler</span>::<span class="ident">new</span>(<span class="ident">body</span>);
@@ -2178,7 +2142,7 @@
 
         <span class="macro">set_opts</span><span class="macro">!</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">easy</span>,
-            <span class="ident">parts</span>.<span class="ident">extensions</span>,
+            <span class="ident">request</span>.<span class="ident">extensions</span>(),
             <span class="self">self</span>.<span class="ident">defaults</span>,
             [
                 <span class="ident">Timeout</span>,
@@ -2187,8 +2151,6 @@
                 <span class="ident">TcpNoDelay</span>,
                 <span class="ident">NetworkInterface</span>,
                 <span class="ident">Dialer</span>,
-                <span class="ident">RedirectPolicy</span>,
-                <span class="ident">redirect</span>::<span class="ident">AutoReferer</span>,
                 <span class="ident">AutomaticDecompression</span>,
                 <span class="ident">Authentication</span>,
                 <span class="ident">Credentials</span>,
@@ -2215,7 +2177,7 @@
         <span class="comment">// Set the HTTP method to use. Curl ties in behavior with the request</span>
         <span class="comment">// method, so we need to configure this carefully.</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">indirect_structural_match</span>)]</span>
-        <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">parts</span>.<span class="ident">method</span>, <span class="ident">has_body</span>) {
+        <span class="kw">match</span> (<span class="ident">request</span>.<span class="ident">method</span>(), <span class="ident">has_body</span>) {
             <span class="comment">// Normal GET request.</span>
             (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">GET</span>, <span class="bool-val">false</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">easy</span>.<span class="ident">get</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
@@ -2239,7 +2201,7 @@
             }
         }
 
-        <span class="ident">easy</span>.<span class="ident">url</span>(<span class="kw-2">&amp;</span><span class="ident">parts</span>.<span class="ident">uri</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
+        <span class="ident">easy</span>.<span class="ident">url</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>.<span class="ident">uri</span>().<span class="ident">to_string</span>())<span class="question-mark">?</span>;
 
         <span class="comment">// If the request has a body, then we either need to tell curl how large</span>
         <span class="comment">// the body is if we know it, or tell curl to use chunked encoding. If</span>
@@ -2247,15 +2209,15 @@
         <span class="kw">if</span> <span class="ident">has_body</span> {
             <span class="comment">// Use length given in Content-Length header, or the size defined by</span>
             <span class="comment">// the body itself.</span>
-            <span class="kw">let</span> <span class="ident">body_length</span> <span class="op">=</span> <span class="ident">parts</span>
-                .<span class="ident">headers</span>
+            <span class="kw">let</span> <span class="ident">body_length</span> <span class="op">=</span> <span class="ident">request</span>
+                .<span class="ident">headers</span>()
                 .<span class="ident">get</span>(<span class="string">&quot;Content-Length&quot;</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">value</span><span class="op">|</span> <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">value</span><span class="op">|</span> <span class="ident">value</span>.<span class="ident">parse</span>().<span class="ident">ok</span>())
                 .<span class="ident">or</span>(<span class="ident">body_length</span>);
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_length</span> {
-                <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">method</span> <span class="op">=</span><span class="op">=</span> <span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">POST</span> {
+                <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">method</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">POST</span> {
                     <span class="ident">easy</span>.<span class="ident">post_field_size</span>(<span class="ident">len</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
                     <span class="ident">easy</span>.<span class="ident">in_filesize</span>(<span class="ident">len</span>)<span class="question-mark">?</span>;
@@ -2264,7 +2226,7 @@
                 <span class="comment">// Set the Transfer-Encoding header to instruct curl to use</span>
                 <span class="comment">// chunked encoding. Replaces any existing values that may be</span>
                 <span class="comment">// incorrect.</span>
-                <span class="ident">parts</span>.<span class="ident">headers</span>.<span class="ident">insert</span>(
+                <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">insert</span>(
                     <span class="string">&quot;Transfer-Encoding&quot;</span>,
                     <span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">HeaderValue</span>::<span class="ident">from_static</span>(<span class="string">&quot;chunked&quot;</span>),
                 );
@@ -2274,20 +2236,78 @@
         <span class="comment">// Generate a header list for curl.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
 
-        <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">parts</span>
-            .<span class="ident">extensions</span>
+        <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">request</span>
+            .<span class="ident">extensions</span>()
             .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TitleCaseHeaders</span><span class="op">&gt;</span>()
             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
-        <span class="kw">for</span> (<span class="ident">name</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">parts</span>.<span class="ident">headers</span>.<span class="ident">iter</span>() {
+        <span class="kw">for</span> (<span class="ident">name</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">iter</span>() {
             <span class="ident">headers</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="ident">headers</span>::<span class="ident">to_curl_string</span>(<span class="ident">name</span>, <span class="ident">value</span>, <span class="ident">title_case</span>))<span class="question-mark">?</span>;
         }
 
         <span class="ident">easy</span>.<span class="ident">http_headers</span>(<span class="ident">headers</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((<span class="ident">easy</span>, <span class="ident">future</span>))
+    }
+}
+
+<span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
+    <span class="kw">fn</span> <span class="ident">invoke</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="ident">Box</span>::<span class="ident">pin</span>(
+            <span class="ident">async</span> <span class="kw">move</span> {
+                <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
+                <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
+                <span class="comment">// we have all the headers from default headers.</span>
+                <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
+                        <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
+                            <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
+                        }
+                    }
+                }
+
+                <span class="comment">// Set default user agent if not specified.</span>
+                <span class="ident">request</span>
+                    .<span class="ident">headers_mut</span>()
+                    .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
+                    .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
+
+                <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
+                <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
+
+                <span class="comment">// Send the request to the agent to be executed.</span>
+                <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+
+                <span class="comment">// Await for the response headers.</span>
+                <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
+
+                <span class="comment">// If a Content-Length header is present, include that information in</span>
+                <span class="comment">// the body as well.</span>
+                <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>
+                    .<span class="ident">headers</span>()
+                    .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_LENGTH</span>)
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">parse</span>().<span class="ident">ok</span>());
+
+                <span class="comment">// Convert the reader into an opaque Body.</span>
+                <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
+                        <span class="ident">inner</span>: <span class="ident">reader</span>,
+                        <span class="comment">// Extend the lifetime of the agent by including a reference</span>
+                        <span class="comment">// to its handle in the response body.</span>
+                        <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
+                    };
+
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
+                        <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                    } <span class="kw">else</span> {
+                        <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
+                    }
+                }))
+            }
+        )
     }
 }
 

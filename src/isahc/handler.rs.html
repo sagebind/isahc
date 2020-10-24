@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/handler.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>handler.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/handler.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>handler.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
                 <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -686,11 +686,32 @@
 <span id="685">685</span>
 <span id="686">686</span>
 <span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">headers</span>,
+    <span class="ident">redirect</span>::<span class="ident">RedirectUri</span>,
     <span class="ident">response</span>::{<span class="ident">EffectiveUri</span>, <span class="ident">LocalAddr</span>, <span class="ident">RemoteAddr</span>},
     <span class="ident">Body</span>, <span class="ident">Error</span>, <span class="ident">Metrics</span>,
 };
@@ -709,6 +730,7 @@
     <span class="ident">fmt</span>,
     <span class="ident">future</span>::<span class="ident">Future</span>,
     <span class="ident">io</span>,
+    <span class="ident">mem</span>,
     <span class="ident">net</span>::<span class="ident">SocketAddr</span>,
     <span class="ident">os</span>::<span class="ident">raw</span>::{<span class="ident">c_char</span>, <span class="ident">c_long</span>},
     <span class="ident">pin</span>::<span class="ident">Pin</span>,
@@ -716,6 +738,8 @@
     <span class="ident">sync</span>::<span class="ident">Arc</span>,
     <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>, <span class="ident">Waker</span>},
 };
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestBody</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Body</span>);
 
 <span class="doccomment">/// Manages the state of a single request/response life cycle.</span>
 <span class="doccomment">///</span>
@@ -929,6 +953,10 @@
                 <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">EffectiveUri</span>(<span class="ident">uri</span>));
             }
 
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_redirect_uri</span>() {
+                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RedirectUri</span>(<span class="ident">uri</span>));
+            }
+
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_local_addr</span>() {
                 <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">LocalAddr</span>(<span class="ident">addr</span>));
             }
@@ -936,6 +964,10 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_primary_addr</span>() {
                 <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RemoteAddr</span>(<span class="ident">addr</span>));
             }
+
+            <span class="comment">// Keep the request body around in case interceptors need access to</span>
+            <span class="comment">// it. Otherwise we&#39;re just going to drop it later.</span>
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RequestBody</span>(<span class="ident">mem</span>::<span class="ident">take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">request_body</span>)));
 
             <span class="comment">// Include metrics in response, but only if it was created. If</span>
             <span class="comment">// metrics are disabled then it won&#39;t have been created.</span>
@@ -969,6 +1001,14 @@
     }
 
     <span class="kw">fn</span> <span class="ident">get_effective_uri</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">get_uri</span>(<span class="ident">curl_sys</span>::<span class="ident">CURLINFO_EFFECTIVE_URL</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_redirect_uri</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">get_uri</span>(<span class="ident">curl_sys</span>::<span class="ident">CURLINFO_REDIRECT_URL</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_uri</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">info</span>: <span class="ident">curl_sys</span>::<span class="ident">CURLINFO</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">handle</span>.<span class="ident">is_null</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
@@ -976,7 +1016,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="ident">ptr</span>::<span class="ident">null</span>::<span class="op">&lt;</span><span class="ident">c_char</span><span class="op">&gt;</span>();
 
         <span class="kw">unsafe</span> {
-            <span class="kw">if</span> <span class="ident">curl_sys</span>::<span class="ident">curl_easy_getinfo</span>(<span class="self">self</span>.<span class="ident">handle</span>, <span class="ident">curl_sys</span>::<span class="ident">CURLINFO_EFFECTIVE_URL</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ptr</span>)
+            <span class="kw">if</span> <span class="ident">curl_sys</span>::<span class="ident">curl_easy_getinfo</span>(<span class="self">self</span>.<span class="ident">handle</span>, <span class="ident">info</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ptr</span>)
                 <span class="op">!</span><span class="op">=</span> <span class="ident">curl_sys</span>::<span class="ident">CURLE_OK</span>
             {
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
