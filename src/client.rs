@@ -442,7 +442,7 @@ impl HttpClientBuilder {
             self = self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(jar));
         }
 
-        Ok(HttpClient {
+        let inner = InnerHttpClient {
             agent: Arc::new(self.agent_builder.spawn()?),
             defaults: self.defaults,
             interceptors: self.interceptors,
@@ -450,7 +450,9 @@ impl HttpClientBuilder {
 
             #[cfg(feature = "cookies")]
             cookie_jar: self.cookie_jar,
-        })
+        };
+
+        Ok(HttpClient { inner: Arc::new(inner) })
     }
 }
 
@@ -563,7 +565,12 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 ///
 /// See the documentation on [`HttpClientBuilder`] for a comprehensive look at
 /// what can be configured.
+#[derive(Clone)]
 pub struct HttpClient {
+    inner: Arc<InnerHttpClient>,
+}
+
+struct InnerHttpClient {
     /// This is how we talk to our background agent thread.
     agent: Arc<agent::Handle>,
 
@@ -894,7 +901,7 @@ impl HttpClient {
 
         let ctx = interceptor::Context {
             invoker: Arc::new(self),
-            interceptors: &self.interceptors,
+            interceptors: &self.inner.interceptors,
         };
 
         ctx.send(request)
@@ -940,7 +947,7 @@ impl HttpClient {
         set_opts!(
             &mut easy,
             request.extensions(),
-            self.defaults,
+            self.inner.defaults,
             [
                 Timeout,
                 ConnectTimeout,
@@ -1036,7 +1043,7 @@ impl HttpClient {
         let title_case = request
             .extensions()
             .get::<TitleCaseHeaders>()
-            .or_else(|| self.defaults.get())
+            .or_else(|| self.inner.defaults.get())
             .map(|v| v.0)
             .unwrap_or(false);
 
@@ -1057,9 +1064,9 @@ impl crate::interceptor::Invoke for &HttpClient {
                 // We are checking here if header already contains the key, simply ignore it.
                 // In case the key wasn't present in parts.headers ensure that
                 // we have all the headers from default headers.
-                for name in self.default_headers.keys() {
+                for name in self.inner.default_headers.keys() {
                     if !request.headers().contains_key(name) {
-                        for v in self.default_headers.get_all(name).iter() {
+                        for v in self.inner.default_headers.get_all(name).iter() {
                             request.headers_mut().append(name, v.clone());
                         }
                     }
@@ -1075,7 +1082,7 @@ impl crate::interceptor::Invoke for &HttpClient {
                 let (easy, future) = self.create_easy_handle(request)?;
 
                 // Send the request to the agent to be executed.
-                self.agent.submit_request(easy)?;
+                self.inner.agent.submit_request(easy)?;
 
                 // Await for the response headers.
                 let response = future.await?;
@@ -1094,7 +1101,7 @@ impl crate::interceptor::Invoke for &HttpClient {
                         inner: reader,
                         // Extend the lifetime of the agent by including a reference
                         // to its handle in the response body.
-                        _agent: self.agent.clone(),
+                        _agent: self.inner.agent.clone(),
                     };
 
                     if let Some(len) = content_length {
