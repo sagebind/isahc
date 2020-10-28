@@ -443,7 +443,7 @@ impl HttpClientBuilder {
         }
 
         let inner = InnerHttpClient {
-            agent: Arc::new(self.agent_builder.spawn()?),
+            agent: self.agent_builder.spawn()?,
             defaults: self.defaults,
             interceptors: self.interceptors,
             default_headers: self.default_headers,
@@ -572,7 +572,7 @@ pub struct HttpClient {
 
 struct InnerHttpClient {
     /// This is how we talk to our background agent thread.
-    agent: Arc<agent::Handle>,
+    agent: agent::Handle,
 
     /// Map of config values that should be used to configure execution if not
     /// specified in a request.
@@ -1101,7 +1101,7 @@ impl crate::interceptor::Invoke for &HttpClient {
                         inner: reader,
                         // Extend the lifetime of the agent by including a reference
                         // to its handle in the response body.
-                        _agent: self.inner.agent.clone(),
+                        _client: (*self).clone(),
                     };
 
                     if let Some(len) = content_length {
@@ -1149,7 +1149,7 @@ impl<'c> fmt::Debug for ResponseFuture<'c> {
 /// alive until at least this transfer is complete.
 struct ResponseBody {
     inner: ResponseBodyReader,
-    _agent: Arc<agent::Handle>,
+    _client: HttpClient,
 }
 
 impl AsyncRead for ResponseBody {
