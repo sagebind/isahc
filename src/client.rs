@@ -622,7 +622,7 @@ impl HttpClient {
     /// feature is enabled.
     #[cfg(feature = "cookies")]
     pub fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
-        self.cookie_jar.as_ref()
+        self.inner.cookie_jar.as_ref()
     }
 
     /// Send a GET request to the given URI.
