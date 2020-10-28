@@ -20,20 +20,20 @@
 //! since a stale list is better than no list at all.
 
 use crate::request::RequestExt;
-use chrono::prelude::*;
-use chrono::Duration;
-use lazy_static::lazy_static;
+use chrono::{
+    prelude::*,
+    Duration,
+};
+use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::List;
 use std::error::Error;
 
-lazy_static! {
-    /// How long should we use a cached list before refreshing?
-    static ref TTL: Duration = Duration::hours(24);
+/// How long should we use a cached list before refreshing?
+static TTL: Lazy<Duration> = Lazy::new(|| Duration::hours(24));
 
-    /// Global in-memory PSL cache.
-    static ref CACHE: RwLock<ListCache> = Default::default();
-}
+/// Global in-memory PSL cache.
+static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(|| Default::default());
 
 struct ListCache {
     list: List,

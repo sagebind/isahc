@@ -17,7 +17,7 @@ use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request, Response,
 };
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::{
     convert::TryFrom,
     fmt,
@@ -30,13 +30,11 @@ use std::{
 };
 use tracing_futures::Instrument;
 
-lazy_static! {
-    static ref USER_AGENT: String = format!(
-        "curl/{} isahc/{}",
-        curl::Version::get().version(),
-        env!("CARGO_PKG_VERSION")
-    );
-}
+static USER_AGENT: Lazy<String> = Lazy::new(|| format!(
+    "curl/{} isahc/{}",
+    curl::Version::get().version(),
+    env!("CARGO_PKG_VERSION")
+));
 
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
@@ -598,10 +596,9 @@ impl HttpClient {
     /// TODO: Stabilize.
     #[tracing::instrument(level = "debug")]
     pub(crate) fn shared() -> &'static Self {
-        lazy_static! {
-            static ref SHARED: HttpClient =
-                HttpClient::new().expect("shared client failed to initialize");
-        }
+        static SHARED: Lazy<HttpClient> = Lazy::new(|| HttpClient::new()
+            .expect("shared client failed to initialize"));
+
         &SHARED
     }
 
@@ -1001,7 +998,7 @@ impl HttpClient {
             }
         }
 
-        easy.url(&request.uri().to_string())?;
+        easy.url(&uri_to_string(request.uri()))?;
 
         // If the request has a body, then we either need to tell curl how large
         // the body is if we know it, or tell curl to use chunked encoding. If
@@ -1158,6 +1155,30 @@ impl AsyncRead for ResponseBody {
         pin_mut!(inner);
         inner.poll_read(cx, buf)
     }
+}
+
+/// Convert a URI to a string. This implementation is a bit faster than the
+/// `Display` implementation that avoids the `std::fmt` machinery.
+fn uri_to_string(uri: &http::Uri) -> String {
+    let mut s = String::new();
+
+    if let Some(scheme) = uri.scheme() {
+        s.push_str(scheme.as_str());
+        s.push_str("://");
+    }
+
+    if let Some(authority) = uri.authority() {
+        s.push_str(authority.as_str());
+    }
+
+    s.push_str(uri.path());
+
+    if let Some(query) = uri.query() {
+        s.push('?');
+        s.push_str(query);
+    }
+
+    s
 }
 
 #[cfg(test)]

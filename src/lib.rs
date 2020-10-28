@@ -221,7 +221,7 @@
 #![allow(clippy::cognitive_complexity)]
 
 use http::{Request, Response};
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 
 #[cfg(feature = "cookies")]
@@ -421,15 +421,12 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
 /// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
-
-    lazy_static! {
-        static ref VERSION_STRING: String = format!(
-            "isahc/{} (features:{}) {}",
-            env!("CARGO_PKG_VERSION"),
-            FEATURES_STRING,
-            curl::Version::num(),
-        );
-    }
+    static VERSION_STRING: Lazy<String> = Lazy::new(|| format!(
+        "isahc/{} (features:{}) {}",
+        env!("CARGO_PKG_VERSION"),
+        FEATURES_STRING,
+        curl::Version::num(),
+    ));
 
     &VERSION_STRING
 }
