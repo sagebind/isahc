@@ -1218,6 +1218,13 @@
 <span id="1217">1217</span>
 <span id="1218">1218</span>
 <span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1663,15 +1670,17 @@
             <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">interceptor</span>::<span class="ident">CookieInterceptor</span>::<span class="ident">new</span>(<span class="ident">jar</span>));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">HttpClient</span> {
-            <span class="ident">agent</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>),
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">InnerHttpClient</span> {
+            <span class="ident">agent</span>: <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>,
             <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
             <span class="ident">default_headers</span>: <span class="self">self</span>.<span class="ident">default_headers</span>,
 
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
             <span class="ident">cookie_jar</span>: <span class="self">self</span>.<span class="ident">cookie_jar</span>,
-        })
+        };
+
+        <span class="prelude-val">Ok</span>(<span class="ident">HttpClient</span> { <span class="ident">inner</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">inner</span>) })
     }
 }
 
@@ -1784,9 +1793,14 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// See the documentation on [`HttpClientBuilder`] for a comprehensive look at</span>
 <span class="doccomment">/// what can be configured.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HttpClient</span> {
+    <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">InnerHttpClient</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">struct</span> <span class="ident">InnerHttpClient</span> {
     <span class="doccomment">/// This is how we talk to our background agent thread.</span>
-    <span class="ident">agent</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">agent</span>::<span class="ident">Handle</span><span class="op">&gt;</span>,
+    <span class="ident">agent</span>: <span class="ident">agent</span>::<span class="ident">Handle</span>,
 
     <span class="doccomment">/// Map of config values that should be used to configure execution if not</span>
     <span class="doccomment">/// specified in a request.</span>
@@ -1836,7 +1850,7 @@
     <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">as_ref</span>()
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">cookie_jar</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// Send a GET request to the given URI.</span>
@@ -2115,7 +2129,7 @@
 
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
             <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>),
-            <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interceptors</span>,
+            <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">interceptors</span>,
         };
 
         <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>)
@@ -2161,7 +2175,7 @@
         <span class="macro">set_opts</span><span class="macro">!</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">easy</span>,
             <span class="ident">request</span>.<span class="ident">extensions</span>(),
-            <span class="self">self</span>.<span class="ident">defaults</span>,
+            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>,
             [
                 <span class="ident">Timeout</span>,
                 <span class="ident">ConnectTimeout</span>,
@@ -2257,7 +2271,7 @@
         <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">request</span>
             .<span class="ident">extensions</span>()
             .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TitleCaseHeaders</span><span class="op">&gt;</span>()
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
+            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
@@ -2278,9 +2292,9 @@
                 <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
                 <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
                 <span class="comment">// we have all the headers from default headers.</span>
-                <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
+                <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                        <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
+                        <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
                             <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
                         }
                     }
@@ -2296,7 +2310,7 @@
                 <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// Send the request to the agent to be executed.</span>
-                <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// Await for the response headers.</span>
                 <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
@@ -2315,7 +2329,7 @@
                         <span class="ident">inner</span>: <span class="ident">reader</span>,
                         <span class="comment">// Extend the lifetime of the agent by including a reference</span>
                         <span class="comment">// to its handle in the response body.</span>
-                        <span class="ident">_agent</span>: <span class="self">self</span>.<span class="ident">agent</span>.<span class="ident">clone</span>(),
+                        <span class="ident">_client</span>: (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">clone</span>(),
                     };
 
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
@@ -2363,7 +2377,7 @@
 <span class="doccomment">/// alive until at least this transfer is complete.</span>
 <span class="kw">struct</span> <span class="ident">ResponseBody</span> {
     <span class="ident">inner</span>: <span class="ident">ResponseBodyReader</span>,
-    <span class="ident">_agent</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">agent</span>::<span class="ident">Handle</span><span class="op">&gt;</span>,
+    <span class="ident">_client</span>: <span class="ident">HttpClient</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">AsyncRead</span> <span class="kw">for</span> <span class="ident">ResponseBody</span> {
