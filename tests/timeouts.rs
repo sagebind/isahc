@@ -1,5 +1,5 @@
 use isahc::prelude::*;
-use std::time::Duration;
+use std::{io::{self, Cursor, Read}, thread, time::Duration};
 use testserver::mock;
 
 /// Issue #3
@@ -31,16 +31,21 @@ fn request_errors_if_read_timeout_is_reached() {
 /// Issue #154
 #[test]
 fn timeout_during_response_body_produces_error() {
-    let body = vec![0; 1_00_000];
-    let m = {
-        let body = body.clone();
-        mock! {
-            body: body.clone(),
+    struct SlowReader;
+
+    impl Read for SlowReader {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            thread::sleep(Duration::from_secs(2));
+            Ok(0)
         }
+    }
+
+    let m = mock! {
+        body_reader: Cursor::new(vec![0; 100_000]).chain(SlowReader),
     };
 
     let mut response = Request::get(m.url())
-        .timeout(Duration::from_millis(1))
+        .timeout(Duration::from_millis(500))
         .body(())
         .unwrap()
         .send()
