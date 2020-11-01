@@ -167,7 +167,7 @@ impl From<Error> for io::Error {
             Error::ConnectFailed => io::ErrorKind::ConnectionRefused.into(),
             Error::Io(e) => e,
             Error::Timeout => io::ErrorKind::TimedOut.into(),
-            _ => io::ErrorKind::Other.into(),
+            e => io::Error::new(io::ErrorKind::Other, e),
         }
     }
 }
