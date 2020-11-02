@@ -13,6 +13,7 @@ use futures_channel::oneshot::Sender;
 use futures_io::{AsyncRead, AsyncWrite};
 use futures_util::{pin_mut, task::AtomicWaker};
 use http::{Response, Uri};
+use once_cell::sync::OnceCell;
 use sluice::pipe;
 use std::{
     ascii,
@@ -106,7 +107,15 @@ struct Shared {
     /// A waker used by the handler to wake up the associated future.
     waker: AtomicWaker,
 
-    completed: AtomicCell<bool>,
+    /// Set to the final result of the transfer received from curl. This is used
+    /// to communicate an error while reading the response body if the handler
+    /// suddenly aborts.
+    result: OnceCell<Result<(), curl::Error>>,
+
+    /// Set to true whenever the response body is dropped. This is used in the
+    /// opposite manner as the above flag; if the response body is dropped, then
+    /// this communicates to the handler to stop running since the user has lost
+    /// interest in this request.
     response_body_dropped: AtomicCell<bool>,
 }
 
@@ -121,7 +130,7 @@ impl RequestHandler {
         let (sender, receiver) = futures_channel::oneshot::channel();
         let shared = Arc::new(Shared {
             waker: AtomicWaker::default(),
-            completed: AtomicCell::new(false),
+            result: OnceCell::new(),
             response_body_dropped: AtomicCell::new(false),
         });
         let (response_body_reader, response_body_writer) = pipe::pipe();
@@ -211,7 +220,7 @@ impl RequestHandler {
         let span = tracing::trace_span!(parent: &self.span, "on_result");
         let _enter = span.enter();
 
-        self.shared.completed.store(true);
+        self.shared.result.set(result.clone()).unwrap();
 
         match result {
             Ok(()) => self.flush_response_headers(),
@@ -688,12 +697,15 @@ impl AsyncRead for ResponseBodyReader {
         match inner.poll_read(cx, buf) {
             // On EOF, check to see if the transfer was cancelled, and if so,
             // return an error.
-            Poll::Ready(Ok(0)) => {
-                if !self.shared.completed.load() {
-                    Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into()))
-                } else {
-                    Poll::Ready(Ok(0))
-                }
+            Poll::Ready(Ok(0)) => match self.shared.result.get() {
+                // The transfer did finish successfully, so return EOF.
+                Some(Ok(())) => Poll::Ready(Ok(0)),
+
+                // The transfer finished with an error, so return the error.
+                Some(Err(e)) => Poll::Ready(Err(io::Error::from(Error::from(e.clone())))),
+
+                // The transfer did not finish properly at all, so return an error.
+                None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),
             }
             poll => poll,
         }

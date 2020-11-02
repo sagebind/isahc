@@ -112,8 +112,8 @@ impl<R: Responder> Mock<R> {
         Response {
             status_code: 404,
             headers: Vec::new(),
-            body: Vec::new(),
-            transfer_encoding: false,
+            body: Box::new(std::io::empty()),
+            body_len: Some(0),
         }
     }
 

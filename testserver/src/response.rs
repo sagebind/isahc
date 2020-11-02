@@ -1,17 +1,31 @@
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
-#[derive(Clone, Debug)]
 pub struct Response {
     pub status_code: u16,
     pub headers: Vec<(String, String)>,
-    pub body: Vec<u8>,
-    pub transfer_encoding: bool,
+    pub body: Box<dyn Read>,
+    pub body_len: Option<usize>,
 }
 
 impl Response {
-    pub(crate) fn into_http_response(self) -> tiny_http::Response<Cursor<Vec<u8>>> {
-        let len = self.body.len();
+    pub fn new() -> Self {
+        Self::default()
+    }
 
+    pub fn with_body_buf(mut self, buf: impl Into<Vec<u8>>) -> Self {
+        let buf = buf.into();
+        self.body_len = Some(buf.len());
+        self.body = Box::new(Cursor::new(buf));
+        self
+    }
+
+    pub fn with_body_reader(mut self, reader: impl Read + 'static) -> Self {
+        self.body_len = None;
+        self.body = Box::new(reader);
+        self
+    }
+
+    pub(crate) fn into_http_response(self) -> tiny_http::Response<Box<dyn Read>> {
         tiny_http::Response::new(
             self.status_code.into(),
             self.headers.into_iter()
@@ -20,12 +34,8 @@ impl Response {
                     value.as_bytes(),
                 ).unwrap())
                 .collect(),
-            Cursor::new(self.body),
-            if self.transfer_encoding {
-                None
-            } else {
-                Some(len)
-            },
+            self.body,
+            self.body_len,
             None,
         )
     }
@@ -36,8 +46,8 @@ impl Default for Response {
         Self {
             status_code: 200,
             headers: Vec::new(),
-            body: Vec::new(),
-            transfer_encoding: false,
+            body: Box::new(std::io::empty()),
+            body_len: Some(0),
         }
     }
 }

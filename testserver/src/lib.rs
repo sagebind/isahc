@@ -24,7 +24,15 @@ macro_rules! mock {
     (@response($response:expr) body: $body:expr, $($tail:tt)*) => {{
         let mut response = $response;
 
-        response.body = $body.into();
+        response = response.with_body_buf($body);
+
+        $crate::mock!(@response(response) $($tail)*)
+    }};
+
+    (@response($response:expr) body_reader: $body:expr, $($tail:tt)*) => {{
+        let mut response = $response;
+
+        response = response.with_body_reader($body);
 
         $crate::mock!(@response(response) $($tail)*)
     }};
@@ -32,7 +40,9 @@ macro_rules! mock {
     (@response($response:expr) transfer_encoding: $value:expr, $($tail:tt)*) => {{
         let mut response = $response;
 
-        response.transfer_encoding = $value;
+        if $value {
+            response.body_len = None;
+        }
 
         $crate::mock!(@response(response) $($tail)*)
     }};
