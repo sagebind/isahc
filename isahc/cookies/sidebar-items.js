@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Cookie","Information stored about an HTTP cookie."],["CookieJar","Provides automatic cookie session management using an in-memory cookie store."]]});
