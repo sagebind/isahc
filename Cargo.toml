@@ -1,6 +1,6 @@
 [package]
 name = "isahc"
-version = "0.9.10"
+version = "0.9.11"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
