@@ -1,7 +1,5 @@
 //! Types for error handling.
 
-#![allow(deprecated)]
-
 use std::error::Error as StdError;
 use std::fmt;
 use std::io;
@@ -21,8 +19,7 @@ pub enum Error {
     CouldntResolveHost,
     /// Couldn't resolve proxy host name.
     CouldntResolveProxy,
-    /// An unrecognized error thrown by curl.
-    Curl(String),
+
     /// Unrecognized or bad content encoding returned by the server.
     InvalidContentEncoding(Option<String>),
     /// Provided credentials were rejected by the server.
@@ -49,6 +46,32 @@ pub enum Error {
     Timeout,
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,
+
+    Other(Box<dyn StdError>),
+}
+
+#[derive(Clone, Debug)]
+#[non_exhaustive]
+pub enum Category {
+    /// An I/O error either sending the request or reading the response. Unclear
+    /// if the client or server is to blame.
+    Io,
+
+    /// The server made an unrecoverable HTTP protocol violation. Retrying a
+    /// request is likely to produce the same error.
+    Protocol,
+
+    Timeout,
+}
+
+impl Error {
+    pub(crate) fn new_other(error: impl StdError + 'static) -> Self {
+        Self::Other(Box::new(error))
+    }
+
+    pub fn is_tls(&self) -> bool {
+        false
+    }
 }
 
 impl fmt::Display for Error {
@@ -66,7 +89,7 @@ impl StdError for Error {
             Error::ConnectFailed => "failed to connect to the server",
             Error::CouldntResolveHost => "couldn't resolve host name",
             Error::CouldntResolveProxy => "couldn't resolve proxy host name",
-            Error::Curl(ref e) => e,
+            Error::Other(ref e) => e.description(),
             Error::InvalidContentEncoding(Some(ref e)) => e,
             Error::InvalidCredentials => "credentials were rejected by the server",
             Error::InvalidHttpFormat(ref e) => e.description(),
@@ -130,7 +153,7 @@ impl From<curl::Error> for Error {
         } else if error.is_too_many_redirects() {
             Error::TooManyRedirects
         } else {
-            Error::Curl(error.description().to_owned())
+            Error::new_other(error)
         }
     }
 }
@@ -138,7 +161,7 @@ impl From<curl::Error> for Error {
 #[doc(hidden)]
 impl From<curl::MultiError> for Error {
     fn from(error: curl::MultiError) -> Error {
-        Error::Curl(error.description().to_owned())
+        Error::new_other(error)
     }
 }
 

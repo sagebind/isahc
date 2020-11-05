@@ -44,8 +44,17 @@ pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
 pub trait Configurable: internal::ConfigurableBase {
-    /// Set a maximum amount of time that a request is allowed to take before
-    /// being aborted.
+    /// Specify a maximum amount of time that a single request/response cycle is
+    /// allowed to take before being aborted.
+    ///
+    /// Since response bodies are streamed (if present) as part of the response
+    /// lifecycle, the timeout includes reading the response body stream. If the
+    /// response headers are received, but the timeout expires while reading the
+    /// response body, then read operations will return a
+    /// [`TimedOut`][std::io::ErrorKind::TimedOut] I/O error. This also means
+    /// that if you receive a response with a body but do not immediately start
+    /// reading from it, then the timeout timer will still be active and may
+    /// expire before you even attempt to read the body.
     ///
     /// If not set, no timeout will be enforced.
     ///
