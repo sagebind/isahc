@@ -230,7 +230,6 @@ pub mod cookies;
 mod agent;
 mod body;
 mod client;
-mod error;
 mod handler;
 mod headers;
 mod metrics;
@@ -241,6 +240,7 @@ mod task;
 mod text;
 
 pub mod auth;
+pub mod error;
 pub mod config;
 
 #[cfg(feature = "unstable-interceptors")]

@@ -1,10 +1,10 @@
 //! Helpers for working with tasks and futures.
 
-use crate::Error;
 use crossbeam_utils::sync::{Parker, Unparker};
 use futures_util::{pin_mut, task::ArcWake};
 use std::{
     future::Future,
+    io,
     net::{SocketAddr, UdpSocket},
     sync::Arc,
     task::{Context, Poll, Waker},
@@ -79,7 +79,7 @@ pub(crate) struct UdpWaker {
 
 impl UdpWaker {
     /// Create a waker by connecting to the wake address of an UDP server.
-    pub(crate) fn connect(addr: SocketAddr) -> Result<Self, Error> {
+    pub(crate) fn connect(addr: SocketAddr) -> io::Result<Self> {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.connect(addr)?;
 

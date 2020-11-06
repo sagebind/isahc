@@ -165,7 +165,7 @@ fn redirect_non_rewindable_body_returns_error() {
         .unwrap()
         .send();
 
-    assert!(matches!(result, Err(isahc::Error::RequestBodyError(_))));
+    assert!(matches!(result, Err(e) if e.kind() == isahc::error::ErrorKind::RequestBodyNotRewindable));
     assert_eq!(m1.request().method, "POST");
 }
 
@@ -185,10 +185,7 @@ fn redirect_limit_is_respected() {
         .send();
 
     // Request should error with too many redirects.
-    assert!(match result {
-        Err(isahc::Error::TooManyRedirects) => true,
-        _ => false,
-    });
+    assert!(matches!(result, Err(e) if e.kind() == isahc::error::ErrorKind::TooManyRedirects));
 
     // After request (limit + 1) that returns a redirect should error.
     assert_eq!(m.requests().len(), 6);

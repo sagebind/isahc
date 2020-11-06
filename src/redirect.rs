@@ -1,10 +1,10 @@
 use crate::{
     config::RedirectPolicy,
+    error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
     Body,
-    Error,
 };
 use http::{Request, Uri};
 
@@ -63,7 +63,7 @@ impl Interceptor for RedirectInterceptor {
 
                 // If we've reached the limit, return an error as requested.
                 if redirect_count >= limit {
-                    return Err(Error::TooManyRedirects);
+                    return Err(ErrorKind::TooManyRedirects.into());
                 }
 
                 // Set referer header.
@@ -95,7 +95,7 @@ impl Interceptor for RedirectInterceptor {
                 // There's not really a good way of handling this gracefully, so
                 // we just return an error so that the user knows about it.
                 if !request_body.reset() {
-                    return Err(Error::RequestBodyError(Some(String::from("could not follow redirect because request body is not rewindable"))));
+                    return Err(ErrorKind::RequestBodyNotRewindable.into());
                 }
 
                 let request = request_builder.uri(redirect_uri)

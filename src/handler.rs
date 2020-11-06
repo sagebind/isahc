@@ -153,14 +153,14 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.await.map_err(|_| Error::Aborted)??;
+            let builder = receiver.await.map_err(|e| Error::new(crate::error::ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
                 shared,
             };
 
-            builder.body(reader).map_err(Error::InvalidHttpFormat)
+            builder.body(reader).map_err(|e| Error::new(crate::error::ErrorKind::Protocol, e))
         };
 
         (handler, future)

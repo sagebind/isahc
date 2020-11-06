@@ -71,7 +71,7 @@ macro_rules! interceptor {
 /// made in parallel.
 pub trait Interceptor: Send + Sync {
     /// The type of error returned by this interceptor.
-    type Err: Into<Box<dyn Error>>;
+    type Err: Error + Send + Sync + 'static;
 
     /// Intercept a request, returning a response.
     ///
@@ -87,7 +87,7 @@ pub type InterceptorFuture<'a, E> = BoxFuture<'a, Result<Response<Body>, E>>;
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
 where
     F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
-    E: Into<Box<dyn Error>>,
+    E: Error + Send + Sync + 'static,
 {
     InterceptorFn(f)
 }
@@ -98,7 +98,7 @@ pub struct InterceptorFn<F>(F);
 
 impl<E, F> Interceptor for InterceptorFn<F>
 where
-    E: Into<Box<dyn Error>>,
+    E: Error + Send + Sync + 'static,
     F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
 {
     type Err = E;

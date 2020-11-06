@@ -15,11 +15,13 @@ use crossbeam_channel::{Receiver, Sender};
 use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use slab::Slab;
-use std::net::UdpSocket;
-use std::sync::{Arc, Mutex};
-use std::task::Waker;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    net::UdpSocket,
+    sync::{Arc, Mutex},
+    task::Waker,
+    thread,
+    time::{Duration, Instant},
+};
 
 const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
