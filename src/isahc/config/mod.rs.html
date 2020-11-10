@@ -862,6 +862,20 @@
 <span id="861">861</span>
 <span id="862">862</span>
 <span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -909,8 +923,22 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// This trait is sealed and cannot be implemented for types outside of Isahc.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Configurable</span>: <span class="ident">internal</span>::<span class="ident">ConfigurableBase</span> {
-    <span class="doccomment">/// Set a maximum amount of time that a request is allowed to take before</span>
-    <span class="doccomment">/// being aborted.</span>
+    <span class="doccomment">/// Specify a maximum amount of time that a complete request/response cycle</span>
+    <span class="doccomment">/// is allowed to take before being aborted. This includes DNS resolution,</span>
+    <span class="doccomment">/// connecting to the server, writing the request, and reading the response.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Since response bodies are streamed, you will likely receive a</span>
+    <span class="doccomment">/// [`Response`](crate::http::Response) before the response body stream has</span>
+    <span class="doccomment">/// been fully consumed. This means that the configured timeout will still</span>
+    <span class="doccomment">/// be active for that request, and if it expires, further attempts to read</span>
+    <span class="doccomment">/// from the stream will return a [`TimedOut`](std::io::ErrorKind::TimedOut)</span>
+    <span class="doccomment">/// I/O error.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This also means that if you receive a response with a body but do not</span>
+    <span class="doccomment">/// immediately start reading from it, then the timeout timer will still be</span>
+    <span class="doccomment">/// active and may expire before you even attempt to read the body. Keep</span>
+    <span class="doccomment">/// this in mind when consuming responses and consider handling the response</span>
+    <span class="doccomment">/// body right after you receive it if you are using this option.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If not set, no timeout will be enforced.</span>
     <span class="doccomment">///</span>
@@ -932,9 +960,9 @@
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">Timeout</span>(<span class="ident">timeout</span>))
     }
 
-    <span class="doccomment">/// Set a timeout for the initial connection phase.</span>
+    <span class="doccomment">/// Set a timeout for establishing connections to a host.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If not set, a connect timeout of 300 seconds will be used.</span>
+    <span class="doccomment">/// If not set, a default connect timeout of 300 seconds will be used.</span>
     <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ConnectTimeout</span>(<span class="ident">timeout</span>))
     }
