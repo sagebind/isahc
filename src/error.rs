@@ -62,9 +62,18 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::RequestBodyNotRewindable => {
-                f.write_str("request body could not be re-sent because it is not rewindable")
-            }
+            Self::BadClientCertificate => f.write_str("A problem occurred with the local certificate."),
+            Self::BadServerCertificate => f.write_str("The server certificate could not be validated."),
+            Self::ConnectionFailed => f.write_str("failed to connect to the server"),
+            Self::CouldntResolveHost => f.write_str("Couldn't resolve host name"),
+            Self::CouldntResolveProxy => f.write_str("Couldn't resolve proxy host name"),
+            Self::InvalidContentEncoding => f.write_str("The server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed."),
+            Self::InvalidCredentials => f.write_str("provided authentication credentials were rejected by the server"),
+            Self::Protocol => f.write_str("the server made an unrecoverable HTTP protocol violation"),
+            Self::RequestBodyNotRewindable => f.write_str("request body could not be re-sent because it is not rewindable"),
+            Self::Timeout => f.write_str("request or operation took longer than the configured timeout time"),
+            Self::TlsEngineError => f.write_str("error ocurred in the secure socket engine"),
+            Self::TooManyRedirects => f.write_str("number of redirects hit the maximum amount"),
             _ => f.write_str("unknown error"),
         }
     }
@@ -77,52 +86,6 @@ pub struct Error {
     kind: ErrorKind,
     source: Option<Box<dyn StdError + Send + Sync + 'static>>,
 }
-
-// /// All possible types of errors that can be returned from Isahc.
-// #[derive(Debug)]
-// #[non_exhaustive]
-// pub enum Error {
-//     /// The request was aborted before it could be completed.
-//     Aborted,
-//     /// A problem occurred with the local certificate.
-//     BadClientCertificate(Option<String>),
-//     /// The server certificate could not be validated.
-//     BadServerCertificate(Option<String>),
-//     /// Failed to connect to the server.
-//     ConnectFailed,
-//     /// Couldn't resolve host name.
-//     CouldntResolveHost,
-//     /// Couldn't resolve proxy host name.
-//     CouldntResolveProxy,
-//     /// Unrecognized or bad content encoding returned by the server.
-//     InvalidContentEncoding(Option<String>),
-//     /// Provided credentials were rejected by the server.
-//     InvalidCredentials,
-//     /// Validation error when constructing the request or parsing the response.
-//     InvalidHttpFormat(http::Error),
-//     /// Invalid UTF-8 string error.
-//     InvalidUtf8,
-//     /// An unknown I/O error.
-//     Io(io::Error),
-//     /// The server did not send a response.
-//     NoResponse,
-//     /// The server does not support or accept range requests.
-//     RangeRequestUnsupported,
-//     /// An error occurred while writing the request body.
-//     RequestBodyError(Option<String>),
-//     /// An error occurred while reading the response body.
-//     ResponseBodyError(Option<String>),
-//     /// Failed to connect over a secure socket.
-//     SSLConnectFailed(Option<String>),
-//     /// An error ocurred in the secure socket engine.
-//     SSLEngineError(Option<String>),
-//     /// An ongoing request took longer than the configured timeout time.
-//     Timeout,
-//     /// Number of redirects hit the maximum amount.
-//     TooManyRedirects,
-
-//     Other(Box<dyn StdError + Send + Sync>),
-// }
 
 impl Error {
     pub(crate) fn new(kind: ErrorKind, source: impl StdError + Send + Sync + 'static) -> Self {
@@ -209,29 +172,6 @@ impl fmt::Display for Error {
         } else {
             write!(f, "{}", self.kind)
         }
-        // match self {
-        //     Self::Aborted => f.write_str("request aborted unexpectedly"),
-        //     Self::BadClientCertificate(Some(ref e)) => f.write_str(e),
-        //     Self::BadServerCertificate(Some(ref e)) => f.write_str(e),
-        //     Self::ConnectFailed => f.write_str("failed to connect to the server"),
-        //     Self::CouldntResolveHost => f.write_str("couldn't resolve host name"),
-        //     Self::CouldntResolveProxy => f.write_str("couldn't resolve proxy host name"),
-        //     Self::InvalidContentEncoding(Some(ref e)) => write!(f, "invalid content encoding: {}", e),
-        //     Self::InvalidCredentials => f.write_str("credentials were rejected by the server"),
-        //     Self::InvalidHttpFormat(ref e) => e.fmt(f),
-        //     Self::InvalidUtf8 => f.write_str("bytes are not valid UTF-8"),
-        //     Self::Io(ref e) => e.fmt(f),
-        //     Self::NoResponse => f.write_str("server did not send a response"),
-        //     Self::RangeRequestUnsupported => f.write_str("server does not support or accept range requests"),
-        //     Self::RequestBodyError(Some(ref e)) => f.write_str(e),
-        //     Self::ResponseBodyError(Some(ref e)) => f.write_str(e),
-        //     Self::SSLConnectFailed(Some(ref e)) => f.write_str(e),
-        //     Self::SSLEngineError(Some(ref e)) => f.write_str(e),
-        //     Self::Timeout => f.write_str("request took longer than the configured timeout"),
-        //     Self::TooManyRedirects => f.write_str("max redirect limit exceeded"),
-        //     Self::Other(ref e) => e.fmt(f),
-        //     _ => f.write_str("unknown error"),
-        // }
     }
 }
 
@@ -295,7 +235,7 @@ impl From<io::Error> for Error {
 
         Self::new(
             match error.kind() {
-                // io::ErrorKind::ConnectionRefused => Error::ConnectFailed,
+                io::ErrorKind::ConnectionRefused => ErrorKind::ConnectionFailed,
                 io::ErrorKind::TimedOut => ErrorKind::Timeout,
                 kind => ErrorKind::Io(kind),
             },
