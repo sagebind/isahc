@@ -88,13 +88,6 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(ConnectTimeout(timeout))
     }
 
-    /// Set a timeout for reading and writing from the server.
-    ///
-    /// If not set, no timeout will be enforced.
-    fn socket_timeout<T: Into<Option<Duration>>>(self, timeout: T) -> Self {
-        self.configure(SocketTimeout(timeout.into()))
-    }
-
     /// Configure how the use of HTTP versions should be negotiated with the
     /// server.
     ///
@@ -786,20 +779,6 @@ pub(crate) struct ConnectTimeout(pub(crate) Duration);
 impl SetOpt for ConnectTimeout {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.connect_timeout(self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SocketTimeout(pub(crate) Option<Duration>);
-
-impl SetOpt for SocketTimeout {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        if let Some(timeout) = self.0.clone() {
-            easy.low_speed_limit(1)?;
-            easy.low_speed_time(timeout)
-        } else {
-            easy.low_speed_limit(0)
-        }
     }
 }
 
