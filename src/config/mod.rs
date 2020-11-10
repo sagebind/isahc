@@ -44,8 +44,22 @@ pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
 pub trait Configurable: internal::ConfigurableBase {
-    /// Set a maximum amount of time that a request is allowed to take before
-    /// being aborted.
+    /// Specify a maximum amount of time that a complete request/response cycle
+    /// is allowed to take before being aborted. This includes DNS resolution,
+    /// connecting to the server, writing the request, and reading the response.
+    ///
+    /// Since response bodies are streamed, you will likely receive a
+    /// [`Response`](crate::http::Response) before the response body stream has
+    /// been fully consumed. This means that the configured timeout will still
+    /// be active for that request, and if it expires, further attempts to read
+    /// from the stream will return a [`TimedOut`](std::io::ErrorKind::TimedOut)
+    /// I/O error.
+    ///
+    /// This also means that if you receive a response with a body but do not
+    /// immediately start reading from it, then the timeout timer will still be
+    /// active and may expire before you even attempt to read the body. Keep
+    /// this in mind when consuming responses and consider handling the response
+    /// body right after you receive it if you are using this option.
     ///
     /// If not set, no timeout will be enforced.
     ///
@@ -67,9 +81,9 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(Timeout(timeout))
     }
 
-    /// Set a timeout for the initial connection phase.
+    /// Set a timeout for establishing connections to a host.
     ///
-    /// If not set, a connect timeout of 300 seconds will be used.
+    /// If not set, a default connect timeout of 300 seconds will be used.
     fn connect_timeout(self, timeout: Duration) -> Self {
         self.configure(ConnectTimeout(timeout))
     }

@@ -18,12 +18,7 @@ fn request_errors_if_read_timeout_is_reached() {
         .send();
 
     // Client should time-out.
-    match result {
-        Err(isahc::Error::Timeout) => {}
-        e => {
-            panic!("expected timeout error, got {:?}", e);
-        }
-    }
+    assert!(matches!(result, Err(isahc::Error::Timeout)));
 
     assert_eq!(m.requests().len(), 1);
 }
