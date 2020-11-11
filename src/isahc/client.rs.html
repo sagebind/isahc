@@ -1225,13 +1225,6 @@
 <span id="1224">1224</span>
 <span id="1225">1225</span>
 <span id="1226">1226</span>
-<span id="1227">1227</span>
-<span id="1228">1228</span>
-<span id="1229">1229</span>
-<span id="1230">1230</span>
-<span id="1231">1231</span>
-<span id="1232">1232</span>
-<span id="1233">1233</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1240,6 +1233,7 @@
     <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
     <span class="ident">config</span>::<span class="ident">internal</span>::{<span class="ident">ConfigurableBase</span>, <span class="ident">SetOpt</span>},
     <span class="ident">config</span>::<span class="kw-2">*</span>,
+    <span class="ident">default_headers</span>::<span class="ident">DefaultHeadersInterceptor</span>,
     <span class="ident">handler</span>::{<span class="ident">RequestHandler</span>, <span class="ident">ResponseBodyReader</span>},
     <span class="ident">headers</span>,
     <span class="ident">interceptor</span>::{<span class="self">self</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorObj</span>},
@@ -1671,17 +1665,23 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
         }
 
+        <span class="comment">// Add cookie interceptor if enabled.</span>
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
         {
             <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">clone</span>();
             <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">interceptor</span>::<span class="ident">CookieInterceptor</span>::<span class="ident">new</span>(<span class="ident">jar</span>));
         }
 
+        <span class="comment">// Add default header interceptor if any default headers were specified.</span>
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">let</span> <span class="ident">default_headers</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">default_headers</span>);
+            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="ident">DefaultHeadersInterceptor</span>::<span class="ident">from</span>(<span class="ident">default_headers</span>));
+        }
+
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">InnerHttpClient</span> {
             <span class="ident">agent</span>: <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>,
             <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
-            <span class="ident">default_headers</span>: <span class="self">self</span>.<span class="ident">default_headers</span>,
 
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
             <span class="ident">cookie_jar</span>: <span class="self">self</span>.<span class="ident">cookie_jar</span>,
@@ -1815,9 +1815,6 @@
 
     <span class="doccomment">/// Registered interceptors that requests should pass through.</span>
     <span class="ident">interceptors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InterceptorObj</span><span class="op">&gt;</span>,
-
-    <span class="doccomment">/// Default headers to add to every request.</span>
-    <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Configured cookie jar, if any.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
@@ -2303,17 +2300,6 @@
     <span class="kw">fn</span> <span class="ident">invoke</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">Box</span>::<span class="ident">pin</span>(
             <span class="ident">async</span> <span class="kw">move</span> {
-                <span class="comment">// We are checking here if header already contains the key, simply ignore it.</span>
-                <span class="comment">// In case the key wasn&#39;t present in parts.headers ensure that</span>
-                <span class="comment">// we have all the headers from default headers.</span>
-                <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">default_headers</span>.<span class="ident">keys</span>() {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                        <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">default_headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
-                            <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
-                        }
-                    }
-                }
-
                 <span class="comment">// Set default user agent if not specified.</span>
                 <span class="ident">request</span>
                     .<span class="ident">headers_mut</span>()
