@@ -5,6 +5,7 @@ use crate::{
     auth::{Authentication, Credentials},
     config::internal::{ConfigurableBase, SetOpt},
     config::*,
+    default_headers::DefaultHeadersInterceptor,
     handler::{RequestHandler, ResponseBodyReader},
     headers,
     interceptor::{self, Interceptor, InterceptorObj},
@@ -436,17 +437,23 @@ impl HttpClientBuilder {
             return Err(err);
         }
 
+        // Add cookie interceptor if enabled.
         #[cfg(feature = "cookies")]
         {
             let jar = self.cookie_jar.clone();
             self = self.interceptor_impl(crate::cookies::interceptor::CookieInterceptor::new(jar));
         }
 
+        // Add default header interceptor if any default headers were specified.
+        if !self.default_headers.is_empty() {
+            let default_headers = std::mem::take(&mut self.default_headers);
+            self = self.interceptor_impl(DefaultHeadersInterceptor::from(default_headers));
+        }
+
         let inner = InnerHttpClient {
             agent: self.agent_builder.spawn()?,
             defaults: self.defaults,
             interceptors: self.interceptors,
-            default_headers: self.default_headers,
 
             #[cfg(feature = "cookies")]
             cookie_jar: self.cookie_jar,
@@ -580,9 +587,6 @@ struct InnerHttpClient {
 
     /// Registered interceptors that requests should pass through.
     interceptors: Vec<InterceptorObj>,
-
-    /// Default headers to add to every request.
-    default_headers: HeaderMap<HeaderValue>,
 
     /// Configured cookie jar, if any.
     #[cfg(feature = "cookies")]
@@ -1068,17 +1072,6 @@ impl crate::interceptor::Invoke for &HttpClient {
     fn invoke<'a>(&'a self, mut request: Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
         Box::pin(
             async move {
-                // We are checking here if header already contains the key, simply ignore it.
-                // In case the key wasn't present in parts.headers ensure that
-                // we have all the headers from default headers.
-                for name in self.inner.default_headers.keys() {
-                    if !request.headers().contains_key(name) {
-                        for v in self.inner.default_headers.get_all(name).iter() {
-                            request.headers_mut().append(name, v.clone());
-                        }
-                    }
-                }
-
                 // Set default user agent if not specified.
                 request
                     .headers_mut()
