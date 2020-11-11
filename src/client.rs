@@ -892,12 +892,19 @@ impl HttpClient {
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
         );
+
+        // Set redirect policy if not specified.
+        if request.extensions().get::<RedirectPolicy>().is_none() {
+            if let Some(policy) = self.inner.defaults.get::<RedirectPolicy>().cloned() {
+                request.extensions_mut().insert(policy);
+            }
+        }
 
         let ctx = interceptor::Context {
             invoker: Arc::new(self),
