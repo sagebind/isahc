@@ -1225,6 +1225,13 @@
 <span id="1224">1224</span>
 <span id="1225">1225</span>
 <span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -2120,12 +2127,19 @@
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
-    <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(
             <span class="string">&quot;send_async&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
         );
+
+        <span class="comment">// Set redirect policy if not specified.</span>
+        <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">is_none</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">cloned</span>() {
+                <span class="ident">request</span>.<span class="ident">extensions_mut</span>().<span class="ident">insert</span>(<span class="ident">policy</span>);
+            }
+        }
 
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
             <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>),
