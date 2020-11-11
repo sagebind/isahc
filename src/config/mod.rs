@@ -574,6 +574,13 @@ pub trait Configurable: internal::ConfigurableBase {
     fn metrics(self, enable: bool) -> Self {
         self.configure(EnableMetrics(enable))
     }
+
+    /// Set a maximum upload speed for the request body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    fn ip_protocol(self, protocol: IpProtocol) -> Self {
+        self.configure(protocol)
+    }
 }
 
 /// A strategy for selecting what HTTP versions should be used when
@@ -869,6 +876,28 @@ pub(crate) struct EnableMetrics(pub(crate) bool);
 impl SetOpt for EnableMetrics {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.progress(self.0)
+    }
+}
+
+/// The ip protocol version to use
+#[derive(Clone, Debug)]
+pub enum IpProtocol {
+    /// Connect to ipv4 addresses only.
+    V4,
+    /// Connect to ipv6 addresses only.
+    V6,
+    /// Connect to any ip protocol version address.
+    Any,
+}
+
+impl SetOpt for IpProtocol {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        let proto = match &self {
+            IpProtocol::V4 => curl::easy::IpResolve::V4,
+            IpProtocol::V6 => curl::easy::IpResolve::V6,
+            IpProtocol::Any => curl::easy::IpResolve::Any,
+        };
+        easy.ip_resolve(proto)
     }
 }
 
