@@ -3,11 +3,7 @@
 #![cfg(feature = "text-decoding")]
 
 use encoding_rs::{CoderResult, Encoding};
-use futures_io::AsyncRead;
-use futures_util::{
-    future::{FutureExt, LocalBoxFuture},
-    io::AsyncReadExt,
-};
+use futures_lite::io::{AsyncRead, AsyncReadExt};
 use http::Response;
 use std::{
     future::Future,
@@ -44,7 +40,7 @@ macro_rules! decode_reader {
 /// A future returning a response body decoded as text.
 #[allow(missing_debug_implementations)]
 pub struct TextFuture<'a, R> {
-    inner: LocalBoxFuture<'a, io::Result<String>>,
+    inner: Pin<Box<dyn Future<Output = io::Result<String>> + 'a>>,
     _phantom: PhantomData<R>,
 }
 
@@ -52,7 +48,7 @@ impl<'a, R: Unpin> Future for TextFuture<'a, R> {
     type Output = io::Result<String>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().inner.poll_unpin(cx)
+        self.as_mut().inner.as_mut().poll(cx)
     }
 }
 

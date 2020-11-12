@@ -11,15 +11,17 @@
 use crate::handler::RequestHandler;
 use crate::task::{UdpWaker, WakerExt};
 use crate::Error;
-use crossbeam_channel::{Receiver, Sender};
 use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
+use flume::{Receiver, Sender};
 use slab::Slab;
-use std::net::UdpSocket;
-use std::sync::{Arc, Mutex};
-use std::task::Waker;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::{
+    net::UdpSocket,
+    sync::Mutex,
+    task::Waker,
+    thread,
+    time::{Duration, Instant},
+};
 
 const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
 
@@ -72,10 +74,10 @@ impl AgentBuilder {
         wake_socket.set_nonblocking(true)?;
         let wake_addr = wake_socket.local_addr()?;
         let port = wake_addr.port();
-        let waker = futures_util::task::waker(Arc::new(UdpWaker::connect(wake_addr)?));
+        let waker = Waker::from(UdpWaker::connect(wake_addr)?);
         tracing::debug!("agent waker listening on {}", wake_addr);
 
-        let (message_tx, message_rx) = crossbeam_channel::unbounded();
+        let (message_tx, message_rx) = flume::unbounded();
 
         let wait_group = WaitGroup::new();
         let wait_group_thread = wait_group.clone();
@@ -114,7 +116,7 @@ impl AgentBuilder {
 
                         let agent = AgentContext {
                             multi,
-                            multi_messages: crossbeam_channel::unbounded(),
+                            multi_messages: flume::unbounded(),
                             message_tx,
                             message_rx,
                             wake_socket,
@@ -234,7 +236,7 @@ impl Handle {
                 self.waker.wake_by_ref();
                 Ok(())
             }
-            Err(crossbeam_channel::SendError(_)) => match self.try_join() {
+            Err(flume::SendError(_)) => match self.try_join() {
                 JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
                 JoinResult::Panic => panic!("agent thread panicked"),
                 _ => panic!("agent thread terminated prematurely"),
@@ -375,8 +377,8 @@ impl AgentContext {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(crossbeam_channel::TryRecvError::Empty) => break,
-                    Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                    Err(flume::TryRecvError::Empty) => break,
+                    Err(flume::TryRecvError::Disconnected) => {
                         tracing::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
@@ -456,8 +458,8 @@ impl AgentContext {
             match self.multi_messages.1.try_recv() {
                 // A request completed.
                 Ok((token, result)) => self.complete_request(token, result)?,
-                Err(crossbeam_channel::TryRecvError::Empty) => break,
-                Err(crossbeam_channel::TryRecvError::Disconnected) => unreachable!(),
+                Err(flume::TryRecvError::Empty) => break,
+                Err(flume::TryRecvError::Disconnected) => unreachable!(),
             }
         }
 
