@@ -31,7 +31,7 @@ text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
 [dependencies]
-bytes = "0.5"
+bytes = "0.6"
 crossbeam-utils = "0.8"
 curl = "0.4.34"
 curl-sys = "0.4.37"
