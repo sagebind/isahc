@@ -1132,7 +1132,6 @@ impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // use futures_util::future::FutureExt;
         self.0.as_mut().poll(cx)
     }
 }

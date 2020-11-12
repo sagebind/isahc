@@ -1,4 +1,5 @@
 use crate::Metrics;
+use futures_lite::io::AsyncRead;
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -144,7 +145,7 @@ pub trait ResponseExt<T> {
     #[cfg(feature = "text-decoding")]
     fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
-        T: futures_lite::io::AsyncRead + Unpin;
+        T: AsyncRead + Unpin;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -210,7 +211,7 @@ impl<T> ResponseExt<T> for Response<T> {
     #[cfg(feature = "text-decoding")]
     fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
-        T: futures_lite::io::AsyncRead + Unpin,
+        T: AsyncRead + Unpin,
     {
         crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
