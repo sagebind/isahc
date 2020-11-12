@@ -514,6 +514,8 @@
 <span id="513">513</span>
 <span id="514">514</span>
 <span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -528,15 +530,17 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">handler</span>::<span class="ident">RequestHandler</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">task</span>::{<span class="ident">UdpWaker</span>, <span class="ident">WakerExt</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Error</span>;
-<span class="kw">use</span> <span class="ident">crossbeam_channel</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">sync</span>::<span class="ident">WaitGroup</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">WaitFd</span>;
+<span class="kw">use</span> <span class="ident">flume</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">slab</span>::<span class="ident">Slab</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">net</span>::<span class="ident">UdpSocket</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">task</span>::<span class="ident">Waker</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">thread</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">net</span>::<span class="ident">UdpSocket</span>,
+    <span class="ident">sync</span>::<span class="ident">Mutex</span>,
+    <span class="ident">task</span>::<span class="ident">Waker</span>,
+    <span class="ident">thread</span>,
+    <span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>},
+};
 
 <span class="kw">const</span> <span class="ident">WAIT_TIMEOUT</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration</span>::<span class="ident">from_millis</span>(<span class="number">100</span>);
 
@@ -589,10 +593,10 @@
         <span class="ident">wake_socket</span>.<span class="ident">set_nonblocking</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">wake_addr</span> <span class="op">=</span> <span class="ident">wake_socket</span>.<span class="ident">local_addr</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="ident">wake_addr</span>.<span class="ident">port</span>();
-        <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">futures_util</span>::<span class="ident">task</span>::<span class="ident">waker</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">UdpWaker</span>::<span class="ident">connect</span>(<span class="ident">wake_addr</span>)<span class="question-mark">?</span>));
+        <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">Waker</span>::<span class="ident">from</span>(<span class="ident">UdpWaker</span>::<span class="ident">connect</span>(<span class="ident">wake_addr</span>)<span class="question-mark">?</span>);
         <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent waker listening on {}&quot;</span>, <span class="ident">wake_addr</span>);
 
-        <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">crossbeam_channel</span>::<span class="ident">unbounded</span>();
+        <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">unbounded</span>();
 
         <span class="kw">let</span> <span class="ident">wait_group</span> <span class="op">=</span> <span class="ident">WaitGroup</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">wait_group_thread</span> <span class="op">=</span> <span class="ident">wait_group</span>.<span class="ident">clone</span>();
@@ -631,7 +635,7 @@
 
                         <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span> {
                             <span class="ident">multi</span>,
-                            <span class="ident">multi_messages</span>: <span class="ident">crossbeam_channel</span>::<span class="ident">unbounded</span>(),
+                            <span class="ident">multi_messages</span>: <span class="ident">flume</span>::<span class="ident">unbounded</span>(),
                             <span class="ident">message_tx</span>,
                             <span class="ident">message_rx</span>,
                             <span class="ident">wake_socket</span>,
@@ -751,7 +755,7 @@
                 <span class="self">self</span>.<span class="ident">waker</span>.<span class="ident">wake_by_ref</span>();
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
+            <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
                 <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
                 <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
@@ -892,8 +896,8 @@
             } <span class="kw">else</span> {
                 <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">try_recv</span>() {
                     <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">handle_message</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);
                         <span class="self">self</span>.<span class="ident">close_requested</span> <span class="op">=</span> <span class="bool-val">true</span>;
                         <span class="kw">break</span>;
@@ -973,8 +977,8 @@
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">multi_messages</span>.<span class="number">1</span>.<span class="ident">try_recv</span>() {
                 <span class="comment">// A request completed.</span>
                 <span class="prelude-val">Ok</span>((<span class="ident">token</span>, <span class="ident">result</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">complete_request</span>(<span class="ident">token</span>, <span class="ident">result</span>)<span class="question-mark">?</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">crossbeam_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
+                <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
             }
         }
 

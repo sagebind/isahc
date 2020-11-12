@@ -1222,9 +1222,6 @@
 <span id="1221">1221</span>
 <span id="1222">1222</span>
 <span id="1223">1223</span>
-<span id="1224">1224</span>
-<span id="1225">1225</span>
-<span id="1226">1226</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1237,11 +1234,9 @@
     <span class="ident">handler</span>::{<span class="ident">RequestHandler</span>, <span class="ident">ResponseBodyReader</span>},
     <span class="ident">headers</span>,
     <span class="ident">interceptor</span>::{<span class="self">self</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorObj</span>},
-    <span class="ident">task</span>::<span class="ident">Join</span>,
     <span class="ident">Body</span>, <span class="ident">Error</span>,
 };
-<span class="kw">use</span> <span class="ident">futures_io</span>::<span class="ident">AsyncRead</span>;
-<span class="kw">use</span> <span class="ident">futures_util</span>::{<span class="ident">future</span>::<span class="ident">BoxFuture</span>, <span class="ident">pin_mut</span>};
+<span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future</span>::<span class="ident">block_on</span>, <span class="ident">io</span>::<span class="ident">AsyncRead</span>, <span class="ident">pin</span>};
 <span class="kw">use</span> <span class="ident">http</span>::{
     <span class="ident">header</span>::{<span class="ident">HeaderMap</span>, <span class="ident">HeaderName</span>, <span class="ident">HeaderValue</span>},
     <span class="ident">Request</span>, <span class="ident">Response</span>,
@@ -1878,7 +1873,7 @@
         <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
         <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">get_async</span>(<span class="ident">uri</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">get_async</span>(<span class="ident">uri</span>))
     }
 
     <span class="doccomment">/// Send a GET request to the given URI asynchronously.</span>
@@ -1913,7 +1908,7 @@
         <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
         <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">head_async</span>(<span class="ident">uri</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">head_async</span>(<span class="ident">uri</span>))
     }
 
     <span class="doccomment">/// Send a HEAD request to the given URI asynchronously.</span>
@@ -1951,7 +1946,7 @@
         <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
         <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>))
     }
 
     <span class="doccomment">/// Send a POST request to the given URI asynchronously with a given request</span>
@@ -1991,7 +1986,7 @@
         <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
         <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>))
     }
 
     <span class="doccomment">/// Send a PUT request to the given URI asynchronously with a given request</span>
@@ -2017,7 +2012,7 @@
         <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
         <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">delete_async</span>(<span class="ident">uri</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">delete_async</span>(<span class="ident">uri</span>))
     }
 
     <span class="doccomment">/// Send a DELETE request to the given URI asynchronously.</span>
@@ -2083,7 +2078,7 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">request</span>), <span class="ident">err</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>).<span class="ident">join</span>()
+        <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>))
     }
 
     <span class="doccomment">/// Send an HTTP request and return the HTTP response asynchronously.</span>
@@ -2350,7 +2345,7 @@
 }
 
 <span class="doccomment">/// A future for a request being executed.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;c</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">future</span>: <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;c</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
@@ -2362,8 +2357,7 @@
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Output</span><span class="op">&gt;</span> {
-        <span class="kw">use</span> <span class="ident">futures_util</span>::<span class="ident">future</span>::<span class="ident">FutureExt</span>;
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">poll_unpin</span>(<span class="ident">cx</span>)
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_mut</span>().<span class="ident">poll</span>(<span class="ident">cx</span>)
     }
 }
 
@@ -2387,7 +2381,7 @@
         <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">inner</span>;
-        <span class="macro">pin_mut</span><span class="macro">!</span>(<span class="ident">inner</span>);
+        <span class="macro">pin</span><span class="macro">!</span>(<span class="ident">inner</span>);
         <span class="ident">inner</span>.<span class="ident">poll_read</span>(<span class="ident">cx</span>, <span class="ident">buf</span>)
     }
 }

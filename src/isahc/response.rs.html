@@ -231,8 +231,10 @@
 <span id="230">230</span>
 <span id="231">231</span>
 <span id="232">232</span>
+<span id="233">233</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Metrics</span>;
+<span class="kw">use</span> <span class="ident">futures_lite</span>::<span class="ident">io</span>::<span class="ident">AsyncRead</span>;
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Response</span>, <span class="ident">Uri</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>::<span class="ident">File</span>,
@@ -378,7 +380,7 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">text_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">text</span>::<span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">futures_io</span>::<span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span>;
+        <span class="ident">T</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span>;
 
     <span class="doccomment">/// Deserialize the response body as JSON into a given type.</span>
     <span class="doccomment">///</span>
@@ -444,7 +446,7 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">text_async</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">text</span>::<span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">futures_io</span>::<span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span>,
+        <span class="ident">T</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span>,
     {
         <span class="kw">crate</span>::<span class="ident">text</span>::<span class="ident">Decoder</span>::<span class="ident">for_response</span>(<span class="kw-2">&amp;</span><span class="self">self</span>).<span class="ident">decode_reader_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
     }
