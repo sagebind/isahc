@@ -9,11 +9,9 @@ use crate::{
     handler::{RequestHandler, ResponseBodyReader},
     headers,
     interceptor::{self, Interceptor, InterceptorObj},
-    task::Join,
     Body, Error,
 };
-use futures_io::AsyncRead;
-use futures_util::{future::BoxFuture, pin_mut};
+use futures_lite::{future::block_on, io::AsyncRead, pin};
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request, Response,
@@ -650,7 +648,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.get_async(uri).join()
+        block_on(self.get_async(uri))
     }
 
     /// Send a GET request to the given URI asynchronously.
@@ -685,7 +683,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.head_async(uri).join()
+        block_on(self.head_async(uri))
     }
 
     /// Send a HEAD request to the given URI asynchronously.
@@ -723,7 +721,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.post_async(uri, body).join()
+        block_on(self.post_async(uri, body))
     }
 
     /// Send a POST request to the given URI asynchronously with a given request
@@ -763,7 +761,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.put_async(uri, body).join()
+        block_on(self.put_async(uri, body))
     }
 
     /// Send a PUT request to the given URI asynchronously with a given request
@@ -789,7 +787,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.delete_async(uri).join()
+        block_on(self.delete_async(uri))
     }
 
     /// Send a DELETE request to the given URI asynchronously.
@@ -855,7 +853,7 @@ impl HttpClient {
     #[inline]
     #[tracing::instrument(level = "debug", skip(self, request), err)]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        self.send_async(request).join()
+        block_on(self.send_async(request))
     }
 
     /// Send an HTTP request and return the HTTP response asynchronously.
@@ -1122,7 +1120,7 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-pub struct ResponseFuture<'c>(BoxFuture<'c, Result<Response<Body>, Error>>);
+pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + 'c + Send>>);
 
 impl<'c> ResponseFuture<'c> {
     fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
@@ -1134,8 +1132,7 @@ impl Future for ResponseFuture<'_> {
     type Output = Result<Response<Body>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        use futures_util::future::FutureExt;
-        self.0.poll_unpin(cx)
+        self.0.as_mut().poll(cx)
     }
 }
 
@@ -1159,7 +1156,7 @@ impl AsyncRead for ResponseBody {
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = &mut self.inner;
-        pin_mut!(inner);
+        pin!(inner);
         inner.poll_read(cx, buf)
     }
 }
