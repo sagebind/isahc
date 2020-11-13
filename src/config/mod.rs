@@ -575,10 +575,14 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(EnableMetrics(enable))
     }
 
-    /// Set a maximum upload speed for the request body, in bytes per second.
+    /// Select a specific IP version when resolving hostnames. If a given
+    /// hostname does not resolve to an IP address of the desired version, then
+    /// the request will fail with a connection error.
     ///
-    /// The default is unlimited.
-    fn ip_protocol(self, protocol: IpProtocol) -> Self {
+    /// This does not affect requests with an explicit IP address as the host.
+    ///
+    /// The default is IpProtocol::Any.
+    fn ip_version(self, protocol: IpVersion) -> Self {
         self.configure(protocol)
     }
 }
@@ -881,21 +885,21 @@ impl SetOpt for EnableMetrics {
 
 /// The ip protocol version to use
 #[derive(Clone, Debug)]
-pub enum IpProtocol {
-    /// Connect to ipv4 addresses only.
+pub enum IpVersion {
+    /// Resolve ipv4 addresses only.
     V4,
-    /// Connect to ipv6 addresses only.
+    /// Resolve ipv6 addresses only.
     V6,
-    /// Connect to any ip protocol version address.
+    /// Resolve both ipv4 and ipv6 addresses.
     Any,
 }
 
-impl SetOpt for IpProtocol {
+impl SetOpt for IpVersion {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         let proto = match &self {
-            IpProtocol::V4 => curl::easy::IpResolve::V4,
-            IpProtocol::V6 => curl::easy::IpResolve::V6,
-            IpProtocol::Any => curl::easy::IpResolve::Any,
+            IpVersion::V4 => curl::easy::IpResolve::V4,
+            IpVersion::V6 => curl::easy::IpResolve::V6,
+            IpVersion::Any => curl::easy::IpResolve::Any,
         };
         easy.ip_resolve(proto)
     }
