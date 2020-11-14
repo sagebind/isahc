@@ -574,6 +574,17 @@ pub trait Configurable: internal::ConfigurableBase {
     fn metrics(self, enable: bool) -> Self {
         self.configure(EnableMetrics(enable))
     }
+
+    /// Select a specific IP version when resolving hostnames. If a given
+    /// hostname does not resolve to an IP address of the desired version, then
+    /// the request will fail with a connection error.
+    ///
+    /// This does not affect requests with an explicit IP address as the host.
+    ///
+    /// The default is IpProtocol::Any.
+    fn ip_version(self, protocol: IpVersion) -> Self {
+        self.configure(protocol)
+    }
 }
 
 /// A strategy for selecting what HTTP versions should be used when
@@ -869,6 +880,28 @@ pub(crate) struct EnableMetrics(pub(crate) bool);
 impl SetOpt for EnableMetrics {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.progress(self.0)
+    }
+}
+
+/// The ip protocol version to use
+#[derive(Clone, Debug)]
+pub enum IpVersion {
+    /// Resolve ipv4 addresses only.
+    V4,
+    /// Resolve ipv6 addresses only.
+    V6,
+    /// Resolve both ipv4 and ipv6 addresses.
+    Any,
+}
+
+impl SetOpt for IpVersion {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        let proto = match &self {
+            IpVersion::V4 => curl::easy::IpResolve::V4,
+            IpVersion::V6 => curl::easy::IpResolve::V6,
+            IpVersion::Any => curl::easy::IpResolve::Any,
+        };
+        easy.ip_resolve(proto)
     }
 }
 

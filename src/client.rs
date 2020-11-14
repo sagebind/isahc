@@ -984,6 +984,7 @@ impl HttpClient {
                 SslOption,
                 CloseConnection,
                 EnableMetrics,
+                IpVersion,
             ]
         );
 
