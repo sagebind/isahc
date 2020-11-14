@@ -146,6 +146,36 @@ fn redirect_also_sends_post(status: u16) {
 
 // Issue #250
 #[test]
+fn redirect_with_response_body() {
+    let m2 = mock! {
+        body: "OK",
+    };
+    let location = m2.url();
+
+    let m1 = mock! {
+        status: 302,
+        headers {
+            "Location": location,
+        }
+        body: "REDIRECT",
+    };
+
+    let response = Request::post(m1.url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
+
+    assert_eq!(m1.request().method, "POST");
+    assert_eq!(m2.request().method, "GET");
+}
+
+// Issue #250
+#[test]
 fn redirect_policy_from_client() {
     let m2 = mock!();
     let location = m2.url();
