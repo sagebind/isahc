@@ -876,6 +876,39 @@
 <span id="875">875</span>
 <span id="876">876</span>
 <span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -1453,6 +1486,17 @@
     <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">EnableMetrics</span>(<span class="ident">enable</span>))
     }
+
+    <span class="doccomment">/// Select a specific IP version when resolving hostnames. If a given</span>
+    <span class="doccomment">/// hostname does not resolve to an IP address of the desired version, then</span>
+    <span class="doccomment">/// the request will fail with a connection error.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This does not affect requests with an explicit IP address as the host.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The default is IpProtocol::Any.</span>
+    <span class="kw">fn</span> <span class="ident">ip_version</span>(<span class="self">self</span>, <span class="ident">protocol</span>: <span class="ident">IpVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">protocol</span>)
+    }
 }
 
 <span class="doccomment">/// A strategy for selecting what HTTP versions should be used when</span>
@@ -1748,6 +1792,28 @@
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">EnableMetrics</span> {
     <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">progress</span>(<span class="self">self</span>.<span class="number">0</span>)
+    }
+}
+
+<span class="doccomment">/// The ip protocol version to use</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IpVersion</span> {
+    <span class="doccomment">/// Resolve ipv4 addresses only.</span>
+    <span class="ident">V4</span>,
+    <span class="doccomment">/// Resolve ipv6 addresses only.</span>
+    <span class="ident">V6</span>,
+    <span class="doccomment">/// Resolve both ipv4 and ipv6 addresses.</span>
+    <span class="ident">Any</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">IpVersion</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">proto</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
+            <span class="ident">IpVersion</span>::<span class="ident">V4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">V4</span>,
+            <span class="ident">IpVersion</span>::<span class="ident">V6</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">V6</span>,
+            <span class="ident">IpVersion</span>::<span class="ident">Any</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">Any</span>,
+        };
+        <span class="ident">easy</span>.<span class="ident">ip_resolve</span>(<span class="ident">proto</span>)
     }
 }
 
