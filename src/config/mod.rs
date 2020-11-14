@@ -255,6 +255,17 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(interface.into())
     }
 
+    /// Select a specific IP version when resolving hostnames. If a given
+    /// hostname does not resolve to an IP address of the desired version, then
+    /// the request will fail with a connection error.
+    ///
+    /// This does not affect requests with an explicit IP address as the host.
+    ///
+    /// The default is [`IpVersion::Any`].
+    fn ip_version(self, version: IpVersion) -> Self {
+        self.configure(version)
+    }
+
     /// Specify a socket to connect to instead of the using the host and port
     /// defined in the request URI.
     ///
@@ -574,17 +585,6 @@ pub trait Configurable: internal::ConfigurableBase {
     fn metrics(self, enable: bool) -> Self {
         self.configure(EnableMetrics(enable))
     }
-
-    /// Select a specific IP version when resolving hostnames. If a given
-    /// hostname does not resolve to an IP address of the desired version, then
-    /// the request will fail with a connection error.
-    ///
-    /// This does not affect requests with an explicit IP address as the host.
-    ///
-    /// The default is IpProtocol::Any.
-    fn ip_version(self, protocol: IpVersion) -> Self {
-        self.configure(protocol)
-    }
 }
 
 /// A strategy for selecting what HTTP versions should be used when
@@ -883,25 +883,35 @@ impl SetOpt for EnableMetrics {
     }
 }
 
-/// The ip protocol version to use
+/// Supported IP versions that can be used.
 #[derive(Clone, Debug)]
 pub enum IpVersion {
-    /// Resolve ipv4 addresses only.
+    /// Use IPv4 addresses only. IPv6 addresses will be ignored.
     V4,
-    /// Resolve ipv6 addresses only.
+
+    /// Use IPv6 addresses only. IPv4 addresses will be ignored.
     V6,
-    /// Resolve both ipv4 and ipv6 addresses.
+
+    /// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are
+    /// preferred if available, otherwise an IPv4 address will be used. IPv6
+    /// addresses are tried first by following the recommendations of [RFC
+    /// 6555 "Happy Eyeballs"](https://tools.ietf.org/html/rfc6555).
     Any,
+}
+
+impl Default for IpVersion {
+    fn default() -> Self {
+        Self::Any
+    }
 }
 
 impl SetOpt for IpVersion {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        let proto = match &self {
+        easy.ip_resolve(match &self {
             IpVersion::V4 => curl::easy::IpResolve::V4,
             IpVersion::V6 => curl::easy::IpResolve::V6,
             IpVersion::Any => curl::easy::IpResolve::Any,
-        };
-        easy.ip_resolve(proto)
+        })
     }
 }
 
