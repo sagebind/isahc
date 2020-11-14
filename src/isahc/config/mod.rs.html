@@ -909,6 +909,16 @@
 <span id="908">908</span>
 <span id="909">909</span>
 <span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -1165,6 +1175,17 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">interface</span>(<span class="self">self</span>, <span class="ident">interface</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">interface</span>.<span class="ident">into</span>())
+    }
+
+    <span class="doccomment">/// Select a specific IP version when resolving hostnames. If a given</span>
+    <span class="doccomment">/// hostname does not resolve to an IP address of the desired version, then</span>
+    <span class="doccomment">/// the request will fail with a connection error.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This does not affect requests with an explicit IP address as the host.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The default is [`IpVersion::Any`].</span>
+    <span class="kw">fn</span> <span class="ident">ip_version</span>(<span class="self">self</span>, <span class="ident">version</span>: <span class="ident">IpVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">version</span>)
     }
 
     <span class="doccomment">/// Specify a socket to connect to instead of the using the host and port</span>
@@ -1486,17 +1507,6 @@
     <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">EnableMetrics</span>(<span class="ident">enable</span>))
     }
-
-    <span class="doccomment">/// Select a specific IP version when resolving hostnames. If a given</span>
-    <span class="doccomment">/// hostname does not resolve to an IP address of the desired version, then</span>
-    <span class="doccomment">/// the request will fail with a connection error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This does not affect requests with an explicit IP address as the host.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is IpProtocol::Any.</span>
-    <span class="kw">fn</span> <span class="ident">ip_version</span>(<span class="self">self</span>, <span class="ident">protocol</span>: <span class="ident">IpVersion</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">protocol</span>)
-    }
 }
 
 <span class="doccomment">/// A strategy for selecting what HTTP versions should be used when</span>
@@ -1795,25 +1805,35 @@
     }
 }
 
-<span class="doccomment">/// The ip protocol version to use</span>
+<span class="doccomment">/// Supported IP versions that can be used.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IpVersion</span> {
-    <span class="doccomment">/// Resolve ipv4 addresses only.</span>
+    <span class="doccomment">/// Use IPv4 addresses only. IPv6 addresses will be ignored.</span>
     <span class="ident">V4</span>,
-    <span class="doccomment">/// Resolve ipv6 addresses only.</span>
+
+    <span class="doccomment">/// Use IPv6 addresses only. IPv4 addresses will be ignored.</span>
     <span class="ident">V6</span>,
-    <span class="doccomment">/// Resolve both ipv4 and ipv6 addresses.</span>
+
+    <span class="doccomment">/// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are</span>
+    <span class="doccomment">/// preferred if available, otherwise an IPv4 address will be used. IPv6</span>
+    <span class="doccomment">/// addresses are tried first by following the recommendations of [RFC</span>
+    <span class="doccomment">/// 6555 &quot;Happy Eyeballs&quot;](https://tools.ietf.org/html/rfc6555).</span>
     <span class="ident">Any</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">IpVersion</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span>::<span class="ident">Any</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">IpVersion</span> {
     <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">proto</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
+        <span class="ident">easy</span>.<span class="ident">ip_resolve</span>(<span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
             <span class="ident">IpVersion</span>::<span class="ident">V4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">V4</span>,
             <span class="ident">IpVersion</span>::<span class="ident">V6</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">V6</span>,
             <span class="ident">IpVersion</span>::<span class="ident">Any</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">IpResolve</span>::<span class="ident">Any</span>,
-        };
-        <span class="ident">easy</span>.<span class="ident">ip_resolve</span>(<span class="ident">proto</span>)
+        })
     }
 }
 
