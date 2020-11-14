@@ -1,4 +1,9 @@
 use isahc::prelude::*;
+use std::{
+    io::{self, Write},
+    net::TcpListener,
+    thread,
+};
 use testserver::mock;
 
 #[test]
@@ -176,4 +181,40 @@ fn headers_in_request_builder_must_override_multiple_headers_in_httpclient_build
     m.request().expect_header("accept", "*/*");
     m.request().expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value3");
+}
+
+#[test]
+fn trailer_headers() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+
+    thread::spawn(move || {
+        let mut stream = listener.accept().unwrap().0;
+
+        thread::spawn({
+            let mut stream = stream.try_clone().unwrap();
+
+            move || {
+                io::copy(&mut stream, &mut io::sink()).unwrap();
+            }
+        });
+
+        stream.write_all(b"\
+            HTTP/1.1 200 OK\r\n\
+            transfer-encoding: chunked\r\n\
+            trailer: foo\r\n\
+            \r\n\
+            2\r\n\
+            OK\r\n\
+            0\r\n\
+            foo: bar\r\n\
+            \r\n\
+        ").unwrap();
+    });
+
+    let mut response = isahc::get(url).unwrap();
+
+    io::copy(response.body_mut(), &mut io::sink()).unwrap();
+
+    assert_eq!(response.trailer_headers().unwrap().get("foo").unwrap(), "bar");
 }

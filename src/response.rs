@@ -1,6 +1,6 @@
-use crate::Metrics;
+use crate::{Metrics, trailer::Trailer};
 use futures_lite::io::AsyncRead;
-use http::{Response, Uri};
+use http::{HeaderMap, Response, Uri};
 use std::{
     fs::File,
     io::{self, Read, Write},
@@ -10,6 +10,8 @@ use std::{
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
+    fn trailer_headers(&self) -> Option<&HeaderMap>;
+
     /// Get the effective URI of this response. This value differs from the
     /// original URI provided when making the request if at least one redirect
     /// was followed.
@@ -172,6 +174,10 @@ pub trait ResponseExt<T> {
 }
 
 impl<T> ResponseExt<T> for Response<T> {
+    fn trailer_headers(&self) -> Option<&HeaderMap> {
+        self.extensions().get::<Trailer>().and_then(|trailer| trailer.headers())
+    }
+
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
     }

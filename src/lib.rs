@@ -240,6 +240,7 @@ mod request;
 mod response;
 mod task;
 mod text;
+mod trailer;
 
 pub mod auth;
 pub mod config;
