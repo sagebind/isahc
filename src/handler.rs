@@ -2,8 +2,7 @@
 
 use crate::{
     headers,
-    redirect::RedirectUri,
-    response::{EffectiveUri, LocalAddr, RemoteAddr},
+    response::{LocalAddr, RemoteAddr},
     Body, Error, Metrics,
 };
 use crossbeam_utils::atomic::AtomicCell;
@@ -11,12 +10,11 @@ use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use flume::Sender;
 use futures_lite::{io::{AsyncRead, AsyncWrite}, pin};
-use http::{Response, Uri};
+use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;
 use std::{
     ascii,
-    convert::TryInto,
     ffi::CStr,
     fmt,
     future::Future,
@@ -244,14 +242,6 @@ impl RequestHandler {
                 headers.extend(self.response_headers.drain());
             }
 
-            if let Some(uri) = self.get_effective_uri() {
-                builder = builder.extension(EffectiveUri(uri));
-            }
-
-            if let Some(uri) = self.get_redirect_uri() {
-                builder = builder.extension(RedirectUri(uri));
-            }
-
             if let Some(addr) = self.get_local_addr() {
                 builder = builder.extension(LocalAddr(addr));
             }
@@ -288,36 +278,6 @@ impl RequestHandler {
                 tracing::debug!("request canceled by user");
             }
         }
-    }
-
-    fn get_effective_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_EFFECTIVE_URL)
-    }
-
-    fn get_redirect_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_REDIRECT_URL)
-    }
-
-    fn get_uri(&mut self, info: curl_sys::CURLINFO) -> Option<Uri> {
-        if self.handle.is_null() {
-            return None;
-        }
-
-        let mut ptr = ptr::null::<c_char>();
-
-        unsafe {
-            if curl_sys::curl_easy_getinfo(self.handle, info, &mut ptr)
-                != curl_sys::CURLE_OK
-            {
-                return None;
-            }
-        }
-
-        if ptr.is_null() {
-            return None;
-        }
-
-        unsafe { CStr::from_ptr(ptr) }.to_bytes().try_into().ok()
     }
 
     fn get_primary_addr(&mut self) -> Option<SocketAddr> {

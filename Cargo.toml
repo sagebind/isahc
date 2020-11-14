@@ -41,6 +41,7 @@ log = "0.4"
 once_cell = "1"
 slab = "0.4"
 sluice = "0.5"
+url = "2.2"
 waker-fn = "1"
 
 [dependencies.chrono]
