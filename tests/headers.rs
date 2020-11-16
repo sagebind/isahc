@@ -1,3 +1,4 @@
+use futures_lite::future::block_on;
 use isahc::prelude::*;
 use std::{
     io::{self, Write},
@@ -13,7 +14,8 @@ fn accept_headers_populated_by_default() {
     isahc::get(m.url()).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
 }
 
 #[test]
@@ -22,7 +24,8 @@ fn user_agent_contains_expected_format() {
 
     isahc::get(m.url()).unwrap();
 
-    m.request().expect_header_regex("user-agent", r"^curl/\S+ isahc/\S+$");
+    m.request()
+        .expect_header_regex("user-agent", r"^curl/\S+ isahc/\S+$");
 }
 
 // Issue [#209](https://github.com/sagebind/isahc/issues/209)
@@ -84,7 +87,9 @@ fn set_title_case_headers_to_true() {
     client.get(m.url()).unwrap();
 
     assert_eq!(m.request().method, "GET");
-    m.request().headers.iter()
+    m.request()
+        .headers
+        .iter()
         .find(|(key, value)| key == "Foo-Bar" && value == "baz")
         .expect("header not found");
 }
@@ -107,7 +112,8 @@ fn header_can_be_inserted_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value1");
 }
 
@@ -130,7 +136,8 @@ fn headers_in_request_builder_must_override_headers_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value2");
 }
 
@@ -153,7 +160,8 @@ fn multiple_headers_with_same_key_can_be_inserted_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     // Both values should be present.
     m.request().expect_header("X-header", "some-value1");
     m.request().expect_header("X-header", "some-value2");
@@ -179,7 +187,8 @@ fn headers_in_request_builder_must_override_multiple_headers_in_httpclient_build
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value3");
 }
 
@@ -199,7 +208,9 @@ fn trailer_headers() {
             }
         });
 
-        stream.write_all(b"\
+        stream
+            .write_all(
+                b"\
             HTTP/1.1 200 OK\r\n\
             transfer-encoding: chunked\r\n\
             trailer: foo\r\n\
@@ -209,12 +220,62 @@ fn trailer_headers() {
             0\r\n\
             foo: bar\r\n\
             \r\n\
-        ").unwrap();
+        ",
+            )
+            .unwrap();
     });
 
     let mut response = isahc::get(url).unwrap();
 
     io::copy(response.body_mut(), &mut io::sink()).unwrap();
 
-    assert_eq!(response.trailer_headers().unwrap().get("foo").unwrap(), "bar");
+    assert_eq!(response.trailer().wait().get("foo").unwrap(), "bar");
+}
+
+#[test]
+fn trailer_headers_async() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+
+    thread::spawn(move || {
+        let mut stream = listener.accept().unwrap().0;
+
+        thread::spawn({
+            let mut stream = stream.try_clone().unwrap();
+
+            move || {
+                io::copy(&mut stream, &mut io::sink()).unwrap();
+            }
+        });
+
+        stream
+            .write_all(
+                b"\
+        HTTP/1.1 200 OK\r\n\
+            transfer-encoding: chunked\r\n\
+            trailer: foo\r\n\
+            \r\n\
+            2\r\n\
+            OK\r\n\
+            0\r\n\
+            foo: bar\r\n\
+            \r\n\
+            ",
+            )
+            .unwrap();
+    });
+
+    block_on(async move {
+        let mut body = None;
+        let response = isahc::get_async(url).await.unwrap().map(|b| {
+            body = Some(b);
+            ()
+        });
+
+        thread::spawn(move || {
+            io::copy(body.as_mut().unwrap(), &mut io::sink()).unwrap();
+        });
+
+        assert_eq!(response.trailer().wait_async().await.get("foo").unwrap(), "bar");
+    });
 }

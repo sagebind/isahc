@@ -258,6 +258,7 @@ pub use crate::{
     metrics::Metrics,
     request::RequestExt,
     response::ResponseExt,
+    trailer::Trailer,
 };
 
 /// Re-export of the standard HTTP types.

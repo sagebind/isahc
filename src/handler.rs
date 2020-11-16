@@ -149,8 +149,8 @@ impl RequestHandler {
             response_headers: http::HeaderMap::new(),
             response_body_writer,
             response_body_waker: None,
-            response_trailer: Trailer::default(),
-            trailer_headers: None,
+            response_trailer: Trailer::new(),
+            trailer_headers: Some(http::HeaderMap::new()),
             metrics: None,
             handle: ptr::null_mut(),
         };
@@ -229,9 +229,9 @@ impl RequestHandler {
 
         match result {
             Ok(()) => {
-                // Flush the trailer, if any.
+                // Flush the trailer, if we haven't already.
                 if let Some(trailer) = self.trailer_headers.take() {
-                    self.response_trailer.flush(trailer);
+                    self.response_trailer.set(trailer);
                 }
 
                 // Complete the associated future, if we haven't already.
