@@ -4,7 +4,7 @@ use crate::{
     headers,
     redirect::RedirectUri,
     response::{EffectiveUri, LocalAddr, RemoteAddr},
-    trailer::Trailer,
+    trailer::TrailerWriter,
     Body, Error, Metrics,
 };
 use crossbeam_utils::atomic::AtomicCell;
@@ -88,10 +88,7 @@ pub(crate) struct RequestHandler {
 
     /// Holds the response trailer, if any. Used to communicate the trailer
     /// headers out-of-band from the response headers and body.
-    response_trailer: Trailer,
-
-    /// Response trailer headers.
-    trailer_headers: Option<http::HeaderMap>,
+    response_trailer_writer: TrailerWriter,
 
     /// Metrics object for publishing metrics data to. Lazily initialized.
     metrics: Option<Metrics>,
@@ -149,8 +146,7 @@ impl RequestHandler {
             response_headers: http::HeaderMap::new(),
             response_body_writer,
             response_body_waker: None,
-            response_trailer: Trailer::new(),
-            trailer_headers: Some(http::HeaderMap::new()),
+            response_trailer_writer: TrailerWriter::new(),
             metrics: None,
             handle: ptr::null_mut(),
         };
@@ -230,9 +226,7 @@ impl RequestHandler {
         match result {
             Ok(()) => {
                 // Flush the trailer, if we haven't already.
-                if let Some(trailer) = self.trailer_headers.take() {
-                    self.response_trailer.set(trailer);
-                }
+                self.response_trailer_writer.flush();
 
                 // Complete the associated future, if we haven't already.
                 self.flush_response_headers();
@@ -284,7 +278,7 @@ impl RequestHandler {
 
             // Include a handle to the trailer headers. We won't know if there
             // are any until we reach the end of the response body.
-            builder = builder.extension(self.response_trailer.clone());
+            builder = builder.extension(self.response_trailer_writer.trailer());
 
             // Include metrics in response, but only if it was created. If
             // metrics are disabled then it won't have been created.
@@ -451,11 +445,11 @@ impl curl::easy::Handler for RequestHandler {
         // If we already returned the response headers, then this header is from
         // the trailer.
         if self.sender.is_none() {
-            if let Some((name, value)) = headers::parse_header(data) {
-                self.trailer_headers
-                    .get_or_insert_with(http::HeaderMap::new)
-                    .append(name, value);
-                return true;
+            if let Some(trailer_headers) = self.response_trailer_writer.get_mut() {
+                if let Some((name, value)) = headers::parse_header(data) {
+                    trailer_headers.append(name, value);
+                    return true;
+                }
             }
         }
 

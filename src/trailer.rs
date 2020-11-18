@@ -19,27 +19,15 @@ struct Shared {
 }
 
 impl Trailer {
-    /// Create a new unpopulated trailer handle.
-    pub(crate) fn new() -> Self {
-        let shared=  Arc::new(Shared {
-            headers: Default::default(),
-            ready: Event::new(),
-        });
-
-        Self {
-            // listener: shared.ready.listen(),
-            shared,
-        }
-    }
-
     /// Get a populated trailer handle containing no headers.
     pub(crate) fn empty() -> &'static Self {
         static EMPTY: OnceCell<Trailer> = OnceCell::new();
 
-        EMPTY.get_or_init(|| {
-            let trailer = Self::new();
-            trailer.set(HeaderMap::new());
-            trailer
+        EMPTY.get_or_init(|| Self {
+            shared: Arc::new(Shared {
+                headers: OnceCell::from(HeaderMap::new()),
+                ready: Event::new(),
+            })
         })
     }
 
@@ -50,7 +38,7 @@ impl Trailer {
     /// arrive either by `.await`-ing this handle to wait asynchronously or call
     /// [`wait`] to wait synchronously.
     #[inline]
-    pub fn is_available(&self) -> bool {
+    pub fn is_ready(&self) -> bool {
         self.try_get().is_some()
     }
 
@@ -110,16 +98,50 @@ impl Trailer {
         // set.
         self.try_get().unwrap()
     }
+}
 
-    /// Set the trailing headers for this response.
-    ///
-    /// This function should only be called once.
-    pub(crate) fn set(&self, headers: HeaderMap) {
-        if self.shared.headers.set(headers).is_err() {
-            tracing::warn!("tried to flush trailer multiple times");
-        } else {
+pub(crate) struct TrailerWriter {
+    shared: Arc<Shared>,
+    headers: Option<HeaderMap>,
+}
+
+impl TrailerWriter {
+    pub(crate) fn new() -> Self {
+        let shared=  Arc::new(Shared {
+            headers: Default::default(),
+            ready: Event::new(),
+        });
+
+        Self {
+            shared,
+            headers: Some(HeaderMap::new()),
+        }
+    }
+
+    pub(crate) fn trailer(&self) -> Trailer {
+        Trailer {
+            shared: self.shared.clone(),
+        }
+    }
+
+    pub(crate) fn get_mut(&mut self) -> Option<&mut HeaderMap> {
+        self.headers.as_mut()
+    }
+
+    pub(crate) fn flush(&mut self) {
+        if let Some(headers) = self.headers.take() {
+            let _ = self.shared.headers.set(headers);
+
             // Wake up any calls waiting for the headers.
             self.shared.ready.notify(usize::max_value());
+        } else {
+            tracing::warn!("tried to flush trailer multiple times");
         }
+    }
+}
+
+impl Drop for TrailerWriter {
+    fn drop(&mut self) {
+        self.flush();
     }
 }
