@@ -89,6 +89,8 @@ isahc = "0.9"
 
 The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.41 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.41. It might compile with older versions but that could change at any time.
 
+This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
+
 ## Project goals
 
 - Create an ergonomic and innovative HTTP client API that is easy for beginners to use, and flexible for advanced uses.
