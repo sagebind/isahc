@@ -55,7 +55,7 @@ macro_rules! interceptor {
         async fn interceptor(
             mut $request: $crate::http::Request<$crate::Body>,
             $ctx: $crate::interceptor::Context<'_>,
-        ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn ::std::error::Error>> {
+        ) -> Result<$crate::http::Response<isahc::Body>, $crate::Error> {
             (move || async move {
                 $body
             })().await.map_err(Into::into)
