@@ -245,7 +245,7 @@ fn redirect_limit_is_respected() {
         .send();
 
     // Request should error with too many redirects.
-    assert!(matches!(result, Err(e) if e.kind() == isahc::error::ErrorKind::TooManyRedirects));
+    assert_matches!(result, Err(e) if e.kind() == isahc::error::ErrorKind::TooManyRedirects);
 
     // After request (limit + 1) that returns a redirect should error.
     assert_eq!(m.requests().len(), 6);
