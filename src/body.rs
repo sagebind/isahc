@@ -1,14 +1,14 @@
 //! Provides types for working with request and response bodies.
 
-use crate::task::Join;
 use bytes::Bytes;
-use futures_io::AsyncRead;
-use futures_util::io::{AsyncReadExt, Cursor};
-use std::fmt;
-use std::io::{self, Read};
-use std::pin::Pin;
-use std::str;
-use std::task::{Context, Poll};
+use futures_lite::{future::block_on, io::{AsyncRead, AsyncReadExt}};
+use std::{
+    fmt,
+    io::{self, Cursor, Read},
+    pin::Pin,
+    str,
+    task::{Context, Poll},
+};
 
 macro_rules! match_type {
     {
@@ -159,7 +159,11 @@ impl Body {
 
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        AsyncReadExt::read(self, buf).join()
+        match &mut self.0 {
+            Inner::Empty => Ok(0),
+            Inner::Bytes(cursor) => cursor.read(buf),
+            Inner::AsyncRead(reader, _) => block_on(reader.read(buf)),
+        }
     }
 }
 
@@ -171,7 +175,7 @@ impl AsyncRead for Body {
     ) -> Poll<io::Result<usize>> {
         match &mut self.0 {
             Inner::Empty => Poll::Ready(Ok(0)),
-            Inner::Bytes(cursor) => AsyncRead::poll_read(Pin::new(cursor), cx, buf),
+            Inner::Bytes(cursor) => Poll::Ready(cursor.read(buf)),
             Inner::AsyncRead(read, _) => AsyncRead::poll_read(read.as_mut(), cx, buf),
         }
     }

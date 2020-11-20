@@ -44,17 +44,22 @@ pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
 pub trait Configurable: internal::ConfigurableBase {
-    /// Specify a maximum amount of time that a single request/response cycle is
-    /// allowed to take before being aborted.
+    /// Specify a maximum amount of time that a complete request/response cycle
+    /// is allowed to take before being aborted. This includes DNS resolution,
+    /// connecting to the server, writing the request, and reading the response.
     ///
-    /// Since response bodies are streamed (if present) as part of the response
-    /// lifecycle, the timeout includes reading the response body stream. If the
-    /// response headers are received, but the timeout expires while reading the
-    /// response body, then read operations will return a
-    /// [`TimedOut`][std::io::ErrorKind::TimedOut] I/O error. This also means
-    /// that if you receive a response with a body but do not immediately start
-    /// reading from it, then the timeout timer will still be active and may
-    /// expire before you even attempt to read the body.
+    /// Since response bodies are streamed, you will likely receive a
+    /// [`Response`](crate::http::Response) before the response body stream has
+    /// been fully consumed. This means that the configured timeout will still
+    /// be active for that request, and if it expires, further attempts to read
+    /// from the stream will return a [`TimedOut`](std::io::ErrorKind::TimedOut)
+    /// I/O error.
+    ///
+    /// This also means that if you receive a response with a body but do not
+    /// immediately start reading from it, then the timeout timer will still be
+    /// active and may expire before you even attempt to read the body. Keep
+    /// this in mind when consuming responses and consider handling the response
+    /// body right after you receive it if you are using this option.
     ///
     /// If not set, no timeout will be enforced.
     ///
@@ -76,9 +81,9 @@ pub trait Configurable: internal::ConfigurableBase {
         self.configure(Timeout(timeout))
     }
 
-    /// Set a timeout for the initial connection phase.
+    /// Set a timeout for establishing connections to a host.
     ///
-    /// If not set, a connect timeout of 300 seconds will be used.
+    /// If not set, a default connect timeout of 300 seconds will be used.
     fn connect_timeout(self, timeout: Duration) -> Self {
         self.configure(ConnectTimeout(timeout))
     }
@@ -248,6 +253,17 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
         self.configure(interface.into())
+    }
+
+    /// Select a specific IP version when resolving hostnames. If a given
+    /// hostname does not resolve to an IP address of the desired version, then
+    /// the request will fail with a connection error.
+    ///
+    /// This does not affect requests with an explicit IP address as the host.
+    ///
+    /// The default is [`IpVersion::Any`].
+    fn ip_version(self, version: IpVersion) -> Self {
+        self.configure(version)
     }
 
     /// Specify a socket to connect to instead of the using the host and port
@@ -864,6 +880,38 @@ pub(crate) struct EnableMetrics(pub(crate) bool);
 impl SetOpt for EnableMetrics {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.progress(self.0)
+    }
+}
+
+/// Supported IP versions that can be used.
+#[derive(Clone, Debug)]
+pub enum IpVersion {
+    /// Use IPv4 addresses only. IPv6 addresses will be ignored.
+    V4,
+
+    /// Use IPv6 addresses only. IPv4 addresses will be ignored.
+    V6,
+
+    /// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are
+    /// preferred if available, otherwise an IPv4 address will be used. IPv6
+    /// addresses are tried first by following the recommendations of [RFC
+    /// 6555 "Happy Eyeballs"](https://tools.ietf.org/html/rfc6555).
+    Any,
+}
+
+impl Default for IpVersion {
+    fn default() -> Self {
+        Self::Any
+    }
+}
+
+impl SetOpt for IpVersion {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.ip_resolve(match &self {
+            IpVersion::V4 => curl::easy::IpResolve::V4,
+            IpVersion::V6 => curl::easy::IpResolve::V6,
+            IpVersion::Any => curl::easy::IpResolve::Any,
+        })
     }
 }
 

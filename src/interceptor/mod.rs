@@ -28,11 +28,12 @@
 /// enabled.
 
 use crate::Body;
-use futures_util::future::BoxFuture;
 use http::{Request, Response};
 use std::{
     error::Error,
     fmt,
+    future::Future,
+    pin::Pin,
 };
 
 mod context;
@@ -81,7 +82,7 @@ pub trait Interceptor: Send + Sync {
 }
 
 /// The type of future returned by an interceptor.
-pub type InterceptorFuture<'a, E> = BoxFuture<'a, Result<Response<Body>, E>>;
+pub type InterceptorFuture<'a, E> = Pin<Box<dyn Future<Output = Result<Response<Body>, E>> + Send + 'a>>;
 
 /// Creates an interceptor from an arbitrary closure or function.
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>

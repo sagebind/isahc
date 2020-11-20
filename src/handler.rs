@@ -2,22 +2,19 @@
 
 use crate::{
     headers,
-    redirect::RedirectUri,
-    response::{EffectiveUri, LocalAddr, RemoteAddr},
+    response::{LocalAddr, RemoteAddr},
     Body, Error, Metrics,
 };
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
-use futures_channel::oneshot::Sender;
-use futures_io::{AsyncRead, AsyncWrite};
-use futures_util::{pin_mut, task::AtomicWaker};
-use http::{Response, Uri};
+use flume::Sender;
+use futures_lite::{io::{AsyncRead, AsyncWrite}, pin};
+use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;
 use std::{
     ascii,
-    convert::TryInto,
     ffi::CStr,
     fmt,
     future::Future,
@@ -104,9 +101,6 @@ unsafe impl Send for RequestHandler {}
 /// This is also used to keep track of the lifetime of the request.
 #[derive(Debug)]
 struct Shared {
-    /// A waker used by the handler to wake up the associated future.
-    waker: AtomicWaker,
-
     /// Set to the final result of the transfer received from curl. This is used
     /// to communicate an error while reading the response body if the handler
     /// suddenly aborts.
@@ -127,9 +121,8 @@ impl RequestHandler {
         Self,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
-        let (sender, receiver) = futures_channel::oneshot::channel();
+        let (sender, receiver) = flume::bounded(1);
         let shared = Arc::new(Shared {
-            waker: AtomicWaker::default(),
             result: OnceCell::new(),
             response_body_dropped: AtomicCell::new(false),
         });
@@ -153,7 +146,7 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.await.map_err(|e| Error::new(crate::error::ErrorKind::Unknown, e))??;
+            let builder = receiver.recv_async().await.map_err(|_| Error::new(crate::error::ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
@@ -187,7 +180,7 @@ impl RequestHandler {
     fn is_future_canceled(&self) -> bool {
         self.sender
             .as_ref()
-            .map(Sender::is_canceled)
+            .map(Sender::is_disconnected)
             .unwrap_or(false)
     }
 
@@ -249,14 +242,6 @@ impl RequestHandler {
                 headers.extend(self.response_headers.drain());
             }
 
-            if let Some(uri) = self.get_effective_uri() {
-                builder = builder.extension(EffectiveUri(uri));
-            }
-
-            if let Some(uri) = self.get_redirect_uri() {
-                builder = builder.extension(RedirectUri(uri));
-            }
-
             if let Some(addr) = self.get_local_addr() {
                 builder = builder.extension(LocalAddr(addr));
             }
@@ -289,45 +274,10 @@ impl RequestHandler {
                 tracing::warn!("request completed with error: {}", e);
             }
 
-            match sender.send(result) {
-                Ok(()) => {
-                    self.shared.waker.wake();
-                }
-                Err(_) => {
-                    tracing::debug!("request canceled by user");
-                }
+            if sender.send(result).is_err() {
+                tracing::debug!("request canceled by user");
             }
         }
-    }
-
-    fn get_effective_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_EFFECTIVE_URL)
-    }
-
-    fn get_redirect_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_REDIRECT_URL)
-    }
-
-    fn get_uri(&mut self, info: curl_sys::CURLINFO) -> Option<Uri> {
-        if self.handle.is_null() {
-            return None;
-        }
-
-        let mut ptr = ptr::null::<c_char>();
-
-        unsafe {
-            if curl_sys::curl_easy_getinfo(self.handle, info, &mut ptr)
-                != curl_sys::CURLE_OK
-            {
-                return None;
-            }
-        }
-
-        if ptr.is_null() {
-            return None;
-        }
-
-        unsafe { CStr::from_ptr(ptr) }.to_bytes().try_into().ok()
     }
 
     fn get_primary_addr(&mut self) -> Option<SocketAddr> {
@@ -692,7 +642,7 @@ impl AsyncRead for ResponseBodyReader {
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = &mut self.inner;
-        pin_mut!(inner);
+        pin!(inner);
 
         match inner.poll_read(cx, buf) {
             // On EOF, check to see if the transfer was cancelled, and if so,

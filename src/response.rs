@@ -1,4 +1,5 @@
-use crate::Metrics;
+use crate::{redirect::EffectiveUri, Metrics};
+use futures_lite::io::AsyncRead;
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -144,7 +145,7 @@ pub trait ResponseExt<T> {
     #[cfg(feature = "text-decoding")]
     fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
-        T: futures_io::AsyncRead + Unpin;
+        T: AsyncRead + Unpin;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -210,7 +211,7 @@ impl<T> ResponseExt<T> for Response<T> {
     #[cfg(feature = "text-decoding")]
     fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
     where
-        T: futures_io::AsyncRead + Unpin,
+        T: AsyncRead + Unpin,
     {
         crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
@@ -224,8 +225,6 @@ impl<T> ResponseExt<T> for Response<T> {
         serde_json::from_reader(self.body_mut())
     }
 }
-
-pub(crate) struct EffectiveUri(pub(crate) Uri);
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
 

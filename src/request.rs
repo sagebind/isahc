@@ -98,6 +98,7 @@ impl<T> RequestExt<T> for Request<T> {
                 crate::config::SslOption,
                 crate::config::CloseConnection,
                 crate::config::EnableMetrics,
+                crate::config::IpVersion,
             ]
         );
 

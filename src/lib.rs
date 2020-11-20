@@ -230,6 +230,7 @@ pub mod cookies;
 mod agent;
 mod body;
 mod client;
+mod default_headers;
 mod handler;
 mod headers;
 mod metrics;
