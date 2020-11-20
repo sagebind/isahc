@@ -7,6 +7,7 @@ _Formerly known as [chttp]._
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.41+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
 ![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 [![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
@@ -84,9 +85,11 @@ Install via Cargo by adding to your `Cargo.toml` file:
 isahc = "0.9"
 ```
 
-### Supported Rust versions
+## Minimum supported Rust version
 
-The current release is only guaranteed to work with the latest stable Rust compiler. When Isahc reaches version `1.0`, a more conservative policy will be adopted.
+The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.41 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.41. It might compile with older versions but that could change at any time.
+
+This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
 
 ## Project goals
 
