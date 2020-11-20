@@ -17,7 +17,7 @@ use flume::{Receiver, Sender};
 use slab::Slab;
 use std::{
     net::UdpSocket,
-    sync::{Arc, Mutex},
+    sync::Mutex,
     task::Waker,
     thread,
     time::{Duration, Instant},

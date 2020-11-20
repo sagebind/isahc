@@ -1,10 +1,6 @@
 //! Helpers for working with tasks and futures.
 
-use crate::Error;
-use crossbeam_utils::sync::{Parker, Unparker};
-use futures_util::{pin_mut, task::ArcWake};
 use std::{
-    future::Future,
     io,
     net::{SocketAddr, UdpSocket},
     task::Waker,

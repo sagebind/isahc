@@ -146,7 +146,7 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.recv_async().await.map_err(|_| Error::new(crate::error::ErrorKind::Unknown, e))??;
+            let builder = receiver.recv_async().await.map_err(|e| Error::new(crate::error::ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,

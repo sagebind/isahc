@@ -4,7 +4,7 @@ use crate::{
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
-    Body, Error,
+    Body,
 };
 use http::{Request, Response, Uri};
 use std::convert::TryFrom;
