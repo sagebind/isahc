@@ -21,7 +21,7 @@ fn request_errors_if_read_timeout_is_reached() {
         .send();
 
     // Client should time-out.
-    assert_matches!(result, Err(e) if e.kind() == isahc::error::ErrorKind::Timeout);
+    assert_matches!(result, Err(e) if e == isahc::error::ErrorKind::Timeout);
 
     assert_eq!(m.requests().len(), 1);
 }

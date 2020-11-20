@@ -1,9 +1,24 @@
 //! Types for error handling.
 
-use std::{any::TypeId, error::Error as StdError, fmt, io};
+use std::{error::Error as StdError, fmt, io, sync::Arc};
 
-/// A list of error types that can occur while sending an HTTP request or
-/// receiving an HTTP response.
+/// An error fault, describing whether an error was caused by the HTTP client or
+/// by the HTTP server.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Fault {
+    /// The client was misconfigured or used to send invalid data to the server.
+    ///
+    /// Requests that return these sorts of errors probably should not be
+    /// retried.
+    Client,
+
+    /// The server behaved incorrectly.
+    Server,
+}
+
+/// A non-exhaustive list of error types that can occur while sending an HTTP
+/// request or receiving an HTTP response.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ErrorKind {
@@ -56,18 +71,47 @@ pub enum ErrorKind {
     /// An unknown error occurred. This likely indicates a problem in the HTTP
     /// client or in a dependency, but the client was able to recover instead of
     /// panicking. Subsequent requests will likely succeed.
+    #[doc(hidden)]
     Unknown,
+}
+
+impl ErrorKind {
+    /// Returns true if this is an error related to the network.
+    pub fn is_network(&self) -> bool {
+        match self {
+            Self::ConnectionFailed | Self::CouldntResolveHost | Self::Timeout => true,
+            _ => false,
+        }
+    }
+
+    /// Get the fault for this error kind. Returns `None` if the fault is
+    /// unclear.
+    pub fn fault(&self) -> Option<Fault> {
+        match self {
+            Self::BadClientCertificate | Self::InvalidCredentials => Some(Fault::Client),
+            Self::BadServerCertificate | Self::Protocol => Some(Fault::Server),
+            _ => None,
+        }
+    }
+
+    /// Returns true if this error is related to SSL/TLS.
+    pub fn is_tls(&self) -> bool {
+        match self {
+            Self::BadClientCertificate | Self::BadServerCertificate | Self::TlsEngineError => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::BadClientCertificate => f.write_str("A problem occurred with the local certificate."),
-            Self::BadServerCertificate => f.write_str("The server certificate could not be validated."),
+            Self::BadClientCertificate => f.write_str("a problem occurred with the local certificate"),
+            Self::BadServerCertificate => f.write_str("the server certificate could not be validated"),
             Self::ConnectionFailed => f.write_str("failed to connect to the server"),
-            Self::CouldntResolveHost => f.write_str("Couldn't resolve host name"),
-            Self::CouldntResolveProxy => f.write_str("Couldn't resolve proxy host name"),
-            Self::InvalidContentEncoding => f.write_str("The server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed."),
+            Self::CouldntResolveHost => f.write_str("couldn't resolve host name"),
+            Self::CouldntResolveProxy => f.write_str("couldn't resolve proxy host name"),
+            Self::InvalidContentEncoding => f.write_str("the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed"),
             Self::InvalidCredentials => f.write_str("provided authentication credentials were rejected by the server"),
             Self::Protocol => f.write_str("the server made an unrecoverable HTTP protocol violation"),
             Self::RequestBodyNotRewindable => f.write_str("request body could not be re-sent because it is not rewindable"),
@@ -81,103 +125,124 @@ impl fmt::Display for ErrorKind {
 
 /// An error encountered while sending an HTTP request or receiving an HTTP
 /// response.
-#[derive(Debug)]
-pub struct Error {
+#[derive(Clone)]
+pub struct Error(Arc<Inner>);
+
+struct Inner {
     kind: ErrorKind,
-    source: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    extra: Option<String>,
+    source: Option<Box<dyn StdError + Send + Sync>>,
 }
 
 impl Error {
-    pub(crate) fn new(kind: ErrorKind, source: impl StdError + Send + Sync + 'static) -> Self {
-        let source: Box<dyn StdError + Send + Sync + 'static> = Box::new(source);
-
-        match source.downcast::<Self>() {
-            Ok(e) => *e,
-            Err(e) => Self {
-                kind,
-                source: Some(e),
-            },
-        }
+    /// Create a new error from a given error kind and source error.
+    pub(crate) fn new<E>(kind: ErrorKind, source: E) -> Self
+    where
+        E: StdError + Send + Sync + 'static,
+    {
+        Self(Arc::new(Inner {
+            kind,
+            extra: None,
+            source: Some(Box::new(source)),
+        }))
     }
 
+    /// Statically cast a given error into an Isahc error, converting if
+    /// necessary.
     pub(crate) fn from_any<E>(error: E) -> Self
     where
         E: StdError + Send + Sync + 'static,
     {
-        if TypeId::of::<E>() == TypeId::of::<Self>() {}
-        Self::new(ErrorKind::Unknown, error)
+        match_type! {
+            <error as Error> => error,
+            <error as std::io::Error> => error.into(),
+            error => Error::new(ErrorKind::Unknown, error),
+        }
     }
 
     /// Get the kind of error this represents.
     #[inline]
     pub fn kind(&self) -> ErrorKind {
-        self.kind
+        self.0.kind
     }
-
-    // pub fn is_tls(&self) -> bool {
-    //     self.is_bad_client_certificate() || self.is_bad_server_certificate()
-    // }
-
-    // pub fn is_bad_client_certificate(&self) -> bool {
-    //     if let Self::Other(e) = self {
-    //         if let Some(e) = e.downcast_ref::<curl::Error>() {
-    //             return e.is_ssl_certproblem() || e.is_ssl_cacert_badfile();
-    //         }
-    //     }
-
-    //     false
-    // }
-
-    // pub fn is_bad_server_certificate(&self) -> bool {
-    //     if let Self::Other(e) = self {
-    //         if let Some(e) = e.downcast_ref::<curl::Error>() {
-    //             return e.is_peer_failed_verification() || e.is_ssl_cacert();
-    //         }
-    //     }
-
-    //     false
-    // }
-
-    // pub fn is_timeout(&self) -> bool {
-    //     match self {
-    //         Self::Io(e) => e.kind() == io::ErrorKind::TimedOut,
-    //         Self::Other(e) => {
-    //             if let Some(e) = e.downcast_ref::<curl::Error>() {
-    //                 e.is_operation_timedout()
-    //             } else {
-    //                 false
-    //             }
-    //         }
-    //         _ => false,
-    //     }
-    // }
 }
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        self.source.as_ref().map(|e| &**e as _)
+        self.0.source.as_ref().map(|source| &**source as _)
+    }
+}
+
+impl PartialEq<ErrorKind> for Error {
+    fn eq(&self, kind: &ErrorKind) -> bool {
+        self.kind().eq(kind)
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("kind", &self.kind())
+            .field("source", &self.source())
+            .finish()
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let extra_description = self
-            .source
-            .as_ref()
+            .source()
             .and_then(|e| e.downcast_ref::<curl::Error>())
-            .and_then(|e| e.extra_description());
+            .and_then(|e| e.extra_description())
+            .or_else(|| self.0.extra.as_deref());
 
         if let Some(s) = extra_description {
-            write!(f, "{}: {}", self.kind, s)
+            write!(f, "{}: {}", self.kind(), s)
         } else {
-            write!(f, "{}", self.kind)
+            write!(f, "{}", self.kind())
         }
     }
 }
 
 impl From<ErrorKind> for Error {
     fn from(kind: ErrorKind) -> Self {
-        Self { kind, source: None }
+        Self(Arc::new(Inner {
+            kind,
+            extra: None,
+            source: None,
+        }))
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
+        // If this I/O error is just a wrapped Isahc error, then unwrap it.
+        if let Some(inner) = error.get_ref() {
+            if inner.is::<Self>() {
+                return *error.into_inner().unwrap().downcast().unwrap();
+            }
+        }
+
+        Self::new(
+            match error.kind() {
+                io::ErrorKind::ConnectionRefused => ErrorKind::ConnectionFailed,
+                io::ErrorKind::TimedOut => ErrorKind::Timeout,
+                kind => ErrorKind::Io(kind),
+            },
+            error,
+        )
+    }
+}
+
+impl From<Error> for io::Error {
+    fn from(error: Error) -> Self {
+        let kind = match error.kind() {
+            ErrorKind::ConnectionFailed => io::ErrorKind::ConnectionRefused,
+            ErrorKind::Timeout => io::ErrorKind::TimedOut,
+            _ => io::ErrorKind::Other,
+        };
+
+        Self::new(kind, error)
     }
 }
 
@@ -224,63 +289,30 @@ impl From<curl::Error> for Error {
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self {
-        // If this I/O error is just a wrapped Isahc error, then unwrap it.
-        if let Some(inner) = error.get_ref() {
-            if inner.is::<Self>() {
-                return *error.into_inner().unwrap().downcast().unwrap();
-            }
-        }
-
+#[doc(hidden)]
+impl From<curl::MultiError> for Error {
+    fn from(error: curl::MultiError) -> Error {
         Self::new(
-            match error.kind() {
-                io::ErrorKind::ConnectionRefused => ErrorKind::ConnectionFailed,
-                io::ErrorKind::TimedOut => ErrorKind::Timeout,
-                kind => ErrorKind::Io(kind),
+            if error.is_bad_socket() {
+                ErrorKind::Io(io::ErrorKind::BrokenPipe)
+            } else {
+                ErrorKind::Unknown
             },
             error,
         )
     }
 }
 
-impl From<Error> for io::Error {
-    fn from(mut error: Error) -> Self {
-        // If this error was directly created from an IO error, return it
-        // directly.
-        if let ErrorKind::Io(_) = error.kind {
-            if let Some(source) = error.source.take() {
-                match source.downcast() {
-                    Ok(e) => return *e,
-                    Err(e) => error.source = Some(e),
-                }
-            }
-        }
-
-        let kind = match error.kind {
-            ErrorKind::ConnectionFailed => io::ErrorKind::ConnectionRefused,
-            ErrorKind::Timeout => io::ErrorKind::TimedOut,
-            _ => io::ErrorKind::Other,
-        };
-
-        Self::new(kind, error)
-    }
-}
-
-#[doc(hidden)]
-impl From<curl::MultiError> for Error {
-    fn from(error: curl::MultiError) -> Error {
-        Self::new(if error.is_bad_socket() {
-            ErrorKind::Io(io::ErrorKind::BrokenPipe)
-        } else {
-            ErrorKind::Unknown
-        }, error)
-    }
-}
-
 #[doc(hidden)]
 impl From<http::Error> for Error {
     fn from(error: http::Error) -> Error {
-        Self::new(ErrorKind::Protocol, error)
+        Self::new(ErrorKind::Unknown, error)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static_assertions::assert_impl_all!(Error: Send, Sync);
 }

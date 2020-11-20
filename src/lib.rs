@@ -224,6 +224,9 @@ use http::{Request, Response};
 use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 
+#[macro_use]
+mod macros;
+
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
