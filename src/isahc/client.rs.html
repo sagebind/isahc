@@ -1223,6 +1223,12 @@
 <span id="1222">1222</span>
 <span id="1223">1223</span>
 <span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1674,12 +1680,18 @@
             <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="ident">DefaultHeadersInterceptor</span>::<span class="ident">from</span>(<span class="ident">default_headers</span>));
         }
 
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">InnerHttpClient</span> {
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>))]</span>
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Inner</span> {
             <span class="ident">agent</span>: <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>,
             <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
+        };
 
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Inner</span> {
+            <span class="ident">agent</span>: <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">spawn</span>()<span class="question-mark">?</span>,
+            <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
+            <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
             <span class="ident">cookie_jar</span>: <span class="self">self</span>.<span class="ident">cookie_jar</span>,
         };
 
@@ -1798,10 +1810,10 @@
 <span class="doccomment">/// what can be configured.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HttpClient</span> {
-    <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">InnerHttpClient</span><span class="op">&gt;</span>,
+    <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">struct</span> <span class="ident">InnerHttpClient</span> {
+<span class="kw">struct</span> <span class="ident">Inner</span> {
     <span class="doccomment">/// This is how we talk to our background agent thread.</span>
     <span class="ident">agent</span>: <span class="ident">agent</span>::<span class="ident">Handle</span>,
 
