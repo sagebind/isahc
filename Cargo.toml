@@ -97,7 +97,7 @@ static_assertions = "1.1"
 structopt = "0.3"
 tempfile = "3.1"
 test-case = "1.0"
-tracing-subscriber = "0.2"
+tracing-subscriber = "=0.2.12"
 
 [dev-dependencies.testserver]
 path = "testserver"

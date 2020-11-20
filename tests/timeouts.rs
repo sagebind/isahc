@@ -2,6 +2,9 @@ use isahc::prelude::*;
 use std::{io::{self, Cursor, Read}, thread, time::Duration};
 use testserver::mock;
 
+#[macro_use]
+mod utils;
+
 /// Issue #3
 #[test]
 fn request_errors_if_read_timeout_is_reached() {
@@ -18,7 +21,7 @@ fn request_errors_if_read_timeout_is_reached() {
         .send();
 
     // Client should time-out.
-    assert!(matches!(result, Err(isahc::Error::Timeout)));
+    assert_matches!(result, Err(isahc::Error::Timeout));
 
     assert_eq!(m.requests().len(), 1);
 }

@@ -5,6 +5,9 @@ use isahc::{
 use test_case::test_case;
 use testserver::mock;
 
+#[macro_use]
+mod utils;
+
 #[test]
 fn response_301_no_follow() {
     let m = mock! {
@@ -222,7 +225,7 @@ fn redirect_non_rewindable_body_returns_error() {
         .unwrap()
         .send();
 
-    assert!(matches!(result, Err(isahc::Error::RequestBodyError(_))));
+    assert_matches!(result, Err(isahc::Error::RequestBodyError(_)));
     assert_eq!(m1.request().method, "POST");
 }
 
