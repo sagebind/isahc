@@ -448,12 +448,18 @@ impl HttpClientBuilder {
             self = self.interceptor_impl(DefaultHeadersInterceptor::from(default_headers));
         }
 
-        let inner = InnerHttpClient {
+        #[cfg(not(feature = "cookies"))]
+        let inner = Inner {
             agent: self.agent_builder.spawn()?,
             defaults: self.defaults,
             interceptors: self.interceptors,
+        };
 
-            #[cfg(feature = "cookies")]
+        #[cfg(feature = "cookies")]
+        let inner = Inner {
+            agent: self.agent_builder.spawn()?,
+            defaults: self.defaults,
+            interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
         };
 
@@ -572,10 +578,10 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// what can be configured.
 #[derive(Clone)]
 pub struct HttpClient {
-    inner: Arc<InnerHttpClient>,
+    inner: Arc<Inner>,
 }
 
-struct InnerHttpClient {
+struct Inner {
     /// This is how we talk to our background agent thread.
     agent: agent::Handle,
 
