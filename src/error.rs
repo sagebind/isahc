@@ -248,7 +248,7 @@ impl From<Error> for io::Error {
     fn from(mut error: Error) -> Self {
         // If this error was directly created from an IO error, return it
         // directly.
-        if matches!(error.kind, ErrorKind::Io(_)) {
+        if let ErrorKind::Io(_) = error.kind {
             if let Some(source) = error.source.take() {
                 match source.downcast() {
                     Ok(e) => return *e,
