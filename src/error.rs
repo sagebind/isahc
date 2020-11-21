@@ -19,7 +19,7 @@ pub enum Fault {
 
 /// A non-exhaustive list of error types that can occur while sending an HTTP
 /// request or receiving an HTTP response.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ErrorKind {
     /// A problem occurred with the local certificate.
@@ -27,6 +27,9 @@ pub enum ErrorKind {
 
     /// The server certificate could not be validated.
     BadServerCertificate,
+
+    /// The HTTP client failed to initialize.
+    ClientInitialization,
 
     /// Failed to connect to the server.
     ConnectionFailed,
@@ -47,7 +50,7 @@ pub enum ErrorKind {
     /// An I/O error either sending the request or reading the response. This
     /// could be caused by a problem on the client machine, a problem on the
     /// server machine, or a problem with the network between the two.
-    Io(std::io::ErrorKind),
+    Io,
 
     /// The server made an unrecoverable HTTP protocol violation. This indicates
     /// a bug in the server. Retrying a request that returns this error is
@@ -108,6 +111,7 @@ impl fmt::Display for ErrorKind {
         match self {
             Self::BadClientCertificate => f.write_str("a problem occurred with the local certificate"),
             Self::BadServerCertificate => f.write_str("the server certificate could not be validated"),
+            Self::ClientInitialization => f.write_str("failed to initialize client"),
             Self::ConnectionFailed => f.write_str("failed to connect to the server"),
             Self::CouldntResolveHost => f.write_str("couldn't resolve host name"),
             Self::CouldntResolveProxy => f.write_str("couldn't resolve proxy host name"),
@@ -120,6 +124,13 @@ impl fmt::Display for ErrorKind {
             Self::TooManyRedirects => f.write_str("number of redirects hit the maximum amount"),
             _ => f.write_str("unknown error"),
         }
+    }
+}
+
+// Improve equality ergonomics for references.
+impl PartialEq<ErrorKind> for &'_ ErrorKind {
+    fn eq(&self, other: &ErrorKind) -> bool {
+        *self == other
     }
 }
 
@@ -162,8 +173,8 @@ impl Error {
 
     /// Get the kind of error this represents.
     #[inline]
-    pub fn kind(&self) -> ErrorKind {
-        self.0.kind
+    pub fn kind(&self) -> &ErrorKind {
+        &self.0.kind
     }
 }
 
@@ -227,7 +238,7 @@ impl From<io::Error> for Error {
             match error.kind() {
                 io::ErrorKind::ConnectionRefused => ErrorKind::ConnectionFailed,
                 io::ErrorKind::TimedOut => ErrorKind::Timeout,
-                kind => ErrorKind::Io(kind),
+                _ => ErrorKind::Io,
             },
             error,
         )
@@ -271,7 +282,7 @@ impl From<curl::Error> for Error {
             || error.is_partial_file()
             || error.is_interface_failed()
         {
-            ErrorKind::Io(std::io::ErrorKind::Other)
+            ErrorKind::Io
         } else if error.is_ssl_engine_initfailed()
             || error.is_ssl_engine_notfound()
             || error.is_ssl_engine_setfailed()
@@ -294,7 +305,7 @@ impl From<curl::MultiError> for Error {
     fn from(error: curl::MultiError) -> Error {
         Self::new(
             if error.is_bad_socket() {
-                ErrorKind::Io(io::ErrorKind::BrokenPipe)
+                ErrorKind::Io
             } else {
                 ErrorKind::Unknown
             },
