@@ -125,6 +125,10 @@ impl PartialEq<ErrorKind> for &'_ ErrorKind {
 /// It is recommended that you use the [`kind`][Error::kind] method to get a
 /// more generalized classification of error types that this error could be if
 /// you need to handle different sorts of errors in different ways.
+///
+/// If you need to get more specific details about the reason for the error, you
+/// can use the [`source`][std::error::Error::source] method. We do not provide
+/// any stability guarantees about what error sources are returned.
 #[derive(Clone)]
 pub struct Error(Arc<Inner>);
 
