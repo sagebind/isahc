@@ -114,7 +114,9 @@ impl Interceptor for RedirectInterceptor {
 
                     // Update the request to point to the new URI.
                     effective_uri = location.clone();
-                    request = request_builder.uri(location).body(request_body)?;
+                    request = request_builder.uri(location)
+                        .body(request_body)
+                        .map_err(|e| Error::new(ErrorKind::InvalidRequest, e))?;
                     redirect_count += 1;
                 }
 

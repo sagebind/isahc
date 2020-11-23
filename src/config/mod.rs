@@ -170,7 +170,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// decode the HTTP response body for known and available compression
     /// algorithms. If the server returns a response with an unknown or
     /// unavailable encoding, Isahc will return an
-    /// [`InvalidContentEncoding`](crate::Error::InvalidContentEncoding) error.
+    /// [`InvalidContentEncoding`](crate::error::ErrorKind::InvalidContentEncoding)
+    /// error.
     ///
     /// If you do not specify a specific value for the
     /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)

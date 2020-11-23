@@ -2,23 +2,13 @@
 
 use std::{error::Error as StdError, fmt, io, sync::Arc};
 
-/// An error fault, describing whether an error was caused by the HTTP client or
-/// by the HTTP server.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum Fault {
-    /// The client was misconfigured or used to send invalid data to the server.
-    ///
-    /// Requests that return these sorts of errors probably should not be
-    /// retried.
-    Client,
-
-    /// The server behaved incorrectly.
-    Server,
-}
-
 /// A non-exhaustive list of error types that can occur while sending an HTTP
 /// request or receiving an HTTP response.
+///
+/// These are meant to be treated as general error codes that allow you to
+/// handle different sorts of errors in different ways, but are not always
+/// specific. The list is also non-exhaustive, and more variants may be added in
+/// the future.
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ErrorKind {
@@ -34,23 +24,35 @@ pub enum ErrorKind {
     /// Failed to connect to the server.
     ConnectionFailed,
 
-    /// Couldn't resolve host name.
-    CouldntResolveHost,
-
-    /// Couldn't resolve proxy host name.
-    CouldntResolveProxy,
-
     /// The server either returned a response using an unknown or unsupported
     /// encoding format, or the response encoding was malformed.
     InvalidContentEncoding,
 
     /// Provided authentication credentials were rejected by the server.
+    ///
+    /// This error is only returned when using Isahc's built-in authentication
+    /// methods. If using authentication headers manually, the server's response
+    /// will be returned as a success unaltered.
     InvalidCredentials,
+
+    /// The request to be sent was invalid and could not be sent.
+    ///
+    /// Note that this is only returned for requests that the client deemed
+    /// invalid. If the request appears to be valid but is rejected by the
+    /// server, then the server's response will likely indicate as such.
+    InvalidRequest,
 
     /// An I/O error either sending the request or reading the response. This
     /// could be caused by a problem on the client machine, a problem on the
     /// server machine, or a problem with the network between the two.
     Io,
+
+    /// Failed to resolve a host name.
+    ///
+    /// This could be caused by any number of problems, including failure to
+    /// reach a DNS server, misconfigured resolver configuration, or the
+    /// hostname simply does not exist.
+    NameResolution,
 
     /// The server made an unrecoverable HTTP protocol violation. This indicates
     /// a bug in the server. Retrying a request that returns this error is
@@ -66,7 +68,7 @@ pub enum ErrorKind {
     Timeout,
 
     /// An error ocurred in the secure socket engine.
-    TlsEngineError,
+    TlsEngine,
 
     /// Number of redirects hit the maximum amount.
     TooManyRedirects,
@@ -74,56 +76,37 @@ pub enum ErrorKind {
     /// An unknown error occurred. This likely indicates a problem in the HTTP
     /// client or in a dependency, but the client was able to recover instead of
     /// panicking. Subsequent requests will likely succeed.
+    ///
+    /// Only used internally.
     #[doc(hidden)]
     Unknown,
 }
 
 impl ErrorKind {
-    /// Returns true if this is an error related to the network.
-    pub fn is_network(&self) -> bool {
+    #[inline]
+    fn description(&self) -> Option<&str> {
         match self {
-            Self::ConnectionFailed | Self::CouldntResolveHost | Self::Timeout => true,
-            _ => false,
-        }
-    }
-
-    /// Get the fault for this error kind. Returns `None` if the fault is
-    /// unclear.
-    pub fn fault(&self) -> Option<Fault> {
-        match self {
-            Self::BadClientCertificate | Self::InvalidCredentials => Some(Fault::Client),
-            Self::BadServerCertificate | Self::Protocol => Some(Fault::Server),
+            Self::BadClientCertificate => Some("a problem occurred with the local certificate"),
+            Self::BadServerCertificate => Some("the server certificate could not be validated"),
+            Self::ClientInitialization => Some("failed to initialize client"),
+            Self::ConnectionFailed => Some("failed to connect to the server"),
+            Self::InvalidContentEncoding => Some("the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed"),
+            Self::InvalidCredentials => Some("provided authentication credentials were rejected by the server"),
+            Self::InvalidRequest => Some("invalid HTTP request"),
+            Self::NameResolution => Some("failed to resolve host name"),
+            Self::Protocol => Some("the server made an unrecoverable HTTP protocol violation"),
+            Self::RequestBodyNotRewindable => Some("request body could not be re-sent because it is not rewindable"),
+            Self::Timeout => Some("request or operation took longer than the configured timeout time"),
+            Self::TlsEngine => Some("error ocurred in the secure socket engine"),
+            Self::TooManyRedirects => Some("number of redirects hit the maximum amount"),
             _ => None,
-        }
-    }
-
-    /// Returns true if this error is related to SSL/TLS.
-    pub fn is_tls(&self) -> bool {
-        match self {
-            Self::BadClientCertificate | Self::BadServerCertificate | Self::TlsEngineError => true,
-            _ => false,
         }
     }
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::BadClientCertificate => f.write_str("a problem occurred with the local certificate"),
-            Self::BadServerCertificate => f.write_str("the server certificate could not be validated"),
-            Self::ClientInitialization => f.write_str("failed to initialize client"),
-            Self::ConnectionFailed => f.write_str("failed to connect to the server"),
-            Self::CouldntResolveHost => f.write_str("couldn't resolve host name"),
-            Self::CouldntResolveProxy => f.write_str("couldn't resolve proxy host name"),
-            Self::InvalidContentEncoding => f.write_str("the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed"),
-            Self::InvalidCredentials => f.write_str("provided authentication credentials were rejected by the server"),
-            Self::Protocol => f.write_str("the server made an unrecoverable HTTP protocol violation"),
-            Self::RequestBodyNotRewindable => f.write_str("request body could not be re-sent because it is not rewindable"),
-            Self::Timeout => f.write_str("request or operation took longer than the configured timeout time"),
-            Self::TlsEngineError => f.write_str("error ocurred in the secure socket engine"),
-            Self::TooManyRedirects => f.write_str("number of redirects hit the maximum amount"),
-            _ => f.write_str("unknown error"),
-        }
+        f.write_str(self.description().unwrap_or("unknown error"))
     }
 }
 
@@ -136,6 +119,12 @@ impl PartialEq<ErrorKind> for &'_ ErrorKind {
 
 /// An error encountered while sending an HTTP request or receiving an HTTP
 /// response.
+///
+/// This type is intentionally opaque, as sending an HTTP request involves many
+/// different moving parts, some of which can be platform or device-dependent.
+/// It is recommended that you use the [`kind`][Error::kind] method to get a
+/// more generalized classification of error types that this error could be if
+/// you need to handle different sorts of errors in different ways.
 #[derive(Clone)]
 pub struct Error(Arc<Inner>);
 
@@ -172,9 +161,62 @@ impl Error {
     }
 
     /// Get the kind of error this represents.
+    ///
+    /// The kind returned may not be matchable against any known documented if
+    /// the reason for the error is unknown. Unknown errors may be an indication
+    /// of a bug, or an error condition that we do not recognize appropriately.
+    /// Either way, please report such occurrences to us!
     #[inline]
     pub fn kind(&self) -> &ErrorKind {
         &self.0.kind
+    }
+
+    /// Returns true if this error was likely caused by the client.
+    ///
+    /// Usually indicates that the client was misconfigured or used to send
+    /// invalid data to the server. Requests that return these sorts of errors
+    /// probably should not be retried without first fixing the request
+    /// parameters.
+    pub fn is_client(&self) -> bool {
+        match self.kind() {
+            ErrorKind::BadClientCertificate
+            | ErrorKind::ClientInitialization
+            | ErrorKind::InvalidCredentials
+            | ErrorKind::InvalidRequest
+            | ErrorKind::RequestBodyNotRewindable
+            | ErrorKind::TlsEngine => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this is an error likely related to network failures.
+    pub fn is_network(&self) -> bool {
+        match self.kind() {
+            ErrorKind::ConnectionFailed
+            | ErrorKind::Io
+            | ErrorKind::NameResolution => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this error was likely the fault of the server.
+    pub fn is_server(&self) -> bool {
+        match self.kind() {
+            ErrorKind::BadServerCertificate
+            | ErrorKind::Protocol
+            | ErrorKind::TooManyRedirects => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this error is related to SSL/TLS.
+    pub fn is_tls(&self) -> bool {
+        match self.kind() {
+            ErrorKind::BadClientCertificate
+            | ErrorKind::BadServerCertificate
+            | ErrorKind::TlsEngine => true,
+            _ => false,
+        }
     }
 }
 
@@ -262,32 +304,42 @@ impl From<curl::Error> for Error {
     fn from(error: curl::Error) -> Error {
         let kind = if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
             ErrorKind::BadClientCertificate
-        } else if error.is_peer_failed_verification() || error.is_ssl_cacert() {
+        } else if error.is_peer_failed_verification()
+            || error.is_ssl_cacert()
+            || error.is_ssl_cipher()
+            || error.is_ssl_issuer_error()
+        {
             ErrorKind::BadServerCertificate
+        } else if error.is_interface_failed() {
+            ErrorKind::ClientInitialization
         } else if error.is_couldnt_connect() || error.is_ssl_connect_error() {
             ErrorKind::ConnectionFailed
-        } else if error.is_couldnt_resolve_host() {
-            ErrorKind::CouldntResolveHost
-        } else if error.is_couldnt_resolve_proxy() {
-            ErrorKind::CouldntResolveProxy
         } else if error.is_bad_content_encoding() || error.is_conv_failed() {
             ErrorKind::InvalidContentEncoding
         } else if error.is_login_denied() {
             ErrorKind::InvalidCredentials
-        } else if error.is_got_nothing() {
+        } else if error.is_url_malformed() {
+            ErrorKind::InvalidRequest
+        } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
+            ErrorKind::NameResolution
+        } else if error.is_got_nothing() || error.is_http2_error() || error.is_http2_stream_error()
+        {
             ErrorKind::Protocol
-        } else if error.is_read_error()
+        } else if error.is_send_error()
+            || error.is_recv_error()
+            || error.is_read_error()
             || error.is_write_error()
+            || error.is_upload_failed()
+            || error.is_send_fail_rewind()
             || error.is_aborted_by_callback()
             || error.is_partial_file()
-            || error.is_interface_failed()
         {
             ErrorKind::Io
         } else if error.is_ssl_engine_initfailed()
             || error.is_ssl_engine_notfound()
             || error.is_ssl_engine_setfailed()
         {
-            ErrorKind::TlsEngineError
+            ErrorKind::TlsEngine
         } else if error.is_operation_timedout() {
             ErrorKind::Timeout
         } else if error.is_too_many_redirects() {
@@ -311,13 +363,6 @@ impl From<curl::MultiError> for Error {
             },
             error,
         )
-    }
-}
-
-#[doc(hidden)]
-impl From<http::Error> for Error {
-    fn from(error: http::Error) -> Error {
-        Self::new(ErrorKind::Unknown, error)
     }
 }
 

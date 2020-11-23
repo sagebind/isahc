@@ -344,11 +344,11 @@ impl HttpClientBuilder {
                     self.default_headers.append(key, value);
                 }
                 Err(e) => {
-                    self.error = Some(e.into().into());
+                    self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
                 }
             },
             Err(e) => {
-                self.error = Some(e.into().into());
+                self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
             }
         }
         self
@@ -464,7 +464,9 @@ impl HttpClientBuilder {
             cookie_jar: self.cookie_jar,
         };
 
-        Ok(HttpClient { inner: Arc::new(inner) })
+        Ok(HttpClient {
+            inner: Arc::new(inner),
+        })
     }
 }
 
@@ -897,7 +899,10 @@ impl HttpClient {
         builder: http::request::Builder,
         body: Body,
     ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
+        ResponseFuture::new(async move {
+            self.send_async_inner(builder.body(body).map_err(Error::from_any)?)
+                .await
+        })
     }
 
     /// Actually send the request. All the public methods go through here.
