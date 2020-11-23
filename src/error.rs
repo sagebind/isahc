@@ -196,9 +196,7 @@ impl Error {
     /// Returns true if this is an error likely related to network failures.
     pub fn is_network(&self) -> bool {
         match self.kind() {
-            ErrorKind::ConnectionFailed
-            | ErrorKind::Io
-            | ErrorKind::NameResolution => true,
+            ErrorKind::ConnectionFailed | ErrorKind::Io | ErrorKind::NameResolution => true,
             _ => false,
         }
     }
@@ -206,9 +204,9 @@ impl Error {
     /// Returns true if this error was likely the fault of the server.
     pub fn is_server(&self) -> bool {
         match self.kind() {
-            ErrorKind::BadServerCertificate
-            | ErrorKind::Protocol
-            | ErrorKind::TooManyRedirects => true,
+            ErrorKind::BadServerCertificate | ErrorKind::Protocol | ErrorKind::TooManyRedirects => {
+                true
+            }
             _ => false,
         }
     }
@@ -300,6 +298,24 @@ impl From<Error> for io::Error {
         };
 
         Self::new(kind, error)
+    }
+}
+
+impl From<http::Error> for Error {
+    fn from(error: http::Error) -> Error {
+        Self::new(
+            if error.is::<http::header::InvalidHeaderName>()
+                || error.is::<http::header::InvalidHeaderValue>()
+                || error.is::<http::method::InvalidMethod>()
+                || error.is::<http::uri::InvalidUri>()
+                || error.is::<http::uri::InvalidUriParts>()
+            {
+                ErrorKind::InvalidRequest
+            } else {
+                ErrorKind::Unknown
+            },
+            error,
+        )
     }
 }
 
