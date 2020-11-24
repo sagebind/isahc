@@ -171,13 +171,15 @@
 <span id="170">170</span>
 <span id="171">171</span>
 <span id="172">172</span>
+<span id="173">173</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">config</span>::<span class="ident">RedirectPolicy</span>,
+    <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>},
     <span class="ident">handler</span>::<span class="ident">RequestBody</span>,
     <span class="ident">interceptor</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>},
     <span class="ident">request</span>::<span class="ident">RequestExt</span>,
-    <span class="ident">Body</span>, <span class="ident">Error</span>,
+    <span class="ident">Body</span>,
 };
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>, <span class="ident">Uri</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
@@ -248,7 +250,7 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">location</span>) <span class="op">=</span> <span class="ident">get_redirect_location</span>(<span class="kw-2">&amp;</span><span class="ident">effective_uri</span>, <span class="kw-2">&amp;</span><span class="ident">response</span>) {
                     <span class="comment">// If we&#39;ve reached the limit, return an error as requested.</span>
                     <span class="kw">if</span> <span class="ident">redirect_count</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">limit</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">TooManyRedirects</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorKind</span>::<span class="ident">TooManyRedirects</span>.<span class="ident">into</span>());
                     }
 
                     <span class="comment">// Set referer header.</span>
@@ -282,14 +284,14 @@
                     <span class="comment">// There&#39;s not really a good way of handling this gracefully, so</span>
                     <span class="comment">// we just return an error so that the user knows about it.</span>
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">request_body</span>.<span class="ident">reset</span>() {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">RequestBodyError</span>(<span class="prelude-val">Some</span>(<span class="ident">String</span>::<span class="ident">from</span>(
-                            <span class="string">&quot;could not follow redirect because request body is not rewindable&quot;</span>,
-                        ))));
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorKind</span>::<span class="ident">RequestBodyNotRewindable</span>.<span class="ident">into</span>());
                     }
 
                     <span class="comment">// Update the request to point to the new URI.</span>
                     <span class="ident">effective_uri</span> <span class="op">=</span> <span class="ident">location</span>.<span class="ident">clone</span>();
-                    <span class="ident">request</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">uri</span>(<span class="ident">location</span>).<span class="ident">body</span>(<span class="ident">request_body</span>)<span class="question-mark">?</span>;
+                    <span class="ident">request</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">uri</span>(<span class="ident">location</span>)
+                        .<span class="ident">body</span>(<span class="ident">request_body</span>)
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">InvalidRequest</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
                     <span class="ident">redirect_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                 }
 

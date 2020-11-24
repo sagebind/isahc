@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ErrorKind","A non-exhaustive list of error types that can occur while sending an HTTP request or receiving an HTTP response."]],"struct":[["Error","An error encountered while sending an HTTP request or receiving an HTTP response."]]});

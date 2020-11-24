@@ -54,8 +54,8 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Helpers for working with tasks and futures.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Error</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">io</span>,
     <span class="ident">net</span>::{<span class="ident">SocketAddr</span>, <span class="ident">UdpSocket</span>},
     <span class="ident">task</span>::<span class="ident">Waker</span>,
 };
@@ -85,7 +85,7 @@
 
 <span class="kw">impl</span> <span class="ident">UdpWaker</span> {
     <span class="doccomment">/// Create a waker by connecting to the wake address of an UDP server.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">connect</span>(<span class="ident">addr</span>: <span class="ident">SocketAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">connect</span>(<span class="ident">addr</span>: <span class="ident">SocketAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">socket</span> <span class="op">=</span> <span class="ident">UdpSocket</span>::<span class="ident">bind</span>(<span class="string">&quot;127.0.0.1:0&quot;</span>)<span class="question-mark">?</span>;
         <span class="ident">socket</span>.<span class="ident">connect</span>(<span class="ident">addr</span>)<span class="question-mark">?</span>;
 
