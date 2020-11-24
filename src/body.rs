@@ -10,28 +10,6 @@ use std::{
     task::{Context, Poll},
 };
 
-macro_rules! match_type {
-    {
-        $(
-            <$name:ident as $T:ty> => $branch:expr,
-        )*
-        $defaultName:ident => $defaultBranch:expr,
-    } => {{
-        match () {
-            $(
-                _ if ::std::any::Any::type_id(&$name) == ::std::any::TypeId::of::<$T>() => {
-                    #[allow(unsafe_code)]
-                    let $name: $T = unsafe {
-                        ::std::mem::transmute_copy::<_, $T>(&::std::mem::ManuallyDrop::new($name))
-                    };
-                    $branch
-                }
-            )*
-            _ => $defaultBranch,
-        }
-    }};
-}
-
 /// Contains the body of an HTTP request or response.
 ///
 /// This type is used to encapsulate the underlying stream or region of memory

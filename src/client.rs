@@ -3,13 +3,14 @@
 use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
+    body::Body,
     config::internal::{ConfigurableBase, SetOpt},
     config::*,
     default_headers::DefaultHeadersInterceptor,
+    error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
     headers,
     interceptor::{self, Interceptor, InterceptorObj},
-    Body, Error,
 };
 use futures_lite::{future::block_on, io::AsyncRead, pin};
 use http::{
@@ -343,11 +344,11 @@ impl HttpClientBuilder {
                     self.default_headers.append(key, value);
                 }
                 Err(e) => {
-                    self.error = Some(e.into().into());
+                    self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
                 }
             },
             Err(e) => {
-                self.error = Some(e.into().into());
+                self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
             }
         }
         self
@@ -450,20 +451,22 @@ impl HttpClientBuilder {
 
         #[cfg(not(feature = "cookies"))]
         let inner = Inner {
-            agent: self.agent_builder.spawn()?,
+            agent: self.agent_builder.spawn().map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
             defaults: self.defaults,
             interceptors: self.interceptors,
         };
 
         #[cfg(feature = "cookies")]
         let inner = Inner {
-            agent: self.agent_builder.spawn()?,
+            agent: self.agent_builder.spawn().map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
             defaults: self.defaults,
             interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
         };
 
-        Ok(HttpClient { inner: Arc::new(inner) })
+        Ok(HttpClient {
+            inner: Arc::new(inner),
+        })
     }
 }
 
@@ -896,7 +899,10 @@ impl HttpClient {
         builder: http::request::Builder,
         body: Body,
     ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
+        ResponseFuture::new(async move {
+            self.send_async_inner(builder.body(body).map_err(Error::from_any)?)
+                .await
+        })
     }
 
     /// Actually send the request. All the public methods go through here.

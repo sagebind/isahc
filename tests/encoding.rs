@@ -126,7 +126,7 @@ fn unknown_content_encoding_returns_error() {
         .send();
 
     match result {
-        Err(isahc::Error::InvalidContentEncoding(_)) => {}
+        Err(e) if e.kind() == isahc::error::ErrorKind::InvalidContentEncoding => {}
         _ => panic!("expected unknown encoding error, instead got {:?}", result),
     };
 

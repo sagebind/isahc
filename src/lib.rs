@@ -131,7 +131,7 @@
 //!
 //! ```toml
 //! [dependencies.isahc]
-//! version = "0.8"
+//! version = "0.9"
 //! features = ["psl"]
 //! ```
 //!
@@ -224,6 +224,9 @@ use http::{Request, Response};
 use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 
+#[macro_use]
+mod macros;
+
 #[cfg(feature = "cookies")]
 pub mod cookies;
 
@@ -231,7 +234,6 @@ mod agent;
 mod body;
 mod client;
 mod default_headers;
-mod error;
 mod handler;
 mod headers;
 mod metrics;
@@ -242,6 +244,7 @@ mod task;
 mod text;
 
 pub mod auth;
+pub mod error;
 pub mod config;
 
 #[cfg(feature = "unstable-interceptors")]

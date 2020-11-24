@@ -22,18 +22,7 @@ impl<'a> Context<'a> {
                 interceptors: &self.interceptors[1..],
             };
 
-            match interceptor.intercept(request, inner_context).await {
-                Ok(response) => Ok(response),
-
-                // If the error is an Isahc error, return it directly.
-                Err(e) => match e.downcast::<Error>() {
-                    Ok(e) => Err(*e),
-
-                    // TODO: Introduce a new error variant for errors caused by an
-                    // interceptor. This is a temporary hack.
-                    Err(e) => Err(Error::Curl(e.to_string())),
-                },
-            }
+            interceptor.intercept(request, inner_context).await
         } else {
             self.invoker.invoke(request).await
         }

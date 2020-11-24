@@ -1,13 +1,13 @@
 macro_rules! assert_matches {
-    ($value:expr, $pattern:pat) => {{
+    ($value:expr, $($pattern:tt)+) => {{
         match $value {
-            $pattern => {},
+            $($pattern)* => {},
             value => panic!(
                 "assertion failed: `{}` matches `{}`\n  value: `{:?}`",
                 stringify!($value),
-                stringify!($pattern),
+                stringify!($($pattern)*),
                 value,
             ),
         }
-    }}
+    }};
 }

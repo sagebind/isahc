@@ -8,14 +8,17 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::handler::RequestHandler;
-use crate::task::{UdpWaker, WakerExt};
-use crate::Error;
+use crate::{
+    error::Error,
+    handler::RequestHandler,
+    task::{UdpWaker, WakerExt},
+};
 use crossbeam_utils::sync::WaitGroup;
 use curl::multi::WaitFd;
 use flume::{Receiver, Sender};
 use slab::Slab;
 use std::{
+    io,
     net::UdpSocket,
     sync::Mutex,
     task::Waker,
@@ -54,7 +57,7 @@ impl AgentBuilder {
 
     /// Spawn a new agent using the configuration in this builder and return a
     /// handle for communicating with the agent.
-    pub(crate) fn spawn(&self) -> Result<Handle, Error> {
+    pub(crate) fn spawn(&self) -> io::Result<Handle> {
         let create_start = Instant::now();
 
         // Initialize libcurl, if necessary, on the current thread.

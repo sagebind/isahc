@@ -1,7 +1,7 @@
 //! Helpers for working with tasks and futures.
 
-use crate::Error;
 use std::{
+    io,
     net::{SocketAddr, UdpSocket},
     task::Waker,
 };
@@ -31,7 +31,7 @@ pub(crate) struct UdpWaker {
 
 impl UdpWaker {
     /// Create a waker by connecting to the wake address of an UDP server.
-    pub(crate) fn connect(addr: SocketAddr) -> Result<Self, Error> {
+    pub(crate) fn connect(addr: SocketAddr) -> io::Result<Self> {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.connect(addr)?;
 

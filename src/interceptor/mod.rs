@@ -55,7 +55,7 @@ macro_rules! interceptor {
         async fn interceptor(
             mut $request: $crate::http::Request<$crate::Body>,
             $ctx: $crate::interceptor::Context<'_>,
-        ) -> Result<$crate::http::Response<isahc::Body>, Box<dyn ::std::error::Error>> {
+        ) -> Result<$crate::http::Response<isahc::Body>, $crate::Error> {
             (move || async move {
                 $body
             })().await.map_err(Into::into)
@@ -72,7 +72,7 @@ macro_rules! interceptor {
 /// made in parallel.
 pub trait Interceptor: Send + Sync {
     /// The type of error returned by this interceptor.
-    type Err: Into<Box<dyn Error>>;
+    type Err: Error + Send + Sync + 'static;
 
     /// Intercept a request, returning a response.
     ///
@@ -88,7 +88,7 @@ pub type InterceptorFuture<'a, E> = Pin<Box<dyn Future<Output = Result<Response<
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
 where
     F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
-    E: Into<Box<dyn Error>>,
+    E: Error + Send + Sync + 'static,
 {
     InterceptorFn(f)
 }
@@ -99,7 +99,7 @@ pub struct InterceptorFn<F>(F);
 
 impl<E, F> Interceptor for InterceptorFn<F>
 where
-    E: Into<Box<dyn Error>>,
+    E: Error + Send + Sync + 'static,
     F: for<'a> private::AsyncFn2<Request<Body>, Context<'a>, Output = Result<Response<Body>, E>> + Send + Sync + 'static,
 {
     type Err = E;

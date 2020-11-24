@@ -1,9 +1,10 @@
 use crate::{
     config::RedirectPolicy,
+    error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
-    Body, Error,
+    Body,
 };
 use http::{Request, Response, Uri};
 use std::convert::TryFrom;
@@ -74,7 +75,7 @@ impl Interceptor for RedirectInterceptor {
                 if let Some(location) = get_redirect_location(&effective_uri, &response) {
                     // If we've reached the limit, return an error as requested.
                     if redirect_count >= limit {
-                        return Err(Error::TooManyRedirects);
+                        return Err(ErrorKind::TooManyRedirects.into());
                     }
 
                     // Set referer header.
@@ -108,14 +109,14 @@ impl Interceptor for RedirectInterceptor {
                     // There's not really a good way of handling this gracefully, so
                     // we just return an error so that the user knows about it.
                     if !request_body.reset() {
-                        return Err(Error::RequestBodyError(Some(String::from(
-                            "could not follow redirect because request body is not rewindable",
-                        ))));
+                        return Err(ErrorKind::RequestBodyNotRewindable.into());
                     }
 
                     // Update the request to point to the new URI.
                     effective_uri = location.clone();
-                    request = request_builder.uri(location).body(request_body)?;
+                    request = request_builder.uri(location)
+                        .body(request_body)
+                        .map_err(|e| Error::new(ErrorKind::InvalidRequest, e))?;
                     redirect_count += 1;
                 }
 
