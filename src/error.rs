@@ -134,7 +134,7 @@ pub struct Error(Arc<Inner>);
 
 struct Inner {
     kind: ErrorKind,
-    extra: Option<String>,
+    context: Option<String>,
     source: Option<Box<dyn StdError + Send + Sync>>,
 }
 
@@ -144,9 +144,18 @@ impl Error {
     where
         E: StdError + Send + Sync + 'static,
     {
+        Self::with_context(kind, None, source)
+    }
+
+    /// Create a new error from a given error kind, source error, and context
+    /// string.
+    pub(crate) fn with_context<E>(kind: ErrorKind, context: Option<String>, source: E) -> Self
+    where
+        E: StdError + Send + Sync + 'static,
+    {
         Self(Arc::new(Inner {
             kind,
-            extra: None,
+            context,
             source: Some(Box::new(source)),
         }))
     }
@@ -238,6 +247,7 @@ impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Error")
             .field("kind", &self.kind())
+            .field("context", &self.0.context)
             .field("source", &self.source())
             .finish()
     }
@@ -245,13 +255,7 @@ impl fmt::Debug for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let extra_description = self
-            .source()
-            .and_then(|e| e.downcast_ref::<curl::Error>())
-            .and_then(|e| e.extra_description())
-            .or_else(|| self.0.extra.as_deref());
-
-        if let Some(s) = extra_description {
+        if let Some(s) = self.0.context.as_ref() {
             write!(f, "{}: {}", self.kind(), s)
         } else {
             write!(f, "{}", self.kind())
@@ -263,7 +267,7 @@ impl From<ErrorKind> for Error {
     fn from(kind: ErrorKind) -> Self {
         Self(Arc::new(Inner {
             kind,
-            extra: None,
+            context: None,
             source: None,
         }))
     }
@@ -322,53 +326,57 @@ impl From<http::Error> for Error {
 #[doc(hidden)]
 impl From<curl::Error> for Error {
     fn from(error: curl::Error) -> Error {
-        let kind = if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
-            ErrorKind::BadClientCertificate
-        } else if error.is_peer_failed_verification()
-            || error.is_ssl_cacert()
-            || error.is_ssl_cipher()
-            || error.is_ssl_issuer_error()
-        {
-            ErrorKind::BadServerCertificate
-        } else if error.is_interface_failed() {
-            ErrorKind::ClientInitialization
-        } else if error.is_couldnt_connect() || error.is_ssl_connect_error() {
-            ErrorKind::ConnectionFailed
-        } else if error.is_bad_content_encoding() || error.is_conv_failed() {
-            ErrorKind::InvalidContentEncoding
-        } else if error.is_login_denied() {
-            ErrorKind::InvalidCredentials
-        } else if error.is_url_malformed() {
-            ErrorKind::InvalidRequest
-        } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
-            ErrorKind::NameResolution
-        } else if error.is_got_nothing() || error.is_http2_error() || error.is_http2_stream_error()
-        {
-            ErrorKind::Protocol
-        } else if error.is_send_error()
-            || error.is_recv_error()
-            || error.is_read_error()
-            || error.is_write_error()
-            || error.is_upload_failed()
-            || error.is_send_fail_rewind()
-            || error.is_aborted_by_callback()
-            || error.is_partial_file()
-        {
-            ErrorKind::Io
-        } else if error.is_ssl_engine_initfailed()
-            || error.is_ssl_engine_notfound()
-            || error.is_ssl_engine_setfailed()
-        {
-            ErrorKind::TlsEngine
-        } else if error.is_operation_timedout() {
-            ErrorKind::Timeout
-        } else if error.is_too_many_redirects() {
-            ErrorKind::TooManyRedirects
-        } else {
-            ErrorKind::Unknown
-        };
-
-        Self::new(kind, error)
+        Self::with_context(
+            if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
+                ErrorKind::BadClientCertificate
+            } else if error.is_peer_failed_verification()
+                || error.is_ssl_cacert()
+                || error.is_ssl_cipher()
+                || error.is_ssl_issuer_error()
+            {
+                ErrorKind::BadServerCertificate
+            } else if error.is_interface_failed() {
+                ErrorKind::ClientInitialization
+            } else if error.is_couldnt_connect() || error.is_ssl_connect_error() {
+                ErrorKind::ConnectionFailed
+            } else if error.is_bad_content_encoding() || error.is_conv_failed() {
+                ErrorKind::InvalidContentEncoding
+            } else if error.is_login_denied() {
+                ErrorKind::InvalidCredentials
+            } else if error.is_url_malformed() {
+                ErrorKind::InvalidRequest
+            } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
+                ErrorKind::NameResolution
+            } else if error.is_got_nothing()
+                || error.is_http2_error()
+                || error.is_http2_stream_error()
+            {
+                ErrorKind::Protocol
+            } else if error.is_send_error()
+                || error.is_recv_error()
+                || error.is_read_error()
+                || error.is_write_error()
+                || error.is_upload_failed()
+                || error.is_send_fail_rewind()
+                || error.is_aborted_by_callback()
+                || error.is_partial_file()
+            {
+                ErrorKind::Io
+            } else if error.is_ssl_engine_initfailed()
+                || error.is_ssl_engine_notfound()
+                || error.is_ssl_engine_setfailed()
+            {
+                ErrorKind::TlsEngine
+            } else if error.is_operation_timedout() {
+                ErrorKind::Timeout
+            } else if error.is_too_many_redirects() {
+                ErrorKind::TooManyRedirects
+            } else {
+                ErrorKind::Unknown
+            },
+            error.extra_description().map(String::from),
+            error,
+        )
     }
 }
 
