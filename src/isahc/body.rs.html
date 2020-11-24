@@ -236,12 +236,22 @@
 <span id="235">235</span>
 <span id="236">236</span>
 <span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Provides types for working with request and response bodies.</span>
 
-<span class="kw">use</span> <span class="ident">bytes</span>::<span class="ident">Bytes</span>;
 <span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future</span>::<span class="ident">block_on</span>, <span class="ident">io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncReadExt</span>}};
 <span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">borrow</span>::<span class="ident">Cow</span>,
     <span class="ident">fmt</span>,
     <span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">Cursor</span>, <span class="ident">Read</span>},
     <span class="ident">pin</span>::<span class="ident">Pin</span>,
@@ -267,7 +277,7 @@
     <span class="ident">Empty</span>,
 
     <span class="doccomment">/// A body stored in memory.</span>
-    <span class="ident">Bytes</span>(<span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Bytes</span><span class="op">&gt;</span>),
+    <span class="ident">Buffer</span>(<span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>),
 
     <span class="doccomment">/// An asynchronous reader.</span>
     <span class="ident">AsyncRead</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
@@ -279,35 +289,45 @@
     <span class="doccomment">/// An empty body represents the *absence* of a body, which is semantically</span>
     <span class="doccomment">/// different than the presence of a body of zero length.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">empty</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">Empty</span>)
+        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Empty</span>)
     }
 
-    <span class="doccomment">/// Create a new body from bytes stored in memory.</span>
+    <span class="doccomment">/// Create a new body from a potentially static byte buffer.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The body will have a known length equal to the number of bytes given.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This will try to prevent a copy if the type passed in can be re-used,</span>
+    <span class="doccomment">/// otherwise the buffer will be copied first. This method guarantees to not</span>
+    <span class="doccomment">/// require a copy for the following types:</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// - `&amp;&#39;static [u8]`</span>
+    <span class="doccomment">/// - `&amp;&#39;static str`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// use isahc::Body;</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// // Create a body from a string.</span>
-    <span class="doccomment">/// let body = Body::from_bytes(&quot;hello world&quot;);</span>
+    <span class="doccomment">/// // Create a body from a static string.</span>
+    <span class="doccomment">/// let body = Body::from_bytes_static(&quot;hello world&quot;);</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">bytes</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>()
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes_static</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">where</span>
+        <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>
+    {
+        <span class="macro">match_type</span><span class="macro">!</span> {
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from_static_impl</span>(<span class="ident">bytes</span>),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from_static_impl</span>(<span class="ident">bytes</span>.<span class="ident">as_bytes</span>()),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
+            <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>()),
+        }
     }
 
-    <span class="doccomment">/// Attempt to create a new body from a shared [`Bytes`] buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will try to prevent a copy if the type passed is the type used</span>
-    <span class="doccomment">/// internally, and will copy the data if it is not.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_maybe_shared</span>(<span class="ident">bytes</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Body</span>(<span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="macro">match_type</span><span class="macro">!</span> {
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Bytes</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">bytes</span>,
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Bytes</span>::<span class="ident">from_static</span>(<span class="ident">bytes</span>),
-            <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>().<span class="ident">into</span>(),
-        })))
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">from_static_impl</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">bytes</span>))))
     }
 
     <span class="doccomment">/// Create a streaming body that reads from the given reader.</span>
@@ -355,7 +375,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> {
             <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="number">0</span>),
-            <span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">bytes</span>.<span class="ident">get_ref</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>),
+            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">bytes</span>.<span class="ident">get_ref</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>),
             <span class="ident">Inner</span>::<span class="ident">AsyncRead</span>(<span class="kw">_</span>, <span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">len</span>,
         }
     }
@@ -365,7 +385,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="number">0</span> {
             <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">cursor</span>.<span class="ident">set_position</span>(<span class="number">0</span>);
                 <span class="bool-val">true</span>
             }
@@ -378,7 +398,7 @@
     <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="number">0</span> {
             <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-            <span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
+            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
             <span class="ident">Inner</span>::<span class="ident">AsyncRead</span>(<span class="ident">reader</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">block_on</span>(<span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>)),
         }
     }
@@ -392,7 +412,7 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="number">0</span> {
             <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="number">0</span>)),
-            <span class="ident">Inner</span>::<span class="ident">Bytes</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>)),
+            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>)),
             <span class="ident">Inner</span>::<span class="ident">AsyncRead</span>(<span class="ident">read</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AsyncRead</span>::<span class="ident">poll_read</span>(<span class="ident">read</span>.<span class="ident">as_mut</span>(), <span class="ident">cx</span>, <span class="ident">buf</span>),
         }
     }
@@ -412,13 +432,13 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">from_maybe_shared</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
+        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="ident">body</span>))))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">from_maybe_shared</span>(<span class="ident">Bytes</span>::<span class="ident">from</span>(<span class="ident">body</span>))
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">body</span>.<span class="ident">to_vec</span>().<span class="ident">into</span>()
     }
 }
 
@@ -428,8 +448,8 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">body</span>.<span class="ident">as_bytes</span>().<span class="ident">into</span>()
     }
 }
@@ -468,7 +488,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">zero_length_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from_bytes</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
 
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
