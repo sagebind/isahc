@@ -1,8 +1,8 @@
 //! Provides types for working with request and response bodies.
 
-use bytes::Bytes;
 use futures_lite::{future::block_on, io::{AsyncRead, AsyncReadExt}};
 use std::{
+    borrow::Cow,
     fmt,
     io::{self, Cursor, Read},
     pin::Pin,
@@ -28,7 +28,7 @@ enum Inner {
     Empty,
 
     /// A body stored in memory.
-    Bytes(Cursor<Bytes>),
+    Buffer(Cursor<Cow<'static, [u8]>>),
 
     /// An asynchronous reader.
     AsyncRead(Pin<Box<dyn AsyncRead + Send + Sync>>, Option<u64>),
@@ -40,12 +40,19 @@ impl Body {
     /// An empty body represents the *absence* of a body, which is semantically
     /// different than the presence of a body of zero length.
     pub const fn empty() -> Self {
-        Body(Inner::Empty)
+        Self(Inner::Empty)
     }
 
-    /// Create a new body from bytes stored in memory.
+    /// Create a new body from a potentially static byte buffer.
     ///
     /// The body will have a known length equal to the number of bytes given.
+    ///
+    /// This will try to prevent a copy if the type passed in can be re-used,
+    /// otherwise the buffer will be copied first. This method guarantees to not
+    /// require a copy for the following types:
+    ///
+    /// - `&'static [u8]`
+    /// - `&'static str`
     ///
     /// # Examples
     ///
@@ -53,22 +60,25 @@ impl Body {
     /// use isahc::Body;
     ///
     /// // Create a body from a string.
-    /// let body = Body::from_bytes("hello world");
+    /// let body = Body::from_static_bytes("hello world");
     /// ```
-    pub fn from_bytes(bytes: impl AsRef<[u8]>) -> Self {
-        bytes.as_ref().to_vec().into()
+    #[inline]
+    pub fn from_static_bytes<B>(bytes: B) -> Self
+    where
+        B: AsRef<[u8]> + 'static
+    {
+        match_type! {
+            <bytes as &'static [u8]> => Self::from_static_impl(bytes),
+            <bytes as &'static str> => Self::from_static_impl(bytes.as_bytes()),
+            <bytes as Vec<u8>> => Self::from(bytes),
+            <bytes as String> => Self::from(bytes.into_bytes()),
+            bytes => Self::from(bytes.as_ref().to_vec()),
+        }
     }
 
-    /// Attempt to create a new body from a shared [`Bytes`] buffer.
-    ///
-    /// This will try to prevent a copy if the type passed is the type used
-    /// internally, and will copy the data if it is not.
-    pub fn from_maybe_shared(bytes: impl AsRef<[u8]> + 'static) -> Self {
-        Body(Inner::Bytes(Cursor::new(match_type! {
-            <bytes as Bytes> => bytes,
-            <bytes as &'static [u8]> => Bytes::from_static(bytes),
-            bytes => bytes.as_ref().to_vec().into(),
-        })))
+    #[inline]
+    fn from_static_impl(bytes: &'static [u8]) -> Self {
+        Self(Inner::Buffer(Cursor::new(Cow::Borrowed(bytes))))
     }
 
     /// Create a streaming body that reads from the given reader.
@@ -116,7 +126,7 @@ impl Body {
     pub fn len(&self) -> Option<u64> {
         match &self.0 {
             Inner::Empty => Some(0),
-            Inner::Bytes(bytes) => Some(bytes.get_ref().len() as u64),
+            Inner::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
             Inner::AsyncRead(_, len) => *len,
         }
     }
@@ -126,7 +136,7 @@ impl Body {
     pub fn reset(&mut self) -> bool {
         match &mut self.0 {
             Inner::Empty => true,
-            Inner::Bytes(cursor) => {
+            Inner::Buffer(cursor) => {
                 cursor.set_position(0);
                 true
             }
@@ -139,7 +149,7 @@ impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.0 {
             Inner::Empty => Ok(0),
-            Inner::Bytes(cursor) => cursor.read(buf),
+            Inner::Buffer(cursor) => cursor.read(buf),
             Inner::AsyncRead(reader, _) => block_on(reader.read(buf)),
         }
     }
@@ -153,7 +163,7 @@ impl AsyncRead for Body {
     ) -> Poll<io::Result<usize>> {
         match &mut self.0 {
             Inner::Empty => Poll::Ready(Ok(0)),
-            Inner::Bytes(cursor) => Poll::Ready(cursor.read(buf)),
+            Inner::Buffer(cursor) => Poll::Ready(cursor.read(buf)),
             Inner::AsyncRead(read, _) => AsyncRead::poll_read(read.as_mut(), cx, buf),
         }
     }
@@ -173,13 +183,13 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self::from_maybe_shared(Bytes::from(body))
+        Self(Inner::Buffer(Cursor::new(Cow::Owned(body))))
     }
 }
 
-impl From<&'static [u8]> for Body {
-    fn from(body: &'static [u8]) -> Self {
-        Self::from_maybe_shared(Bytes::from(body))
+impl From<&'_ [u8]> for Body {
+    fn from(body: &[u8]) -> Self {
+        body.to_vec().into()
     }
 }
 
@@ -189,8 +199,8 @@ impl From<String> for Body {
     }
 }
 
-impl From<&'static str> for Body {
-    fn from(body: &'static str) -> Self {
+impl From<&'_ str> for Body {
+    fn from(body: &str) -> Self {
         body.as_bytes().into()
     }
 }
@@ -229,7 +239,7 @@ mod tests {
 
     #[test]
     fn zero_length_body() {
-        let body = Body::from_bytes(vec![]);
+        let body = Body::from(vec![]);
 
         assert!(!body.is_empty());
         assert_eq!(body.len(), Some(0));

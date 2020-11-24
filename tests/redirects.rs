@@ -217,7 +217,7 @@ fn redirect_non_rewindable_body_returns_error() {
     };
 
     // Create a streaming body of unknown size.
-    let upload_stream = Body::from_reader(Body::from_bytes(b"hello world"));
+    let upload_stream = Body::from_reader(Body::from_static_bytes(b"hello world"));
 
     let result = Request::post(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
