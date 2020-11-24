@@ -59,11 +59,11 @@ impl Body {
     /// ```
     /// use isahc::Body;
     ///
-    /// // Create a body from a string.
-    /// let body = Body::from_static_bytes("hello world");
+    /// // Create a body from a static string.
+    /// let body = Body::from_bytes_static("hello world");
     /// ```
     #[inline]
-    pub fn from_static_bytes<B>(bytes: B) -> Self
+    pub fn from_bytes_static<B>(bytes: B) -> Self
     where
         B: AsRef<[u8]> + 'static
     {
