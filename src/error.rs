@@ -57,7 +57,7 @@ pub enum ErrorKind {
     /// The server made an unrecoverable HTTP protocol violation. This indicates
     /// a bug in the server. Retrying a request that returns this error is
     /// likely to produce the same error.
-    Protocol,
+    ProtocolViolation,
 
     /// Request processing could not continue because the client needed to
     /// re-send the request body, but was unable to rewind the body stream to
@@ -94,7 +94,7 @@ impl ErrorKind {
             Self::InvalidCredentials => Some("provided authentication credentials were rejected by the server"),
             Self::InvalidRequest => Some("invalid HTTP request"),
             Self::NameResolution => Some("failed to resolve host name"),
-            Self::Protocol => Some("the server made an unrecoverable HTTP protocol violation"),
+            Self::ProtocolViolation => Some("the server made an unrecoverable HTTP protocol violation"),
             Self::RequestBodyNotRewindable => Some("request body could not be re-sent because it is not rewindable"),
             Self::Timeout => Some("request or operation took longer than the configured timeout time"),
             Self::TlsEngine => Some("error ocurred in the secure socket engine"),
@@ -213,7 +213,7 @@ impl Error {
     /// Returns true if this error was likely the fault of the server.
     pub fn is_server(&self) -> bool {
         match self.kind() {
-            ErrorKind::BadServerCertificate | ErrorKind::Protocol | ErrorKind::TooManyRedirects => {
+            ErrorKind::BadServerCertificate | ErrorKind::ProtocolViolation | ErrorKind::TooManyRedirects => {
                 true
             }
             _ => false,
@@ -351,7 +351,7 @@ impl From<curl::Error> for Error {
                 || error.is_http2_error()
                 || error.is_http2_stream_error()
             {
-                ErrorKind::Protocol
+                ErrorKind::ProtocolViolation
             } else if error.is_send_error()
                 || error.is_recv_error()
                 || error.is_read_error()
