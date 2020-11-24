@@ -350,6 +350,8 @@ impl From<curl::Error> for Error {
             } else if error.is_got_nothing()
                 || error.is_http2_error()
                 || error.is_http2_stream_error()
+                || error.is_unsupported_protocol()
+                || error.code() == curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY
             {
                 ErrorKind::ProtocolViolation
             } else if error.is_send_error()

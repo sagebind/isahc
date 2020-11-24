@@ -153,7 +153,7 @@ impl RequestHandler {
                 shared,
             };
 
-            builder.body(reader).map_err(|e| Error::new(crate::error::ErrorKind::Protocol, e))
+            builder.body(reader).map_err(|e| Error::new(crate::error::ErrorKind::ProtocolViolation, e))
         };
 
         (handler, future)
