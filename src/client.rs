@@ -3,7 +3,7 @@
 use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
-    body::Body,
+    body::{AsyncBody, Body},
     config::internal::{ConfigurableBase, SetOpt},
     config::*,
     default_headers::DefaultHeadersInterceptor,
@@ -664,7 +664,7 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn get<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -705,7 +705,7 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn head<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -749,11 +749,11 @@ impl HttpClient {
     /// }"#)?;
     /// # Ok::<(), isahc::Error>(())
     #[inline]
-    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<crate::body::sync::Body>,
+        B: Into<Body>,
     {
         match http::Request::post(uri).body(body) {
             Ok(request) => self.send(request),
@@ -770,7 +770,7 @@ impl HttpClient {
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<Body>,
+        B: Into<AsyncBody>,
     {
         match http::Request::post(uri).body(body) {
             Ok(request) => self.send_async(request),
@@ -797,11 +797,11 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<crate::body::sync::Body>,
+        B: Into<Body>,
     {
         match http::Request::put(uri).body(body) {
             Ok(request) => self.send(request),
@@ -818,7 +818,7 @@ impl HttpClient {
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<Body>,
+        B: Into<AsyncBody>,
     {
         match http::Request::put(uri).body(body) {
             Ok(request) => self.send_async(request),
@@ -831,7 +831,7 @@ impl HttpClient {
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::delete_async`].
     #[inline]
-    pub fn delete<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -905,11 +905,10 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    #[inline]
     #[tracing::instrument(level = "debug", skip(self, request), err)]
-    pub fn send<B>(&self, request: Request<B>) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn send<B>(&self, request: Request<B>) -> Result<Response<Body>, Error>
     where
-        B: Into<crate::body::sync::Body>,
+        B: Into<Body>,
     {
         let mut writer_maybe = None;
 
@@ -968,12 +967,15 @@ impl HttpClient {
     /// # Ok(()) }
     /// ```
     #[inline]
-    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
+    pub fn send_async<B>(&self, request: Request<B>) -> ResponseFuture<'_>
+    where
+        B: Into<AsyncBody>,
+    {
         ResponseFuture::new(self.send_async_inner(request.map(Into::into)))
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
+    async fn send_async_inner(&self, mut request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
@@ -997,7 +999,7 @@ impl HttpClient {
 
     fn create_easy_handle(
         &self,
-        mut request: Request<Body>,
+        mut request: Request<AsyncBody>,
     ) -> Result<
         (
             curl::easy::Easy2<RequestHandler>,
@@ -1147,7 +1149,7 @@ impl HttpClient {
 impl crate::interceptor::Invoke for &HttpClient {
     fn invoke<'a>(
         &'a self,
-        mut request: Request<Body>,
+        mut request: Request<AsyncBody>,
     ) -> crate::interceptor::InterceptorFuture<'a, Error> {
         Box::pin(async move {
             // Set default user agent if not specified.
@@ -1183,9 +1185,9 @@ impl crate::interceptor::Invoke for &HttpClient {
                 };
 
                 if let Some(len) = content_length {
-                    Body::from_reader_sized(body, len)
+                    AsyncBody::from_reader_sized(body, len)
                 } else {
-                    Body::from_reader(body)
+                    AsyncBody::from_reader(body)
                 }
             }))
         })
@@ -1200,11 +1202,14 @@ impl fmt::Debug for HttpClient {
 
 /// A future for a request being executed.
 pub struct ResponseFuture<'c>(
-    Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + 'c + Send>>,
+    Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>,
 );
 
 impl<'c> ResponseFuture<'c> {
-    fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
+    fn new<F>(future: F) -> Self
+    where
+        F: Future<Output = <Self as Future>::Output> + Send + 'c,
+    {
         ResponseFuture(Box::pin(future))
     }
 
@@ -1216,7 +1221,7 @@ impl<'c> ResponseFuture<'c> {
 }
 
 impl Future for ResponseFuture<'_> {
-    type Output = Result<Response<Body>, Error>;
+    type Output = Result<Response<AsyncBody>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.0.as_mut().poll(cx)

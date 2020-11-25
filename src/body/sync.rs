@@ -1,3 +1,4 @@
+use super::AsyncBody;
 use futures_lite::{future::yield_now, io::AsyncWriteExt};
 use sluice::pipe::{pipe, PipeWriter};
 use std::{
@@ -7,10 +8,18 @@ use std::{
     io::{Cursor, ErrorKind, Read, Result},
 };
 
-/// Synchronous streaming body
-pub struct Body(Repr);
+/// Contains the body of a synchronous HTTP request or response.
+///
+/// This type is used to encapsulate the underlying stream or region of memory
+/// where the contents of the body are stored. A [`Body`] can be created from
+/// many types of sources using the [`Into`](std::convert::Into) trait or one of
+/// its constructor functions. It can also be created from anything that
+/// implements [`Read`], which [`Body`] itself also implements.
+///
+/// For asynchronous requests, use [`AsyncBody`] instead.
+pub struct Body(Inner);
 
-enum Repr {
+enum Inner {
     Buffer(Cursor<Cow<'static, [u8]>>),
     Reader(Box<dyn Read + Send + Sync>, Option<u64>),
 }
@@ -20,14 +29,14 @@ impl Body {
     where
         R: Read + Send + Sync + 'static,
     {
-        Self(Repr::Reader(Box::new(reader), None))
+        Self(Inner::Reader(Box::new(reader), None))
     }
 
     pub fn from_reader_sized<R>(reader: R, length: u64) -> Self
     where
         R: Read + Send + Sync + 'static,
     {
-        Self(Repr::Reader(Box::new(reader), Some(length)))
+        Self(Inner::Reader(Box::new(reader), Some(length)))
     }
 
     #[inline]
@@ -36,7 +45,7 @@ impl Body {
         B: AsRef<[u8]> + 'static
     {
         match_type! {
-            <bytes as Cursor<Cow<'static, [u8]>>> => Self(Repr::Buffer(bytes)),
+            <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
             <bytes as Vec<u8>> => Self::from(bytes),
             <bytes as String> => Self::from(bytes.into_bytes()),
             bytes => Self::from(bytes.as_ref().to_vec()),
@@ -45,14 +54,14 @@ impl Body {
 
     pub fn len(&self) -> Option<u64> {
         match &self.0 {
-            Repr::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
-            Repr::Reader(_, len) => *len,
+            Inner::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
+            Inner::Reader(_, len) => *len,
         }
     }
 
     pub fn reset(&mut self) -> bool {
         match &mut self.0 {
-            Repr::Buffer(cursor) => {
+            Inner::Buffer(cursor) => {
                 cursor.set_position(0);
                 true
             }
@@ -60,18 +69,18 @@ impl Body {
         }
     }
 
-    pub(crate) fn into_async(self) -> (super::Body, Option<Writer>) {
+    pub(crate) fn into_async(self) -> (AsyncBody, Option<Writer>) {
         match self.0 {
-            Repr::Buffer(cursor) => (super::Body::from_bytes_static(cursor.into_inner()), None),
-            Repr::Reader(reader, len) => {
+            Inner::Buffer(cursor) => (AsyncBody::from_bytes_static(cursor.into_inner()), None),
+            Inner::Reader(reader, len) => {
                 // Create an intermediate pipe for writing this request body.
                 let (pipe_reader, writer) = pipe();
 
                 (
                     if let Some(len) = len {
-                        super::Body::from_reader_sized(pipe_reader, len)
+                        AsyncBody::from_reader_sized(pipe_reader, len)
                     } else {
-                        super::Body::from_reader(pipe_reader)
+                        AsyncBody::from_reader(pipe_reader)
                     },
                     Some(Writer { reader, writer }),
                 )
@@ -83,8 +92,8 @@ impl Body {
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         match &mut self.0 {
-            Repr::Buffer(cursor) => cursor.read(buf),
-            Repr::Reader(reader, _) => reader.read(buf),
+            Inner::Buffer(cursor) => cursor.read(buf),
+            Inner::Reader(reader, _) => reader.read(buf),
         }
     }
 }
@@ -97,7 +106,7 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self(Repr::Buffer(Cursor::new(Cow::Owned(body))))
+        Self(Inner::Buffer(Cursor::new(Cow::Owned(body))))
     }
 }
 
@@ -138,12 +147,20 @@ impl fmt::Debug for Body {
     }
 }
 
+/// Helper struct for writing a synchronous reader into an asynchronous pipe.
 pub(crate) struct Writer {
     reader: Box<dyn Read + Send + Sync>,
     writer: PipeWriter,
 }
 
 impl Writer {
+    /// The size of the temporary buffer to use for writing. Larger buffers can
+    /// improve performance, but at the cost of more memory.
+    ///
+    /// Curl's internal buffer size just happens to default to 16 KiB as well,
+    /// so this is a natural choice.
+    const BUF_SIZE: usize = 16384;
+
     /// Write the response body from the synchronous reader.
     ///
     /// While this function is async, it isn't a well-behaved one as it blocks
@@ -151,7 +168,7 @@ impl Writer {
     /// method is invoked in a controlled environment within a thread dedicated
     /// to blocking operations, this is OK.
     pub(crate) async fn write(&mut self) -> Result<()> {
-        let mut buf = [0; 8192];
+        let mut buf = [0; Self::BUF_SIZE];
 
         loop {
             let len = match self.reader.read(&mut buf) {

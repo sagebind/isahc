@@ -1,9 +1,11 @@
 #![allow(unsafe_code)]
 
 use crate::{
+    body::AsyncBody,
+    error::Error,
     headers,
+    metrics::Metrics,
     response::{LocalAddr, RemoteAddr},
-    Body, Error, Metrics,
 };
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
@@ -28,7 +30,7 @@ use std::{
     task::{Context, Poll, Waker},
 };
 
-pub(crate) struct RequestBody(pub(crate) Body);
+pub(crate) struct RequestBody(pub(crate) AsyncBody);
 
 /// Manages the state of a single request/response life cycle.
 ///
@@ -61,7 +63,7 @@ pub(crate) struct RequestHandler {
     sender: Option<Sender<Result<http::response::Builder, Error>>>,
 
     /// The body to be sent in the request.
-    request_body: Body,
+    request_body: AsyncBody,
 
     /// A waker used with reading the request body asynchronously. Populated by
     /// an agent when the request is initialized.
@@ -116,7 +118,7 @@ struct Shared {
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
     pub(crate) fn new(
-        request_body: Body,
+        request_body: AsyncBody,
     ) -> (
         Self,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,

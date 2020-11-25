@@ -10,19 +10,24 @@ use std::{
     task::{Context, Poll},
 };
 
-pub mod sync;
+mod sync;
 
-/// Contains the body of an HTTP request or response.
+pub use sync::Body;
+
+/// Contains the body of an asynchronous HTTP request or response.
 ///
 /// This type is used to encapsulate the underlying stream or region of memory
-/// where the contents of the body are stored. A `Body` can be created from many
-/// types of sources using the [`Into`](std::convert::Into) trait or one of its
-/// constructor functions.
+/// where the contents of the body are stored. An [`AsyncBody`] can be created
+/// from many types of sources using the [`Into`](std::convert::Into) trait or
+/// one of its constructor functions.
 ///
-/// Since the entire request life-cycle in Isahc is asynchronous, bodies must
-/// also be asynchronous. You can create a body from anything that implements
-/// [`AsyncRead`], which [`Body`] itself also implements.
-pub struct Body(Inner);
+/// For asynchronous requests, you must use an asynchronous body, because the
+/// entire request lifecycle is also asynchronous. You can create a body from
+/// anything that implements [`AsyncRead`], which [`AsyncBody`] itself also
+/// implements.
+///
+/// For synchronous requests, use [`Body`] instead.
+pub struct AsyncBody(Inner);
 
 /// All possible body implementations.
 enum Inner {
@@ -36,7 +41,7 @@ enum Inner {
     AsyncRead(Pin<Box<dyn AsyncRead + Send + Sync>>, Option<u64>),
 }
 
-impl Body {
+impl AsyncBody {
     /// Create a new empty body.
     ///
     /// An empty body represents the *absence* of a body, which is semantically
@@ -89,7 +94,7 @@ impl Body {
     /// The body will have an unknown length. When used as a request body,
     /// chunked transfer encoding might be used to send the request.
     pub fn from_reader(read: impl AsyncRead + Send + Sync + 'static) -> Self {
-        Body(Inner::AsyncRead(Box::pin(read), None))
+        Self(Inner::AsyncRead(Box::pin(read), None))
     }
 
     /// Create a streaming body with a known length.
@@ -102,7 +107,7 @@ impl Body {
     /// the reader will produce may result in errors when sending the body in a
     /// request.
     pub fn from_reader_sized(read: impl AsyncRead + Send + Sync + 'static, length: u64) -> Self {
-        Body(Inner::AsyncRead(Box::pin(read), Some(length)))
+        Self(Inner::AsyncRead(Box::pin(read), Some(length)))
     }
 
     /// Report if this body is empty.
@@ -161,7 +166,7 @@ impl Body {
     }
 }
 
-impl AsyncRead for Body {
+impl AsyncRead for AsyncBody {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -175,43 +180,43 @@ impl AsyncRead for Body {
     }
 }
 
-impl Default for Body {
+impl Default for AsyncBody {
     fn default() -> Self {
         Self::empty()
     }
 }
 
-impl From<()> for Body {
+impl From<()> for AsyncBody {
     fn from(_: ()) -> Self {
         Self::empty()
     }
 }
 
-impl From<Vec<u8>> for Body {
+impl From<Vec<u8>> for AsyncBody {
     fn from(body: Vec<u8>) -> Self {
         Self(Inner::Buffer(Cursor::new(Cow::Owned(body))))
     }
 }
 
-impl From<&'_ [u8]> for Body {
+impl From<&'_ [u8]> for AsyncBody {
     fn from(body: &[u8]) -> Self {
         body.to_vec().into()
     }
 }
 
-impl From<String> for Body {
+impl From<String> for AsyncBody {
     fn from(body: String) -> Self {
         body.into_bytes().into()
     }
 }
 
-impl From<&'_ str> for Body {
+impl From<&'_ str> for AsyncBody {
     fn from(body: &str) -> Self {
         body.as_bytes().into()
     }
 }
 
-impl<T: Into<Body>> From<Option<T>> for Body {
+impl<T: Into<Self>> From<Option<T>> for AsyncBody {
     fn from(body: Option<T>) -> Self {
         match body {
             Some(body) => body.into(),
@@ -220,11 +225,11 @@ impl<T: Into<Body>> From<Option<T>> for Body {
     }
 }
 
-impl fmt::Debug for Body {
+impl fmt::Debug for AsyncBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.len() {
-            Some(len) => write!(f, "Body({})", len),
-            None => write!(f, "Body(?)"),
+            Some(len) => write!(f, "AsyncBody({})", len),
+            None => write!(f, "AsyncBody(?)"),
         }
     }
 }
@@ -233,11 +238,11 @@ impl fmt::Debug for Body {
 mod tests {
     use super::*;
 
-    static_assertions::assert_impl_all!(Body: Send, Sync);
+    static_assertions::assert_impl_all!(AsyncBody: Send, Sync);
 
     #[test]
     fn empty_body() {
-        let body = Body::empty();
+        let body = AsyncBody::empty();
 
         assert!(body.is_empty());
         assert_eq!(body.len(), Some(0));
@@ -245,7 +250,7 @@ mod tests {
 
     #[test]
     fn zero_length_body() {
-        let body = Body::from(vec![]);
+        let body = AsyncBody::from(vec![]);
 
         assert!(!body.is_empty());
         assert_eq!(body.len(), Some(0));

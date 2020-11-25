@@ -1,10 +1,10 @@
 use crate::{
+    body::AsyncBody,
     config::RedirectPolicy,
     error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
-    Body,
 };
 use http::{Request, Response, Uri};
 use std::convert::TryFrom;
@@ -27,7 +27,7 @@ impl Interceptor for RedirectInterceptor {
 
     fn intercept<'a>(
         &'a self,
-        mut request: Request<Body>,
+        mut request: Request<AsyncBody>,
         ctx: Context<'a>,
     ) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(async move {

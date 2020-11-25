@@ -1,7 +1,8 @@
 use crate::{
+    body::{AsyncBody, Body},
     client::ResponseFuture,
     config::{internal::ConfigurableBase, Configurable},
-    {Body, Error},
+    error::Error,
 };
 use http::{Request, Response};
 
@@ -32,9 +33,9 @@ pub trait RequestExt<T> {
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn send(self) -> Result<Response<crate::body::sync::Body>, Error>
+    fn send(self) -> Result<Response<Body>, Error>
     where
-        T: Into<crate::body::sync::Body>;
+        T: Into<Body>;
 
     /// Sends the HTTP request asynchronously using the default client.
     ///
@@ -42,7 +43,7 @@ pub trait RequestExt<T> {
     /// [`send_async`](crate::send_async).
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>;
+        T: Into<AsyncBody>;
 }
 
 impl<T> RequestExt<T> for Request<T> {
@@ -105,16 +106,16 @@ impl<T> RequestExt<T> for Request<T> {
         builder
     }
 
-    fn send(self) -> Result<Response<crate::body::sync::Body>, Error>
+    fn send(self) -> Result<Response<Body>, Error>
     where
-        T: Into<crate::body::sync::Body>,
+        T: Into<Body>,
     {
         crate::send(self)
     }
 
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>,
+        T: Into<AsyncBody>,
     {
         crate::send_async(self)
     }
