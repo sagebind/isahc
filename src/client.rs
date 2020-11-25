@@ -664,12 +664,15 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn get<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    pub fn get<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.get_async(uri).sync()
+        match http::Request::get(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a GET request to the given URI asynchronously.
@@ -681,7 +684,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        match http::Request::get(uri).body(Body::empty()) {
+        match http::Request::get(uri).body(()) {
             Ok(request) => self.send_async(request),
             Err(e) => ResponseFuture::error(Error::from_any(e)),
         }
@@ -702,12 +705,15 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn head<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    pub fn head<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.head_async(uri).sync()
+        match http::Request::head(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a HEAD request to the given URI asynchronously.
@@ -719,7 +725,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        match http::Request::head(uri).body(Body::empty()) {
+        match http::Request::head(uri).body(()) {
             Ok(request) => self.send_async(request),
             Err(e) => ResponseFuture::error(Error::from_any(e)),
         }
@@ -743,13 +749,16 @@ impl HttpClient {
     /// }"#)?;
     /// # Ok::<(), isahc::Error>(())
     #[inline]
-    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
+    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<Body>,
+        B: Into<crate::body::sync::Body>,
     {
-        self.post_async(uri, body).sync()
+        match http::Request::post(uri).body(body) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a POST request to the given URI asynchronously with a given request
@@ -788,13 +797,16 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
+    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-        B: Into<Body>,
+        B: Into<crate::body::sync::Body>,
     {
-        self.put_async(uri, body).sync()
+        match http::Request::put(uri).body(body) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a PUT request to the given URI asynchronously with a given request
@@ -819,12 +831,15 @@ impl HttpClient {
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::delete_async`].
     #[inline]
-    pub fn delete<U>(&self, uri: U) -> Result<Response<Body>, Error>
+    pub fn delete<U>(&self, uri: U) -> Result<Response<crate::body::sync::Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.delete_async(uri).sync()
+        match http::Request::delete(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a DELETE request to the given URI asynchronously.
@@ -836,7 +851,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        match http::Request::delete(uri).body(Body::empty()) {
+        match http::Request::delete(uri).body(()) {
             Ok(request) => self.send_async(request),
             Err(e) => ResponseFuture::error(Error::from_any(e)),
         }
@@ -892,13 +907,7 @@ impl HttpClient {
     /// ```
     #[inline]
     #[tracing::instrument(level = "debug", skip(self, request), err)]
-    pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        self.send_async(request).sync()
-    }
-
-    /// TODO
-    #[tracing::instrument(level = "debug", skip(self, request), err)]
-    pub fn send_sync<B>(&self, request: Request<B>) -> Result<Response<crate::body::sync::Body>, Error>
+    pub fn send<B>(&self, request: Request<B>) -> Result<Response<crate::body::sync::Body>, Error>
     where
         B: Into<crate::body::sync::Body>,
     {
@@ -1203,11 +1212,6 @@ impl<'c> ResponseFuture<'c> {
         Self::new(async move {
             Err(error)
         })
-    }
-
-    /// Turn this asynchronous request into a synchronous one.
-    fn sync(self) -> Result<Response<Body>, Error> {
-        block_on(self)
     }
 }
 

@@ -284,7 +284,7 @@ pub mod prelude {
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::get`] for details.
-pub fn get<U>(uri: U) -> Result<Response<Body>, Error>
+pub fn get<U>(uri: U) -> Result<Response<crate::body::sync::Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -308,7 +308,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::head`] for details.
-pub fn head<U>(uri: U) -> Result<Response<Body>, Error>
+pub fn head<U>(uri: U) -> Result<Response<crate::body::sync::Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -332,10 +332,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post`] for details.
-pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn post<U, B>(uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<crate::body::sync::Body>,
 {
     HttpClient::shared().post(uri, body)
 }
@@ -345,10 +346,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post_async`] for details.
-pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>,
 {
     HttpClient::shared().post_async(uri, body)
 }
@@ -357,10 +359,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put`] for details.
-pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn put<U, B>(uri: U, body: B) -> Result<Response<crate::body::sync::Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<crate::body::sync::Body>,
 {
     HttpClient::shared().put(uri, body)
 }
@@ -370,10 +373,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put_async`] for details.
-pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>
 {
     HttpClient::shared().put_async(uri, body)
 }
@@ -382,7 +386,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::delete`] for details.
-pub fn delete<U>(uri: U) -> Result<Response<Body>, Error>
+pub fn delete<U>(uri: U) -> Result<Response<crate::body::sync::Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -406,7 +410,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::send`] for details.
-pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error> {
+pub fn send<B: Into<crate::body::sync::Body>>(request: Request<B>) -> Result<Response<crate::body::sync::Body>, Error> {
     HttpClient::shared().send(request)
 }
 

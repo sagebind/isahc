@@ -2,6 +2,7 @@ use futures_lite::{future::yield_now, io::AsyncWriteExt};
 use sluice::pipe::{pipe, PipeWriter};
 use std::{
     borrow::Cow,
+    fmt,
     fs::File,
     io::{Cursor, ErrorKind, Read, Result},
 };
@@ -88,6 +89,12 @@ impl Read for Body {
     }
 }
 
+impl From<()> for Body {
+    fn from(_: ()) -> Self {
+        Self::from("")
+    }
+}
+
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
         Self(Repr::Buffer(Cursor::new(Cow::Owned(body))))
@@ -118,6 +125,15 @@ impl From<File> for Body {
             Self::from_reader_sized(file, metadata.len())
         } else {
             Self::from_reader(file)
+        }
+    }
+}
+
+impl fmt::Debug for Body {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.len() {
+            Some(len) => write!(f, "Body({})", len),
+            None => write!(f, "Body(?)"),
         }
     }
 }

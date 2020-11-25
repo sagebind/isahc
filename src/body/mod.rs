@@ -1,6 +1,6 @@
 //! Provides types for working with request and response bodies.
 
-use futures_lite::{future::block_on, io::{AsyncRead, AsyncReadExt}};
+use futures_lite::io::{AsyncRead, BlockOn};
 use std::{
     borrow::Cow,
     fmt,
@@ -148,33 +148,15 @@ impl Body {
     }
 
     pub(crate) fn into_sync(self) -> sync::Body {
-        struct BlockingReader<R>(R);
-
-        impl<R: AsyncRead + Unpin> Read for BlockingReader<R> {
-            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-                block_on(self.0.read(buf))
-            }
-        }
-
         match self.0 {
             Inner::Empty => sync::Body::from_bytes_static(b""),
             Inner::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
             Inner::AsyncRead(reader, Some(len)) => {
-                sync::Body::from_reader_sized(BlockingReader(reader), len)
+                sync::Body::from_reader_sized(BlockOn::new(reader), len)
             },
             Inner::AsyncRead(reader, None) => {
-                sync::Body::from_reader(BlockingReader(reader))
+                sync::Body::from_reader(BlockOn::new(reader))
             },
-        }
-    }
-}
-
-impl Read for Body {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        match &mut self.0 {
-            Inner::Empty => Ok(0),
-            Inner::Buffer(cursor) => cursor.read(buf),
-            Inner::AsyncRead(reader, _) => block_on(reader.read(buf)),
         }
     }
 }

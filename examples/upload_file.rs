@@ -9,7 +9,7 @@ fn main() -> Result<(), isahc::Error> {
     let request = isahc::http::Request::put("https://httpbin.org/put")
         .body(file)?;
 
-    let mut response = client.send_sync(request)?;
+    let mut response = client.send(request)?;
 
     println!("Status: {}", response.status());
     println!("Headers: {:#?}", response.headers());

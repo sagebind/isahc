@@ -32,9 +32,9 @@ pub trait RequestExt<T> {
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn send(self) -> Result<Response<Body>, Error>
+    fn send(self) -> Result<Response<crate::body::sync::Body>, Error>
     where
-        T: Into<Body>;
+        T: Into<crate::body::sync::Body>;
 
     /// Sends the HTTP request asynchronously using the default client.
     ///
@@ -105,9 +105,9 @@ impl<T> RequestExt<T> for Request<T> {
         builder
     }
 
-    fn send(self) -> Result<Response<Body>, Error>
+    fn send(self) -> Result<Response<crate::body::sync::Body>, Error>
     where
-        T: Into<Body>,
+        T: Into<crate::body::sync::Body>,
     {
         crate::send(self)
     }
