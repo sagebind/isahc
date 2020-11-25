@@ -12,7 +12,11 @@ use crate::{
     headers,
     interceptor::{self, Interceptor, InterceptorObj},
 };
-use futures_lite::{future::block_on, io::AsyncRead, pin};
+use futures_lite::{
+    future::{block_on, try_zip},
+    io::AsyncRead,
+    pin,
+};
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request, Response,
@@ -30,11 +34,13 @@ use std::{
 };
 use tracing_futures::Instrument;
 
-static USER_AGENT: Lazy<String> = Lazy::new(|| format!(
-    "curl/{} isahc/{}",
-    curl::Version::get().version(),
-    env!("CARGO_PKG_VERSION")
-));
+static USER_AGENT: Lazy<String> = Lazy::new(|| {
+    format!(
+        "curl/{} isahc/{}",
+        curl::Version::get().version(),
+        env!("CARGO_PKG_VERSION")
+    )
+});
 
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
@@ -451,14 +457,20 @@ impl HttpClientBuilder {
 
         #[cfg(not(feature = "cookies"))]
         let inner = Inner {
-            agent: self.agent_builder.spawn().map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            agent: self
+                .agent_builder
+                .spawn()
+                .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
             defaults: self.defaults,
             interceptors: self.interceptors,
         };
 
         #[cfg(feature = "cookies")]
         let inner = Inner {
-            agent: self.agent_builder.spawn().map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            agent: self
+                .agent_builder
+                .spawn()
+                .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
             defaults: self.defaults,
             interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
@@ -614,8 +626,8 @@ impl HttpClient {
     /// TODO: Stabilize.
     #[tracing::instrument(level = "debug")]
     pub(crate) fn shared() -> &'static Self {
-        static SHARED: Lazy<HttpClient> = Lazy::new(|| HttpClient::new()
-            .expect("shared client failed to initialize"));
+        static SHARED: Lazy<HttpClient> =
+            Lazy::new(|| HttpClient::new().expect("shared client failed to initialize"));
 
         &SHARED
     }
@@ -657,7 +669,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.get_async(uri))
+        self.get_async(uri).sync()
     }
 
     /// Send a GET request to the given URI asynchronously.
@@ -669,7 +681,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::get(uri), Body::empty())
+        match http::Request::get(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a HEAD request to the given URI.
@@ -692,7 +707,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.head_async(uri))
+        self.head_async(uri).sync()
     }
 
     /// Send a HEAD request to the given URI asynchronously.
@@ -704,7 +719,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::head(uri), Body::empty())
+        match http::Request::head(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a POST request to the given URI with a given request body.
@@ -725,12 +743,13 @@ impl HttpClient {
     /// }"#)?;
     /// # Ok::<(), isahc::Error>(())
     #[inline]
-    pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        block_on(self.post_async(uri, body))
+        self.post_async(uri, body).sync()
     }
 
     /// Send a POST request to the given URI asynchronously with a given request
@@ -738,12 +757,16 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::post`].
-    pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
+    pub fn post_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        self.send_builder_async(http::Request::post(uri), body.into())
+        match http::Request::post(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a PUT request to the given URI with a given request body.
@@ -765,12 +788,13 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        block_on(self.put_async(uri, body))
+        self.put_async(uri, body).sync()
     }
 
     /// Send a PUT request to the given URI asynchronously with a given request
@@ -778,12 +802,16 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::put`].
-    pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
+    pub fn put_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        self.send_builder_async(http::Request::put(uri), body.into())
+        match http::Request::put(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a DELETE request to the given URI.
@@ -796,7 +824,7 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.delete_async(uri))
+        self.delete_async(uri).sync()
     }
 
     /// Send a DELETE request to the given URI asynchronously.
@@ -808,7 +836,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::delete(uri), Body::empty())
+        match http::Request::delete(uri).body(Body::empty()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send an HTTP request and return the HTTP response.
@@ -862,7 +893,46 @@ impl HttpClient {
     #[inline]
     #[tracing::instrument(level = "debug", skip(self, request), err)]
     pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        block_on(self.send_async(request))
+        self.send_async(request).sync()
+    }
+
+    /// TODO
+    #[tracing::instrument(level = "debug", skip(self, request), err)]
+    pub fn send_sync<B>(&self, request: Request<B>) -> Result<Response<crate::body::sync::Body>, Error>
+    where
+        B: Into<crate::body::sync::Body>,
+    {
+        let mut writer_maybe = None;
+
+        let request = request.map(|body| {
+            let (async_body, writer) = body.into().into_async();
+            writer_maybe = writer;
+            async_body
+        });
+
+        let response = block_on(async move {
+            // Instead of simply blocking the current thread until the response
+            // is received, we can use the current thread to read from the
+            // request body synchronously while concurrently waiting for the
+            // response.
+            if let Some(mut writer) = writer_maybe {
+                // Note that the `send_async` future is given first; this
+                // ensures that it is polled first and thus the request is
+                // initiated before we attempt to write the request body.
+                let (response, _) = try_zip(
+                    self.send_async_inner(request),
+                    async move {
+                        writer.write().await.map_err(Error::from)
+                    },
+                ).await?;
+
+                Ok(response)
+            } else {
+                self.send_async_inner(request).await
+            }
+        })?;
+
+        Ok(response.map(|body| body.into_sync()))
     }
 
     /// Send an HTTP request and return the HTTP response asynchronously.
@@ -893,18 +963,6 @@ impl HttpClient {
         ResponseFuture::new(self.send_async_inner(request.map(Into::into)))
     }
 
-    #[inline]
-    fn send_builder_async(
-        &self,
-        builder: http::request::Builder,
-        body: Body,
-    ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move {
-            self.send_async_inner(builder.body(body).map_err(Error::from_any)?)
-                .await
-        })
-    }
-
     /// Actually send the request. All the public methods go through here.
     async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
         let span = tracing::debug_span!(
@@ -925,9 +983,7 @@ impl HttpClient {
             interceptors: &self.inner.interceptors,
         };
 
-        ctx.send(request)
-            .instrument(span)
-            .await
+        ctx.send(request).instrument(span).await
     }
 
     fn create_easy_handle(
@@ -1080,49 +1136,50 @@ impl HttpClient {
 }
 
 impl crate::interceptor::Invoke for &HttpClient {
-    fn invoke<'a>(&'a self, mut request: Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
-        Box::pin(
-            async move {
-                // Set default user agent if not specified.
-                request
-                    .headers_mut()
-                    .entry(http::header::USER_AGENT)
-                    .or_insert(USER_AGENT.parse().unwrap());
+    fn invoke<'a>(
+        &'a self,
+        mut request: Request<Body>,
+    ) -> crate::interceptor::InterceptorFuture<'a, Error> {
+        Box::pin(async move {
+            // Set default user agent if not specified.
+            request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
 
-                // Create and configure a curl easy handle to fulfil the request.
-                let (easy, future) = self.create_easy_handle(request)?;
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = self.create_easy_handle(request)?;
 
-                // Send the request to the agent to be executed.
-                self.inner.agent.submit_request(easy)?;
+            // Send the request to the agent to be executed.
+            self.inner.agent.submit_request(easy)?;
 
-                // Await for the response headers.
-                let response = future.await?;
+            // Await for the response headers.
+            let response = future.await?;
 
-                // If a Content-Length header is present, include that information in
-                // the body as well.
-                let content_length = response
-                    .headers()
-                    .get(http::header::CONTENT_LENGTH)
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|v| v.parse().ok());
+            // If a Content-Length header is present, include that information in
+            // the body as well.
+            let content_length = response
+                .headers()
+                .get(http::header::CONTENT_LENGTH)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse().ok());
 
-                // Convert the reader into an opaque Body.
-                Ok(response.map(|reader| {
-                    let body = ResponseBody {
-                        inner: reader,
-                        // Extend the lifetime of the agent by including a reference
-                        // to its handle in the response body.
-                        _client: (*self).clone(),
-                    };
+            // Convert the reader into an opaque Body.
+            Ok(response.map(|reader| {
+                let body = ResponseBody {
+                    inner: reader,
+                    // Extend the lifetime of the agent by including a reference
+                    // to its handle in the response body.
+                    _client: (*self).clone(),
+                };
 
-                    if let Some(len) = content_length {
-                        Body::from_reader_sized(body, len)
-                    } else {
-                        Body::from_reader(body)
-                    }
-                }))
-            }
-        )
+                if let Some(len) = content_length {
+                    Body::from_reader_sized(body, len)
+                } else {
+                    Body::from_reader(body)
+                }
+            }))
+        })
     }
 }
 
@@ -1133,11 +1190,24 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + 'c + Send>>);
+pub struct ResponseFuture<'c>(
+    Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + 'c + Send>>,
+);
 
 impl<'c> ResponseFuture<'c> {
     fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
         ResponseFuture(Box::pin(future))
+    }
+
+    fn error(error: Error) -> Self {
+        Self::new(async move {
+            Err(error)
+        })
+    }
+
+    /// Turn this asynchronous request into a synchronous one.
+    fn sync(self) -> Result<Response<Body>, Error> {
+        block_on(self)
     }
 }
 

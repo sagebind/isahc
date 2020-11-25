@@ -10,6 +10,8 @@ use std::{
     task::{Context, Poll},
 };
 
+pub mod sync;
+
 /// Contains the body of an HTTP request or response.
 ///
 /// This type is used to encapsulate the underlying stream or region of memory
@@ -68,6 +70,7 @@ impl Body {
         B: AsRef<[u8]> + 'static
     {
         match_type! {
+            <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
             <bytes as &'static [u8]> => Self::from_static_impl(bytes),
             <bytes as &'static str> => Self::from_static_impl(bytes.as_bytes()),
             <bytes as Vec<u8>> => Self::from(bytes),
@@ -141,6 +144,27 @@ impl Body {
                 true
             }
             Inner::AsyncRead(_, _) => false,
+        }
+    }
+
+    pub(crate) fn into_sync(self) -> sync::Body {
+        struct BlockingReader<R>(R);
+
+        impl<R: AsyncRead + Unpin> Read for BlockingReader<R> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                block_on(self.0.read(buf))
+            }
+        }
+
+        match self.0 {
+            Inner::Empty => sync::Body::from_bytes_static(b""),
+            Inner::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
+            Inner::AsyncRead(reader, Some(len)) => {
+                sync::Body::from_reader_sized(BlockingReader(reader), len)
+            },
+            Inner::AsyncRead(reader, None) => {
+                sync::Body::from_reader(BlockingReader(reader))
+            },
         }
     }
 }
