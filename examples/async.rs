@@ -9,7 +9,7 @@ fn main() -> Result<(), isahc::Error> {
 
         println!("Status: {}", response.status());
         println!("Headers:\n{:?}", response.headers());
-        println!("Body: {}", response.text_async().await?);
+        println!("Body: {}", response.text().await?);
 
         Ok(())
     })

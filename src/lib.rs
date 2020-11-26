@@ -259,7 +259,7 @@ pub use crate::{
     error::Error,
     metrics::Metrics,
     request::RequestExt,
-    response::{AsyncResponseExt, ResponseExt},
+    response::{AsyncReadableResponse, ReadableResponse, ResponseExt},
 };
 
 /// Re-export of the standard HTTP types.
@@ -275,7 +275,8 @@ pub use http;
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        AsyncResponseExt,
+        AsyncReadableResponse,
+        ReadableResponse,
         config::Configurable,
         HttpClient,
         RequestExt,
