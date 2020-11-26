@@ -69,11 +69,21 @@ impl Body {
         }
     }
 
+    /// Convert this body into an asynchronous one.
+    ///
+    /// Turning a synchronous operation into an asynchronous one can be quite
+    /// the challenge, so this method is used internally only for limited
+    /// scenarios in which this can work. If this body is an in-memory buffer,
+    /// then the translation is trivial.
+    ///
+    /// If this body was created from an underlying synchronous reader, then we
+    /// create a temporary asynchronous pipe and return a [`Writer`] which will
+    /// copy the bytes from the reader to the writing half of the pipe in a
+    /// blocking fashion.
     pub(crate) fn into_async(self) -> (AsyncBody, Option<Writer>) {
         match self.0 {
             Inner::Buffer(cursor) => (AsyncBody::from_bytes_static(cursor.into_inner()), None),
             Inner::Reader(reader, len) => {
-                // Create an intermediate pipe for writing this request body.
                 let (pipe_reader, writer) = pipe();
 
                 (
@@ -174,7 +184,7 @@ impl Writer {
             let len = match self.reader.read(&mut buf) {
                 Ok(0) => return Ok(()),
                 Ok(len) => len,
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {
+                Err(e) if e.kind() == ErrorKind::Interrupted => {
                     yield_now().await;
                     continue;
                 }

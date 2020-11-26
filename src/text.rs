@@ -39,6 +39,7 @@ macro_rules! decode_reader {
 
 /// A future returning a response body decoded as text.
 #[allow(missing_debug_implementations)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct TextFuture<'a, R> {
     inner: Pin<Box<dyn Future<Output = io::Result<String>> + 'a>>,
     _phantom: PhantomData<R>,
@@ -156,7 +157,7 @@ impl Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Body;
+    use crate::body::Body;
 
     static_assertions::assert_impl_all!(TextFuture<'_, &mut Body>: Send);
 

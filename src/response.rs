@@ -1,11 +1,14 @@
 use crate::{redirect::EffectiveUri, Metrics};
-use futures_lite::io::AsyncRead;
+use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
+    future::Future,
     io::{self, Read, Write},
     net::SocketAddr,
     path::Path,
+    pin::Pin,
+    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -223,6 +226,49 @@ impl<T> ResponseExt<T> for Response<T> {
         T: Read,
     {
         serde_json::from_reader(self.body_mut())
+    }
+}
+
+/// Provides extension methods for working with HTTP responses with an
+/// asynchronous response body.
+pub trait AsyncResponseExt<T: AsyncRead + Unpin> {
+    /// Copy the response body into a writer asynchronously.
+    ///
+    /// Returns the number of bytes that were written.
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>
+    where
+        T: AsyncRead + Unpin,
+        W: AsyncWrite + Unpin + 'a;
+
+    /// Read the response body as a string asynchronously.
+    ///
+    /// This method consumes the entire response body stream and can only be
+    /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T>
+    where
+        T: AsyncRead + Unpin;
+}
+
+impl<T: AsyncRead + Unpin> AsyncResponseExt<T> for Response<T> {
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>
+    where
+        W: AsyncWrite + Unpin + 'a,
+    {
+        Box::pin(async move {
+            futures_lite::io::copy(self.body_mut(), writer).await
+        })
+    }
+
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T> {
+        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
 }
 

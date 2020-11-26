@@ -1201,6 +1201,7 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct ResponseFuture<'c>(
     Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>,
 );

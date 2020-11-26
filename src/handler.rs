@@ -2,7 +2,7 @@
 
 use crate::{
     body::AsyncBody,
-    error::Error,
+    error::{Error, ErrorKind},
     headers,
     metrics::Metrics,
     response::{LocalAddr, RemoteAddr},
@@ -38,14 +38,14 @@ pub(crate) struct RequestBody(pub(crate) AsyncBody);
 /// the progress of the request, and the handler will incrementally build up a
 /// response struct as the response is received.
 ///
-/// Every request handler has an associated `Future` that can be used to poll
+/// Every request handler has an associated [`Future`] that can be used to poll
 /// the state of the response. The handler will complete the future once the
 /// final HTTP response headers are received. The body of the response (if any)
 /// is made available to the consumer of the future, and is also driven by the
 /// request handler until the response body is fully consumed or discarded.
 ///
 /// If dropped before the response is finished, the associated future will be
-/// completed with an `Aborted` error.
+/// completed with an error.
 pub(crate) struct RequestHandler {
     /// A tracing span for grouping log events under. Since a request is
     /// processed asynchronously inside an agent thread, this span helps
@@ -106,7 +106,7 @@ struct Shared {
     /// Set to the final result of the transfer received from curl. This is used
     /// to communicate an error while reading the response body if the handler
     /// suddenly aborts.
-    result: OnceCell<Result<(), curl::Error>>,
+    result: OnceCell<Result<(), Error>>,
 
     /// Set to true whenever the response body is dropped. This is used in the
     /// opposite manner as the above flag; if the response body is dropped, then
@@ -148,14 +148,14 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.recv_async().await.map_err(|e| Error::new(crate::error::ErrorKind::Unknown, e))??;
+            let builder = receiver.recv_async().await.map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
                 shared,
             };
 
-            builder.body(reader).map_err(|e| Error::new(crate::error::ErrorKind::ProtocolViolation, e))
+            builder.body(reader).map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
         (handler, future)
@@ -210,76 +210,70 @@ impl RequestHandler {
         self.response_body_waker = Some(response_waker);
     }
 
-    /// Handle a result produced by curl for this handler's current transfer.
-    pub(crate) fn on_result(&mut self, result: Result<(), curl::Error>) {
-        let span = tracing::trace_span!(parent: &self.span, "on_result");
-        let _enter = span.enter();
-
-        self.shared.result.set(result.clone()).unwrap();
-
-        match result {
-            Ok(()) => self.flush_response_headers(),
-            Err(e) => {
-                tracing::debug!("curl error: {}", e);
-                self.complete(Err(e.into()));
-            }
+    /// Set the final result for this transfer.
+    pub(crate) fn set_result(&mut self, result: Result<(), Error>) {
+        if self.shared.result.set(result).is_err() {
+            tracing::debug!("attempted to set error multiple times");
         }
+
+        // Complete the response future, if we haven't already.
+        self.complete_response_future();
     }
 
     /// Mark the future as completed successfully with the response headers
     /// received so far.
-    fn flush_response_headers(&mut self) {
-        if self.sender.is_some() {
-            let mut builder = http::Response::builder();
-
-            if let Some(status) = self.response_status_code.take() {
-                builder = builder.status(status);
-            }
-
-            if let Some(version) = self.response_version.take() {
-                builder = builder.version(version);
-            }
-
-            if let Some(headers) = builder.headers_mut() {
-                headers.extend(self.response_headers.drain());
-            }
-
-            if let Some(addr) = self.get_local_addr() {
-                builder = builder.extension(LocalAddr(addr));
-            }
-
-            if let Some(addr) = self.get_primary_addr() {
-                builder = builder.extension(RemoteAddr(addr));
-            }
-
-            // Keep the request body around in case interceptors need access to
-            // it. Otherwise we're just going to drop it later.
-            builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
-
-            // Include metrics in response, but only if it was created. If
-            // metrics are disabled then it won't have been created.
-            if let Some(metrics) = self.metrics.clone() {
-                builder = builder.extension(metrics);
-            }
-
-            self.complete(Ok(builder));
-        }
-    }
-
-    /// Complete the associated future with a result.
-    fn complete(&mut self, result: Result<http::response::Builder, Error>) {
-        let span = tracing::trace_span!(parent: &self.span, "complete");
-        let _enter = span.enter();
-
+    fn complete_response_future(&mut self) {
+        // If the sender has been taken already, then the future has already
+        // been completed.
         if let Some(sender) = self.sender.take() {
-            if let Err(e) = result.as_ref() {
+            // If our request has already failed early with an error, return that instead.
+            let result = if let Some(Err(e)) = self.shared.result.get() {
                 tracing::warn!("request completed with error: {}", e);
-            }
+                Err(e.clone())
+            } else {
+                Ok(self.build_response())
+            };
 
             if sender.send(result).is_err() {
                 tracing::debug!("request canceled by user");
             }
         }
+    }
+
+    fn build_response(&mut self) -> http::response::Builder {
+        let mut builder = http::Response::builder();
+
+        if let Some(status) = self.response_status_code.take() {
+            builder = builder.status(status);
+        }
+
+        if let Some(version) = self.response_version.take() {
+            builder = builder.version(version);
+        }
+
+        if let Some(headers) = builder.headers_mut() {
+            headers.extend(self.response_headers.drain());
+        }
+
+        if let Some(addr) = self.get_local_addr() {
+            builder = builder.extension(LocalAddr(addr));
+        }
+
+        if let Some(addr) = self.get_primary_addr() {
+            builder = builder.extension(RemoteAddr(addr));
+        }
+
+        // Keep the request body around in case interceptors need access to
+        // it. Otherwise we're just going to drop it later.
+        builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
+
+        // Include metrics in response, but only if it was created. If
+        // metrics are disabled then it won't have been created.
+        if let Some(metrics) = self.metrics.clone() {
+            builder = builder.extension(metrics);
+        }
+
+        builder
     }
 
     fn get_primary_addr(&mut self) -> Option<SocketAddr> {
@@ -448,6 +442,15 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     tracing::error!("error reading request body: {}", e);
+
+                    // While we could just return an error here to curl and let
+                    // the error bubble up through naturally, right now we have
+                    // the most information about the underlying error  that we
+                    // will ever have. That's why we set the error now, to
+                    // improve the error message. Otherwise we'll return a
+                    // rather generic-sounding I/O error to the caller.
+                    self.set_result(Err(e.into()));
+
                     Err(ReadError::Abort)
                 }
             }
@@ -492,7 +495,7 @@ impl curl::easy::Handler for RequestHandler {
 
         // Now that we've started receiving the response body, we know no more
         // redirects can happen and we can complete the future safely.
-        self.flush_response_headers();
+        self.complete_response_future();
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous write.
@@ -654,7 +657,7 @@ impl AsyncRead for ResponseBodyReader {
                 Some(Ok(())) => Poll::Ready(Ok(0)),
 
                 // The transfer finished with an error, so return the error.
-                Some(Err(e)) => Poll::Ready(Err(io::Error::from(Error::from(e.clone())))),
+                Some(Err(e)) => Poll::Ready(Err(io::Error::from(e.clone()))),
 
                 // The transfer did not finish properly at all, so return an error.
                 None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),

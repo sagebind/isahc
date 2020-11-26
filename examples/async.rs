@@ -4,7 +4,7 @@
 use isahc::prelude::*;
 
 fn main() -> Result<(), isahc::Error> {
-    futures::executor::block_on(async {
+    futures_lite::future::block_on(async {
         let mut response = isahc::get_async("http://example.org").await?;
 
         println!("Status: {}", response.status());

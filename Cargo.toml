@@ -89,7 +89,6 @@ features = ["std", "std-future"]
 [dev-dependencies]
 env_logger = "0.8"
 flate2 = "1.0"
-futures = "0.3"
 indicatif = "0.15"
 rayon = "1"
 static_assertions = "1.1"

@@ -2,7 +2,7 @@
 //! a program that aborts downloading a response if it contains the byte `0x3F`
 //! (ASCII "?").
 
-use futures::{executor::block_on, io::AsyncReadExt};
+use futures_lite::{future::block_on, io::AsyncReadExt};
 
 fn main() -> Result<(), isahc::Error> {
     block_on(async {

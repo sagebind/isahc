@@ -152,6 +152,13 @@ impl AsyncBody {
         }
     }
 
+    /// Turn this asynchronous body into a synchronous one. This is how the
+    /// response body is implemented for the synchronous API.
+    ///
+    /// We do not expose this publicly because while we know that this
+    /// implementation works for the bodies _we_ create, it may not work
+    /// generally if the underlying reader only supports blocking under a
+    /// specific runtime.
     pub(crate) fn into_sync(self) -> sync::Body {
         match self.0 {
             Inner::Empty => sync::Body::from_bytes_static(b""),
