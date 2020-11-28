@@ -73,7 +73,7 @@ impl AsyncBody {
     #[inline]
     pub fn from_bytes_static<B>(bytes: B) -> Self
     where
-        B: AsRef<[u8]> + 'static
+        B: AsRef<[u8]> + 'static,
     {
         match_type! {
             <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
@@ -179,10 +179,8 @@ impl AsyncBody {
             Inner::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
             Inner::Reader(reader, Some(len)) => {
                 sync::Body::from_reader_sized(BlockOn::new(reader), len)
-            },
-            Inner::Reader(reader, None) => {
-                sync::Body::from_reader(BlockOn::new(reader))
-            },
+            }
+            Inner::Reader(reader, None) => sync::Body::from_reader(BlockOn::new(reader)),
         }
     }
 }
@@ -258,6 +256,10 @@ impl fmt::Debug for AsyncBody {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures_lite::{
+        future::{block_on, zip},
+        io::AsyncReadExt,
+    };
 
     static_assertions::assert_impl_all!(AsyncBody: Send, Sync);
 
@@ -275,5 +277,73 @@ mod tests {
 
         assert!(!body.is_empty());
         assert_eq!(body.len(), Some(0));
+    }
+
+    #[test]
+    fn reader_with_unknown_length() {
+        let body = AsyncBody::from_reader(futures_lite::io::empty());
+
+        assert!(!body.is_empty());
+        assert_eq!(body.len(), None);
+    }
+
+    #[test]
+    fn reader_with_known_length() {
+        let body = AsyncBody::from_reader_sized(futures_lite::io::empty(), 0);
+
+        assert!(!body.is_empty());
+        assert_eq!(body.len(), Some(0));
+    }
+
+    #[test]
+    fn reset_memory_body() {
+        block_on(async {
+            let mut body = AsyncBody::from("hello world");
+            let mut buf = String::new();
+
+            assert_eq!(body.read_to_string(&mut buf).await.unwrap(), 11);
+            assert_eq!(buf, "hello world");
+            assert!(body.reset());
+            buf.clear(); // read_to_string panics if the destination isn't empty
+            assert_eq!(body.read_to_string(&mut buf).await.unwrap(), 11);
+            assert_eq!(buf, "hello world");
+        });
+    }
+
+    #[test]
+    fn cannot_reset_reader() {
+        let mut body = AsyncBody::from_reader(futures_lite::io::empty());
+
+        assert_eq!(body.reset(), false);
+    }
+
+    #[test]
+    fn sync_memory_into_async() {
+        let (body, writer) = Body::from("hello world").into_async();
+
+        assert!(writer.is_none());
+        assert_eq!(body.len(), Some(11));
+    }
+
+    #[test]
+    fn sync_reader_into_async() {
+        block_on(async {
+            let (mut body, writer) = Body::from_reader("hello world".as_bytes()).into_async();
+
+            assert!(writer.is_some());
+
+            // Write from the writer concurrently as we read from the body.
+            zip(
+                async move {
+                    writer.unwrap().write().await.unwrap();
+                },
+                async move {
+                    let mut buf = String::new();
+                    body.read_to_string(&mut buf).await.unwrap();
+                    assert_eq!(buf, "hello world");
+                },
+            )
+            .await;
+        });
     }
 }

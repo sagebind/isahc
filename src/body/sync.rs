@@ -298,4 +298,39 @@ mod tests {
         assert!(!body.is_empty());
         assert_eq!(body.len(), Some(0));
     }
+
+    #[test]
+    fn reader_with_unknown_length() {
+        let body = Body::from_reader(std::io::empty());
+
+        assert!(!body.is_empty());
+        assert_eq!(body.len(), None);
+    }
+
+    #[test]
+    fn reader_with_known_length() {
+        let body = Body::from_reader_sized(std::io::empty(), 0);
+
+        assert!(!body.is_empty());
+        assert_eq!(body.len(), Some(0));
+    }
+
+    #[test]
+    fn reset_memory_body() {
+        let mut body = Body::from("hello world");
+        let mut buf = String::new();
+
+        assert_eq!(body.read_to_string(&mut buf).unwrap(), 11);
+        assert_eq!(buf, "hello world");
+        assert!(body.reset());
+        assert_eq!(body.read_to_string(&mut buf).unwrap(), 11);
+        assert_eq!(buf, "hello worldhello world");
+    }
+
+    #[test]
+    fn cannot_reset_reader() {
+        let mut body = Body::from_reader(std::io::empty());
+
+        assert_eq!(body.reset(), false);
+    }
 }
