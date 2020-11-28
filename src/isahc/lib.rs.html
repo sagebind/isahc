@@ -435,6 +435,30 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
@@ -527,8 +551,15 @@
 <span class="doccomment">//! make common tasks convenient and allow you to configure more advanced</span>
 <span class="doccomment">//! connection and protocol details.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Some key traits to read about include</span>
-<span class="doccomment">//! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].</span>
+<span class="doccomment">//! Here are some of the key traits to read about:</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! - [`Configurable`](config::Configurable): Configure request parameters.</span>
+<span class="doccomment">//! - [`RequestExt`]: Manipulate and send requests.</span>
+<span class="doccomment">//! - [`ResponseExt`]: Get information about the corresponding request or</span>
+<span class="doccomment">//!   response statistics.</span>
+<span class="doccomment">//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.</span>
+<span class="doccomment">//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a</span>
+<span class="doccomment">//!   variety of ways.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Custom clients</span>
 <span class="doccomment">//!</span>
@@ -556,9 +587,14 @@
 <span class="doccomment">//! use isahc::prelude::*;</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! let mut response = isahc::get_async(&quot;https://httpbin.org/get&quot;).await?;</span>
-<span class="doccomment">//! println!(&quot;{}&quot;, response.text_async().await?);</span>
+<span class="doccomment">//! println!(&quot;{}&quot;, response.text().await?);</span>
 <span class="doccomment">//! # Ok(()) }</span>
 <span class="doccomment">//! ```</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Since we sent our request using [`get_async`], no blocking will occur, and</span>
+<span class="doccomment">//! the asynchronous versions of all response methods (such as</span>
+<span class="doccomment">//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by</span>
+<span class="doccomment">//! the compiler.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Feature flags</span>
 <span class="doccomment">//!</span>
@@ -675,6 +711,7 @@
 <span class="kw">mod</span> <span class="ident">handler</span>;
 <span class="kw">mod</span> <span class="ident">headers</span>;
 <span class="kw">mod</span> <span class="ident">metrics</span>;
+<span class="kw">mod</span> <span class="ident">parsing</span>;
 <span class="kw">mod</span> <span class="ident">redirect</span>;
 <span class="kw">mod</span> <span class="ident">request</span>;
 <span class="kw">mod</span> <span class="ident">response</span>;
@@ -692,12 +729,12 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">interceptor</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">body</span>::<span class="ident">Body</span>,
+    <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">client</span>::{<span class="ident">HttpClient</span>, <span class="ident">HttpClientBuilder</span>, <span class="ident">ResponseFuture</span>},
     <span class="ident">error</span>::<span class="ident">Error</span>,
     <span class="ident">metrics</span>::<span class="ident">Metrics</span>,
     <span class="ident">request</span>::<span class="ident">RequestExt</span>,
-    <span class="ident">response</span>::<span class="ident">ResponseExt</span>,
+    <span class="ident">response</span>::{<span class="ident">AsyncReadResponseExt</span>, <span class="ident">ReadResponseExt</span>, <span class="ident">ResponseExt</span>},
 };
 
 <span class="doccomment">/// Re-export of the standard HTTP types.</span>
@@ -712,7 +749,14 @@
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span> {
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config</span>::<span class="ident">Configurable</span>, <span class="ident">Body</span>, <span class="ident">HttpClient</span>, <span class="ident">RequestExt</span>, <span class="ident">ResponseExt</span>};
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
+        <span class="ident">AsyncReadResponseExt</span>,
+        <span class="ident">ReadResponseExt</span>,
+        <span class="ident">config</span>::<span class="ident">Configurable</span>,
+        <span class="ident">HttpClient</span>,
+        <span class="ident">RequestExt</span>,
+        <span class="ident">ResponseExt</span>,
+    };
 
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
@@ -770,10 +814,11 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::post`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
     <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
 {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">post</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
@@ -783,10 +828,11 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::post_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
     <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
 {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
@@ -795,10 +841,11 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::put`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
     <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
 {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">put</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
@@ -808,10 +855,11 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::put_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
     <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>
 {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
@@ -852,7 +900,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::send_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_async</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_async</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">send_async</span>(<span class="ident">request</span>)
 }
 

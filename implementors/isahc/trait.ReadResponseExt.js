@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["isahc"] = [{"text":"impl AsyncRead for AsyncBody","synthetic":false,"types":[]}];
+implementors["isahc"] = [];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

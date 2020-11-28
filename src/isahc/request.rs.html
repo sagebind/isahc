@@ -128,11 +128,13 @@
 <span id="127">127</span>
 <span id="128">128</span>
 <span id="129">129</span>
+<span id="130">130</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">client</span>::<span class="ident">ResponseFuture</span>,
     <span class="ident">config</span>::{<span class="ident">internal</span>::<span class="ident">ConfigurableBase</span>, <span class="ident">Configurable</span>},
-    {<span class="ident">Body</span>, <span class="ident">Error</span>},
+    <span class="ident">error</span>::<span class="ident">Error</span>,
 };
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
 
@@ -173,7 +175,7 @@
     <span class="doccomment">/// [`send_async`](crate::send_async).</span>
     <span class="kw">fn</span> <span class="ident">send_async</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>;
+        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>;
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">RequestExt</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
@@ -245,7 +247,7 @@
 
     <span class="kw">fn</span> <span class="ident">send_async</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
+        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
         <span class="kw">crate</span>::<span class="ident">send_async</span>(<span class="self">self</span>)
     }

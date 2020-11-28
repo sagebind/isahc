@@ -668,13 +668,20 @@
 <span id="667">667</span>
 <span id="668">668</span>
 <span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">headers</span>,
+    <span class="ident">body</span>::<span class="ident">AsyncBody</span>,
+    <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>},
+    <span class="ident">parsing</span>::{<span class="ident">parse_header</span>, <span class="ident">parse_status_line</span>},
+    <span class="ident">metrics</span>::<span class="ident">Metrics</span>,
     <span class="ident">response</span>::{<span class="ident">LocalAddr</span>, <span class="ident">RemoteAddr</span>},
-    <span class="ident">Body</span>, <span class="ident">Error</span>, <span class="ident">Metrics</span>,
 };
 <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">InfoType</span>, <span class="ident">ReadError</span>, <span class="ident">SeekResult</span>, <span class="ident">WriteError</span>};
@@ -699,7 +706,7 @@
     <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>, <span class="ident">Waker</span>},
 };
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestBody</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Body</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestBody</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">AsyncBody</span>);
 
 <span class="doccomment">/// Manages the state of a single request/response life cycle.</span>
 <span class="doccomment">///</span>
@@ -707,14 +714,14 @@
 <span class="doccomment">/// the progress of the request, and the handler will incrementally build up a</span>
 <span class="doccomment">/// response struct as the response is received.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// Every request handler has an associated `Future` that can be used to poll</span>
+<span class="doccomment">/// Every request handler has an associated [`Future`] that can be used to poll</span>
 <span class="doccomment">/// the state of the response. The handler will complete the future once the</span>
 <span class="doccomment">/// final HTTP response headers are received. The body of the response (if any)</span>
 <span class="doccomment">/// is made available to the consumer of the future, and is also driven by the</span>
 <span class="doccomment">/// request handler until the response body is fully consumed or discarded.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// If dropped before the response is finished, the associated future will be</span>
-<span class="doccomment">/// completed with an `Aborted` error.</span>
+<span class="doccomment">/// completed with an error.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestHandler</span> {
     <span class="doccomment">/// A tracing span for grouping log events under. Since a request is</span>
     <span class="doccomment">/// processed asynchronously inside an agent thread, this span helps</span>
@@ -732,7 +739,7 @@
     <span class="ident">sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">response</span>::<span class="ident">Builder</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The body to be sent in the request.</span>
-    <span class="ident">request_body</span>: <span class="ident">Body</span>,
+    <span class="ident">request_body</span>: <span class="ident">AsyncBody</span>,
 
     <span class="doccomment">/// A waker used with reading the request body asynchronously. Populated by</span>
     <span class="doccomment">/// an agent when the request is initialized.</span>
@@ -775,7 +782,7 @@
     <span class="doccomment">/// Set to the final result of the transfer received from curl. This is used</span>
     <span class="doccomment">/// to communicate an error while reading the response body if the handler</span>
     <span class="doccomment">/// suddenly aborts.</span>
-    <span class="ident">result</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">result</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Set to true whenever the response body is dropped. This is used in the</span>
     <span class="doccomment">/// opposite manner as the above flag; if the response body is dropped, then</span>
@@ -787,7 +794,7 @@
 <span class="kw">impl</span> <span class="ident">RequestHandler</span> {
     <span class="doccomment">/// Create a new request handler and an associated response future.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">request_body</span>: <span class="ident">Body</span>,
+        <span class="ident">request_body</span>: <span class="ident">AsyncBody</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (
         <span class="self">Self</span>,
         <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -817,14 +824,14 @@
         <span class="comment">// Create a future that resolves when the handler receives the response</span>
         <span class="comment">// headers.</span>
         <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="ident">async</span> <span class="kw">move</span> {
-            <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>.<span class="ident">recv_async</span>().<span class="ident">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="kw">crate</span>::<span class="ident">error</span>::<span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>, <span class="ident">e</span>))<span class="question-mark">?</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>.<span class="ident">recv_async</span>().<span class="ident">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>, <span class="ident">e</span>))<span class="question-mark">?</span><span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">ResponseBodyReader</span> {
                 <span class="ident">inner</span>: <span class="ident">response_body_reader</span>,
                 <span class="ident">shared</span>,
             };
 
-            <span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">reader</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="kw">crate</span>::<span class="ident">error</span>::<span class="ident">ErrorKind</span>::<span class="ident">ProtocolViolation</span>, <span class="ident">e</span>))
+            <span class="ident">builder</span>.<span class="ident">body</span>(<span class="ident">reader</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ProtocolViolation</span>, <span class="ident">e</span>))
         };
 
         (<span class="ident">handler</span>, <span class="ident">future</span>)
@@ -879,76 +886,70 @@
         <span class="self">self</span>.<span class="ident">response_body_waker</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">response_waker</span>);
     }
 
-    <span class="doccomment">/// Handle a result produced by curl for this handler&#39;s current transfer.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">on_result</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;on_result&quot;</span>);
-        <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
-
-        <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">set</span>(<span class="ident">result</span>.<span class="ident">clone</span>()).<span class="ident">unwrap</span>();
-
-        <span class="kw">match</span> <span class="ident">result</span> {
-            <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">flush_response_headers</span>(),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;curl error: {}&quot;</span>, <span class="ident">e</span>);
-                <span class="self">self</span>.<span class="ident">complete</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">into</span>()));
-            }
+    <span class="doccomment">/// Set the final result for this transfer.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_result</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">set</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
+            <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;attempted to set error multiple times&quot;</span>);
         }
+
+        <span class="comment">// Complete the response future, if we haven&#39;t already.</span>
+        <span class="self">self</span>.<span class="ident">complete_response_future</span>();
     }
 
     <span class="doccomment">/// Mark the future as completed successfully with the response headers</span>
     <span class="doccomment">/// received so far.</span>
-    <span class="kw">fn</span> <span class="ident">flush_response_headers</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">is_some</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">http</span>::<span class="ident">Response</span>::<span class="ident">builder</span>();
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">status</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">response_status_code</span>.<span class="ident">take</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">status</span>(<span class="ident">status</span>);
-            }
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">response_version</span>.<span class="ident">take</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">version</span>(<span class="ident">version</span>);
-            }
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">headers_mut</span>() {
-                <span class="ident">headers</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">response_headers</span>.<span class="ident">drain</span>());
-            }
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_local_addr</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">LocalAddr</span>(<span class="ident">addr</span>));
-            }
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_primary_addr</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RemoteAddr</span>(<span class="ident">addr</span>));
-            }
-
-            <span class="comment">// Keep the request body around in case interceptors need access to</span>
-            <span class="comment">// it. Otherwise we&#39;re just going to drop it later.</span>
-            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RequestBody</span>(<span class="ident">mem</span>::<span class="ident">take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">request_body</span>)));
-
-            <span class="comment">// Include metrics in response, but only if it was created. If</span>
-            <span class="comment">// metrics are disabled then it won&#39;t have been created.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">metrics</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">metrics</span>.<span class="ident">clone</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">metrics</span>);
-            }
-
-            <span class="self">self</span>.<span class="ident">complete</span>(<span class="prelude-val">Ok</span>(<span class="ident">builder</span>));
-        }
-    }
-
-    <span class="doccomment">/// Complete the associated future with a result.</span>
-    <span class="kw">fn</span> <span class="ident">complete</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">response</span>::<span class="ident">Builder</span>, <span class="ident">Error</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;complete&quot;</span>);
-        <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
-
+    <span class="kw">fn</span> <span class="ident">complete_response_future</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+        <span class="comment">// If the sender has been taken already, then the future has already</span>
+        <span class="comment">// been completed.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">take</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">result</span>.<span class="ident">as_ref</span>() {
+            <span class="comment">// If our request has already failed early with an error, return that instead.</span>
+            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">get</span>() {
                 <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;request completed with error: {}&quot;</span>, <span class="ident">e</span>);
-            }
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">clone</span>())
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">build_response</span>())
+            };
 
             <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">send</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
                 <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;request canceled by user&quot;</span>);
             }
         }
+    }
+
+    <span class="kw">fn</span> <span class="ident">build_response</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">http</span>::<span class="ident">response</span>::<span class="ident">Builder</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">http</span>::<span class="ident">Response</span>::<span class="ident">builder</span>();
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">status</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">response_status_code</span>.<span class="ident">take</span>() {
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">status</span>(<span class="ident">status</span>);
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">response_version</span>.<span class="ident">take</span>() {
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">version</span>(<span class="ident">version</span>);
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">headers_mut</span>() {
+            <span class="ident">headers</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">response_headers</span>.<span class="ident">drain</span>());
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_local_addr</span>() {
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">LocalAddr</span>(<span class="ident">addr</span>));
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_primary_addr</span>() {
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RemoteAddr</span>(<span class="ident">addr</span>));
+        }
+
+        <span class="comment">// Keep the request body around in case interceptors need access to</span>
+        <span class="comment">// it. Otherwise we&#39;re just going to drop it later.</span>
+        <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">RequestBody</span>(<span class="ident">mem</span>::<span class="ident">take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">request_body</span>)));
+
+        <span class="comment">// Include metrics in response, but only if it was created. If</span>
+        <span class="comment">// metrics are disabled then it won&#39;t have been created.</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">metrics</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">metrics</span>.<span class="ident">clone</span>() {
+            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">metrics</span>);
+        }
+
+        <span class="ident">builder</span>
     }
 
     <span class="kw">fn</span> <span class="ident">get_primary_addr</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
@@ -1064,7 +1065,7 @@
         <span class="comment">// HTTP/1.1 connection ourselves.</span>
 
         <span class="comment">// Is this the status line?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">version</span>, <span class="ident">status</span>)) <span class="op">=</span> <span class="ident">headers</span>::<span class="ident">parse_status_line</span>(<span class="ident">data</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">version</span>, <span class="ident">status</span>)) <span class="op">=</span> <span class="ident">parse_status_line</span>(<span class="ident">data</span>) {
             <span class="self">self</span>.<span class="ident">response_version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
             <span class="self">self</span>.<span class="ident">response_status_code</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">status</span>);
 
@@ -1076,7 +1077,7 @@
         }
 
         <span class="comment">// Is this a header line?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">headers</span>::<span class="ident">parse_header</span>(<span class="ident">data</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">parse_header</span>(<span class="ident">data</span>) {
             <span class="self">self</span>.<span class="ident">response_headers</span>.<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">value</span>);
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
@@ -1117,6 +1118,15 @@
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">len</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">len</span>),
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;error reading request body: {}&quot;</span>, <span class="ident">e</span>);
+
+                    <span class="comment">// While we could just return an error here to curl and let</span>
+                    <span class="comment">// the error bubble up through naturally, right now we have</span>
+                    <span class="comment">// the most information about the underlying error  that we</span>
+                    <span class="comment">// will ever have. That&#39;s why we set the error now, to</span>
+                    <span class="comment">// improve the error message. Otherwise we&#39;ll return a</span>
+                    <span class="comment">// rather generic-sounding I/O error to the caller.</span>
+                    <span class="self">self</span>.<span class="ident">set_result</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">into</span>()));
+
                     <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">Abort</span>)
                 }
             }
@@ -1161,7 +1171,7 @@
 
         <span class="comment">// Now that we&#39;ve started receiving the response body, we know no more</span>
         <span class="comment">// redirects can happen and we can complete the future safely.</span>
-        <span class="self">self</span>.<span class="ident">flush_response_headers</span>();
+        <span class="self">self</span>.<span class="ident">complete_response_future</span>();
 
         <span class="comment">// Create a task context using a waker provided by the agent so we can</span>
         <span class="comment">// do an asynchronous write.</span>
@@ -1323,7 +1333,7 @@
                 <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(())) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="number">0</span>)),
 
                 <span class="comment">// The transfer finished with an error, so return the error.</span>
-                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">from</span>(<span class="ident">Error</span>::<span class="ident">from</span>(<span class="ident">e</span>.<span class="ident">clone</span>())))),
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">Error</span>::<span class="ident">from</span>(<span class="ident">e</span>.<span class="ident">clone</span>()))),
 
                 <span class="comment">// The transfer did not finish properly at all, so return an error.</span>
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">ConnectionAborted</span>.<span class="ident">into</span>())),

@@ -181,12 +181,12 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
-<span id="183">183</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Text decoding routines.</span>
 
 <span class="attribute">#![<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
 
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">headers</span>::<span class="ident">HasHeaders</span>;
 <span class="kw">use</span> <span class="ident">encoding_rs</span>::{<span class="ident">CoderResult</span>, <span class="ident">Encoding</span>};
 <span class="kw">use</span> <span class="ident">futures_lite</span>::<span class="ident">io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncReadExt</span>};
 <span class="kw">use</span> <span class="ident">http</span>::<span class="ident">Response</span>;
@@ -224,6 +224,7 @@
 
 <span class="doccomment">/// A future returning a response body decoded as text.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_debug_implementations</span>)]</span>
+<span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">R</span><span class="op">&gt;</span> {
     <span class="ident">inner</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">_phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>,
@@ -265,10 +266,7 @@
 
     <span class="doccomment">/// Create a new encoder suitable for decoding the given response.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">for_response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">content_type</span>) <span class="op">=</span> <span class="ident">response</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_TYPE</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> <span class="ident">header</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>())
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">content_type</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">content_type</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> <span class="ident">header</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">mime</span>::<span class="ident">Mime</span><span class="op">&gt;</span>().<span class="ident">ok</span>())
         {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">charset</span>) <span class="op">=</span> <span class="ident">content_type</span>.<span class="ident">get_param</span>(<span class="ident">mime</span>::<span class="ident">CHARSET</span>) {
@@ -341,7 +339,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Body</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">body</span>::<span class="ident">Body</span>;
 
     <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Body</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
 
