@@ -11,6 +11,7 @@ use std::{
     net::SocketAddr,
     path::Path,
     pin::Pin,
+    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -96,10 +97,23 @@ impl<T> ResponseExt<T> for Response<T> {
 }
 
 /// Provides extension methods for consuming HTTP response streams.
-pub trait ReadableResponse<T: Read> {
+pub trait ReadResponseExt<T: Read> {
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut buf = vec![];
+    /// isahc::get("https://example.org")?.copy_to(&mut buf)?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     fn copy_to<W: Write>(&mut self, writer: W) -> io::Result<u64>;
 
     /// Write the response body to a file.
@@ -179,7 +193,7 @@ pub trait ReadableResponse<T: Read> {
         D: serde::de::DeserializeOwned;
 }
 
-impl<T: Read> ReadableResponse<T> for Response<T> {
+impl<T: Read> ReadResponseExt<T> for Response<T> {
     fn copy_to<W: Write>(&mut self, mut writer: W) -> io::Result<u64> {
         io::copy(self.body_mut(), &mut writer)
     }
@@ -199,11 +213,26 @@ impl<T: Read> ReadableResponse<T> for Response<T> {
 }
 
 /// Provides extension methods for consuming asynchronous HTTP response streams.
-pub trait AsyncReadableResponse<T: AsyncRead + Unpin> {
+pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// Copy the response body into a writer asynchronously.
     ///
     /// Returns the number of bytes that were written.
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let mut buf = vec![];
+    /// isahc::get_async("https://example.org").await?
+    ///     .copy_to(&mut buf).await?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok(()) }
+    /// ```
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
     where
         W: AsyncWrite + Unpin + 'a;
 
@@ -217,23 +246,48 @@ pub trait AsyncReadableResponse<T: AsyncRead + Unpin> {
     /// This method is only available when the
     /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
     /// is by default.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let text = isahc::get_async("https://example.org").await?
+    ///     .text().await?;
+    /// println!("{}", text);
+    /// # Ok(()) }
+    /// ```
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut T>;
 }
 
-impl<T: AsyncRead + Unpin> AsyncReadableResponse<T> for Response<T> {
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>
+impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
     where
         W: AsyncWrite + Unpin + 'a,
     {
-        Box::pin(async move {
+        CopyFuture(Box::pin(async move {
             futures_lite::io::copy(self.body_mut(), writer).await
-        })
+        }))
     }
 
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut T> {
         crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
+    }
+}
+
+/// A future which copies all the response body bytes into a sink.
+#[allow(missing_debug_implementations)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct CopyFuture<'a>(Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>);
+
+impl Future for CopyFuture<'_> {
+    type Output = io::Result<u64>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.as_mut().poll(cx)
     }
 }
 

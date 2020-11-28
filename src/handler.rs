@@ -3,7 +3,7 @@
 use crate::{
     body::AsyncBody,
     error::{Error, ErrorKind},
-    headers,
+    parsing::{parse_header, parse_status_line},
     metrics::Metrics,
     response::{LocalAddr, RemoteAddr},
 };
@@ -389,7 +389,7 @@ impl curl::easy::Handler for RequestHandler {
         // HTTP/1.1 connection ourselves.
 
         // Is this the status line?
-        if let Some((version, status)) = headers::parse_status_line(data) {
+        if let Some((version, status)) = parse_status_line(data) {
             self.response_version = Some(version);
             self.response_status_code = Some(status);
 
@@ -401,7 +401,7 @@ impl curl::easy::Handler for RequestHandler {
         }
 
         // Is this a header line?
-        if let Some((name, value)) = headers::parse_header(data) {
+        if let Some((name, value)) = parse_header(data) {
             self.response_headers.append(name, value);
             return true;
         }

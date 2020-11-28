@@ -89,8 +89,15 @@
 //! make common tasks convenient and allow you to configure more advanced
 //! connection and protocol details.
 //!
-//! Some key traits to read about include
-//! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].
+//! Here are some of the key traits to read about:
+//!
+//! - [`Configurable`](config::Configurable): Configure request parameters.
+//! - [`RequestExt`]: Manipulate and send requests.
+//! - [`ResponseExt`]: Get information about the corresponding request or
+//!   response statistics.
+//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.
+//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a
+//!   variety of ways.
 //!
 //! ## Custom clients
 //!
@@ -118,9 +125,14 @@
 //! use isahc::prelude::*;
 //!
 //! let mut response = isahc::get_async("https://httpbin.org/get").await?;
-//! println!("{}", response.text_async().await?);
+//! println!("{}", response.text().await?);
 //! # Ok(()) }
 //! ```
+//!
+//! Since we sent our request using [`get_async`], no blocking will occur, and
+//! the asynchronous versions of all response methods (such as
+//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by
+//! the compiler.
 //!
 //! # Feature flags
 //!
@@ -237,6 +249,7 @@ mod default_headers;
 mod handler;
 mod headers;
 mod metrics;
+mod parsing;
 mod redirect;
 mod request;
 mod response;
@@ -259,7 +272,7 @@ pub use crate::{
     error::Error,
     metrics::Metrics,
     request::RequestExt,
-    response::{AsyncReadableResponse, ReadableResponse, ResponseExt},
+    response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
 };
 
 /// Re-export of the standard HTTP types.
@@ -275,8 +288,8 @@ pub use http;
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        AsyncReadableResponse,
-        ReadableResponse,
+        AsyncReadResponseExt,
+        ReadResponseExt,
         config::Configurable,
         HttpClient,
         RequestExt,

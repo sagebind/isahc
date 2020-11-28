@@ -9,8 +9,9 @@ use crate::{
     default_headers::DefaultHeadersInterceptor,
     error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
-    headers,
+    headers::HasHeaders,
     interceptor::{self, Interceptor, InterceptorObj},
+    parsing::header_to_curl_string,
 };
 use futures_lite::{
     future::{block_on, try_zip},
@@ -1137,7 +1138,7 @@ impl HttpClient {
             .unwrap_or(false);
 
         for (name, value) in request.headers().iter() {
-            headers.append(&headers::to_curl_string(name, value, title_case))?;
+            headers.append(&header_to_curl_string(name, value, title_case))?;
         }
 
         easy.http_headers(headers)?;
@@ -1169,11 +1170,7 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // If a Content-Length header is present, include that information in
             // the body as well.
-            let content_length = response
-                .headers()
-                .get(http::header::CONTENT_LENGTH)
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse().ok());
+            let content_length = response.content_length();
 
             // Convert the reader into an opaque Body.
             Ok(response.map(|reader| {

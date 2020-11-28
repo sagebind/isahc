@@ -12,6 +12,7 @@ use std::{
 
 mod sync;
 
+#[allow(unreachable_pub)]
 pub use sync::Body;
 
 /// Contains the body of an asynchronous HTTP request or response.
@@ -38,7 +39,7 @@ enum Inner {
     Buffer(Cursor<Cow<'static, [u8]>>),
 
     /// An asynchronous reader.
-    AsyncRead(Pin<Box<dyn AsyncRead + Send + Sync>>, Option<u64>),
+    Reader(Pin<Box<dyn AsyncRead + Send + Sync>>, Option<u64>),
 }
 
 impl AsyncBody {
@@ -92,9 +93,14 @@ impl AsyncBody {
     /// Create a streaming body that reads from the given reader.
     ///
     /// The body will have an unknown length. When used as a request body,
-    /// chunked transfer encoding might be used to send the request.
-    pub fn from_reader(read: impl AsyncRead + Send + Sync + 'static) -> Self {
-        Self(Inner::AsyncRead(Box::pin(read), None))
+    /// [chunked transfer
+    /// encoding](https://tools.ietf.org/html/rfc7230#section-4.1) might be used
+    /// to send the request.
+    pub fn from_reader<R>(read: R) -> Self
+    where
+        R: AsyncRead + Send + Sync + 'static,
+    {
+        Self(Inner::Reader(Box::pin(read), None))
     }
 
     /// Create a streaming body with a known length.
@@ -106,11 +112,19 @@ impl AsyncBody {
     /// Giving a value for `length` that doesn't actually match how much data
     /// the reader will produce may result in errors when sending the body in a
     /// request.
-    pub fn from_reader_sized(read: impl AsyncRead + Send + Sync + 'static, length: u64) -> Self {
-        Self(Inner::AsyncRead(Box::pin(read), Some(length)))
+    pub fn from_reader_sized<R>(read: R, length: u64) -> Self
+    where
+        R: AsyncRead + Send + Sync + 'static,
+    {
+        Self(Inner::Reader(Box::pin(read), Some(length)))
     }
 
     /// Report if this body is empty.
+    ///
+    /// This is not necessarily the same as checking for `self.len() ==
+    /// Some(0)`. Since HTTP message bodies are optional, there is a semantic
+    /// difference between the absence of a body and the presence of a
+    /// zero-length body. This method will only return `true` for the former.
     pub fn is_empty(&self) -> bool {
         match self.0 {
             Inner::Empty => true,
@@ -135,7 +149,7 @@ impl AsyncBody {
         match &self.0 {
             Inner::Empty => Some(0),
             Inner::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
-            Inner::AsyncRead(_, len) => *len,
+            Inner::Reader(_, len) => *len,
         }
     }
 
@@ -148,7 +162,7 @@ impl AsyncBody {
                 cursor.set_position(0);
                 true
             }
-            Inner::AsyncRead(_, _) => false,
+            Inner::Reader(_, _) => false,
         }
     }
 
@@ -161,12 +175,12 @@ impl AsyncBody {
     /// specific runtime.
     pub(crate) fn into_sync(self) -> sync::Body {
         match self.0 {
-            Inner::Empty => sync::Body::from_bytes_static(b""),
+            Inner::Empty => sync::Body::empty(),
             Inner::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
-            Inner::AsyncRead(reader, Some(len)) => {
+            Inner::Reader(reader, Some(len)) => {
                 sync::Body::from_reader_sized(BlockOn::new(reader), len)
             },
-            Inner::AsyncRead(reader, None) => {
+            Inner::Reader(reader, None) => {
                 sync::Body::from_reader(BlockOn::new(reader))
             },
         }
@@ -182,7 +196,7 @@ impl AsyncRead for AsyncBody {
         match &mut self.0 {
             Inner::Empty => Poll::Ready(Ok(0)),
             Inner::Buffer(cursor) => Poll::Ready(cursor.read(buf)),
-            Inner::AsyncRead(read, _) => AsyncRead::poll_read(read.as_mut(), cx, buf),
+            Inner::Reader(read, _) => AsyncRead::poll_read(read.as_mut(), cx, buf),
         }
     }
 }

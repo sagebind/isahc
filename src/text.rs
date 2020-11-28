@@ -2,6 +2,7 @@
 
 #![cfg(feature = "text-decoding")]
 
+use crate::headers::HasHeaders;
 use encoding_rs::{CoderResult, Encoding};
 use futures_lite::io::{AsyncRead, AsyncReadExt};
 use http::Response;
@@ -81,10 +82,7 @@ impl Decoder {
 
     /// Create a new encoder suitable for decoding the given response.
     pub(crate) fn for_response<T>(response: &Response<T>) -> Self {
-        if let Some(content_type) = response
-            .headers()
-            .get(http::header::CONTENT_TYPE)
-            .and_then(|header| header.to_str().ok())
+        if let Some(content_type) = response.content_type()
             .and_then(|header| header.parse::<mime::Mime>().ok())
         {
             if let Some(charset) = content_type.get_param(mime::CHARSET) {
