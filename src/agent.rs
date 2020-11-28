@@ -336,7 +336,7 @@ impl AgentContext {
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle)?;
 
-        handle.get_mut().on_result(result);
+        handle.get_mut().set_result(result.map_err(Error::from));
 
         Ok(())
     }

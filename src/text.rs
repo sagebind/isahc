@@ -2,6 +2,7 @@
 
 #![cfg(feature = "text-decoding")]
 
+use crate::headers::HasHeaders;
 use encoding_rs::{CoderResult, Encoding};
 use futures_lite::io::{AsyncRead, AsyncReadExt};
 use http::Response;
@@ -39,6 +40,7 @@ macro_rules! decode_reader {
 
 /// A future returning a response body decoded as text.
 #[allow(missing_debug_implementations)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct TextFuture<'a, R> {
     inner: Pin<Box<dyn Future<Output = io::Result<String>> + 'a>>,
     _phantom: PhantomData<R>,
@@ -80,10 +82,7 @@ impl Decoder {
 
     /// Create a new encoder suitable for decoding the given response.
     pub(crate) fn for_response<T>(response: &Response<T>) -> Self {
-        if let Some(content_type) = response
-            .headers()
-            .get(http::header::CONTENT_TYPE)
-            .and_then(|header| header.to_str().ok())
+        if let Some(content_type) = response.content_type()
             .and_then(|header| header.parse::<mime::Mime>().ok())
         {
             if let Some(charset) = content_type.get_param(mime::CHARSET) {
@@ -156,7 +155,7 @@ impl Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Body;
+    use crate::body::Body;
 
     static_assertions::assert_impl_all!(TextFuture<'_, &mut Body>: Send);
 

@@ -89,8 +89,15 @@
 //! make common tasks convenient and allow you to configure more advanced
 //! connection and protocol details.
 //!
-//! Some key traits to read about include
-//! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].
+//! Here are some of the key traits to read about:
+//!
+//! - [`Configurable`](config::Configurable): Configure request parameters.
+//! - [`RequestExt`]: Manipulate and send requests.
+//! - [`ResponseExt`]: Get information about the corresponding request or
+//!   response statistics.
+//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.
+//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a
+//!   variety of ways.
 //!
 //! ## Custom clients
 //!
@@ -118,9 +125,14 @@
 //! use isahc::prelude::*;
 //!
 //! let mut response = isahc::get_async("https://httpbin.org/get").await?;
-//! println!("{}", response.text_async().await?);
+//! println!("{}", response.text().await?);
 //! # Ok(()) }
 //! ```
+//!
+//! Since we sent our request using [`get_async`], no blocking will occur, and
+//! the asynchronous versions of all response methods (such as
+//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by
+//! the compiler.
 //!
 //! # Feature flags
 //!
@@ -237,6 +249,7 @@ mod default_headers;
 mod handler;
 mod headers;
 mod metrics;
+mod parsing;
 mod redirect;
 mod request;
 mod response;
@@ -254,12 +267,12 @@ pub mod interceptor;
 pub(crate) mod interceptor;
 
 pub use crate::{
-    body::Body,
+    body::{AsyncBody, Body},
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
     metrics::Metrics,
     request::RequestExt,
-    response::ResponseExt,
+    response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
 };
 
 /// Re-export of the standard HTTP types.
@@ -274,7 +287,14 @@ pub use http;
 /// ```
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{config::Configurable, Body, HttpClient, RequestExt, ResponseExt};
+    pub use crate::{
+        AsyncReadResponseExt,
+        ReadResponseExt,
+        config::Configurable,
+        HttpClient,
+        RequestExt,
+        ResponseExt,
+    };
 
     #[doc(no_inline)]
     pub use http::{Request, Response};
@@ -332,10 +352,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post`] for details.
-pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn post<U, B>(uri: U, body: B) -> Result<Response<Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>,
 {
     HttpClient::shared().post(uri, body)
 }
@@ -345,10 +366,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post_async`] for details.
-pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<AsyncBody>,
 {
     HttpClient::shared().post_async(uri, body)
 }
@@ -357,10 +379,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put`] for details.
-pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn put<U, B>(uri: U, body: B) -> Result<Response<Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>,
 {
     HttpClient::shared().put(uri, body)
 }
@@ -370,10 +393,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put_async`] for details.
-pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<AsyncBody>
 {
     HttpClient::shared().put_async(uri, body)
 }
@@ -414,7 +438,7 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::send_async`] for details.
-pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
+pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture<'static> {
     HttpClient::shared().send_async(request)
 }
 

@@ -1,4 +1,4 @@
-use crate::{Body, Error};
+use crate::{body::AsyncBody, error::Error};
 use super::{Interceptor, InterceptorFuture, InterceptorObj};
 use http::{Request, Response};
 use std::{
@@ -15,7 +15,7 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Send a request asynchronously, executing the next interceptor in the
     /// chain, if any.
-    pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    pub async fn send(&self, request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
@@ -36,5 +36,5 @@ impl fmt::Debug for Context<'_> {
 }
 
 pub(crate) trait Invoke {
-    fn invoke<'a>(&'a self, request: Request<Body>) -> InterceptorFuture<'a, Error>;
+    fn invoke<'a>(&'a self, request: Request<AsyncBody>) -> InterceptorFuture<'a, Error>;
 }

@@ -3,10 +3,10 @@
 
 use super::{Cookie, CookieJar};
 use crate::{
+    body::AsyncBody,
+    error::Error,
     interceptor::{Context, Interceptor, InterceptorFuture},
     response::ResponseExt,
-    Body,
-    Error,
 };
 use http::Request;
 use std::convert::TryInto;
@@ -28,7 +28,7 @@ impl CookieInterceptor {
 impl Interceptor for CookieInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(&'a self, mut request: Request<Body>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept<'a>(&'a self, mut request: Request<AsyncBody>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(async move {
             // Determine the cookie jar to use for this request. If one is
             // attached to this specific request, use it, otherwise use the

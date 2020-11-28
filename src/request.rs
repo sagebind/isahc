@@ -1,7 +1,8 @@
 use crate::{
+    body::{AsyncBody, Body},
     client::ResponseFuture,
     config::{internal::ConfigurableBase, Configurable},
-    {Body, Error},
+    error::Error,
 };
 use http::{Request, Response};
 
@@ -42,7 +43,7 @@ pub trait RequestExt<T> {
     /// [`send_async`](crate::send_async).
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>;
+        T: Into<AsyncBody>;
 }
 
 impl<T> RequestExt<T> for Request<T> {
@@ -114,7 +115,7 @@ impl<T> RequestExt<T> for Request<T> {
 
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>,
+        T: Into<AsyncBody>,
     {
         crate::send_async(self)
     }

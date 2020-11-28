@@ -1,11 +1,17 @@
-use crate::{redirect::EffectiveUri, Metrics};
-use futures_lite::io::AsyncRead;
+use crate::{
+    metrics::Metrics,
+    redirect::EffectiveUri,
+};
+use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
+    future::Future,
     io::{self, Read, Write},
     net::SocketAddr,
     path::Path,
+    pin::Pin,
+    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -65,13 +71,50 @@ pub trait ResponseExt<T> {
     /// metrics you can use
     /// [`Configurable::metrics`](crate::config::Configurable::metrics).
     fn metrics(&self) -> Option<&Metrics>;
+}
 
+impl<T> ResponseExt<T> for Response<T> {
+    fn effective_uri(&self) -> Option<&Uri> {
+        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
+    }
+
+    fn local_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<LocalAddr>().map(|v| v.0)
+    }
+
+    fn remote_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<RemoteAddr>().map(|v| v.0)
+    }
+
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
+        self.extensions().get()
+    }
+
+    fn metrics(&self) -> Option<&Metrics> {
+        self.extensions().get()
+    }
+}
+
+/// Provides extension methods for consuming HTTP response streams.
+pub trait ReadResponseExt<T: Read> {
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
-    fn copy_to(&mut self, writer: impl Write) -> io::Result<u64>
-    where
-        T: Read;
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut buf = vec![];
+    /// isahc::get("https://example.org")?.copy_to(&mut buf)?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn copy_to<W: Write>(&mut self, writer: W) -> io::Result<u64>;
 
     /// Write the response body to a file.
     ///
@@ -89,10 +132,7 @@ pub trait ResponseExt<T> {
     ///     .copy_to_file("myimage.jpg")?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn copy_to_file(&mut self, path: impl AsRef<Path>) -> io::Result<u64>
-    where
-        T: Read,
-    {
+    fn copy_to_file<P: AsRef<Path>>(&mut self, path: P) -> io::Result<u64> {
         File::create(path).and_then(|f| self.copy_to(f))
     }
 
@@ -128,24 +168,7 @@ pub trait ResponseExt<T> {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> io::Result<String>
-    where
-        T: Read;
-
-    /// Read the response body as a string asynchronously.
-    ///
-    /// This method consumes the entire response body stream and can only be
-    /// called once.
-    ///
-    /// # Availability
-    ///
-    /// This method is only available when the
-    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
-    /// is by default.
-    #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
-    where
-        T: AsyncRead + Unpin;
+    fn text(&mut self) -> io::Result<String>;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -167,62 +190,104 @@ pub trait ResponseExt<T> {
     #[cfg(feature = "json")]
     fn json<D>(&mut self) -> Result<D, serde_json::Error>
     where
-        D: serde::de::DeserializeOwned,
-        T: Read;
+        D: serde::de::DeserializeOwned;
 }
 
-impl<T> ResponseExt<T> for Response<T> {
-    fn effective_uri(&self) -> Option<&Uri> {
-        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
-    }
-
-    fn local_addr(&self) -> Option<SocketAddr> {
-        self.extensions().get::<LocalAddr>().map(|v| v.0)
-    }
-
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        self.extensions().get::<RemoteAddr>().map(|v| v.0)
-    }
-
-    #[cfg(feature = "cookies")]
-    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
-        self.extensions().get()
-    }
-
-    fn metrics(&self) -> Option<&Metrics> {
-        self.extensions().get()
-    }
-
-    fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>
-    where
-        T: Read,
-    {
+impl<T: Read> ReadResponseExt<T> for Response<T> {
+    fn copy_to<W: Write>(&mut self, mut writer: W) -> io::Result<u64> {
         io::copy(self.body_mut(), &mut writer)
     }
 
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> io::Result<String>
-    where
-        T: Read,
-    {
+    fn text(&mut self) -> io::Result<String> {
         crate::text::Decoder::for_response(&self).decode_reader(self.body_mut())
-    }
-
-    #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
-    where
-        T: AsyncRead + Unpin,
-    {
-        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
 
     #[cfg(feature = "json")]
     fn json<D>(&mut self) -> Result<D, serde_json::Error>
     where
         D: serde::de::DeserializeOwned,
-        T: Read,
     {
         serde_json::from_reader(self.body_mut())
+    }
+}
+
+/// Provides extension methods for consuming asynchronous HTTP response streams.
+pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
+    /// Copy the response body into a writer asynchronously.
+    ///
+    /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let mut buf = vec![];
+    /// isahc::get_async("https://example.org").await?
+    ///     .copy_to(&mut buf).await?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok(()) }
+    /// ```
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    where
+        W: AsyncWrite + Unpin + 'a;
+
+    /// Read the response body as a string asynchronously.
+    ///
+    /// This method consumes the entire response body stream and can only be
+    /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let text = isahc::get_async("https://example.org").await?
+    ///     .text().await?;
+    /// println!("{}", text);
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T>;
+}
+
+impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    where
+        W: AsyncWrite + Unpin + 'a,
+    {
+        CopyFuture(Box::pin(async move {
+            futures_lite::io::copy(self.body_mut(), writer).await
+        }))
+    }
+
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T> {
+        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
+    }
+}
+
+/// A future which copies all the response body bytes into a sink.
+#[allow(missing_debug_implementations)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct CopyFuture<'a>(Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>);
+
+impl Future for CopyFuture<'_> {
+    type Output = io::Result<u64>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.as_mut().poll(cx)
     }
 }
 

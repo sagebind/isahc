@@ -1,4 +1,5 @@
 use isahc::{
+    Body,
     config::RedirectPolicy,
     prelude::*,
 };
