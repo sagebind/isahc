@@ -907,19 +907,6 @@
 <span id="906">906</span>
 <span id="907">907</span>
 <span id="908">908</span>
-<span id="909">909</span>
-<span id="910">910</span>
-<span id="911">911</span>
-<span id="912">912</span>
-<span id="913">913</span>
-<span id="914">914</span>
-<span id="915">915</span>
-<span id="916">916</span>
-<span id="917">917</span>
-<span id="918">918</span>
-<span id="919">919</span>
-<span id="920">920</span>
-<span id="921">921</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -941,7 +928,7 @@
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">iter</span>::<span class="ident">FromIterator</span>,
-    <span class="ident">net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>},
+    <span class="ident">net</span>::<span class="ident">IpAddr</span>,
     <span class="ident">time</span>::<span class="ident">Duration</span>,
 };
 
@@ -1341,19 +1328,6 @@
     <span class="doccomment">/// The default is unlimited.</span>
     <span class="kw">fn</span> <span class="ident">max_download_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">MaxDownloadSpeed</span>(<span class="ident">max</span>))
-    }
-
-    <span class="doccomment">/// Set a list of specific DNS servers to be used for DNS resolution.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default this option is not set and the system&#39;s built-in DNS resolver</span>
-    <span class="doccomment">/// is used. This option can only be used if libcurl is compiled with</span>
-    <span class="doccomment">/// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.</span>
-    <span class="kw">fn</span> <span class="ident">dns_servers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">servers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
-    {
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">dns</span>::<span class="ident">Servers</span>::<span class="ident">from_iter</span>(<span class="ident">servers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>)))
     }
 
     <span class="doccomment">/// Set a custom SSL/TLS client certificate to use for client connections.</span>
