@@ -18,7 +18,7 @@ use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
 use std::{
     iter::FromIterator,
-    net::{IpAddr, SocketAddr},
+    net::IpAddr,
     time::Duration,
 };
 
@@ -418,19 +418,6 @@ pub trait Configurable: internal::ConfigurableBase {
     /// The default is unlimited.
     fn max_download_speed(self, max: u64) -> Self {
         self.configure(MaxDownloadSpeed(max))
-    }
-
-    /// Set a list of specific DNS servers to be used for DNS resolution.
-    ///
-    /// By default this option is not set and the system's built-in DNS resolver
-    /// is used. This option can only be used if libcurl is compiled with
-    /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
-    fn dns_servers<I, T>(self, servers: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<SocketAddr>,
-    {
-        self.configure(dns::Servers::from_iter(servers.into_iter().map(T::into)))
     }
 
     /// Set a custom SSL/TLS client certificate to use for client connections.

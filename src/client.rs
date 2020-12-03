@@ -1057,7 +1057,6 @@ impl HttpClient {
                 proxy::Proxy<Credentials>,
                 DnsCache,
                 dns::ResolveMap,
-                dns::Servers,
                 ssl::Ciphers,
                 ClientCertificate,
                 CaCertificate,

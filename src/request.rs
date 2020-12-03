@@ -92,7 +92,6 @@ impl<T> RequestExt<T> for Request<T> {
                 crate::config::proxy::Proxy<crate::auth::Credentials>,
                 crate::config::DnsCache,
                 crate::config::dns::ResolveMap,
-                crate::config::dns::Servers,
                 crate::config::ssl::Ciphers,
                 crate::config::ClientCertificate,
                 crate::config::CaCertificate,
