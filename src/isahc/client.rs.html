@@ -1311,6 +1311,8 @@
 <span id="1310">1310</span>
 <span id="1311">1311</span>
 <span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1751,7 +1753,6 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HttpClient</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">error</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
@@ -1931,7 +1932,6 @@
     <span class="doccomment">/// Create a new HTTP client using the default configuration.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
-    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">HttpClientBuilder</span>::<span class="ident">default</span>().<span class="ident">build</span>()
     }
@@ -1939,7 +1939,6 @@
     <span class="doccomment">/// Get a reference to a global client instance.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// TODO: Stabilize.</span>
-    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">shared</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="kw">static</span> <span class="ident">SHARED</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">HttpClient</span><span class="op">&gt;</span> <span class="op">=</span>
             <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">HttpClient</span>::<span class="ident">new</span>().<span class="ident">expect</span>(<span class="string">&quot;shared client failed to initialize&quot;</span>));
@@ -2220,11 +2219,16 @@
     <span class="doccomment">/// assert!(response.status().is_success());</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">request</span>), <span class="ident">err</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     {
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(
+            <span class="string">&quot;send&quot;</span>,
+            <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
+            <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
+        );
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer_maybe</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
         <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">body</span><span class="op">|</span> {
@@ -2253,7 +2257,7 @@
             } <span class="kw">else</span> {
                 <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>).<span class="ident">await</span>
             }
-        })<span class="question-mark">?</span>;
+        }.<span class="ident">instrument</span>(<span class="ident">span</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">body</span><span class="op">|</span> <span class="ident">body</span>.<span class="ident">into_sync</span>()))
     }
@@ -2286,17 +2290,17 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into</span>::<span class="ident">into</span>)))
-    }
-
-    <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
-    <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(
             <span class="string">&quot;send_async&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
         );
 
+        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into</span>::<span class="ident">into</span>)).<span class="ident">instrument</span>(<span class="ident">span</span>))
+    }
+
+    <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
+    <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="comment">// Set redirect policy if not specified.</span>
         <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">is_none</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">cloned</span>() {
@@ -2309,7 +2313,7 @@
             <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">interceptors</span>,
         };
 
-        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="ident">instrument</span>(<span class="ident">span</span>).<span class="ident">await</span>
+        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="ident">await</span>
     }
 
     <span class="kw">fn</span> <span class="ident">create_easy_handle</span>(
