@@ -437,7 +437,6 @@ impl HttpClientBuilder {
     ///
     /// If the client fails to initialize, an error will be returned.
     #[allow(unused_mut)]
-    #[tracing::instrument(level = "debug", skip(self))]
     pub fn build(mut self) -> Result<HttpClient, Error> {
         if let Some(err) = self.error {
             return Err(err);
@@ -617,7 +616,6 @@ impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
     /// If the client fails to initialize, an error will be returned.
-    #[tracing::instrument(level = "debug")]
     pub fn new() -> Result<Self, Error> {
         HttpClientBuilder::default().build()
     }
@@ -625,7 +623,6 @@ impl HttpClient {
     /// Get a reference to a global client instance.
     ///
     /// TODO: Stabilize.
-    #[tracing::instrument(level = "debug")]
     pub(crate) fn shared() -> &'static Self {
         static SHARED: Lazy<HttpClient> =
             Lazy::new(|| HttpClient::new().expect("shared client failed to initialize"));
@@ -906,11 +903,16 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    #[tracing::instrument(level = "debug", skip(self, request), err)]
     pub fn send<B>(&self, request: Request<B>) -> Result<Response<Body>, Error>
     where
         B: Into<Body>,
     {
+        let span = tracing::debug_span!(
+            "send",
+            method = ?request.method(),
+            uri = ?request.uri(),
+        );
+
         let mut writer_maybe = None;
 
         let request = request.map(|body| {
@@ -939,7 +941,7 @@ impl HttpClient {
             } else {
                 self.send_async_inner(request).await
             }
-        })?;
+        }.instrument(span))?;
 
         Ok(response.map(|body| body.into_sync()))
     }
@@ -972,17 +974,17 @@ impl HttpClient {
     where
         B: Into<AsyncBody>,
     {
-        ResponseFuture::new(self.send_async_inner(request.map(Into::into)))
-    }
-
-    /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, mut request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
         );
 
+        ResponseFuture::new(self.send_async_inner(request.map(Into::into)).instrument(span))
+    }
+
+    /// Actually send the request. All the public methods go through here.
+    async fn send_async_inner(&self, mut request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         // Set redirect policy if not specified.
         if request.extensions().get::<RedirectPolicy>().is_none() {
             if let Some(policy) = self.inner.defaults.get::<RedirectPolicy>().cloned() {
@@ -995,7 +997,7 @@ impl HttpClient {
             interceptors: &self.inner.interceptors,
         };
 
-        ctx.send(request).instrument(span).await
+        ctx.send(request).await
     }
 
     fn create_easy_handle(
