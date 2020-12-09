@@ -1313,6 +1313,29 @@
 <span id="1312">1312</span>
 <span id="1313">1313</span>
 <span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
+<span id="1337">1337</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -2476,6 +2499,13 @@
                 .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
                 .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
 
+            <span class="comment">// Check if automatic decompression is enabled; we&#39;ll need to know</span>
+            <span class="comment">// this later after the response is sent.</span>
+            <span class="kw">let</span> <span class="ident">is_automatic_decompression</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">extensions</span>().<span class="ident">get</span>()
+                .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">AutomaticDecompression</span>(<span class="ident">enabled</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">enabled</span>)
+                .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+
             <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
             <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
 
@@ -2487,7 +2517,23 @@
 
             <span class="comment">// If a Content-Length header is present, include that information in</span>
             <span class="comment">// the body as well.</span>
-            <span class="kw">let</span> <span class="ident">content_length</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">content_length</span>();
+            <span class="kw">let</span> <span class="ident">body_len</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">content_length</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="comment">// If automatic decompression is enabled, and will likely be</span>
+                <span class="comment">// selected, then the value of Content-Length does not indicate</span>
+                <span class="comment">// the uncompressed body length and merely the compressed data</span>
+                <span class="comment">// length. If it looks like we are in this scenario then we</span>
+                <span class="comment">// ignore the Content-Length, since it can only cause confusion</span>
+                <span class="comment">// when included with the body.</span>
+                <span class="kw">if</span> <span class="ident">is_automatic_decompression</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_ENCODING</span>) {
+                        <span class="kw">if</span> <span class="ident">value</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;identity&quot;</span> {
+                            <span class="kw">return</span> <span class="bool-val">false</span>;
+                        }
+                    }
+                }
+
+                <span class="bool-val">true</span>
+            });
 
             <span class="comment">// Convert the reader into an opaque Body.</span>
             <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
@@ -2498,7 +2544,7 @@
                     <span class="ident">_client</span>: (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">clone</span>(),
                 };
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">content_length</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_len</span> {
                     <span class="ident">AsyncBody</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
                 } <span class="kw">else</span> {
                     <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
