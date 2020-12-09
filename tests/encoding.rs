@@ -26,6 +26,10 @@ fn gzip_encoded_response_is_decoded_automatically() {
 
     assert_eq!(response.text().unwrap(), body);
     m.request().expect_header("Accept-Encoding", "deflate, gzip");
+
+    // Response body size should be unknown, because the actual content is
+    // gzipped.
+    assert_eq!(response.body().len(), None);
 }
 
 #[test]
@@ -59,6 +63,9 @@ fn request_gzip_without_automatic_decompression() {
 
     assert_eq!(body_received, body_encoded);
     m.request().expect_header("Accept-Encoding", "gzip");
+
+    // Response body size should be known.
+    assert_eq!(response.body().len(), Some(31));
 }
 
 #[test]
@@ -81,6 +88,10 @@ fn deflate_encoded_response_is_decoded_automatically() {
 
     assert_eq!(response.text().unwrap(), body);
     m.request().expect_header("Accept-Encoding", "deflate, gzip");
+
+    // Response body size should be unknown, because the actual content is
+    // compressed.
+    assert_eq!(response.body().len(), None);
 }
 
 #[test]
