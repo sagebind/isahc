@@ -1077,6 +1077,13 @@ impl crate::interceptor::Invoke for &HttpClient {
                     .entry(http::header::USER_AGENT)
                     .or_insert(USER_AGENT.parse().unwrap());
 
+                // Check if automatic decompression is enabled; we'll need to
+                // know this later after the response is sent.
+                let is_automatic_decompression = request.extensions().get()
+                    .or_else(|| self.inner.defaults.get())
+                    .map(|AutomaticDecompression(enabled)| *enabled)
+                    .unwrap_or(false);
+
                 // Create and configure a curl easy handle to fulfil the request.
                 let (easy, future) = self.create_easy_handle(request)?;
 
@@ -1092,7 +1099,25 @@ impl crate::interceptor::Invoke for &HttpClient {
                     .headers()
                     .get(http::header::CONTENT_LENGTH)
                     .and_then(|v| v.to_str().ok())
-                    .and_then(|v| v.parse().ok());
+                    .and_then(|v| v.parse().ok())
+                    .filter(|_| {
+                        // If automatic decompression is enabled, and will
+                        // likely be selected, then the value of Content-Length
+                        // does not indicate the uncompressed body length and
+                        // merely the compressed data length. If it looks like
+                        // we are in this scenario then we ignore the
+                        // Content-Length, since it can only cause confusion
+                        // when included with the body.
+                        if is_automatic_decompression {
+                            if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
+                                if value != "identity" {
+                                    return false;
+                                }
+                            }
+                        }
+
+                        true
+                    });
 
                 // Convert the reader into an opaque Body.
                 Ok(response.map(|reader| {
