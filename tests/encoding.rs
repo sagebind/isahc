@@ -63,6 +63,9 @@ fn request_gzip_without_automatic_decompression() {
 
     assert_eq!(body_received, body_encoded);
     m.request().expect_header("Accept-Encoding", "gzip");
+
+    // Response body size should be known.
+    assert_eq!(response.body().len(), Some(31));
 }
 
 #[test]
