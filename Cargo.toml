@@ -52,7 +52,7 @@ version = "0.8"
 optional = true
 
 [dependencies.flume]
-version = "0.9"
+version = "0.10"
 default-features = false
 features = ["async"]
 
