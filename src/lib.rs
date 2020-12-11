@@ -367,10 +367,9 @@ where
 ///
 /// ```no_run
 /// use isahc::prelude::*;
-/// use tokio;
 ///
-/// #[tokio::main]
-/// async fn main() {
+/// async fn run() {
+///     use futures_lite::AsyncReadExt;
 ///     let client = HttpClient::new().unwrap();
 ///
 ///     let mut response = client.post_async("https://httpbin.org/post", r#"{
@@ -379,7 +378,8 @@ where
 ///     }"#).await.unwrap();
 ///
 ///     let mut body: Vec<u8> = vec![];
-///     async_std::io::copy(response.body_mut(), &mut body).await.unwrap();
+///     let mut reader = futures_lite::io::BufReader::new(response.body_mut());
+///     reader.read_to_end(&mut body).await.unwrap();
 ///
 ///     let msg: serde_json::Value = serde_json::from_slice(&body).unwrap();
 ///     println!("{}", msg);
