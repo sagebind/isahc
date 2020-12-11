@@ -377,10 +377,12 @@ where
 ///         "speed": "fast",
 ///         "cool_name": true
 ///     }"#).await.unwrap();
+///
 ///     let mut body: Vec<u8> = vec![];
 ///     async_std::io::copy(response.body_mut(), &mut body).await.unwrap();
-///     let msg:serde_json::Value = serde_json::from_slice(&body).unwrap();
-///     println!("{}",msg);
+///
+///     let msg: serde_json::Value = serde_json::from_slice(&body).unwrap();
+///     println!("{}", msg);
 /// }
 /// ```
 ///
