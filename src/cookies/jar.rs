@@ -55,7 +55,8 @@ impl CookieJar {
     pub fn get_for_uri(&self, uri: &Uri) -> impl IntoIterator<Item = Cookie> {
         let jar = self.cookies.read().unwrap();
 
-        let mut cookies = jar.iter()
+        let mut cookies = jar
+            .iter()
             .filter(|cookie| cookie.matches(uri))
             .map(|c| c.cookie.clone())
             .collect::<Vec<_>>();

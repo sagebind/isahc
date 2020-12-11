@@ -56,7 +56,7 @@ impl Body {
     #[inline]
     pub fn from_bytes_static<B>(bytes: B) -> Self
     where
-        B: AsRef<[u8]> + 'static
+        B: AsRef<[u8]> + 'static,
     {
         match_type! {
             <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),

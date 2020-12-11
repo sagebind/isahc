@@ -1,10 +1,7 @@
-use crate::{body::AsyncBody, error::Error};
 use super::{Interceptor, InterceptorFuture, InterceptorObj};
+use crate::{body::AsyncBody, error::Error};
 use http::{Request, Response};
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 /// Execution context for an interceptor.
 pub struct Context<'a> {

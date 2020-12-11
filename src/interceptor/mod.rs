@@ -26,24 +26,15 @@
 /// This module is only available when the
 /// [`unstable-interceptors`](../index.html#unstable-interceptors) feature is
 /// enabled.
-
 use crate::body::AsyncBody;
 use http::{Request, Response};
-use std::{
-    error::Error,
-    fmt,
-    future::Future,
-    pin::Pin,
-};
+use std::{error::Error, fmt, future::Future, pin::Pin};
 
 mod context;
 mod obj;
 
 pub use self::context::Context;
-pub(crate) use self::{
-    context::Invoke,
-    obj::InterceptorObj,
-};
+pub(crate) use self::{context::Invoke, obj::InterceptorObj};
 
 type InterceptorResult<E> = Result<Response<AsyncBody>, E>;
 
@@ -58,9 +49,7 @@ macro_rules! interceptor {
             mut $request: $crate::http::Request<$crate::AsyncBody>,
             $ctx: $crate::interceptor::Context<'_>,
         ) -> Result<$crate::http::Response<$crate::AsyncBody>, $crate::Error> {
-            (move || async move {
-                $body
-            })().await.map_err(Into::into)
+            (move || async move { $body })().await.map_err(Into::into)
         }
 
         $crate::interceptor::from_fn(interceptor)
@@ -80,7 +69,11 @@ pub trait Interceptor: Send + Sync {
     ///
     /// The returned future is allowed to borrow the interceptor for the
     /// duration of its execution.
-    fn intercept<'a>(&'a self, request: Request<AsyncBody>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err>;
+    fn intercept<'a>(
+        &'a self,
+        request: Request<AsyncBody>,
+        ctx: Context<'a>,
+    ) -> InterceptorFuture<'a, Self::Err>;
 }
 
 /// The type of future returned by an interceptor.
@@ -89,7 +82,10 @@ pub type InterceptorFuture<'a, E> = Pin<Box<dyn Future<Output = InterceptorResul
 /// Creates an interceptor from an arbitrary closure or function.
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
 where
-    F: for<'a> private::AsyncFn2<Request<AsyncBody>, Context<'a>, Output = InterceptorResult<E>> + Send + Sync + 'static,
+    F: for<'a> private::AsyncFn2<Request<AsyncBody>, Context<'a>, Output = InterceptorResult<E>>
+        + Send
+        + Sync
+        + 'static,
     E: Error + Send + Sync + 'static,
 {
     InterceptorFn(f)
@@ -102,11 +98,18 @@ pub struct InterceptorFn<F>(F);
 impl<E, F> Interceptor for InterceptorFn<F>
 where
     E: Error + Send + Sync + 'static,
-    F: for<'a> private::AsyncFn2<Request<AsyncBody>, Context<'a>, Output = InterceptorResult<E>> + Send + Sync + 'static,
+    F: for<'a> private::AsyncFn2<Request<AsyncBody>, Context<'a>, Output = InterceptorResult<E>>
+        + Send
+        + Sync
+        + 'static,
 {
     type Err = E;
 
-    fn intercept<'a>(&self, request: Request<AsyncBody>, ctx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept<'a>(
+        &self,
+        request: Request<AsyncBody>,
+        ctx: Context<'a>,
+    ) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(self.0.call(request, ctx))
     }
 }
