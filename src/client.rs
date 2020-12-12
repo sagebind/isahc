@@ -16,7 +16,6 @@ use crate::{
 use futures_lite::{
     future::{block_on, try_zip},
     io::AsyncRead,
-    pin,
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
@@ -1269,8 +1268,7 @@ impl AsyncRead for ResponseBody {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        let inner = &mut self.inner;
-        pin!(inner);
+        let inner = Pin::new(&mut self.inner);
         inner.poll_read(cx, buf)
     }
 }
