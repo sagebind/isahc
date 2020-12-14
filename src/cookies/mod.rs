@@ -25,10 +25,13 @@
 //! feature is enabled.
 
 mod cookie;
-pub(crate) mod interceptor;
 mod jar;
+pub(crate) mod interceptor;
 
 #[cfg(feature = "psl")]
 mod psl;
 
-pub use self::{cookie::Cookie, jar::CookieJar};
+pub use self::{
+    cookie::Cookie,
+    jar::CookieJar,
+};

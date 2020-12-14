@@ -1,4 +1,7 @@
-use crate::{request::Request, response::Response};
+use crate::{
+    request::Request,
+    response::Response,
+};
 
 /// A responder is a request-response handler responsible for producing the
 /// responses returned by a mock endpoint.

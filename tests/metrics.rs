@@ -19,10 +19,14 @@ fn enabling_metrics_causes_metrics_to_be_collected() {
         body: "hello world",
     };
 
-    let client = isahc::HttpClient::builder().metrics(true).build().unwrap();
+    let client = isahc::HttpClient::builder()
+        .metrics(true)
+        .build()
+        .unwrap();
 
-    let mut response = client
-        .send(Request::post(m.url()).body("hello server").unwrap())
+    let mut response = client.send(Request::post(m.url())
+        .body("hello server")
+        .unwrap())
         .unwrap();
 
     let metrics = response.metrics().unwrap().clone();

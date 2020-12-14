@@ -7,7 +7,11 @@
 //! Only HTTP/1.x is implemented, as newer HTTP versions are mostly the same
 //! semantically and are far more complex to deal with.
 
-use crate::{request::Request, responder::*, response::Response};
+use crate::{
+    request::Request,
+    responder::*,
+    response::Response,
+};
 use std::{
     collections::VecDeque,
     io::{Cursor, Read, Write},
@@ -58,7 +62,10 @@ impl<R: Responder> Mock<R> {
 
     /// Get the first request received by this mock.
     pub fn request(&self) -> Request {
-        let request = self.requests.lock().unwrap().get(0).cloned();
+        let request = self.requests.lock()
+            .unwrap()
+            .get(0)
+            .cloned();
 
         request.expect("no request received")
     }
@@ -71,14 +78,12 @@ impl<R: Responder> Mock<R> {
     fn is_ready(&self) -> bool {
         TcpStream::connect(self.addr())
             .and_then(|mut stream| {
-                stream.write_all(
-                    b"\
+                stream.write_all(b"\
                     GET /health HTTP/1.1\r\n\
                     host: api.mock.local\r\n\
                     connection: close\r\n\
                     \r\n\
-                ",
-                )?;
+                ")?;
 
                 let mut response = Vec::new();
                 stream.read_to_end(&mut response)?;
@@ -113,12 +118,7 @@ impl<R: Responder> Mock<R> {
     }
 
     fn handle_request(&self, mut request: tiny_http::Request) {
-        if request
-            .headers()
-            .iter()
-            .find(|h| h.field.as_str() == "host" && h.value == "api.mock.local")
-            .is_some()
-        {
+        if request.headers().iter().find(|h| h.field.as_str() == "host" && h.value == "api.mock.local").is_some() {
             if let Some(response) = self.handle_api_request(&request) {
                 request.respond(response).unwrap();
                 return;
@@ -137,28 +137,21 @@ impl<R: Responder> Mock<R> {
         let mock_request = Request {
             method: request.method().to_string(),
             url: request.url().to_string(),
-            headers: request
-                .headers()
-                .iter()
-                .map(|header| (header.field.to_string(), header.value.to_string()))
-                .collect(),
+            headers: request.headers()
+            .iter()
+            .map(|header| (header.field.to_string(), header.value.to_string()))
+            .collect(),
             body: Some(body),
         };
 
-        self.requests
-            .lock()
-            .unwrap()
-            .push_back(mock_request.clone());
+        self.requests.lock().unwrap().push_back(mock_request.clone());
 
         let response = self.respond(mock_request);
 
         request.respond(response.into_http_response()).unwrap();
     }
 
-    fn handle_api_request(
-        &self,
-        request: &tiny_http::Request,
-    ) -> Option<tiny_http::Response<Cursor<Vec<u8>>>> {
+    fn handle_api_request(&self, request: &tiny_http::Request) -> Option<tiny_http::Response<Cursor<Vec<u8>>>> {
         if request.url() == "/health" {
             Some(tiny_http::Response::new(
                 200.into(),

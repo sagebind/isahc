@@ -28,11 +28,11 @@ impl Response {
     pub(crate) fn into_http_response(self) -> tiny_http::Response<Box<dyn Read>> {
         tiny_http::Response::new(
             self.status_code.into(),
-            self.headers
-                .into_iter()
-                .map(|(name, value)| {
-                    tiny_http::Header::from_bytes(name.as_bytes(), value.as_bytes()).unwrap()
-                })
+            self.headers.into_iter()
+                .map(|(name, value)| tiny_http::Header::from_bytes(
+                    name.as_bytes(),
+                    value.as_bytes(),
+                ).unwrap())
                 .collect(),
             self.body,
             self.body_len,

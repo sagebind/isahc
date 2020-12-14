@@ -3,18 +3,15 @@
 use crate::{
     body::AsyncBody,
     error::{Error, ErrorKind},
-    metrics::Metrics,
     parsing::{parse_header, parse_status_line},
+    metrics::Metrics,
     response::{LocalAddr, RemoteAddr},
 };
 use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use flume::Sender;
-use futures_lite::{
-    io::{AsyncRead, AsyncWrite},
-    pin,
-};
+use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;
@@ -23,7 +20,8 @@ use std::{
     ffi::CStr,
     fmt,
     future::Future,
-    io, mem,
+    io,
+    mem,
     net::SocketAddr,
     os::raw::{c_char, c_long},
     pin::Pin,
@@ -150,19 +148,14 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver
-                .recv_async()
-                .await
-                .map_err(|e| Error::new(ErrorKind::Unknown, e))??;
+            let builder = receiver.recv_async().await.map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
                 shared,
             };
 
-            builder
-                .body(reader)
-                .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
+            builder.body(reader).map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
         (handler, future)
@@ -514,9 +507,7 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::warn!(
-                            "failed to write response body because the response reader was dropped"
-                        );
+                        tracing::warn!("failed to write response body because the response reader was dropped");
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
                     }
@@ -655,8 +646,7 @@ impl AsyncRead for ResponseBodyReader {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        let inner = &mut self.inner;
-        pin!(inner);
+        let inner = Pin::new(&mut self.inner);
 
         match inner.poll_read(cx, buf) {
             // On EOF, check to see if the transfer was cancelled, and if so,
@@ -670,7 +660,7 @@ impl AsyncRead for ResponseBodyReader {
 
                 // The transfer did not finish properly at all, so return an error.
                 None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),
-            },
+            }
             poll => poll,
         }
     }

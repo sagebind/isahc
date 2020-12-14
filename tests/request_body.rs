@@ -34,10 +34,8 @@ fn request_with_body_of_known_size(method: &str) {
         .unwrap();
 
     assert_eq!(m.request().method, method);
-    m.request()
-        .expect_header("content-length", body.len().to_string());
-    m.request()
-        .expect_header("content-type", "application/x-www-form-urlencoded");
+    m.request().expect_header("content-length", body.len().to_string());
+    m.request().expect_header("content-type", "application/x-www-form-urlencoded");
     m.request().expect_body(body);
 }
 
@@ -128,17 +126,14 @@ fn upload_from_bad_async_reader_returns_error_with_original_cause() {
     struct BadReader;
 
     impl AsyncRead for BadReader {
-        fn poll_read(
-            self: Pin<&mut Self>,
-            _cx: &mut Context<'_>,
-            _buf: &mut [u8],
-        ) -> Poll<io::Result<usize>> {
+        fn poll_read(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &mut [u8]) -> Poll<io::Result<usize>> {
             Poll::Ready(Err(io::ErrorKind::UnexpectedEof.into()))
         }
     }
 
-    let result =
-        block_on(async { isahc::put_async(m.url(), AsyncBody::from_reader(BadReader)).await });
+    let result = block_on(async {
+        isahc::put_async(m.url(), AsyncBody::from_reader(BadReader)).await
+    });
 
     assert_matches!(&result, Err(e) if e.kind() == isahc::error::ErrorKind::Io);
     assert_eq!(

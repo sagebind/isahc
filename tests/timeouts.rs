@@ -1,9 +1,5 @@
 use isahc::prelude::*;
-use std::{
-    io::{self, Cursor, Read},
-    thread,
-    time::Duration,
-};
+use std::{io::{self, Cursor, Read}, thread, time::Duration};
 use testserver::mock;
 
 #[macro_use]
@@ -55,8 +51,5 @@ fn timeout_during_response_body_produces_error() {
 
     // Because of the short timeout, the response body should abort while being
     // read from.
-    assert_eq!(
-        response.copy_to(std::io::sink()).unwrap_err().kind(),
-        std::io::ErrorKind::TimedOut
-    );
+    assert_eq!(response.copy_to(std::io::sink()).unwrap_err().kind(), std::io::ErrorKind::TimedOut);
 }

@@ -213,9 +213,9 @@ impl Error {
     /// Returns true if this error was likely the fault of the server.
     pub fn is_server(&self) -> bool {
         match self.kind() {
-            ErrorKind::BadServerCertificate
-            | ErrorKind::ProtocolViolation
-            | ErrorKind::TooManyRedirects => true,
+            ErrorKind::BadServerCertificate | ErrorKind::ProtocolViolation | ErrorKind::TooManyRedirects => {
+                true
+            }
             _ => false,
         }
     }

@@ -16,7 +16,11 @@
 use self::internal::SetOpt;
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
-use std::{iter::FromIterator, net::IpAddr, time::Duration};
+use std::{
+    iter::FromIterator,
+    net::IpAddr,
+    time::Duration,
+};
 
 pub(crate) mod dial;
 pub(crate) mod dns;

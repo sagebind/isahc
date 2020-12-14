@@ -37,8 +37,7 @@ fn http_proxy() {
     // 7230](https://tools.ietf.org/html/rfc7230), sections 5.3 and 5.7).
     assert_eq!(m.request().url, upstream.to_string());
     // Host should be the upstream authority, not the proxy host.
-    m.request()
-        .expect_header("host", upstream.authority().unwrap().as_str());
+    m.request().expect_header("host", upstream.authority().unwrap().as_str());
     m.request().expect_header("proxy-connection", "Keep-Alive");
 }
 
