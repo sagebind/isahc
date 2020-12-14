@@ -11,7 +11,7 @@ use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use flume::Sender;
-use futures_lite::io::{AsyncRead, AsyncWrite};
+use futures_lite::{io::{AsyncRead, AsyncWrite}, pin};
 use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;
@@ -646,7 +646,8 @@ impl AsyncRead for ResponseBodyReader {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        let inner = Pin::new(&mut self.inner);
+        let inner = &mut self.inner;
+        pin!(inner);
 
         match inner.poll_read(cx, buf) {
             // On EOF, check to see if the transfer was cancelled, and if so,
