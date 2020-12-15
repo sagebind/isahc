@@ -366,6 +366,30 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post_async`] for details.
+///
+/// # Examples
+///
+/// ```no_run
+/// use isahc::prelude::*;
+///
+/// async fn run() {
+///     use futures_lite::AsyncReadExt;
+///     let client = HttpClient::new().unwrap();
+///
+///     let mut response = client.post_async("https://httpbin.org/post", r#"{
+///         "speed": "fast",
+///         "cool_name": true
+///     }"#).await.unwrap();
+///
+///     let mut body: Vec<u8> = vec![];
+///     let mut reader = futures_lite::io::BufReader::new(response.body_mut());
+///     reader.read_to_end(&mut body).await.unwrap();
+///
+///     let msg: serde_json::Value = serde_json::from_slice(&body).unwrap();
+///     println!("{}", msg);
+/// }
+/// ```
+///
 pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
