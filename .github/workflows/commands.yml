@@ -10,16 +10,17 @@ jobs:
     steps:
       - uses: xt0rted/slash-command-action@v1
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GH_PAT }}
           command: rustfmt
 
       - id: comment-branch
         uses: xt0rted/pull-request-comment-branch@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GH_PAT }}
 
       - uses: actions/checkout@v2
         with:
+          token: ${{ secrets.GH_PAT }}
           ref: ${{ steps.comment-branch.outputs.head_ref }}
 
       - uses: actions-rs/toolchain@v1
