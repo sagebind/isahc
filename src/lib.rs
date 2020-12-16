@@ -257,8 +257,8 @@ mod task;
 mod text;
 
 pub mod auth;
-pub mod error;
 pub mod config;
+pub mod error;
 
 #[cfg(feature = "unstable-interceptors")]
 pub mod interceptor;
@@ -288,10 +288,10 @@ pub use http;
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        AsyncReadResponseExt,
-        ReadResponseExt,
         config::Configurable,
+        AsyncReadResponseExt,
         HttpClient,
+        ReadResponseExt,
         RequestExt,
         ResponseExt,
     };
@@ -421,7 +421,7 @@ pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
-    B: Into<AsyncBody>
+    B: Into<AsyncBody>,
 {
     HttpClient::shared().put_async(uri, body)
 }
@@ -473,12 +473,14 @@ pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture<'st
 /// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
-    static VERSION_STRING: Lazy<String> = Lazy::new(|| format!(
-        "isahc/{} (features:{}) {}",
-        env!("CARGO_PKG_VERSION"),
-        FEATURES_STRING,
-        curl::Version::num(),
-    ));
+    static VERSION_STRING: Lazy<String> = Lazy::new(|| {
+        format!(
+            "isahc/{} (features:{}) {}",
+            env!("CARGO_PKG_VERSION"),
+            FEATURES_STRING,
+            curl::Version::num(),
+        )
+    });
 
     &VERSION_STRING
 }

@@ -1,8 +1,4 @@
-use isahc::{
-    Body,
-    config::RedirectPolicy,
-    prelude::*,
-};
+use isahc::{config::RedirectPolicy, prelude::*, Body};
 use test_case::test_case;
 use testserver::mock;
 

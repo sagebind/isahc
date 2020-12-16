@@ -13,7 +13,9 @@ pub(crate) struct DefaultHeadersInterceptor {
 
 impl From<HeaderMap<HeaderValue>> for DefaultHeadersInterceptor {
     fn from(headers: HeaderMap<HeaderValue>) -> Self {
-        Self { headers }
+        Self {
+            headers,
+        }
     }
 }
 

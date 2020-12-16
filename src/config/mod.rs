@@ -16,11 +16,7 @@
 use self::internal::SetOpt;
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
-use std::{
-    iter::FromIterator,
-    net::IpAddr,
-    time::Duration,
-};
+use std::{iter::FromIterator, net::IpAddr, time::Duration};
 
 pub(crate) mod dial;
 pub(crate) mod dns;
@@ -694,7 +690,9 @@ impl NetworkInterface {
     /// Bind to whatever the networking stack finds suitable. This is the
     /// default behavior.
     pub fn any() -> Self {
-        Self { interface: None }
+        Self {
+            interface: None,
+        }
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method

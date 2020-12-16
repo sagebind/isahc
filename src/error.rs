@@ -90,13 +90,23 @@ impl ErrorKind {
             Self::BadServerCertificate => Some("the server certificate could not be validated"),
             Self::ClientInitialization => Some("failed to initialize client"),
             Self::ConnectionFailed => Some("failed to connect to the server"),
-            Self::InvalidContentEncoding => Some("the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed"),
-            Self::InvalidCredentials => Some("provided authentication credentials were rejected by the server"),
+            Self::InvalidContentEncoding => Some(
+                "the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed",
+            ),
+            Self::InvalidCredentials => {
+                Some("provided authentication credentials were rejected by the server")
+            }
             Self::InvalidRequest => Some("invalid HTTP request"),
             Self::NameResolution => Some("failed to resolve host name"),
-            Self::ProtocolViolation => Some("the server made an unrecoverable HTTP protocol violation"),
-            Self::RequestBodyNotRewindable => Some("request body could not be re-sent because it is not rewindable"),
-            Self::Timeout => Some("request or operation took longer than the configured timeout time"),
+            Self::ProtocolViolation => {
+                Some("the server made an unrecoverable HTTP protocol violation")
+            }
+            Self::RequestBodyNotRewindable => {
+                Some("request body could not be re-sent because it is not rewindable")
+            }
+            Self::Timeout => {
+                Some("request or operation took longer than the configured timeout time")
+            }
             Self::TlsEngine => Some("error ocurred in the secure socket engine"),
             Self::TooManyRedirects => Some("number of redirects hit the maximum amount"),
             _ => None,
@@ -213,9 +223,9 @@ impl Error {
     /// Returns true if this error was likely the fault of the server.
     pub fn is_server(&self) -> bool {
         match self.kind() {
-            ErrorKind::BadServerCertificate | ErrorKind::ProtocolViolation | ErrorKind::TooManyRedirects => {
-                true
-            }
+            ErrorKind::BadServerCertificate
+            | ErrorKind::ProtocolViolation
+            | ErrorKind::TooManyRedirects => true,
             _ => false,
         }
     }
