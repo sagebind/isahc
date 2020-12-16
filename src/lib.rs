@@ -484,11 +484,3 @@ pub fn version() -> &'static str {
 
     &VERSION_STRING
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test() {
-        // TODO
-    }
-}
