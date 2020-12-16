@@ -5,6 +5,7 @@ on:
 
 jobs:
   rustfmt:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/rustfmt')
     runs-on: ubuntu-latest
     steps:
       - uses: xt0rted/slash-command-action@v1
