@@ -25,6 +25,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
+          components: rustfmt
           default: true
 
       - run: cargo fmt
