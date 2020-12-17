@@ -46,5 +46,7 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: Apply rustfmt
           branch: ${{ steps.comment-branch.outputs.head_ref }}
+          commit_message: Apply rustfmt
+          commit_user_name: teto-bot
+          commit_user_email: teto-bot@users.noreply.github.com
