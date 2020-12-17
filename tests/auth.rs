@@ -1,7 +1,4 @@
-use isahc::{
-    auth::*,
-    prelude::*,
-};
+use isahc::{auth::*, prelude::*};
 use testserver::mock;
 
 #[test]
@@ -31,7 +28,8 @@ fn basic_auth_sends_authorization_header() {
         .unwrap();
 
     // base64
-    m.request().expect_header("authorization", "Basic Y2xhcms6cXVlcnR5");
+    m.request()
+        .expect_header("authorization", "Basic Y2xhcms6cXVlcnR5");
 }
 
 #[cfg(feature = "spnego")]
@@ -72,5 +70,6 @@ fn negotiate_on_windows_provides_a_token() {
         .unwrap();
 
     assert_eq!(response.status(), 200);
-    m.request().expect_header_regex("authorization", r"Negotiate \w+=*");
+    m.request()
+        .expect_header_regex("authorization", r"Negotiate \w+=*");
 }

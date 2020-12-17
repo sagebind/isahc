@@ -1,5 +1,8 @@
-use http::header::{HeaderName, HeaderValue};
-use http::{StatusCode, Version};
+use http::{
+    header::{HeaderName, HeaderValue},
+    StatusCode,
+    Version,
+};
 
 pub(crate) fn parse_status_line(line: &[u8]) -> Option<(Version, StatusCode)> {
     let mut parts = line.split(u8::is_ascii_whitespace);
@@ -54,7 +57,9 @@ pub(crate) fn header_to_curl_string(
     value: &HeaderValue,
     title_case: bool,
 ) -> String {
-    let header_value = value.to_str().expect("request header value is not valid UTF-8!");
+    let header_value = value
+        .to_str()
+        .expect("request header value is not valid UTF-8!");
 
     let mut string = String::new();
 
@@ -170,7 +175,10 @@ mod tests {
         let name = "User-Agent".parse().unwrap();
         let value = "foo".parse().unwrap();
 
-        assert_eq!(header_to_curl_string(&name, &value, false), "user-agent:foo");
+        assert_eq!(
+            header_to_curl_string(&name, &value, false),
+            "user-agent:foo"
+        );
     }
 
     #[test]

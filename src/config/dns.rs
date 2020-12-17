@@ -2,10 +2,7 @@
 
 use super::SetOpt;
 use curl::easy::Easy2;
-use std::{
-    net::IpAddr,
-    time::Duration,
-};
+use std::{net::IpAddr, time::Duration};
 
 /// DNS caching configuration.
 ///

@@ -8,8 +8,7 @@
 
 use isahc::prelude::*;
 use rayon::prelude::*;
-use std::env;
-use std::time::Instant;
+use std::{env, time::Instant};
 
 fn main() -> Result<(), isahc::Error> {
     let count = env::args()

@@ -1,7 +1,4 @@
-use std::env;
-use std::error::Error;
-use std::fs;
-use std::path::PathBuf;
+use std::{env, error::Error, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);

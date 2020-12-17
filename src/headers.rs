@@ -9,16 +9,14 @@ pub(crate) trait HasHeaders {
     fn headers(&self) -> &HeaderMap;
 
     fn content_length(&self) -> Option<u64> {
-        self
-            .headers()
+        self.headers()
             .get(http::header::CONTENT_LENGTH)
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse().ok())
     }
 
     fn content_type(&self) -> Option<&str> {
-        self
-            .headers()
+        self.headers()
             .get(http::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
     }

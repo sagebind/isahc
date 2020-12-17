@@ -8,7 +8,8 @@ fn accept_headers_populated_by_default() {
     isahc::get(m.url()).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
 }
 
 #[test]
@@ -17,7 +18,8 @@ fn user_agent_contains_expected_format() {
 
     isahc::get(m.url()).unwrap();
 
-    m.request().expect_header_regex("user-agent", r"^curl/\S+ isahc/\S+$");
+    m.request()
+        .expect_header_regex("user-agent", r"^curl/\S+ isahc/\S+$");
 }
 
 // Issue [#209](https://github.com/sagebind/isahc/issues/209)
@@ -79,7 +81,9 @@ fn set_title_case_headers_to_true() {
     client.get(m.url()).unwrap();
 
     assert_eq!(m.request().method, "GET");
-    m.request().headers.iter()
+    m.request()
+        .headers
+        .iter()
         .find(|(key, value)| key == "Foo-Bar" && value == "baz")
         .expect("header not found");
 }
@@ -102,7 +106,8 @@ fn header_can_be_inserted_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value1");
 }
 
@@ -125,7 +130,8 @@ fn headers_in_request_builder_must_override_headers_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value2");
 }
 
@@ -148,7 +154,8 @@ fn multiple_headers_with_same_key_can_be_inserted_in_httpclient_builder() {
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     // Both values should be present.
     m.request().expect_header("X-header", "some-value1");
     m.request().expect_header("X-header", "some-value2");
@@ -174,6 +181,7 @@ fn headers_in_request_builder_must_override_multiple_headers_in_httpclient_build
     let _ = client.send(request).unwrap();
 
     m.request().expect_header("accept", "*/*");
-    m.request().expect_header("accept-encoding", "deflate, gzip");
+    m.request()
+        .expect_header("accept-encoding", "deflate, gzip");
     m.request().expect_header("X-header", "some-value3");
 }
