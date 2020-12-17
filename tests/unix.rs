@@ -9,6 +9,7 @@ use std::{
 use tempfile::TempDir;
 
 #[test]
+#[rustfmt::skip]
 fn send_request_to_unix_socket() {
     let temp_dir = TempDir::new().unwrap();
     let socket_path = temp_dir.path().join("test.sock");
@@ -22,16 +23,12 @@ fn send_request_to_unix_socket() {
             io::copy(&mut reader, &mut io::sink()).unwrap();
         });
 
-        stream
-            .write_all(
-                b"\
+        stream.write_all(b"\
             HTTP/1.1 200 OK\r\n\
             Content-Length: 8\r\n\
             \r\n\
             success\n\
-        ",
-            )
-            .unwrap();
+        ").unwrap();
     });
 
     let mut response = Request::get("http://localhost")

@@ -68,17 +68,16 @@ impl<R: Responder> Mock<R> {
         self.requests.lock().unwrap().iter().cloned().collect()
     }
 
+    #[rustfmt::skip]
     fn is_ready(&self) -> bool {
         TcpStream::connect(self.addr())
             .and_then(|mut stream| {
-                stream.write_all(
-                    b"\
+                stream.write_all(b"\
                     GET /health HTTP/1.1\r\n\
                     host: api.mock.local\r\n\
                     connection: close\r\n\
                     \r\n\
-                ",
-                )?;
+                ")?;
 
                 let mut response = Vec::new();
                 stream.read_to_end(&mut response)?;
