@@ -483,6 +483,8 @@
 <span id="482">482</span>
 <span id="483">483</span>
 <span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
@@ -743,8 +745,8 @@
 <span class="kw">mod</span> <span class="ident">text</span>;
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">auth</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">interceptor</span>;
@@ -774,10 +776,10 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span> {
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">AsyncReadResponseExt</span>,
-        <span class="ident">ReadResponseExt</span>,
         <span class="ident">config</span>::<span class="ident">Configurable</span>,
+        <span class="ident">AsyncReadResponseExt</span>,
         <span class="ident">HttpClient</span>,
+        <span class="ident">ReadResponseExt</span>,
         <span class="ident">RequestExt</span>,
         <span class="ident">ResponseExt</span>,
     };
@@ -907,7 +909,7 @@
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
     <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
-    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>
+    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
 {
     <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
@@ -959,12 +961,14 @@
 <span class="doccomment">/// its dependencies.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">version</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
     <span class="kw">static</span> <span class="ident">FEATURES_STRING</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="macro">include_str</span><span class="macro">!</span>(<span class="macro">concat</span><span class="macro">!</span>(<span class="macro">env</span><span class="macro">!</span>(<span class="string">&quot;OUT_DIR&quot;</span>), <span class="string">&quot;/features.txt&quot;</span>));
-    <span class="kw">static</span> <span class="ident">VERSION_STRING</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(
-        <span class="string">&quot;isahc/{} (features:{}) {}&quot;</span>,
-        <span class="macro">env</span><span class="macro">!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>),
-        <span class="ident">FEATURES_STRING</span>,
-        <span class="ident">curl</span>::<span class="ident">Version</span>::<span class="ident">num</span>(),
-    ));
+    <span class="kw">static</span> <span class="ident">VERSION_STRING</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="macro">format</span><span class="macro">!</span>(
+            <span class="string">&quot;isahc/{} (features:{}) {}&quot;</span>,
+            <span class="macro">env</span><span class="macro">!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>),
+            <span class="ident">FEATURES_STRING</span>,
+            <span class="ident">curl</span>::<span class="ident">Version</span>::<span class="ident">num</span>(),
+        )
+    });
 
     <span class="kw-2">&amp;</span><span class="ident">VERSION_STRING</span>
 }

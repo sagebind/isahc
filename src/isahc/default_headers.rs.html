@@ -42,6 +42,8 @@
 <span id="41">41</span>
 <span id="42">42</span>
 <span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body</span>::<span class="ident">AsyncBody</span>,
@@ -58,7 +60,9 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DefaultHeadersInterceptor</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">headers</span> }
+        <span class="self">Self</span> {
+            <span class="ident">headers</span>,
+        }
     }
 }
 

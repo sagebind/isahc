@@ -335,6 +335,9 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">AsyncBody</span>;
 <span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future</span>::<span class="ident">yield_now</span>, <span class="ident">io</span>::<span class="ident">AsyncWriteExt</span>};
@@ -394,7 +397,7 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes_static</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>
+        <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="macro">match_type</span><span class="macro">!</span> {
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">bytes</span>)),
@@ -504,7 +507,10 @@
                     } <span class="kw">else</span> {
                         <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">pipe_reader</span>)
                     },
-                    <span class="prelude-val">Some</span>(<span class="ident">Writer</span> { <span class="ident">reader</span>, <span class="ident">writer</span> }),
+                    <span class="prelude-val">Some</span>(<span class="ident">Writer</span> {
+                        <span class="ident">reader</span>,
+                        <span class="ident">writer</span>,
+                    }),
                 )
             }
         }

@@ -263,7 +263,9 @@
                     <span class="comment">// specs don&#39;t really say one way or another when this should</span>
                     <span class="comment">// happen for most status codes, so we just mimic curl&#39;s</span>
                     <span class="comment">// behavior here since it is so common.</span>
-                    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">301</span> <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">302</span> <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">303</span>
+                    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">301</span>
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">302</span>
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">303</span>
                     {
                         <span class="ident">request_builder</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">method</span>(<span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">GET</span>);
                     }
@@ -289,12 +291,12 @@
 
                     <span class="comment">// Update the request to point to the new URI.</span>
                     <span class="ident">effective_uri</span> <span class="op">=</span> <span class="ident">location</span>.<span class="ident">clone</span>();
-                    <span class="ident">request</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">uri</span>(<span class="ident">location</span>)
+                    <span class="ident">request</span> <span class="op">=</span> <span class="ident">request_builder</span>
+                        .<span class="ident">uri</span>(<span class="ident">location</span>)
                         .<span class="ident">body</span>(<span class="ident">request_body</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">InvalidRequest</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
                     <span class="ident">redirect_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                 }
-
                 <span class="comment">// No more redirects; set the effective URI we finally settled on and return.</span>
                 <span class="kw">else</span> {
                     <span class="ident">response</span>
@@ -313,14 +315,12 @@
         <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">LOCATION</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">to_str</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;bad redirect location: {}&quot;</span>, <span class="ident">e</span>);
-                    }
+            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;bad redirect location: {}&quot;</span>, <span class="ident">e</span>);
                 }
-            }
+            },
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;bad redirect location: {}&quot;</span>, <span class="ident">e</span>);
             }

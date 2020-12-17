@@ -176,6 +176,9 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! HTTP client interceptor API.</span>
 <span class="doccomment">//!</span>
@@ -205,24 +208,15 @@
 <span class="doccomment">/// This module is only available when the</span>
 <span class="doccomment">/// [`unstable-interceptors`](../index.html#unstable-interceptors) feature is</span>
 <span class="doccomment">/// enabled.</span>
-
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">body</span>::<span class="ident">AsyncBody</span>;
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">error</span>::<span class="ident">Error</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">future</span>::<span class="ident">Future</span>,
-    <span class="ident">pin</span>::<span class="ident">Pin</span>,
-};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">error</span>::<span class="ident">Error</span>, <span class="ident">fmt</span>, <span class="ident">future</span>::<span class="ident">Future</span>, <span class="ident">pin</span>::<span class="ident">Pin</span>};
 
 <span class="kw">mod</span> <span class="ident">context</span>;
 <span class="kw">mod</span> <span class="ident">obj</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::<span class="ident">Context</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="self">self</span>::{
-    <span class="ident">context</span>::<span class="ident">Invoke</span>,
-    <span class="ident">obj</span>::<span class="ident">InterceptorObj</span>,
-};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="self">self</span>::{<span class="ident">context</span>::<span class="ident">Invoke</span>, <span class="ident">obj</span>::<span class="ident">InterceptorObj</span>};
 
 <span class="kw">type</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 
@@ -237,9 +231,7 @@
             <span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">request</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">http</span>::<span class="ident">Request</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">AsyncBody</span><span class="op">&gt;</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ctx</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">interceptor</span>::<span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
         ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">http</span>::<span class="ident">Response</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">AsyncBody</span><span class="op">&gt;</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">Error</span><span class="op">&gt;</span> {
-            (<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">async</span> <span class="kw">move</span> {
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span>
-            })().<span class="ident">await</span>.<span class="ident">map_err</span>(<span class="ident">Into</span>::<span class="ident">into</span>)
+            (<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">async</span> <span class="kw">move</span> { <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span> })().<span class="ident">await</span>.<span class="ident">map_err</span>(<span class="ident">Into</span>::<span class="ident">into</span>)
         }
 
         <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">interceptor</span>::<span class="ident">from_fn</span>(<span class="ident">interceptor</span>)
@@ -259,7 +251,11 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The returned future is allowed to borrow the interceptor for the</span>
     <span class="doccomment">/// duration of its execution.</span>
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
+        <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
+        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// The type of future returned by an interceptor.</span>
@@ -268,7 +264,10 @@
 <span class="doccomment">/// Creates an interceptor from an arbitrary closure or function.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_fn</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private</span>::<span class="ident">AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private</span>::<span class="ident">AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">Send</span>
+        <span class="op">+</span> <span class="ident">Sync</span>
+        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     <span class="ident">E</span>: <span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
     <span class="ident">InterceptorFn</span>(<span class="ident">f</span>)
@@ -281,11 +280,18 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Interceptor</span> <span class="kw">for</span> <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">E</span>: <span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private</span>::<span class="ident">AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private</span>::<span class="ident">AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span>
+        <span class="op">+</span> <span class="ident">Send</span>
+        <span class="op">+</span> <span class="ident">Sync</span>
+        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
 {
     <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">E</span>;
 
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
+        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span> {
         <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">call</span>(<span class="ident">request</span>, <span class="ident">ctx</span>))
     }
 }

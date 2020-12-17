@@ -36,17 +36,11 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">body</span>::<span class="ident">AsyncBody</span>, <span class="ident">error</span>::<span class="ident">Error</span>};
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>, <span class="ident">InterceptorObj</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">body</span>::<span class="ident">AsyncBody</span>, <span class="ident">error</span>::<span class="ident">Error</span>};
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fmt</span>,
-    <span class="ident">sync</span>::<span class="ident">Arc</span>,
-};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>};
 
 <span class="doccomment">/// Execution context for an interceptor.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {

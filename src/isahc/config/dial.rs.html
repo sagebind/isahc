@@ -225,11 +225,6 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Configuration for customizing how connections are established and sockets</span>
 <span class="doccomment">//! are opened.</span>
@@ -237,12 +232,7 @@
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">SetOpt</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">Easy2</span>, <span class="ident">List</span>};
 <span class="kw">use</span> <span class="ident">http</span>::<span class="ident">Uri</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::<span class="ident">TryFrom</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">net</span>::<span class="ident">SocketAddr</span>,
-    <span class="ident">str</span>::<span class="ident">FromStr</span>,
-};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert</span>::<span class="ident">TryFrom</span>, <span class="ident">fmt</span>, <span class="ident">net</span>::<span class="ident">SocketAddr</span>, <span class="ident">str</span>::<span class="ident">FromStr</span>};
 
 <span class="doccomment">/// An error which can be returned when parsing a dial address.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>

@@ -221,12 +221,16 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types for working with HTTP authentication methods.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">internal</span>::<span class="ident">SetOpt</span>, <span class="ident">proxy</span>::<span class="ident">Proxy</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::{<span class="ident">BitOr</span>, <span class="ident">BitOrAssign</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">fmt</span>,
+    <span class="ident">ops</span>::{<span class="ident">BitOr</span>, <span class="ident">BitOrAssign</span>},
+};
 
 <span class="doccomment">/// Credentials consisting of a username and a secret (password) that can be</span>
 <span class="doccomment">/// used to establish user identity.</span>

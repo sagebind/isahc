@@ -180,7 +180,6 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
-<span id="182">182</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Text decoding routines.</span>
 
@@ -266,7 +265,8 @@
 
     <span class="doccomment">/// Create a new encoder suitable for decoding the given response.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">for_response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">content_type</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">content_type</span>()
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">content_type</span>) <span class="op">=</span> <span class="ident">response</span>
+            .<span class="ident">content_type</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> <span class="ident">header</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">mime</span>::<span class="ident">Mime</span><span class="op">&gt;</span>().<span class="ident">ok</span>())
         {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">charset</span>) <span class="op">=</span> <span class="ident">content_type</span>.<span class="ident">get_param</span>(<span class="ident">mime</span>::<span class="ident">CHARSET</span>) {
@@ -294,9 +294,7 @@
         <span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span> <span class="op">+</span> <span class="lifetime">&#39;r</span>,
     {
         <span class="ident">TextFuture</span> {
-            <span class="ident">inner</span>: <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> {
-                <span class="macro">decode_reader</span><span class="macro">!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="ident">await</span>)
-            }),
+            <span class="ident">inner</span>: <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> { <span class="macro">decode_reader</span><span class="macro">!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="ident">await</span>) }),
             <span class="ident">_phantom</span>: <span class="ident">PhantomData</span>,
         }
     }
