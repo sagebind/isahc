@@ -3,8 +3,8 @@
 use crate::{
     body::AsyncBody,
     error::{Error, ErrorKind},
-    metrics::Metrics,
     parsing::{parse_header, parse_status_line},
+    metrics::Metrics,
     response::{LocalAddr, RemoteAddr},
 };
 use crossbeam_utils::atomic::AtomicCell;
@@ -148,19 +148,14 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver
-                .recv_async()
-                .await
-                .map_err(|e| Error::new(ErrorKind::Unknown, e))??;
+            let builder = receiver.recv_async().await.map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
                 shared,
             };
 
-            builder
-                .body(reader)
-                .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
+            builder.body(reader).map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
         (handler, future)
@@ -512,9 +507,7 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::warn!(
-                            "failed to write response body because the response reader was dropped"
-                        );
+                        tracing::warn!("failed to write response body because the response reader was dropped");
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
                     }
@@ -667,7 +660,7 @@ impl AsyncRead for ResponseBodyReader {
 
                 // The transfer did not finish properly at all, so return an error.
                 None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),
-            },
+            }
             poll => poll,
         }
     }

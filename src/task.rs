@@ -35,9 +35,7 @@ impl UdpWaker {
         let socket = UdpSocket::bind("127.0.0.1:0")?;
         socket.connect(addr)?;
 
-        Ok(Self {
-            socket,
-        })
+        Ok(Self { socket })
     }
 }
 

@@ -1,4 +1,7 @@
-use crate::{metrics::Metrics, redirect::EffectiveUri};
+use crate::{
+    metrics::Metrics,
+    redirect::EffectiveUri,
+};
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{

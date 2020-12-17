@@ -4,7 +4,12 @@
 use super::SetOpt;
 use curl::easy::{Easy2, List};
 use http::Uri;
-use std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
+use std::{
+    convert::TryFrom,
+    fmt,
+    net::SocketAddr,
+    str::FromStr,
+};
 
 /// An error which can be returned when parsing a dial address.
 #[derive(Clone, Debug, Eq, PartialEq)]

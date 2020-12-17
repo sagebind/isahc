@@ -4,10 +4,8 @@ use crate::{
     agent::{self, AgentBuilder},
     auth::{Authentication, Credentials},
     body::{AsyncBody, Body},
-    config::{
-        internal::{ConfigurableBase, SetOpt},
-        *,
-    },
+    config::internal::{ConfigurableBase, SetOpt},
+    config::*,
     default_headers::DefaultHeadersInterceptor,
     error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
@@ -21,8 +19,7 @@ use futures_lite::{
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request,
-    Response,
+    Request, Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -923,28 +920,27 @@ impl HttpClient {
             async_body
         });
 
-        let response = block_on(
-            async move {
-                // Instead of simply blocking the current thread until the response
-                // is received, we can use the current thread to read from the
-                // request body synchronously while concurrently waiting for the
-                // response.
-                if let Some(mut writer) = writer_maybe {
-                    // Note that the `send_async` future is given first; this
-                    // ensures that it is polled first and thus the request is
-                    // initiated before we attempt to write the request body.
-                    let (response, _) = try_zip(self.send_async_inner(request), async move {
+        let response = block_on(async move {
+            // Instead of simply blocking the current thread until the response
+            // is received, we can use the current thread to read from the
+            // request body synchronously while concurrently waiting for the
+            // response.
+            if let Some(mut writer) = writer_maybe {
+                // Note that the `send_async` future is given first; this
+                // ensures that it is polled first and thus the request is
+                // initiated before we attempt to write the request body.
+                let (response, _) = try_zip(
+                    self.send_async_inner(request),
+                    async move {
                         writer.write().await.map_err(Error::from)
-                    })
-                    .await?;
+                    },
+                ).await?;
 
-                    Ok(response)
-                } else {
-                    self.send_async_inner(request).await
-                }
+                Ok(response)
+            } else {
+                self.send_async_inner(request).await
             }
-            .instrument(span),
-        )?;
+        }.instrument(span))?;
 
         Ok(response.map(|body| body.into_sync()))
     }
@@ -983,17 +979,11 @@ impl HttpClient {
             uri = ?request.uri(),
         );
 
-        ResponseFuture::new(
-            self.send_async_inner(request.map(Into::into))
-                .instrument(span),
-        )
+        ResponseFuture::new(self.send_async_inner(request.map(Into::into)).instrument(span))
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(
-        &self,
-        mut request: Request<AsyncBody>,
-    ) -> Result<Response<AsyncBody>, Error> {
+    async fn send_async_inner(&self, mut request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         // Set redirect policy if not specified.
         if request.extensions().get::<RedirectPolicy>().is_none() {
             if let Some(policy) = self.inner.defaults.get::<RedirectPolicy>().cloned() {
@@ -1171,9 +1161,7 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // Check if automatic decompression is enabled; we'll need to know
             // this later after the response is sent.
-            let is_automatic_decompression = request
-                .extensions()
-                .get()
+            let is_automatic_decompression = request.extensions().get()
                 .or_else(|| self.inner.defaults.get())
                 .map(|AutomaticDecompression(enabled)| *enabled)
                 .unwrap_or(false);
@@ -1234,7 +1222,9 @@ impl fmt::Debug for HttpClient {
 
 /// A future for a request being executed.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>);
+pub struct ResponseFuture<'c>(
+    Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>,
+);
 
 impl<'c> ResponseFuture<'c> {
     fn new<F>(future: F) -> Self
@@ -1245,7 +1235,9 @@ impl<'c> ResponseFuture<'c> {
     }
 
     fn error(error: Error) -> Self {
-        Self::new(async move { Err(error) })
+        Self::new(async move {
+            Err(error)
+        })
     }
 }
 

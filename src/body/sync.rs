@@ -56,7 +56,7 @@ impl Body {
     #[inline]
     pub fn from_bytes_static<B>(bytes: B) -> Self
     where
-        B: AsRef<[u8]> + 'static,
+        B: AsRef<[u8]> + 'static
     {
         match_type! {
             <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
@@ -166,10 +166,7 @@ impl Body {
                     } else {
                         AsyncBody::from_reader(pipe_reader)
                     },
-                    Some(Writer {
-                        reader,
-                        writer,
-                    }),
+                    Some(Writer { reader, writer }),
                 )
             }
         }

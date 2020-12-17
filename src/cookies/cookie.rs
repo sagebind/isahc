@@ -1,5 +1,9 @@
 use chrono::{prelude::*, Duration};
-use std::{error::Error, fmt, str};
+use std::{
+    error::Error,
+    fmt,
+    str,
+};
 
 /// An error which can occur when attempting to parse a cookie string.
 #[derive(Debug)]
@@ -242,10 +246,12 @@ fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
 
 // https://tools.ietf.org/html/rfc6265#section-4.1.1
 fn is_valid_cookie_value(bytes: &[u8]) -> bool {
-    bytes.iter().all(|&byte| match byte {
-        0x21 | 0x23..=0x2B | 0x2D..=0x3A | 0x3C..=0x5B | 0x5D..=0x7E => true,
-        _ => false,
-    })
+    bytes
+        .iter()
+        .all(|&byte| match byte {
+            0x21 | 0x23..=0x2B | 0x2D..=0x3A | 0x3C..=0x5B | 0x5D..=0x7E => true,
+            _ => false,
+        })
 }
 
 // https://tools.ietf.org/html/rfc2616#section-2.2
