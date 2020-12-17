@@ -5,13 +5,25 @@ on:
 
 jobs:
   rustfmt:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/rustfmt')
+    if: >
+      github.event.comment.body == '@teto-bot rustfmt'
+        && github.event.issue.pull_request
+        && (github.event.comment.author_association == 'OWNER'
+          || github.event.comment.author_association == 'COLLABORATOR'
+          || github.event.comment.user.id == github.event.issue.user.id)
     runs-on: ubuntu-latest
     steps:
-      - uses: xt0rted/slash-command-action@v1
+      - name: Acknowledge command with reaction
+        uses: actions/github-script@v3
         with:
-          repo-token: ${{ secrets.GH_PAT }}
-          command: rustfmt
+          github-token: ${{ secrets.GH_PAT }}
+          script: |
+            github.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '+1'
+            })
 
       - id: comment-branch
         uses: xt0rted/pull-request-comment-branch@v1
