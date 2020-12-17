@@ -82,7 +82,8 @@ impl Decoder {
 
     /// Create a new encoder suitable for decoding the given response.
     pub(crate) fn for_response<T>(response: &Response<T>) -> Self {
-        if let Some(content_type) = response.content_type()
+        if let Some(content_type) = response
+            .content_type()
             .and_then(|header| header.parse::<mime::Mime>().ok())
         {
             if let Some(charset) = content_type.get_param(mime::CHARSET) {
@@ -110,9 +111,7 @@ impl Decoder {
         R: AsyncRead + Unpin + 'r,
     {
         TextFuture {
-            inner: Box::pin(async move {
-                decode_reader!(self, buf, reader.read(buf).await)
-            }),
+            inner: Box::pin(async move { decode_reader!(self, buf, reader.read(buf).await) }),
             _phantom: PhantomData,
         }
     }

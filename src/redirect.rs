@@ -88,7 +88,9 @@ impl Interceptor for RedirectInterceptor {
                     // specs don't really say one way or another when this should
                     // happen for most status codes, so we just mimic curl's
                     // behavior here since it is so common.
-                    if response.status() == 301 || response.status() == 302 || response.status() == 303
+                    if response.status() == 301
+                        || response.status() == 302
+                        || response.status() == 303
                     {
                         request_builder = request_builder.method(http::Method::GET);
                     }
@@ -114,12 +116,12 @@ impl Interceptor for RedirectInterceptor {
 
                     // Update the request to point to the new URI.
                     effective_uri = location.clone();
-                    request = request_builder.uri(location)
+                    request = request_builder
+                        .uri(location)
                         .body(request_body)
                         .map_err(|e| Error::new(ErrorKind::InvalidRequest, e))?;
                     redirect_count += 1;
                 }
-
                 // No more redirects; set the effective URI we finally settled on and return.
                 else {
                     response
@@ -138,14 +140,12 @@ fn get_redirect_location<T>(request_uri: &Uri, response: &Response<T>) -> Option
         let location = response.headers().get(http::header::LOCATION)?;
 
         match location.to_str() {
-            Ok(location) => {
-                match resolve(request_uri, location) {
-                    Ok(uri) => return Some(uri),
-                    Err(e) => {
-                        tracing::debug!("bad redirect location: {}", e);
-                    }
+            Ok(location) => match resolve(request_uri, location) {
+                Ok(uri) => return Some(uri),
+                Err(e) => {
+                    tracing::debug!("bad redirect location: {}", e);
                 }
-            }
+            },
             Err(e) => {
                 tracing::debug!("bad redirect location: {}", e);
             }
