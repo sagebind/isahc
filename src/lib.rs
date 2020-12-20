@@ -228,9 +228,9 @@
     unused,
     clippy::all
 )]
-// This lint produces a lot of false positives. See
-// https://github.com/rust-lang/rust-clippy/issues/3900.
-#![allow(clippy::cognitive_complexity)]
+
+// This lint suggests to use a feature not available in our MSRV.
+#![allow(clippy::match_like_matches_macro)]
 
 use http::{Request, Response};
 use once_cell::sync::Lazy;

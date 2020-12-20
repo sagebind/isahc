@@ -120,8 +120,8 @@ impl FromStr for Dialer {
     type Err = DialerParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.starts_with("tcp:") {
-            let addr_str = s[4..].trim_start_matches("/");
+        if let Some(addr_str) = s.strip_prefix("tcp:") {
+            let addr_str = addr_str.trim_start_matches('/');
 
             return addr_str
                 .parse::<SocketAddr>()
@@ -131,10 +131,10 @@ impl FromStr for Dialer {
 
         #[cfg(unix)]
         {
-            if s.starts_with("unix:") {
+            if let Some(path_part) = s.strip_prefix("unix:") {
                 // URI paths are always absolute.
                 let mut path = std::path::PathBuf::from("/");
-                path.push(&s[5..].trim_start_matches("/"));
+                path.push(path_part.trim_start_matches('/'));
 
                 return Ok(Self(Inner::UnixSocket(path)));
             }
