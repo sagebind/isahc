@@ -716,9 +716,9 @@
     <span class="ident">unused</span>,
     <span class="ident">clippy</span>::<span class="ident">all</span>
 )]</span>
-<span class="comment">// This lint produces a lot of false positives. See</span>
-<span class="comment">// https://github.com/rust-lang/rust-clippy/issues/3900.</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">cognitive_complexity</span>)]</span>
+
+<span class="comment">// These lints suggest to use features not available in our MSRV.</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">manual_strip</span>, <span class="ident">clippy</span>::<span class="ident">match_like_matches_macro</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">once_cell</span>::<span class="ident">sync</span>::<span class="ident">Lazy</span>;
