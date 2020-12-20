@@ -50,6 +50,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
+          components: clippy
           default: true
 
       - name: Check Clippy lints
