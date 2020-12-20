@@ -4,6 +4,9 @@ on:
     branches: [master]
   pull_request:
 
+env:
+  FEATURES: cookies,psl
+
 jobs:
   test:
     strategy:
@@ -32,7 +35,7 @@ jobs:
           toolchain: "1.41.1"
           default: true
 
-      - run: cargo test --features cookies,psl,spnego,unstable-interceptors
+      - run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
 
       - run: cargo run --release --example simple
 
@@ -47,13 +50,20 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
+          components: clippy
           default: true
+
+      - name: Check Clippy lints
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Generate code coverage report
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: '0.16.0'
-          args: "-p isahc --run-types Doctests Tests --features cookies,psl"
+          args: "-p isahc --run-types Doctests Tests --features ${{ env.FEATURES }}"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

@@ -30,7 +30,7 @@ use std::error::Error;
 static TTL: Lazy<Duration> = Lazy::new(|| Duration::hours(24));
 
 /// Global in-memory PSL cache.
-static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(|| Default::default());
+static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
 
 struct ListCache {
     list: List,
