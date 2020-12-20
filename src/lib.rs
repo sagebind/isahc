@@ -229,8 +229,8 @@
     clippy::all
 )]
 
-// This lint suggests to use a feature not available in our MSRV.
-#![allow(clippy::match_like_matches_macro)]
+// These lints suggest to use features not available in our MSRV.
+#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
 
 use http::{Request, Response};
 use once_cell::sync::Lazy;
