@@ -479,12 +479,6 @@
 <span id="478">478</span>
 <span id="479">479</span>
 <span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
@@ -539,7 +533,7 @@
 <span class="doccomment">//! [`send`][RequestExt::send]:</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! use isahc::prelude::*;</span>
+<span class="doccomment">//! use isahc::{prelude::*, Request};</span>
 <span class="doccomment">//! use std::time::Duration;</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! let response = Request::post(&quot;https://httpbin.org/post&quot;)</span>
@@ -716,11 +710,9 @@
     <span class="ident">unused</span>,
     <span class="ident">clippy</span>::<span class="ident">all</span>
 )]</span>
-
 <span class="comment">// These lints suggest to use features not available in our MSRV.</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">manual_strip</span>, <span class="ident">clippy</span>::<span class="ident">match_like_matches_macro</span>)]</span>
 
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">once_cell</span>::<span class="ident">sync</span>::<span class="ident">Lazy</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
 
@@ -758,17 +750,22 @@
     <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">client</span>::{<span class="ident">HttpClient</span>, <span class="ident">HttpClientBuilder</span>, <span class="ident">ResponseFuture</span>},
     <span class="ident">error</span>::<span class="ident">Error</span>,
+    <span class="ident">http</span>::{<span class="ident">request</span>::<span class="ident">Request</span>, <span class="ident">response</span>::<span class="ident">Response</span>},
     <span class="ident">metrics</span>::<span class="ident">Metrics</span>,
     <span class="ident">request</span>::<span class="ident">RequestExt</span>,
     <span class="ident">response</span>::{<span class="ident">AsyncReadResponseExt</span>, <span class="ident">ReadResponseExt</span>, <span class="ident">ResponseExt</span>},
 };
 
-<span class="doccomment">/// Re-export of the standard HTTP types.</span>
+<span class="doccomment">/// Re-export of HTTP types.</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">http</span>;
 
-<span class="doccomment">/// A &quot;prelude&quot; for importing common Isahc types.</span>
+<span class="doccomment">/// A &quot;prelude&quot; for importing commonly used Isahc types and traits.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The prelude re-exports most commonly used traits and macros from this crate.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Import the prelude with:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// use isahc::prelude::*;</span>
@@ -778,14 +775,10 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
         <span class="ident">config</span>::<span class="ident">Configurable</span>,
         <span class="ident">AsyncReadResponseExt</span>,
-        <span class="ident">HttpClient</span>,
         <span class="ident">ReadResponseExt</span>,
         <span class="ident">RequestExt</span>,
         <span class="ident">ResponseExt</span>,
     };
-
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
 }
 
 <span class="doccomment">/// Send a GET request to the given URI.</span>
@@ -858,26 +851,21 @@
 <span class="doccomment">/// # Examples</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```no_run</span>
+<span class="doccomment">/// # async fn run() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {</span>
 <span class="doccomment">/// use isahc::prelude::*;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// async fn run() {</span>
-<span class="doccomment">///     use futures_lite::AsyncReadExt;</span>
-<span class="doccomment">///     let client = HttpClient::new().unwrap();</span>
+<span class="doccomment">/// let mut response = isahc::post_async(&quot;https://httpbin.org/post&quot;, r#&quot;{</span>
+<span class="doccomment">///     &quot;speed&quot;: &quot;fast&quot;,</span>
+<span class="doccomment">///     &quot;cool_name&quot;: true</span>
+<span class="doccomment">/// }&quot;#).await?;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///     let mut response = client.post_async(&quot;https://httpbin.org/post&quot;, r#&quot;{</span>
-<span class="doccomment">///         &quot;speed&quot;: &quot;fast&quot;,</span>
-<span class="doccomment">///         &quot;cool_name&quot;: true</span>
-<span class="doccomment">///     }&quot;#).await.unwrap();</span>
+<span class="doccomment">/// let mut body: Vec&lt;u8&gt; = vec![];</span>
+<span class="doccomment">/// response.copy_to(&amp;mut body).await?;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///     let mut body: Vec&lt;u8&gt; = vec![];</span>
-<span class="doccomment">///     let mut reader = futures_lite::io::BufReader::new(response.body_mut());</span>
-<span class="doccomment">///     reader.read_to_end(&amp;mut body).await.unwrap();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     let msg: serde_json::Value = serde_json::from_slice(&amp;body).unwrap();</span>
-<span class="doccomment">///     println!(&quot;{}&quot;, msg);</span>
-<span class="doccomment">/// }</span>
+<span class="doccomment">/// let msg: serde_json::Value = serde_json::from_slice(&amp;body)?;</span>
+<span class="doccomment">/// println!(&quot;{}&quot;, msg);</span>
+<span class="doccomment">/// # Ok(()) }</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,

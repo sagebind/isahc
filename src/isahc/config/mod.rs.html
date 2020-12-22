@@ -905,6 +905,21 @@
 <span id="904">904</span>
 <span id="905">905</span>
 <span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
@@ -924,7 +939,7 @@
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">internal</span>::<span class="ident">SetOpt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>};
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">iter</span>::<span class="ident">FromIterator</span>, <span class="ident">net</span>::<span class="ident">IpAddr</span>, <span class="ident">time</span>::<span class="ident">Duration</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net</span>::<span class="ident">IpAddr</span>, <span class="ident">time</span>::<span class="ident">Duration</span>};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">dial</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">dns</span>;
@@ -970,7 +985,7 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, Request};</span>
     <span class="doccomment">/// use std::time::Duration;</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// // This page is too slow and won&#39;t respond in time.</span>
@@ -1000,8 +1015,12 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::config::VersionNegotiation;</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{</span>
+    <span class="doccomment">///     config::VersionNegotiation,</span>
+    <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     HttpClient,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// // Never use anything newer than HTTP/1.x for this client.</span>
     <span class="doccomment">/// let http11_client = HttpClient::builder()</span>
     <span class="doccomment">///     .version_negotiation(VersionNegotiation::http11())</span>
@@ -1024,8 +1043,7 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::config::RedirectPolicy;</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{config::RedirectPolicy, prelude::*, Request};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// // This URL redirects us to where we want to go.</span>
     <span class="doccomment">/// let response = Request::get(&quot;https://httpbin.org/redirect/1&quot;)</span>
@@ -1094,9 +1112,12 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::auth::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{</span>
+    <span class="doccomment">///     auth::{Authentication, Credentials},</span>
+    <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     HttpClient,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .authentication(Authentication::basic() | Authentication::digest())</span>
     <span class="doccomment">///     .credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))</span>
@@ -1135,6 +1156,8 @@
     <span class="doccomment">/// use isahc::{</span>
     <span class="doccomment">///     prelude::*,</span>
     <span class="doccomment">///     config::NetworkInterface,</span>
+    <span class="doccomment">///     HttpClient,</span>
+    <span class="doccomment">///     Request,</span>
     <span class="doccomment">/// };</span>
     <span class="doccomment">/// use std::net::IpAddr;</span>
     <span class="doccomment">///</span>
@@ -1182,6 +1205,7 @@
     <span class="doccomment">/// use isahc::{</span>
     <span class="doccomment">///     config::Dialer,</span>
     <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     Request,</span>
     <span class="doccomment">/// };</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # #[cfg(unix)]</span>
@@ -1197,6 +1221,7 @@
     <span class="doccomment">/// use isahc::{</span>
     <span class="doccomment">///     config::Dialer,</span>
     <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     Request,</span>
     <span class="doccomment">/// };</span>
     <span class="doccomment">/// use std::net::Ipv4Addr;</span>
     <span class="doccomment">///</span>
@@ -1233,9 +1258,8 @@
     <span class="doccomment">/// Using `http://proxy:80` as a proxy:</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::auth::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .proxy(Some(&quot;http://proxy:80&quot;.parse()?))</span>
     <span class="doccomment">///     .build()?;</span>
@@ -1245,8 +1269,8 @@
     <span class="doccomment">/// Explicitly disable the use of a proxy:</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .proxy(None)</span>
     <span class="doccomment">///     .build()?;</span>
@@ -1261,8 +1285,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     // Disable proxy for specified hosts.</span>
     <span class="doccomment">///     .proxy_blacklist(vec![&quot;a.com&quot;, &quot;b.org&quot;])</span>
@@ -1274,7 +1298,7 @@
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">proxy</span>::<span class="ident">Blacklist</span>::<span class="ident">from_iter</span>(<span class="ident">hosts</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>)))
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">hosts</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">proxy</span>::<span class="ident">Blacklist</span><span class="op">&gt;</span>())
     }
 
     <span class="doccomment">/// Set one or more HTTP authentication methods to attempt to use when</span>
@@ -1287,9 +1311,12 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::auth::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{</span>
+    <span class="doccomment">///     auth::{Authentication, Credentials},</span>
+    <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     HttpClient,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .proxy(&quot;http://proxy:80&quot;.parse::&lt;http::Uri&gt;()?)</span>
     <span class="doccomment">///     .proxy_authentication(Authentication::basic())</span>
@@ -1335,8 +1362,11 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::config::{ClientCertificate, PrivateKey};</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{</span>
+    <span class="doccomment">///     config::{ClientCertificate, PrivateKey},</span>
+    <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     Request,</span>
+    <span class="doccomment">/// };</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let response = Request::get(&quot;localhost:3999&quot;)</span>
     <span class="doccomment">///     .ssl_client_certificate(ClientCertificate::pem_file(</span>
@@ -1349,9 +1379,12 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{</span>
+    <span class="doccomment">///     config::{ClientCertificate, PrivateKey},</span>
+    <span class="doccomment">///     prelude::*,</span>
+    <span class="doccomment">///     HttpClient,</span>
+    <span class="doccomment">/// };</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .ssl_client_certificate(ClientCertificate::pem_file(</span>
     <span class="doccomment">///         &quot;client.pem&quot;,</span>
@@ -1378,9 +1411,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{config::CaCertificate, prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .ssl_ca_certificate(CaCertificate::file(&quot;ca.pem&quot;))</span>
     <span class="doccomment">///     .build()?;</span>
@@ -1402,7 +1434,7 @@
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     {
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ssl</span>::<span class="ident">Ciphers</span>::<span class="ident">from_iter</span>(<span class="ident">ciphers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>)))
+        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">ciphers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T</span>::<span class="ident">into</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">ssl</span>::<span class="ident">Ciphers</span><span class="op">&gt;</span>())
     }
 
     <span class="doccomment">/// Set various options for this request that control SSL/TLS behavior.</span>
@@ -1422,9 +1454,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{config::SslOption, prelude::*, Request};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let response = Request::get(&quot;https://badssl.com&quot;)</span>
     <span class="doccomment">///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)</span>
     <span class="doccomment">///     .body(())?</span>
@@ -1433,9 +1464,8 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{config::SslOption, prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)</span>
     <span class="doccomment">///     .build()?;</span>

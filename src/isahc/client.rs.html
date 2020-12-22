@@ -1342,6 +1342,29 @@
 <span id="1341">1341</span>
 <span id="1342">1342</span>
 <span id="1343">1343</span>
+<span id="1344">1344</span>
+<span id="1345">1345</span>
+<span id="1346">1346</span>
+<span id="1347">1347</span>
+<span id="1348">1348</span>
+<span id="1349">1349</span>
+<span id="1350">1350</span>
+<span id="1351">1351</span>
+<span id="1352">1352</span>
+<span id="1353">1353</span>
+<span id="1354">1354</span>
+<span id="1355">1355</span>
+<span id="1356">1356</span>
+<span id="1357">1357</span>
+<span id="1358">1358</span>
+<span id="1359">1359</span>
+<span id="1360">1360</span>
+<span id="1361">1361</span>
+<span id="1362">1362</span>
+<span id="1363">1363</span>
+<span id="1364">1364</span>
+<span id="1365">1365</span>
+<span id="1366">1366</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1401,8 +1424,11 @@
 <span class="doccomment">/// # Examples</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">/// use isahc::config::{RedirectPolicy, VersionNegotiation};</span>
-<span class="doccomment">/// use isahc::prelude::*;</span>
+<span class="doccomment">/// use isahc::{</span>
+<span class="doccomment">///     config::{RedirectPolicy, VersionNegotiation},</span>
+<span class="doccomment">///     prelude::*,</span>
+<span class="doccomment">///     HttpClient,</span>
+<span class="doccomment">/// };</span>
 <span class="doccomment">/// use std::time::Duration;</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// let client = HttpClient::builder()</span>
@@ -1471,8 +1497,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// // Create a client with a cookie jar.</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .cookies()</span>
@@ -1612,10 +1638,9 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::*;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// # use std::time::Duration;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{config::*, prelude::*, HttpClient};</span>
+    <span class="doccomment">/// use std::time::Duration;</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     // Cache entries for 10 seconds.</span>
     <span class="doccomment">///     .dns_cache(Duration::from_secs(10))</span>
@@ -1645,10 +1670,9 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::ResolveMap;</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// # use std::net::IpAddr;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{config::ResolveMap, prelude::*, HttpClient};</span>
+    <span class="doccomment">/// use std::net::IpAddr;</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .dns_resolve(ResolveMap::new()</span>
     <span class="doccomment">///         // Send requests for example.org on port 80 to 127.0.0.1.</span>
@@ -1678,8 +1702,8 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .default_header(&quot;some-header&quot;, &quot;some-value&quot;)</span>
     <span class="doccomment">///     .build()?;</span>
@@ -1722,8 +1746,8 @@
     <span class="doccomment">/// Set default headers from a slice:</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let mut builder = HttpClient::builder()</span>
     <span class="doccomment">///     .default_headers(&amp;[</span>
     <span class="doccomment">///         (&quot;some-header&quot;, &quot;value1&quot;),</span>
@@ -1737,8 +1761,8 @@
     <span class="doccomment">/// Using an existing header map:</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let mut headers = http::HeaderMap::new();</span>
     <span class="doccomment">/// headers.append(&quot;some-header&quot;.parse::&lt;http::header::HeaderName&gt;()?, &quot;some-value&quot;.parse()?);</span>
     <span class="doccomment">///</span>
@@ -1751,9 +1775,9 @@
     <span class="doccomment">/// Using a hashmap:</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// # use std::collections::HashMap;</span>
-    <span class="doccomment">/// #</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">/// use std::collections::HashMap;</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// let mut headers = HashMap::new();</span>
     <span class="doccomment">/// headers.insert(&quot;some-header&quot;, &quot;some-value&quot;);</span>
     <span class="doccomment">///</span>
@@ -1901,7 +1925,7 @@
 <span class="doccomment">/// # Examples</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```no_run</span>
-<span class="doccomment">/// use isahc::prelude::*;</span>
+<span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// // Create a new client using reasonable defaults.</span>
 <span class="doccomment">/// let client = HttpClient::new()?;</span>
@@ -1920,6 +1944,7 @@
 <span class="doccomment">/// use isahc::{</span>
 <span class="doccomment">///     config::{RedirectPolicy, VersionNegotiation},</span>
 <span class="doccomment">///     prelude::*,</span>
+<span class="doccomment">///     HttpClient,</span>
 <span class="doccomment">/// };</span>
 <span class="doccomment">/// use std::time::Duration;</span>
 <span class="doccomment">///</span>
@@ -2001,9 +2026,9 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// # let client = HttpClient::new()?;</span>
+    <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">/// let mut response = client.get(&quot;https://example.org&quot;)?;</span>
     <span class="doccomment">/// println!(&quot;{}&quot;, response.text()?);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
@@ -2043,8 +2068,9 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// # use isahc::prelude::*;</span>
-    <span class="doccomment">/// # let client = HttpClient::new()?;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">/// let response = client.head(&quot;https://example.org&quot;)?;</span>
     <span class="doccomment">/// println!(&quot;Page size: {:?}&quot;, response.headers()[&quot;content-length&quot;]);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
@@ -2084,7 +2110,7 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">///</span>
@@ -2131,7 +2157,7 @@
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">///</span>
@@ -2204,38 +2230,35 @@
 
     <span class="doccomment">/// Send an HTTP request and return the HTTP response.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// The response body is provided as a stream that may only be consumed</span>
-    <span class="doccomment">/// once.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This client&#39;s configuration can be overridden for this request by</span>
-    <span class="doccomment">/// configuring the request using methods provided by the [`Configurable`]</span>
-    <span class="doccomment">/// trait.</span>
-    <span class="doccomment">///</span>
     <span class="doccomment">/// Upon success, will return a [`Response`] containing the status code,</span>
     <span class="doccomment">/// response headers, and response body from the server. The [`Response`] is</span>
     <span class="doccomment">/// returned as soon as the HTTP response headers are received; the</span>
     <span class="doccomment">/// connection will remain open to stream the response body in real time.</span>
-    <span class="doccomment">/// Dropping the response body without fully consume it will close the</span>
+    <span class="doccomment">/// Dropping the response body without fully consuming it will close the</span>
     <span class="doccomment">/// connection early without downloading the rest of the response body.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// _Note that the actual underlying socket connection isn&#39;t necessarily</span>
-    <span class="doccomment">/// closed on drop. It may remain open to be reused if pipelining is being</span>
-    <span class="doccomment">/// used, the connection is configured as `keep-alive`, and so on._</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Since the response body is streamed from the server, it may only be</span>
-    <span class="doccomment">/// consumed once. If you need to inspect the response body more than once,</span>
-    <span class="doccomment">/// you will have to either read it into memory or write it to a file.</span>
+    <span class="doccomment">/// The response body is provided as a stream that may only be consumed</span>
+    <span class="doccomment">/// once. If you need to inspect the response body more than once, you will</span>
+    <span class="doccomment">/// have to either read it into memory or write it to a file.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The response body is not a direct stream from the server, but uses its</span>
     <span class="doccomment">/// own buffering mechanisms internally for performance. It is therefore</span>
     <span class="doccomment">/// undesirable to wrap the body in additional buffering readers.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// To execute the request asynchronously, see [`HttpClient::send_async`].</span>
+    <span class="doccomment">/// _Note that the actual underlying socket connection isn&#39;t necessarily</span>
+    <span class="doccomment">/// closed on drop. It may remain open to be reused if pipelining is being</span>
+    <span class="doccomment">/// used, the connection is configured as `keep-alive`, and so on._</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This client&#39;s configuration can be overridden for this request by</span>
+    <span class="doccomment">/// configuring the request using methods provided by the [`Configurable`]</span>
+    <span class="doccomment">/// trait.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// To execute a request asynchronously, see [`HttpClient::send_async`].</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient, Request};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">///</span>
@@ -2296,13 +2319,36 @@
 
     <span class="doccomment">/// Send an HTTP request and return the HTTP response asynchronously.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// See [`HttpClient::send`] for further details.</span>
+    <span class="doccomment">/// Upon success, will return a [`Response`] containing the status code,</span>
+    <span class="doccomment">/// response headers, and response body from the server. The [`Response`] is</span>
+    <span class="doccomment">/// returned as soon as the HTTP response headers are received; the</span>
+    <span class="doccomment">/// connection will remain open to stream the response body in real time.</span>
+    <span class="doccomment">/// Dropping the response body without fully consuming it will close the</span>
+    <span class="doccomment">/// connection early without downloading the rest of the response body.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The response body is provided as a stream that may only be consumed</span>
+    <span class="doccomment">/// once. If you need to inspect the response body more than once, you will</span>
+    <span class="doccomment">/// have to either read it into memory or write it to a file.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The response body is not a direct stream from the server, but uses its</span>
+    <span class="doccomment">/// own buffering mechanisms internally for performance. It is therefore</span>
+    <span class="doccomment">/// undesirable to wrap the body in additional buffering readers.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// _Note that the actual underlying socket connection isn&#39;t necessarily</span>
+    <span class="doccomment">/// closed on drop. It may remain open to be reused if pipelining is being</span>
+    <span class="doccomment">/// used, the connection is configured as `keep-alive`, and so on._</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This client&#39;s configuration can be overridden for this request by</span>
+    <span class="doccomment">/// configuring the request using methods provided by the [`Configurable`]</span>
+    <span class="doccomment">/// trait.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// To execute a request synchronously, see [`HttpClient::send`].</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```no_run</span>
     <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
+    <span class="doccomment">/// use isahc::{prelude::*, HttpClient, Request};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let client = HttpClient::new()?;</span>
     <span class="doccomment">///</span>
@@ -2503,10 +2549,10 @@
 }
 
 <span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
-    <span class="kw">fn</span> <span class="ident">invoke</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
+    <span class="kw">fn</span> <span class="ident">invoke</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> {
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
