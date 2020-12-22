@@ -62,7 +62,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, Request};
     /// use std::time::Duration;
     ///
     /// // This page is too slow and won't respond in time.
@@ -92,8 +92,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::VersionNegotiation;
-    /// use isahc::prelude::*;
+    /// use isahc::{
+    ///     config::VersionNegotiation,
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// // Never use anything newer than HTTP/1.x for this client.
     /// let http11_client = HttpClient::builder()
     ///     .version_negotiation(VersionNegotiation::http11())
@@ -116,8 +120,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::config::RedirectPolicy;
-    /// use isahc::prelude::*;
+    /// use isahc::{config::RedirectPolicy, prelude::*, Request};
     ///
     /// // This URL redirects us to where we want to go.
     /// let response = Request::get("https://httpbin.org/redirect/1")
@@ -186,9 +189,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .authentication(Authentication::basic() | Authentication::digest())
     ///     .credentials(Credentials::new("clark", "qwerty"))
@@ -227,6 +233,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     prelude::*,
     ///     config::NetworkInterface,
+    ///     HttpClient,
+    ///     Request,
     /// };
     /// use std::net::IpAddr;
     ///
@@ -274,6 +282,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     config::Dialer,
     ///     prelude::*,
+    ///     Request,
     /// };
     ///
     /// # #[cfg(unix)]
@@ -289,6 +298,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     config::Dialer,
     ///     prelude::*,
+    ///     Request,
     /// };
     /// use std::net::Ipv4Addr;
     ///
@@ -325,9 +335,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Using `http://proxy:80` as a proxy:
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy(Some("http://proxy:80".parse()?))
     ///     .build()?;
@@ -337,8 +346,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Explicitly disable the use of a proxy:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy(None)
     ///     .build()?;
@@ -353,8 +362,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     // Disable proxy for specified hosts.
     ///     .proxy_blacklist(vec!["a.com", "b.org"])
@@ -379,9 +388,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
     ///     .proxy_authentication(Authentication::basic())
@@ -427,8 +439,11 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::config::{ClientCertificate, PrivateKey};
-    /// use isahc::prelude::*;
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     Request,
+    /// };
     ///
     /// let response = Request::get("localhost:3999")
     ///     .ssl_client_certificate(ClientCertificate::pem_file(
@@ -441,9 +456,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_client_certificate(ClientCertificate::pem_file(
     ///         "client.pem",
@@ -470,9 +488,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
     ///     .build()?;
@@ -514,9 +531,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{config::SslOption, prelude::*, Request};
+    ///
     /// let response = Request::get("https://badssl.com")
     ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
     ///     .body(())?
@@ -525,9 +541,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
     ///     .build()?;

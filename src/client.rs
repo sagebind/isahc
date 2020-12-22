@@ -56,8 +56,11 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
 /// # Examples
 ///
 /// ```
-/// use isahc::config::{RedirectPolicy, VersionNegotiation};
-/// use isahc::prelude::*;
+/// use isahc::{
+///     config::{RedirectPolicy, VersionNegotiation},
+///     prelude::*,
+///     HttpClient,
+/// };
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
@@ -126,8 +129,8 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```no_run
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// // Create a client with a cookie jar.
     /// let client = HttpClient::builder()
     ///     .cookies()
@@ -267,10 +270,9 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// # use std::time::Duration;
-    /// #
+    /// use isahc::{config::*, prelude::*, HttpClient};
+    /// use std::time::Duration;
+    ///
     /// let client = HttpClient::builder()
     ///     // Cache entries for 10 seconds.
     ///     .dns_cache(Duration::from_secs(10))
@@ -300,10 +302,9 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::ResolveMap;
-    /// # use isahc::prelude::*;
-    /// # use std::net::IpAddr;
-    /// #
+    /// use isahc::{config::ResolveMap, prelude::*, HttpClient};
+    /// use std::net::IpAddr;
+    ///
     /// let client = HttpClient::builder()
     ///     .dns_resolve(ResolveMap::new()
     ///         // Send requests for example.org on port 80 to 127.0.0.1.
@@ -333,8 +334,8 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .default_header("some-header", "some-value")
     ///     .build()?;
@@ -377,8 +378,8 @@ impl HttpClientBuilder {
     /// Set default headers from a slice:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let mut builder = HttpClient::builder()
     ///     .default_headers(&[
     ///         ("some-header", "value1"),
@@ -392,8 +393,8 @@ impl HttpClientBuilder {
     /// Using an existing header map:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let mut headers = http::HeaderMap::new();
     /// headers.append("some-header".parse::<http::header::HeaderName>()?, "some-value".parse()?);
     ///
@@ -406,9 +407,9 @@ impl HttpClientBuilder {
     /// Using a hashmap:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// # use std::collections::HashMap;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    /// use std::collections::HashMap;
+    ///
     /// let mut headers = HashMap::new();
     /// headers.insert("some-header", "some-value");
     ///
@@ -556,7 +557,7 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// # Examples
 ///
 /// ```no_run
-/// use isahc::prelude::*;
+/// use isahc::{prelude::*, HttpClient};
 ///
 /// // Create a new client using reasonable defaults.
 /// let client = HttpClient::new()?;
@@ -575,6 +576,7 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// use isahc::{
 ///     config::{RedirectPolicy, VersionNegotiation},
 ///     prelude::*,
+///     HttpClient,
 /// };
 /// use std::time::Duration;
 ///
@@ -656,9 +658,9 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
-    /// # let client = HttpClient::new()?;
+    /// let client = HttpClient::new()?;
     /// let mut response = client.get("https://example.org")?;
     /// println!("{}", response.text()?);
     /// # Ok::<(), isahc::Error>(())
@@ -698,8 +700,9 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// # use isahc::prelude::*;
-    /// # let client = HttpClient::new()?;
+    /// use isahc::{prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::new()?;
     /// let response = client.head("https://example.org")?;
     /// println!("Page size: {:?}", response.headers()["content-length"]);
     /// # Ok::<(), isahc::Error>(())
@@ -739,7 +742,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -786,7 +789,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -859,38 +862,35 @@ impl HttpClient {
 
     /// Send an HTTP request and return the HTTP response.
     ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
-    ///
-    /// This client's configuration can be overridden for this request by
-    /// configuring the request using methods provided by the [`Configurable`]
-    /// trait.
-    ///
     /// Upon success, will return a [`Response`] containing the status code,
     /// response headers, and response body from the server. The [`Response`] is
     /// returned as soon as the HTTP response headers are received; the
     /// connection will remain open to stream the response body in real time.
-    /// Dropping the response body without fully consume it will close the
+    /// Dropping the response body without fully consuming it will close the
     /// connection early without downloading the rest of the response body.
     ///
-    /// _Note that the actual underlying socket connection isn't necessarily
-    /// closed on drop. It may remain open to be reused if pipelining is being
-    /// used, the connection is configured as `keep-alive`, and so on._
-    ///
-    /// Since the response body is streamed from the server, it may only be
-    /// consumed once. If you need to inspect the response body more than once,
-    /// you will have to either read it into memory or write it to a file.
+    /// The response body is provided as a stream that may only be consumed
+    /// once. If you need to inspect the response body more than once, you will
+    /// have to either read it into memory or write it to a file.
     ///
     /// The response body is not a direct stream from the server, but uses its
     /// own buffering mechanisms internally for performance. It is therefore
     /// undesirable to wrap the body in additional buffering readers.
     ///
-    /// To execute the request asynchronously, see [`HttpClient::send_async`].
+    /// _Note that the actual underlying socket connection isn't necessarily
+    /// closed on drop. It may remain open to be reused if pipelining is being
+    /// used, the connection is configured as `keep-alive`, and so on._
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the [`Configurable`]
+    /// trait.
+    ///
+    /// To execute a request asynchronously, see [`HttpClient::send_async`].
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient, Request};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -951,13 +951,36 @@ impl HttpClient {
 
     /// Send an HTTP request and return the HTTP response asynchronously.
     ///
-    /// See [`HttpClient::send`] for further details.
+    /// Upon success, will return a [`Response`] containing the status code,
+    /// response headers, and response body from the server. The [`Response`] is
+    /// returned as soon as the HTTP response headers are received; the
+    /// connection will remain open to stream the response body in real time.
+    /// Dropping the response body without fully consuming it will close the
+    /// connection early without downloading the rest of the response body.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once. If you need to inspect the response body more than once, you will
+    /// have to either read it into memory or write it to a file.
+    ///
+    /// The response body is not a direct stream from the server, but uses its
+    /// own buffering mechanisms internally for performance. It is therefore
+    /// undesirable to wrap the body in additional buffering readers.
+    ///
+    /// _Note that the actual underlying socket connection isn't necessarily
+    /// closed on drop. It may remain open to be reused if pipelining is being
+    /// used, the connection is configured as `keep-alive`, and so on._
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the [`Configurable`]
+    /// trait.
+    ///
+    /// To execute a request synchronously, see [`HttpClient::send`].
     ///
     /// # Examples
     ///
     /// ```no_run
     /// # async fn run() -> Result<(), isahc::Error> {
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient, Request};
     ///
     /// let client = HttpClient::new()?;
     ///

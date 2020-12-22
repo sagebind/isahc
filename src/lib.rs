@@ -51,7 +51,7 @@
 //! [`send`][RequestExt::send]:
 //!
 //! ```no_run
-//! use isahc::prelude::*;
+//! use isahc::{prelude::*, Request};
 //! use std::time::Duration;
 //!
 //! let response = Request::post("https://httpbin.org/post")
@@ -228,11 +228,9 @@
     unused,
     clippy::all
 )]
-
 // These lints suggest to use features not available in our MSRV.
 #![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
 
-use http::{Request, Response};
 use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 
@@ -270,17 +268,22 @@ pub use crate::{
     body::{AsyncBody, Body},
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
+    http::{request::Request, response::Response},
     metrics::Metrics,
     request::RequestExt,
     response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
 };
 
-/// Re-export of the standard HTTP types.
+/// Re-export of HTTP types.
 pub use http;
 
-/// A "prelude" for importing common Isahc types.
+/// A "prelude" for importing commonly used Isahc types and traits.
+///
+/// The prelude re-exports most commonly used traits and macros from this crate.
 ///
 /// # Example
+///
+/// Import the prelude with:
 ///
 /// ```
 /// use isahc::prelude::*;
@@ -290,14 +293,10 @@ pub mod prelude {
     pub use crate::{
         config::Configurable,
         AsyncReadResponseExt,
-        HttpClient,
         ReadResponseExt,
         RequestExt,
         ResponseExt,
     };
-
-    #[doc(no_inline)]
-    pub use http::{Request, Response};
 }
 
 /// Send a GET request to the given URI.
@@ -370,26 +369,21 @@ where
 /// # Examples
 ///
 /// ```no_run
+/// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
 /// use isahc::prelude::*;
 ///
-/// async fn run() {
-///     use futures_lite::AsyncReadExt;
-///     let client = HttpClient::new().unwrap();
+/// let mut response = isahc::post_async("https://httpbin.org/post", r#"{
+///     "speed": "fast",
+///     "cool_name": true
+/// }"#).await?;
 ///
-///     let mut response = client.post_async("https://httpbin.org/post", r#"{
-///         "speed": "fast",
-///         "cool_name": true
-///     }"#).await.unwrap();
+/// let mut body: Vec<u8> = vec![];
+/// response.copy_to(&mut body).await?;
 ///
-///     let mut body: Vec<u8> = vec![];
-///     let mut reader = futures_lite::io::BufReader::new(response.body_mut());
-///     reader.read_to_end(&mut body).await.unwrap();
-///
-///     let msg: serde_json::Value = serde_json::from_slice(&body).unwrap();
-///     println!("{}", msg);
-/// }
+/// let msg: serde_json::Value = serde_json::from_slice(&body)?;
+/// println!("{}", msg);
+/// # Ok(()) }
 /// ```
-///
 pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,

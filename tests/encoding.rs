@@ -2,7 +2,7 @@ use flate2::{
     read::{DeflateEncoder, GzEncoder},
     Compression,
 };
-use isahc::prelude::*;
+use isahc::{prelude::*, Request};
 use std::io::Read;
 use testserver::mock;
 

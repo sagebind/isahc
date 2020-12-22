@@ -1,7 +1,7 @@
 //! Another simple example that creates a custom HTTP client instance and sends
 //! a GET request with it instead of using the default client.
 
-use isahc::{config::RedirectPolicy, prelude::*};
+use isahc::{config::RedirectPolicy, prelude::*, HttpClient};
 use std::{
     io::{copy, stdout},
     time::Duration,

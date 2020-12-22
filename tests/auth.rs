@@ -1,4 +1,4 @@
-use isahc::{auth::*, prelude::*};
+use isahc::{auth::*, prelude::*, Request};
 use testserver::mock;
 
 #[test]

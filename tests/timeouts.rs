@@ -1,4 +1,4 @@
-use isahc::prelude::*;
+use isahc::{prelude::*, Request};
 use std::{
     io::{self, Cursor, Read},
     thread,
