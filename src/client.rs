@@ -1181,10 +1181,10 @@ impl HttpClient {
 }
 
 impl crate::interceptor::Invoke for &HttpClient {
-    fn invoke<'a>(
-        &'a self,
+    fn invoke(
+        &self,
         mut request: Request<AsyncBody>,
-    ) -> crate::interceptor::InterceptorFuture<'a, Error> {
+    ) -> crate::interceptor::InterceptorFuture<'_, Error> {
         Box::pin(async move {
             // Set default user agent if not specified.
             request

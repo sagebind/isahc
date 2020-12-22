@@ -16,7 +16,7 @@
 use self::internal::SetOpt;
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
-use std::{iter::FromIterator, net::IpAddr, time::Duration};
+use std::{net::IpAddr, time::Duration};
 
 pub(crate) mod dial;
 pub(crate) mod dns;
@@ -375,7 +375,7 @@ pub trait Configurable: internal::ConfigurableBase {
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        self.configure(proxy::Blacklist::from_iter(hosts.into_iter().map(T::into)))
+        self.configure(hosts.into_iter().map(T::into).collect::<proxy::Blacklist>())
     }
 
     /// Set one or more HTTP authentication methods to attempt to use when
@@ -511,7 +511,7 @@ pub trait Configurable: internal::ConfigurableBase {
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        self.configure(ssl::Ciphers::from_iter(ciphers.into_iter().map(T::into)))
+        self.configure(ciphers.into_iter().map(T::into).collect::<ssl::Ciphers>())
     }
 
     /// Set various options for this request that control SSL/TLS behavior.
