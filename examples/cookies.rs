@@ -1,7 +1,7 @@
 //! A simple example program that sends a GET request and then prints out all
 //! the cookies in the cookie jar.
 
-use isahc::{cookies::CookieJar, prelude::*};
+use isahc::{cookies::CookieJar, prelude::*, Request};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {

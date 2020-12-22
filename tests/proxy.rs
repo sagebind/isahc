@@ -1,4 +1,4 @@
-use isahc::prelude::*;
+use isahc::{prelude::*, Request};
 use testserver::{mock, socks4::Socks4Server};
 
 #[test]

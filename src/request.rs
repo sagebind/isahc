@@ -22,7 +22,7 @@ pub trait RequestExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, Request};
     ///
     /// let response = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")

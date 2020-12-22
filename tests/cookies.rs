@@ -1,6 +1,6 @@
 #![cfg(feature = "cookies")]
 
-use isahc::{cookies::CookieJar, prelude::*};
+use isahc::{cookies::CookieJar, prelude::*, HttpClient};
 use testserver::mock;
 
 #[test]

@@ -10,7 +10,7 @@
 //! [structopt]: https://github.com/TeXitoi/structopt
 
 use indicatif::{FormattedDuration, HumanBytes, ProgressBar, ProgressStyle};
-use isahc::prelude::*;
+use isahc::{prelude::*, Request};
 use std::io::Read;
 use structopt::StructOpt;
 

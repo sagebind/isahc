@@ -1,7 +1,7 @@
 //! This example contains a number of manual tests against badssl.com
 //! demonstrating several dangerous SSL/TLS options.
 
-use isahc::{config::SslOption, prelude::*};
+use isahc::{config::SslOption, prelude::*, Request};
 
 fn main() {
     // accept expired cert

@@ -33,5 +33,5 @@ impl fmt::Debug for Context<'_> {
 }
 
 pub(crate) trait Invoke {
-    fn invoke<'a>(&'a self, request: Request<AsyncBody>) -> InterceptorFuture<'a, Error>;
+    fn invoke(&self, request: Request<AsyncBody>) -> InterceptorFuture<'_, Error>;
 }
