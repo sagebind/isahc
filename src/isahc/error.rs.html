@@ -409,10 +409,6 @@
 <span id="408">408</span>
 <span id="409">409</span>
 <span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types for error handling.</span>
 
@@ -588,6 +584,10 @@
 
     <span class="doccomment">/// Statically cast a given error into an Isahc error, converting if</span>
     <span class="doccomment">/// necessary.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This is useful for converting or creating errors from external types</span>
+    <span class="doccomment">/// without publicly implementing `From` over them and leaking them into our</span>
+    <span class="doccomment">/// API.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_any</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">error</span>: <span class="ident">E</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
@@ -595,6 +595,71 @@
         <span class="macro">match_type</span><span class="macro">!</span> {
             <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>,
             <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>.<span class="ident">into</span>(),
+            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="self">Self</span>::<span class="ident">with_context</span>(
+                    <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_certproblem</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert_badfile</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">BadClientCertificate</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_peer_failed_verification</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cipher</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_issuer_error</span>()
+                    {
+                        <span class="ident">ErrorKind</span>::<span class="ident">BadServerCertificate</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_interface_failed</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_connect</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_connect_error</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">ConnectionFailed</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_content_encoding</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_conv_failed</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">InvalidContentEncoding</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_login_denied</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">InvalidCredentials</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_url_malformed</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">InvalidRequest</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_host</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_proxy</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">NameResolution</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_got_nothing</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_stream_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_unsupported_protocol</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">code</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">curl_sys</span>::<span class="ident">CURLE_FTP_WEIRD_SERVER_REPLY</span>
+                    {
+                        <span class="ident">ErrorKind</span>::<span class="ident">ProtocolViolation</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_send_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_recv_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_read_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_write_error</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_upload_failed</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_send_fail_rewind</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_aborted_by_callback</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_partial_file</span>()
+                    {
+                        <span class="ident">ErrorKind</span>::<span class="ident">Io</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_initfailed</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_notfound</span>()
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_setfailed</span>()
+                    {
+                        <span class="ident">ErrorKind</span>::<span class="ident">TlsEngine</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_operation_timedout</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">Timeout</span>
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_too_many_redirects</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">TooManyRedirects</span>
+                    } <span class="kw">else</span> {
+                        <span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>
+                    },
+                    <span class="ident">error</span>.<span class="ident">extra_description</span>().<span class="ident">map</span>(<span class="ident">String</span>::<span class="ident">from</span>),
+                    <span class="ident">error</span>,
+                )
+            },
+            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">curl</span>::<span class="ident">MultiError</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="self">Self</span>::<span class="ident">new</span>(
+                    <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_socket</span>() {
+                        <span class="ident">ErrorKind</span>::<span class="ident">Io</span>
+                    } <span class="kw">else</span> {
+                        <span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>
+                    },
+                    <span class="ident">error</span>,
+                )
+            },
             <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>, <span class="ident">error</span>),
         }
     }
@@ -741,79 +806,6 @@
                 <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">uri</span>::<span class="ident">InvalidUriParts</span><span class="op">&gt;</span>()
             {
                 <span class="ident">ErrorKind</span>::<span class="ident">InvalidRequest</span>
-            } <span class="kw">else</span> {
-                <span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>
-            },
-            <span class="ident">error</span>,
-        )
-    }
-}
-
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">curl</span>::<span class="ident">Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Error</span> {
-        <span class="self">Self</span>::<span class="ident">with_context</span>(
-            <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_certproblem</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert_badfile</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">BadClientCertificate</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_peer_failed_verification</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cipher</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_issuer_error</span>()
-            {
-                <span class="ident">ErrorKind</span>::<span class="ident">BadServerCertificate</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_interface_failed</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_connect</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_connect_error</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">ConnectionFailed</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_content_encoding</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_conv_failed</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">InvalidContentEncoding</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_login_denied</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">InvalidCredentials</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_url_malformed</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">InvalidRequest</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_host</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_proxy</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">NameResolution</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_got_nothing</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_stream_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_unsupported_protocol</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">code</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">curl_sys</span>::<span class="ident">CURLE_FTP_WEIRD_SERVER_REPLY</span>
-            {
-                <span class="ident">ErrorKind</span>::<span class="ident">ProtocolViolation</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_send_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_recv_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_read_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_write_error</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_upload_failed</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_send_fail_rewind</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_aborted_by_callback</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_partial_file</span>()
-            {
-                <span class="ident">ErrorKind</span>::<span class="ident">Io</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_initfailed</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_notfound</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_setfailed</span>()
-            {
-                <span class="ident">ErrorKind</span>::<span class="ident">TlsEngine</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_operation_timedout</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">Timeout</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_too_many_redirects</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">TooManyRedirects</span>
-            } <span class="kw">else</span> {
-                <span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>
-            },
-            <span class="ident">error</span>.<span class="ident">extra_description</span>().<span class="ident">map</span>(<span class="ident">String</span>::<span class="ident">from</span>),
-            <span class="ident">error</span>,
-        )
-    }
-}
-
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">curl</span>::<span class="ident">MultiError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">curl</span>::<span class="ident">MultiError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Error</span> {
-        <span class="self">Self</span>::<span class="ident">new</span>(
-            <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_socket</span>() {
-                <span class="ident">ErrorKind</span>::<span class="ident">Io</span>
             } <span class="kw">else</span> {
                 <span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>
             },

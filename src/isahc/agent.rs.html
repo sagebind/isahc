@@ -519,6 +519,14 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -627,16 +635,22 @@
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Multi</span>::<span class="ident">new</span>();
 
                         <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>.<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)<span class="question-mark">?</span>;
+                            <span class="ident">multi</span>
+                                .<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)
+                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
                         }
 
                         <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>.<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)<span class="question-mark">?</span>;
+                            <span class="ident">multi</span>
+                                .<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)
+                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
                         }
 
                         <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
                         <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>.<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)<span class="question-mark">?</span>;
+                            <span class="ident">multi</span>
+                                .<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)
+                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
                         }
 
                         <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span> {
@@ -840,8 +854,8 @@
         );
 
         <span class="comment">// Register the request with curl.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">add2</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
-        <span class="ident">handle</span>.<span class="ident">set_token</span>(<span class="ident">id</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">add2</span>(<span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+        <span class="ident">handle</span>.<span class="ident">set_token</span>(<span class="ident">id</span>).<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Add the handle to our bookkeeping structure.</span>
         <span class="ident">entry</span>.<span class="ident">insert</span>(<span class="ident">handle</span>);
@@ -856,9 +870,9 @@
         <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">remove</span>(<span class="ident">token</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">remove2</span>(<span class="ident">handle</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">remove2</span>(<span class="ident">handle</span>).<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
 
-        <span class="ident">handle</span>.<span class="ident">get_mut</span>().<span class="ident">set_result</span>(<span class="ident">result</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from</span>));
+        <span class="ident">handle</span>.<span class="ident">get_mut</span>().<span class="ident">set_result</span>(<span class="ident">result</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>));
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -967,7 +981,7 @@
 
     <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
     <span class="kw">fn</span> <span class="ident">dispatch</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">perform</span>()<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">perform</span>().<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Collect messages from curl about requests that have completed,</span>
         <span class="comment">// whether successfully or with an error.</span>
@@ -1010,7 +1024,9 @@
             <span class="self">self</span>.<span class="ident">dispatch</span>()<span class="question-mark">?</span>;
 
             <span class="comment">// Block until activity is detected or the timeout passes.</span>
-            <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">wait</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">wait_fds</span>, <span class="ident">WAIT_TIMEOUT</span>)<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">multi</span>
+                .<span class="ident">wait</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">wait_fds</span>, <span class="ident">WAIT_TIMEOUT</span>)
+                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// We might have woken up early from the notify fd, so drain the</span>
             <span class="comment">// socket to clear it.</span>
