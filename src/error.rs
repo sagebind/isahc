@@ -172,6 +172,10 @@ impl Error {
 
     /// Statically cast a given error into an Isahc error, converting if
     /// necessary.
+    ///
+    /// This is useful for converting or creating errors from external types
+    /// without publicly implementing `From` over them and leaking them into our
+    /// API.
     pub(crate) fn from_any<E>(error: E) -> Self
     where
         E: StdError + Send + Sync + 'static,
@@ -179,6 +183,71 @@ impl Error {
         match_type! {
             <error as Error> => error,
             <error as std::io::Error> => error.into(),
+            <error as curl::Error> => {
+                Self::with_context(
+                    if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
+                        ErrorKind::BadClientCertificate
+                    } else if error.is_peer_failed_verification()
+                        || error.is_ssl_cacert()
+                        || error.is_ssl_cipher()
+                        || error.is_ssl_issuer_error()
+                    {
+                        ErrorKind::BadServerCertificate
+                    } else if error.is_interface_failed() {
+                        ErrorKind::ClientInitialization
+                    } else if error.is_couldnt_connect() || error.is_ssl_connect_error() {
+                        ErrorKind::ConnectionFailed
+                    } else if error.is_bad_content_encoding() || error.is_conv_failed() {
+                        ErrorKind::InvalidContentEncoding
+                    } else if error.is_login_denied() {
+                        ErrorKind::InvalidCredentials
+                    } else if error.is_url_malformed() {
+                        ErrorKind::InvalidRequest
+                    } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
+                        ErrorKind::NameResolution
+                    } else if error.is_got_nothing()
+                        || error.is_http2_error()
+                        || error.is_http2_stream_error()
+                        || error.is_unsupported_protocol()
+                        || error.code() == curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY
+                    {
+                        ErrorKind::ProtocolViolation
+                    } else if error.is_send_error()
+                        || error.is_recv_error()
+                        || error.is_read_error()
+                        || error.is_write_error()
+                        || error.is_upload_failed()
+                        || error.is_send_fail_rewind()
+                        || error.is_aborted_by_callback()
+                        || error.is_partial_file()
+                    {
+                        ErrorKind::Io
+                    } else if error.is_ssl_engine_initfailed()
+                        || error.is_ssl_engine_notfound()
+                        || error.is_ssl_engine_setfailed()
+                    {
+                        ErrorKind::TlsEngine
+                    } else if error.is_operation_timedout() {
+                        ErrorKind::Timeout
+                    } else if error.is_too_many_redirects() {
+                        ErrorKind::TooManyRedirects
+                    } else {
+                        ErrorKind::Unknown
+                    },
+                    error.extra_description().map(String::from),
+                    error,
+                )
+            },
+            <error as curl::MultiError> => {
+                Self::new(
+                    if error.is_bad_socket() {
+                        ErrorKind::Io
+                    } else {
+                        ErrorKind::Unknown
+                    },
+                    error,
+                )
+            },
             error => Error::new(ErrorKind::Unknown, error),
         }
     }
@@ -325,79 +394,6 @@ impl From<http::Error> for Error {
                 || error.is::<http::uri::InvalidUriParts>()
             {
                 ErrorKind::InvalidRequest
-            } else {
-                ErrorKind::Unknown
-            },
-            error,
-        )
-    }
-}
-
-#[doc(hidden)]
-impl From<curl::Error> for Error {
-    fn from(error: curl::Error) -> Error {
-        Self::with_context(
-            if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
-                ErrorKind::BadClientCertificate
-            } else if error.is_peer_failed_verification()
-                || error.is_ssl_cacert()
-                || error.is_ssl_cipher()
-                || error.is_ssl_issuer_error()
-            {
-                ErrorKind::BadServerCertificate
-            } else if error.is_interface_failed() {
-                ErrorKind::ClientInitialization
-            } else if error.is_couldnt_connect() || error.is_ssl_connect_error() {
-                ErrorKind::ConnectionFailed
-            } else if error.is_bad_content_encoding() || error.is_conv_failed() {
-                ErrorKind::InvalidContentEncoding
-            } else if error.is_login_denied() {
-                ErrorKind::InvalidCredentials
-            } else if error.is_url_malformed() {
-                ErrorKind::InvalidRequest
-            } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
-                ErrorKind::NameResolution
-            } else if error.is_got_nothing()
-                || error.is_http2_error()
-                || error.is_http2_stream_error()
-                || error.is_unsupported_protocol()
-                || error.code() == curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY
-            {
-                ErrorKind::ProtocolViolation
-            } else if error.is_send_error()
-                || error.is_recv_error()
-                || error.is_read_error()
-                || error.is_write_error()
-                || error.is_upload_failed()
-                || error.is_send_fail_rewind()
-                || error.is_aborted_by_callback()
-                || error.is_partial_file()
-            {
-                ErrorKind::Io
-            } else if error.is_ssl_engine_initfailed()
-                || error.is_ssl_engine_notfound()
-                || error.is_ssl_engine_setfailed()
-            {
-                ErrorKind::TlsEngine
-            } else if error.is_operation_timedout() {
-                ErrorKind::Timeout
-            } else if error.is_too_many_redirects() {
-                ErrorKind::TooManyRedirects
-            } else {
-                ErrorKind::Unknown
-            },
-            error.extra_description().map(String::from),
-            error,
-        )
-    }
-}
-
-#[doc(hidden)]
-impl From<curl::MultiError> for Error {
-    fn from(error: curl::MultiError) -> Error {
-        Self::new(
-            if error.is_bad_socket() {
-                ErrorKind::Io
             } else {
                 ErrorKind::Unknown
             },

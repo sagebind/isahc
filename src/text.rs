@@ -162,8 +162,8 @@ mod tests {
     fn utf8_decode() {
         let mut decoder = Decoder::new(encoding_rs::UTF_8);
 
-        assert_eq!(decoder.push(b"hello"), &[]);
-        assert_eq!(decoder.push(b" "), &[]);
+        assert_eq!(decoder.push(b"hello"), b"");
+        assert_eq!(decoder.push(b" "), b"");
         assert_eq!(decoder.finish(b"world"), "hello world");
     }
 

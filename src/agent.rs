@@ -105,16 +105,22 @@ impl AgentBuilder {
                         let mut multi = curl::multi::Multi::new();
 
                         if max_connections > 0 {
-                            multi.set_max_total_connections(max_connections)?;
+                            multi
+                                .set_max_total_connections(max_connections)
+                                .map_err(Error::from_any)?;
                         }
 
                         if max_connections_per_host > 0 {
-                            multi.set_max_host_connections(max_connections_per_host)?;
+                            multi
+                                .set_max_host_connections(max_connections_per_host)
+                                .map_err(Error::from_any)?;
                         }
 
                         // Only set maxconnects if greater than 0, because 0 actually means unlimited.
                         if connection_cache_size > 0 {
-                            multi.set_max_connects(connection_cache_size)?;
+                            multi
+                                .set_max_connects(connection_cache_size)
+                                .map_err(Error::from_any)?;
                         }
 
                         let agent = AgentContext {
@@ -318,8 +324,8 @@ impl AgentContext {
         );
 
         // Register the request with curl.
-        let mut handle = self.multi.add2(request)?;
-        handle.set_token(id)?;
+        let mut handle = self.multi.add2(request).map_err(Error::from_any)?;
+        handle.set_token(id).map_err(Error::from_any)?;
 
         // Add the handle to our bookkeeping structure.
         entry.insert(handle);
@@ -334,9 +340,9 @@ impl AgentContext {
         result: Result<(), curl::Error>,
     ) -> Result<(), Error> {
         let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
+        let mut handle = self.multi.remove2(handle).map_err(Error::from_any)?;
 
-        handle.get_mut().set_result(result.map_err(Error::from));
+        handle.get_mut().set_result(result.map_err(Error::from_any));
 
         Ok(())
     }
@@ -445,7 +451,7 @@ impl AgentContext {
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn dispatch(&mut self) -> Result<(), Error> {
-        self.multi.perform()?;
+        self.multi.perform().map_err(Error::from_any)?;
 
         // Collect messages from curl about requests that have completed,
         // whether successfully or with an error.
@@ -488,7 +494,9 @@ impl AgentContext {
             self.dispatch()?;
 
             // Block until activity is detected or the timeout passes.
-            self.multi.wait(&mut wait_fds, WAIT_TIMEOUT)?;
+            self.multi
+                .wait(&mut wait_fds, WAIT_TIMEOUT)
+                .map_err(Error::from_any)?;
 
             // We might have woken up early from the notify fd, so drain the
             // socket to clear it.

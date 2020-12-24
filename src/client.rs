@@ -1040,7 +1040,7 @@ impl HttpClient {
             curl::easy::Easy2<RequestHandler>,
             impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
         ),
-        Error,
+        curl::Error,
     > {
         // Prepare the request plumbing.
         // let (mut parts, body) = request.into_parts();
@@ -1202,7 +1202,7 @@ impl crate::interceptor::Invoke for &HttpClient {
                 .unwrap_or(false);
 
             // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.create_easy_handle(request)?;
+            let (easy, future) = self.create_easy_handle(request).map_err(Error::from_any)?;
 
             // Send the request to the agent to be executed.
             self.inner.agent.submit_request(easy)?;
