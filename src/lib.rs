@@ -143,7 +143,7 @@
 //!
 //! ```toml
 //! [dependencies.isahc]
-//! version = "0.9"
+//! version = "1.0"
 //! features = ["psl"]
 //! ```
 //!
