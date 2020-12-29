@@ -7,7 +7,6 @@ use crate::{
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
 };
-use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use flume::Sender;
