@@ -7,7 +7,6 @@ use crate::{
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
 };
-use crossbeam_utils::atomic::AtomicCell;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use flume::Sender;
@@ -101,18 +100,12 @@ unsafe impl Send for RequestHandler {}
 /// State shared by the handler and its future.
 ///
 /// This is also used to keep track of the lifetime of the request.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Shared {
     /// Set to the final result of the transfer received from curl. This is used
     /// to communicate an error while reading the response body if the handler
     /// suddenly aborts.
     result: OnceCell<Result<(), Error>>,
-
-    /// Set to true whenever the response body is dropped. This is used in the
-    /// opposite manner as the above flag; if the response body is dropped, then
-    /// this communicates to the handler to stop running since the user has lost
-    /// interest in this request.
-    response_body_dropped: AtomicCell<bool>,
 }
 
 impl RequestHandler {
@@ -124,10 +117,7 @@ impl RequestHandler {
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
         let (sender, receiver) = flume::bounded(1);
-        let shared = Arc::new(Shared {
-            result: OnceCell::new(),
-            response_body_dropped: AtomicCell::new(false),
-        });
+        let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
@@ -493,11 +483,6 @@ impl curl::easy::Handler for RequestHandler {
         let _enter = span.enter();
         tracing::trace!("received {} bytes of data", data.len());
 
-        // Abort the request if it has been canceled.
-        if self.shared.response_body_dropped.load() {
-            return Ok(0);
-        }
-
         // Now that we've started receiving the response body, we know no more
         // redirects can happen and we can complete the future safely.
         self.complete_response_future();
@@ -512,8 +497,8 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::warn!(
-                            "failed to write response body because the response reader was dropped"
+                        tracing::info!(
+                            "response dropped without fully consuming the response body, which may result in sub-optimal performance"
                         );
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
@@ -670,11 +655,5 @@ impl AsyncRead for ResponseBodyReader {
             },
             poll => poll,
         }
-    }
-}
-
-impl Drop for ResponseBodyReader {
-    fn drop(&mut self) {
-        self.shared.response_body_dropped.store(true);
     }
 }
