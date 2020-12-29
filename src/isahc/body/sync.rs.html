@@ -363,7 +363,7 @@
 <span class="kw">enum</span> <span class="ident">Inner</span> {
     <span class="ident">Empty</span>,
     <span class="ident">Buffer</span>(<span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">Reader</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
+    <span class="ident">Reader</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Body</span> {
@@ -584,7 +584,7 @@
 
 <span class="doccomment">/// Helper struct for writing a synchronous reader into an asynchronous pipe.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Writer</span> {
-    <span class="ident">reader</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>,
+    <span class="ident">reader</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>,
     <span class="ident">writer</span>: <span class="ident">PipeWriter</span>,
 }
 
@@ -602,7 +602,7 @@
     <span class="doccomment">/// frequently while reading from the request body reader. As long as this</span>
     <span class="doccomment">/// method is invoked in a controlled environment within a thread dedicated</span>
     <span class="doccomment">/// to blocking operations, this is OK.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">BUF_SIZE</span>];
 
         <span class="kw">loop</span> {
@@ -610,13 +610,13 @@
                 <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Ok</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">len</span>,
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ErrorKind</span>::<span class="ident">Interrupted</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">yield_now</span>().<span class="ident">await</span>;
+                    <span class="ident">yield_now</span>().<span class="kw">await</span>;
                     <span class="kw">continue</span>;
                 }
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             };
 
-            <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">len</span>]).<span class="ident">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">len</span>]).<span class="kw">await</span><span class="question-mark">?</span>;
         }
     }
 }

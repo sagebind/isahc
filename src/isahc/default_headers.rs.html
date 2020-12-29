@@ -74,7 +74,7 @@
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span> {
-        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> {
+        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="comment">// We are checking here if header already contains the key, simply</span>
             <span class="comment">// ignore it. In case the key wasn&#39;t present in parts.headers ensure</span>
             <span class="comment">// that we have all the headers from default headers.</span>
@@ -86,7 +86,7 @@
                 }
             }
 
-            <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="ident">await</span>
+            <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span>
         })
     }
 }

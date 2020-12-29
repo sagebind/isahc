@@ -658,27 +658,6 @@
 <span id="657">657</span>
 <span id="658">658</span>
 <span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
-<span id="674">674</span>
-<span id="675">675</span>
-<span id="676">676</span>
-<span id="677">677</span>
-<span id="678">678</span>
-<span id="679">679</span>
-<span id="680">680</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
 
@@ -689,7 +668,6 @@
     <span class="ident">parsing</span>::{<span class="ident">parse_header</span>, <span class="ident">parse_status_line</span>},
     <span class="ident">response</span>::{<span class="ident">LocalAddr</span>, <span class="ident">RemoteAddr</span>},
 };
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">InfoType</span>, <span class="ident">ReadError</span>, <span class="ident">SeekResult</span>, <span class="ident">WriteError</span>};
 <span class="kw">use</span> <span class="ident">curl_sys</span>::<span class="ident">CURL</span>;
 <span class="kw">use</span> <span class="ident">flume</span>::<span class="ident">Sender</span>;
@@ -783,18 +761,12 @@
 <span class="doccomment">/// State shared by the handler and its future.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This is also used to keep track of the lifetime of the request.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">struct</span> <span class="ident">Shared</span> {
     <span class="doccomment">/// Set to the final result of the transfer received from curl. This is used</span>
     <span class="doccomment">/// to communicate an error while reading the response body if the handler</span>
     <span class="doccomment">/// suddenly aborts.</span>
     <span class="ident">result</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
-    <span class="doccomment">/// Set to true whenever the response body is dropped. This is used in the</span>
-    <span class="doccomment">/// opposite manner as the above flag; if the response body is dropped, then</span>
-    <span class="doccomment">/// this communicates to the handler to stop running since the user has lost</span>
-    <span class="doccomment">/// interest in this request.</span>
-    <span class="ident">response_body_dropped</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">RequestHandler</span> {
@@ -806,10 +778,7 @@
         <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) {
         <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">bounded</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">shared</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Shared</span> {
-            <span class="ident">result</span>: <span class="ident">OnceCell</span>::<span class="ident">new</span>(),
-            <span class="ident">response_body_dropped</span>: <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="bool-val">false</span>),
-        });
+        <span class="kw">let</span> <span class="ident">shared</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Shared</span>::<span class="ident">default</span>());
         <span class="kw">let</span> (<span class="ident">response_body_reader</span>, <span class="ident">response_body_writer</span>) <span class="op">=</span> <span class="ident">pipe</span>::<span class="ident">pipe</span>();
 
         <span class="kw">let</span> <span class="ident">handler</span> <span class="op">=</span> <span class="self">Self</span> {
@@ -829,10 +798,10 @@
 
         <span class="comment">// Create a future that resolves when the handler receives the response</span>
         <span class="comment">// headers.</span>
-        <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="ident">async</span> <span class="kw">move</span> {
+        <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>
                 .<span class="ident">recv_async</span>()
-                .<span class="ident">await</span>
+                .<span class="kw">await</span>
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>, <span class="ident">e</span>))<span class="question-mark">?</span><span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">ResponseBodyReader</span> {
@@ -1175,11 +1144,6 @@
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
         <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;received {} bytes of data&quot;</span>, <span class="ident">data</span>.<span class="ident">len</span>());
 
-        <span class="comment">// Abort the request if it has been canceled.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">response_body_dropped</span>.<span class="ident">load</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
-        }
-
         <span class="comment">// Now that we&#39;ve started receiving the response body, we know no more</span>
         <span class="comment">// redirects can happen and we can complete the future safely.</span>
         <span class="self">self</span>.<span class="ident">complete_response_future</span>();
@@ -1194,8 +1158,8 @@
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">len</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">len</span>),
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">BrokenPipe</span> {
-                        <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(
-                            <span class="string">&quot;failed to write response body because the response reader was dropped&quot;</span>
+                        <span class="ident">tracing</span>::<span class="macro">info</span><span class="macro">!</span>(
+                            <span class="string">&quot;response dropped without fully consuming the response body, which may result in sub-optimal performance&quot;</span>
                         );
                     } <span class="kw">else</span> {
                         <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;error writing response body to buffer: {}&quot;</span>, <span class="ident">e</span>);
@@ -1352,12 +1316,6 @@
             },
             <span class="ident">poll</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">poll</span>,
         }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">ResponseBodyReader</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">response_body_dropped</span>.<span class="ident">store</span>(<span class="bool-val">true</span>);
     }
 }
 </pre></div>

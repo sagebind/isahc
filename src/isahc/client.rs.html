@@ -2292,7 +2292,7 @@
         });
 
         <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">block_on</span>(
-            <span class="ident">async</span> <span class="kw">move</span> {
+            <span class="kw">async</span> <span class="kw">move</span> {
                 <span class="comment">// Instead of simply blocking the current thread until the response</span>
                 <span class="comment">// is received, we can use the current thread to read from the</span>
                 <span class="comment">// request body synchronously while concurrently waiting for the</span>
@@ -2301,14 +2301,14 @@
                     <span class="comment">// Note that the `send_async` future is given first; this</span>
                     <span class="comment">// ensures that it is polled first and thus the request is</span>
                     <span class="comment">// initiated before we attempt to write the request body.</span>
-                    <span class="kw">let</span> (<span class="ident">response</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">try_zip</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>), <span class="ident">async</span> <span class="kw">move</span> {
-                        <span class="ident">writer</span>.<span class="ident">write</span>().<span class="ident">await</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from</span>)
+                    <span class="kw">let</span> (<span class="ident">response</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">try_zip</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>), <span class="kw">async</span> <span class="kw">move</span> {
+                        <span class="ident">writer</span>.<span class="ident">write</span>().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from</span>)
                     })
-                    .<span class="ident">await</span><span class="question-mark">?</span>;
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
 
                     <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
                 } <span class="kw">else</span> {
-                    <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>).<span class="ident">await</span>
+                    <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>).<span class="kw">await</span>
                 }
             }
             .<span class="ident">instrument</span>(<span class="ident">span</span>),
@@ -2381,7 +2381,7 @@
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.</span>
-    <span class="ident">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_async_inner</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
@@ -2397,7 +2397,7 @@
             <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">interceptors</span>,
         };
 
-        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="ident">await</span>
+        <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span>
     }
 
     <span class="kw">fn</span> <span class="ident">create_easy_handle</span>(
@@ -2553,7 +2553,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> {
+        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
                 .<span class="ident">headers_mut</span>()
@@ -2576,7 +2576,7 @@
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// Await for the response headers.</span>
-            <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="ident">await</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">future</span>.<span class="kw">await</span><span class="question-mark">?</span>;
 
             <span class="comment">// If a Content-Length header is present, include that information in</span>
             <span class="comment">// the body as well.</span>
@@ -2625,7 +2625,7 @@
 
 <span class="doccomment">/// A future for a request being executed.</span>
 <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span>::<span class="ident">Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;c</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span>::<span class="ident">Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;c</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">future</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
@@ -2636,7 +2636,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">error</span>(<span class="ident">error</span>: <span class="ident">Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
+        <span class="self">Self</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
     }
 }
 

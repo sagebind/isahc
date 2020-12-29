@@ -97,8 +97,8 @@ Here is our first example rewritten to use async/await syntax:</p>
 <div class="example-wrap"><pre class="rust rust-example-rendered">
 <span class="kw">use</span> <span class="ident">isahc</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc</span>::<span class="ident">get_async</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="ident">await</span><span class="question-mark">?</span>;
-<span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>().<span class="ident">await</span><span class="question-mark">?</span>);</pre></div>
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc</span>::<span class="ident">get_async</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+<span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>().<span class="kw">await</span><span class="question-mark">?</span>);</pre></div>
 <p>Since we sent our request using <a href="../isahc/fn.get_async.html" title="get_async"><code>get_async</code></a>, no blocking will occur, and
 the asynchronous versions of all response methods (such as
 <a href="../isahc/trait.AsyncReadResponseExt.html#tymethod.text"><code>text</code></a>) will also automatically be selected by

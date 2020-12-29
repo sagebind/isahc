@@ -225,7 +225,7 @@
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_debug_implementations</span>)]</span>
 <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="ident">inner</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">inner</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">_phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>,
 }
 
@@ -294,7 +294,7 @@
         <span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span> <span class="op">+</span> <span class="lifetime">&#39;r</span>,
     {
         <span class="ident">TextFuture</span> {
-            <span class="ident">inner</span>: <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">async</span> <span class="kw">move</span> { <span class="macro">decode_reader</span><span class="macro">!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="ident">await</span>) }),
+            <span class="ident">inner</span>: <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="macro">decode_reader</span><span class="macro">!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="kw">await</span>) }),
             <span class="ident">_phantom</span>: <span class="ident">PhantomData</span>,
         }
     }

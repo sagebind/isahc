@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["isahc"] = [{"text":"impl&lt;'_&gt; TryFrom&lt;&amp;'_ str&gt; for Dialer","synthetic":false,"types":[]},{"text":"impl TryFrom&lt;String&gt; for Dialer","synthetic":false,"types":[]},{"text":"impl TryFrom&lt;Uri&gt; for Dialer","synthetic":false,"types":[]}];
+implementors["isahc"] = [{"text":"impl TryFrom&lt;&amp;'_ str&gt; for Dialer","synthetic":false,"types":[]},{"text":"impl TryFrom&lt;String&gt; for Dialer","synthetic":false,"types":[]},{"text":"impl TryFrom&lt;Uri&gt; for Dialer","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
