@@ -33,7 +33,7 @@ macro_rules! decl_future {
             $(#[$meta])*
             #[allow(missing_debug_implementations, non_snake_case)]
             #[must_use = "futures do nothing unless you `.await` or poll them"]
-            pub struct $ident<'a $($(, $T)*)*> {
+            $vis struct $ident<'a $($(, $T)*)*> {
                 inner: ::std::pin::Pin<Box<dyn ::std::future::Future<Output = $output> + 'a>>,
                 $($($T: ::std::marker::PhantomData<$T>,)*)*
             }
