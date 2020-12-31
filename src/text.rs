@@ -6,9 +6,7 @@ use crate::headers::HasHeaders;
 use encoding_rs::{CoderResult, Encoding};
 use futures_lite::io::{AsyncRead, AsyncReadExt};
 use http::Response;
-use std::{
-    io,
-};
+use std::io;
 
 // This macro abstracts over async and sync decoding, since the implementation
 // of decoding a stream into text is the same.
