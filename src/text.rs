@@ -7,11 +7,7 @@ use encoding_rs::{CoderResult, Encoding};
 use futures_lite::io::{AsyncRead, AsyncReadExt};
 use http::Response;
 use std::{
-    future::Future,
     io,
-    marker::PhantomData,
-    pin::Pin,
-    task::{Context, Poll},
 };
 
 // This macro abstracts over async and sync decoding, since the implementation
@@ -38,29 +34,10 @@ macro_rules! decode_reader {
     }};
 }
 
-/// A future returning a response body decoded as text.
-#[allow(missing_debug_implementations)]
-#[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct TextFuture<'a, R> {
-    inner: Pin<Box<dyn Future<Output = io::Result<String>> + 'a>>,
-    _phantom: PhantomData<R>,
+decl_future! {
+    /// A future returning a response body decoded as text.
+    pub type TextFuture<R> = impl Future<Output = io::Result<String>> + SendIf<R>;
 }
-
-impl<'a, R: Unpin> Future for TextFuture<'a, R> {
-    type Output = io::Result<String>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().inner.as_mut().poll(cx)
-    }
-}
-
-// Since we are boxing our future, we can't conditionally implement `Send` based
-// on whether the original future is `Send`. However, we know after inspection
-// that everything inside our implementation is `Send` except for the reader,
-// which may or may not be. We then put the reader in our wrapper future type
-// and conditionally implement `Send` if the reader is also `Send`.
-#[allow(unsafe_code)]
-unsafe impl<'r, R: Send> Send for TextFuture<'r, R> {}
 
 /// A streaming text decoder that supports multiple encodings.
 pub(crate) struct Decoder {
@@ -110,10 +87,7 @@ impl Decoder {
     where
         R: AsyncRead + Unpin + 'r,
     {
-        TextFuture {
-            inner: Box::pin(async move { decode_reader!(self, buf, reader.read(buf).await) }),
-            _phantom: PhantomData,
-        }
+        TextFuture::new(async move { decode_reader!(self, buf, reader.read(buf).await) })
     }
 
     /// Push additional bytes into the decoder, returning any trailing bytes

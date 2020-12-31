@@ -3,12 +3,9 @@ use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
-    future::Future,
     io::{self, Read, Write},
     net::SocketAddr,
     path::Path,
-    pin::Pin,
-    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -229,7 +226,7 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// println!("Read {} bytes", buf.len());
     /// # Ok(()) }
     /// ```
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
     where
         W: AsyncWrite + Unpin + 'a;
 
@@ -260,13 +257,11 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
 }
 
 impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
     where
         W: AsyncWrite + Unpin + 'a,
     {
-        CopyFuture(Box::pin(async move {
-            futures_lite::io::copy(self.body_mut(), writer).await
-        }))
+        CopyFuture::new(async move { futures_lite::io::copy(self.body_mut(), writer).await })
     }
 
     #[cfg(feature = "text-decoding")]
@@ -275,19 +270,19 @@ impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
     }
 }
 
-/// A future which copies all the response body bytes into a sink.
-#[allow(missing_debug_implementations)]
-#[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct CopyFuture<'a>(Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>);
-
-impl Future for CopyFuture<'_> {
-    type Output = io::Result<u64>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().poll(cx)
-    }
+decl_future! {
+    /// A future which copies all the response body bytes into a sink.
+    pub type CopyFuture<T> = impl Future<Output = io::Result<u64>> + SendIf<T>;
 }
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
 
 pub(crate) struct RemoteAddr(pub(crate) SocketAddr);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static_assertions::assert_impl_all!(CopyFuture<'static, Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>>: Send);
+}
