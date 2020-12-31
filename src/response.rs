@@ -3,12 +3,9 @@ use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
-    future::Future,
     io::{self, Read, Write},
     net::SocketAddr,
     path::Path,
-    pin::Pin,
-    task::{Context, Poll},
 };
 
 /// Provides extension methods for working with HTTP responses.
@@ -95,6 +92,54 @@ impl<T> ResponseExt<T> for Response<T> {
 
 /// Provides extension methods for consuming HTTP response streams.
 pub trait ReadResponseExt<T: Read> {
+    /// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven't read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get("https://example.org")?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn consume(&mut self) -> io::Result<()> {
+        self.copy_to(io::sink())?;
+
+        Ok(())
+    }
+
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
@@ -211,6 +256,51 @@ impl<T: Read> ReadResponseExt<T> for Response<T> {
 
 /// Provides extension methods for consuming asynchronous HTTP response streams.
 pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
+    /// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven't read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let mut response = isahc::get_async("https://example.org").await?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume().await?;
+    /// # Ok(()) }
+    /// ```
+    fn consume(&mut self) -> ConsumeFuture<'_, T>;
+
     /// Copy the response body into a writer asynchronously.
     ///
     /// Returns the number of bytes that were written.
@@ -229,7 +319,7 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// println!("Read {} bytes", buf.len());
     /// # Ok(()) }
     /// ```
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
     where
         W: AsyncWrite + Unpin + 'a;
 
@@ -260,13 +350,19 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
 }
 
 impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a>
+    fn consume(&mut self) -> ConsumeFuture<'_, T> {
+        ConsumeFuture::new(async move {
+            futures_lite::io::copy(self.body_mut(), futures_lite::io::sink()).await?;
+
+            Ok(())
+        })
+    }
+
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
     where
         W: AsyncWrite + Unpin + 'a,
     {
-        CopyFuture(Box::pin(async move {
-            futures_lite::io::copy(self.body_mut(), writer).await
-        }))
+        CopyFuture::new(async move { futures_lite::io::copy(self.body_mut(), writer).await })
     }
 
     #[cfg(feature = "text-decoding")]
@@ -275,19 +371,26 @@ impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
     }
 }
 
-/// A future which copies all the response body bytes into a sink.
-#[allow(missing_debug_implementations)]
-#[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct CopyFuture<'a>(Pin<Box<dyn Future<Output = io::Result<u64>> + 'a>>);
+decl_future! {
+    /// A future which reads any remaining bytes from the response body stream
+    /// and discard them.
+    pub type ConsumeFuture<T> = impl Future<Output = io::Result<()>> + SendIf<T>;
 
-impl Future for CopyFuture<'_> {
-    type Output = io::Result<u64>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.as_mut().poll(cx)
-    }
+    /// A future which copies all the response body bytes into a sink.
+    pub type CopyFuture<T> = impl Future<Output = io::Result<u64>> + SendIf<T>;
 }
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
 
 pub(crate) struct RemoteAddr(pub(crate) SocketAddr);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static_assertions::assert_impl_all!(ConsumeFuture<'static, Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(ConsumeFuture<'static, *mut Vec<u8>>: Send);
+
+    static_assertions::assert_impl_all!(CopyFuture<'static, Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>>: Send);
+}
