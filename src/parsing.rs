@@ -85,7 +85,7 @@ pub(crate) fn header_to_curl_string(
     if header_value.trim().is_empty() {
         string.push(';');
     } else {
-        string.push(':');
+        string.push_str(": ");
         string.push_str(header_value);
     }
 
