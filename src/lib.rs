@@ -3,13 +3,14 @@
 //! Here are some of Isahc's key features:
 //!
 //! - Full support for HTTP/1.1 and HTTP/2.
-//! - Configurable request timeouts.
-//! - Fully asynchronous core, with asynchronous and incremental reading and
-//!   writing of request and response bodies.
-//! - Offers an ergonomic synchronous API as well as an asynchronous API with
-//!   support for async/await.
-//! - Optional automatic redirect following.
+//! - Configurable request timeouts, redirect policies, Unix sockets, and many
+//!   more settings.
+//! - Offers an ergonomic synchronous API as well as a runtime-agnostic
+//!   asynchronous API with support for async/await.
+//! - Fully asynchronous core, with incremental reading and writing of request
+//!   and response bodies and connection multiplexing.
 //! - Sessions and cookie persistence.
+//! - Automatic request cancellation on drop.
 //!
 //! # Getting started
 //!
