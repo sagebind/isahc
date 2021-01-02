@@ -479,19 +479,21 @@
 <span id="478">478</span>
 <span id="479">479</span>
 <span id="480">480</span>
+<span id="481">481</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Here are some of Isahc&#39;s key features:</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! - Full support for HTTP/1.1 and HTTP/2.</span>
-<span class="doccomment">//! - Configurable request timeouts.</span>
-<span class="doccomment">//! - Fully asynchronous core, with asynchronous and incremental reading and</span>
-<span class="doccomment">//!   writing of request and response bodies.</span>
-<span class="doccomment">//! - Offers an ergonomic synchronous API as well as an asynchronous API with</span>
-<span class="doccomment">//!   support for async/await.</span>
-<span class="doccomment">//! - Optional automatic redirect following.</span>
+<span class="doccomment">//! - Configurable request timeouts, redirect policies, Unix sockets, and many</span>
+<span class="doccomment">//!   more settings.</span>
+<span class="doccomment">//! - Offers an ergonomic synchronous API as well as a runtime-agnostic</span>
+<span class="doccomment">//!   asynchronous API with support for async/await.</span>
+<span class="doccomment">//! - Fully asynchronous core, with incremental reading and writing of request</span>
+<span class="doccomment">//!   and response bodies and connection multiplexing.</span>
 <span class="doccomment">//! - Sessions and cookie persistence.</span>
+<span class="doccomment">//! - Automatic request cancellation on drop.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Getting started</span>
 <span class="doccomment">//!</span>
