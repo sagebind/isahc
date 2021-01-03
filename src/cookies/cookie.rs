@@ -227,7 +227,7 @@ impl PartialEq<String> for Cookie {
 fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
     // Strip quotes, but only if in a legal pair.
     if bytes.starts_with(b"\"") && bytes.ends_with(b"\"") {
-        bytes = &bytes[1..bytes.len() - 2];
+        bytes = &bytes[1..bytes.len() - 1];
     }
 
     // Validate the bytes are all legal cookie octets.
@@ -301,9 +301,10 @@ mod tests {
         assert!(Cookie::parse(s).is_err());
     }
 
-    #[test]
-    fn parse_simple() {
-        let cookie = Cookie::parse("foo=bar").unwrap();
+    #[test_case("foo=bar")]
+    #[test_case(r#"foo="bar""#)]
+    fn parse_simple(s: &str) {
+        let cookie = Cookie::parse(s).unwrap();
 
         assert_eq!(cookie.name(), "foo");
         assert_eq!(cookie.value(), "bar");
