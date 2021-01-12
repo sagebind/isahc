@@ -350,6 +350,13 @@ pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
 
     /// Deserialize the response body as JSON into a given type.
     ///
+    /// # Caveats
+    ///
+    /// Unlike its [synchronous equivalent](ReadResponseExt::json), this method
+    /// reads the entire response body into memory before attempting
+    /// deserialization. This is due to a Serde limitation since incremental
+    /// partial deserializing is not supported.
+    ///
     /// # Availability
     ///
     /// This method is only available when the [`json`](index.html#json) feature
