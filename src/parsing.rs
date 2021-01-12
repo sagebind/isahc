@@ -85,7 +85,7 @@ pub(crate) fn header_to_curl_string(
     if header_value.trim().is_empty() {
         string.push(';');
     } else {
-        string.push(':');
+        string.push_str(": ");
         string.push_str(header_value);
     }
 
@@ -177,7 +177,7 @@ mod tests {
 
         assert_eq!(
             header_to_curl_string(&name, &value, false),
-            "user-agent:foo"
+            "user-agent: foo"
         );
     }
 
@@ -194,6 +194,6 @@ mod tests {
         let name = "User-Agent".parse().unwrap();
         let value = "foo".parse().unwrap();
 
-        assert_eq!(header_to_curl_string(&name, &value, true), "User-Agent:foo");
+        assert_eq!(header_to_curl_string(&name, &value, true), "User-Agent: foo");
     }
 }

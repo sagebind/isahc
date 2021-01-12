@@ -91,7 +91,7 @@ impl<T> ResponseExt<T> for Response<T> {
 }
 
 /// Provides extension methods for consuming HTTP response streams.
-pub trait ReadResponseExt<T: Read> {
+pub trait ReadResponseExt<R: Read> {
     /// Read any remaining bytes from the response body stream and discard them
     /// until the end of the stream is reached. It is usually a good idea to
     /// call this method before dropping a response if you know you haven't read
@@ -235,7 +235,7 @@ pub trait ReadResponseExt<T: Read> {
         D: serde::de::DeserializeOwned;
 }
 
-impl<T: Read> ReadResponseExt<T> for Response<T> {
+impl<R: Read> ReadResponseExt<R> for Response<R> {
     fn copy_to<W: Write>(&mut self, mut writer: W) -> io::Result<u64> {
         io::copy(self.body_mut(), &mut writer)
     }
@@ -255,7 +255,7 @@ impl<T: Read> ReadResponseExt<T> for Response<T> {
 }
 
 /// Provides extension methods for consuming asynchronous HTTP response streams.
-pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
+pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
     /// Read any remaining bytes from the response body stream and discard them
     /// until the end of the stream is reached. It is usually a good idea to
     /// call this method before dropping a response if you know you haven't read
@@ -299,7 +299,7 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// response.consume().await?;
     /// # Ok(()) }
     /// ```
-    fn consume(&mut self) -> ConsumeFuture<'_, T>;
+    fn consume(&mut self) -> ConsumeFuture<'_, R>;
 
     /// Copy the response body into a writer asynchronously.
     ///
@@ -319,7 +319,7 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// println!("Read {} bytes", buf.len());
     /// # Ok(()) }
     /// ```
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, R, W>
     where
         W: AsyncWrite + Unpin + 'a;
 
@@ -346,11 +346,12 @@ pub trait AsyncReadResponseExt<T: AsyncRead + Unpin> {
     /// # Ok(()) }
     /// ```
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T>;
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut R>;
 }
 
-impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
-    fn consume(&mut self) -> ConsumeFuture<'_, T> {
+
+impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
+    fn consume(&mut self) -> ConsumeFuture<'_, R> {
         ConsumeFuture::new(async move {
             futures_lite::io::copy(self.body_mut(), futures_lite::io::sink()).await?;
 
@@ -358,7 +359,7 @@ impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
         })
     }
 
-    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, T>
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, R, W>
     where
         W: AsyncWrite + Unpin + 'a,
     {
@@ -366,7 +367,7 @@ impl<T: AsyncRead + Unpin> AsyncReadResponseExt<T> for Response<T> {
     }
 
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> crate::text::TextFuture<'_, &mut T> {
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut R> {
         crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
 }
@@ -377,7 +378,7 @@ decl_future! {
     pub type ConsumeFuture<T> = impl Future<Output = io::Result<()>> + SendIf<T>;
 
     /// A future which copies all the response body bytes into a sink.
-    pub type CopyFuture<T> = impl Future<Output = io::Result<u64>> + SendIf<T>;
+    pub type CopyFuture<R, W> = impl Future<Output = io::Result<u64>> + SendIf<R, W>;
 }
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
@@ -388,9 +389,10 @@ pub(crate) struct RemoteAddr(pub(crate) SocketAddr);
 mod tests {
     use super::*;
 
-    static_assertions::assert_impl_all!(ConsumeFuture<'static, Vec<u8>>: Send);
-    static_assertions::assert_not_impl_any!(ConsumeFuture<'static, *mut Vec<u8>>: Send);
+    static_assertions::assert_impl_all!(CopyFuture<'static, Vec<u8>, Vec<u8>>: Send);
 
-    static_assertions::assert_impl_all!(CopyFuture<'static, Vec<u8>>: Send);
-    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>>: Send);
+    // *mut T is !Send
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>, Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, Vec<u8>, *mut Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>, *mut Vec<u8>>: Send);
 }
