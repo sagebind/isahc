@@ -349,7 +349,6 @@ pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut R>;
 }
 
-
 impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
     fn consume(&mut self) -> ConsumeFuture<'_, R> {
         ConsumeFuture::new(async move {
@@ -375,7 +374,7 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
 decl_future! {
     /// A future which reads any remaining bytes from the response body stream
     /// and discard them.
-    pub type ConsumeFuture<T> = impl Future<Output = io::Result<()>> + SendIf<T>;
+    pub type ConsumeFuture<R> = impl Future<Output = io::Result<()>> + SendIf<R>;
 
     /// A future which copies all the response body bytes into a sink.
     pub type CopyFuture<R, W> = impl Future<Output = io::Result<u64>> + SendIf<R, W>;
