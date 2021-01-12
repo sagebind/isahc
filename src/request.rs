@@ -71,6 +71,7 @@ impl<T> RequestExt<T> for Request<T> {
             self.extensions(),
             builder,
             [
+                crate::config::RequestConfig,
                 crate::config::Timeout,
                 crate::config::ConnectTimeout,
                 crate::config::TcpKeepAlive,
@@ -125,5 +126,19 @@ impl Configurable for http::request::Builder {}
 impl ConfigurableBase for http::request::Builder {
     fn configure(self, option: impl Send + Sync + 'static) -> Self {
         self.extension(option)
+    }
+
+    #[inline]
+    fn with_config(mut self, f: impl FnOnce(&mut crate::config::RequestConfig)) -> Self {
+        if let Some(extensions) = self.extensions_mut() {
+            if let Some(config) = extensions.get_mut() {
+                f(config);
+            } else {
+                extensions.insert(crate::config::RequestConfig::default());
+                f(extensions.get_mut().unwrap());
+            }
+        }
+
+        self
     }
 }

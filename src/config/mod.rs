@@ -30,6 +30,8 @@ pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
+pub(crate) use internal::RequestConfig;
+
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
 ///
@@ -74,14 +76,20 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn timeout(self, timeout: Duration) -> Self {
-        self.configure(Timeout(timeout))
+        // self.configure(Timeout(timeout))
+        self.with_config(move |config| {
+            config.timeout = Some(timeout);
+        })
     }
 
     /// Set a timeout for establishing connections to a host.
     ///
     /// If not set, a default connect timeout of 300 seconds will be used.
     fn connect_timeout(self, timeout: Duration) -> Self {
-        self.configure(ConnectTimeout(timeout))
+        // self.configure(ConnectTimeout(timeout))
+        self.with_config(move |config| {
+            config.connect_timeout = Some(timeout);
+        })
     }
 
     /// Configure how the use of HTTP versions should be negotiated with the
@@ -176,7 +184,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
     /// header, Isahc will set one for you automatically based on this option.
     fn automatic_decompression(self, decompress: bool) -> Self {
-        self.configure(AutomaticDecompression(decompress))
+        // self.configure(AutomaticDecompression(decompress))
+        self.with_config(move |config| {
+            config.automatic_decompression = Some(decompress);
+        })
     }
 
     /// Set one or more default HTTP authentication methods to attempt to use
@@ -202,7 +213,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn authentication(self, authentication: Authentication) -> Self {
-        self.configure(authentication)
+        // self.configure(authentication)
+        self.with_config(move |config| {
+            config.authentication = Some(authentication);
+        })
     }
 
     /// Set the credentials to use for HTTP authentication.
@@ -210,7 +224,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// This setting will do nothing unless you also set one or more
     /// authentication methods using [`Configurable::authentication`].
     fn credentials(self, credentials: Credentials) -> Self {
-        self.configure(credentials)
+        // self.configure(credentials)
+        self.with_config(move |config| {
+            config.credentials = Some(credentials);
+        })
     }
 
     /// Enable TCP keepalive with a given probe interval.
@@ -354,7 +371,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
     fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
-        self.configure(proxy::Proxy(proxy.into()))
+        // self.configure(proxy::Proxy(proxy.into()))
+        self.with_config(move |config| {
+            config.proxy = Some(proxy.into());
+        })
     }
 
     /// Disable proxy usage for the provided list of hosts.
@@ -402,7 +422,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), Box<std::error::Error>>(())
     /// ```
     fn proxy_authentication(self, authentication: Authentication) -> Self {
-        self.configure(proxy::Proxy(authentication))
+        // self.configure(proxy::Proxy(authentication))
+        self.with_config(move |config| {
+            config.proxy_authentication = Some(authentication);
+        })
     }
 
     /// Set the credentials to use for proxy authentication.
@@ -411,7 +434,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// authentication methods using
     /// [`Configurable::proxy_authentication`].
     fn proxy_credentials(self, credentials: Credentials) -> Self {
-        self.configure(proxy::Proxy(credentials))
+        // self.configure(proxy::Proxy(credentials))
+        self.with_config(move |config| {
+            config.proxy_credentials = Some(credentials);
+        })
     }
 
     /// Set a maximum upload speed for the request body, in bytes per second.
@@ -496,7 +522,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
-        self.configure(certificate)
+        // self.configure(certificate)
+        self.with_config(move |config| {
+            config.ssl_ca_certificate = Some(certificate);
+        })
     }
 
     /// Set a list of ciphers to use for SSL/TLS connections.
@@ -549,7 +578,10 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_options(self, options: SslOption) -> Self {
-        self.configure(options)
+        // self.configure(options)
+        self.with_config(move |config| {
+            config.ssl_options = Some(options);
+        })
     }
 
     /// Enable or disable sending HTTP header names in Title-Case instead of
@@ -582,7 +614,10 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// By default metrics are disabled.
     fn metrics(self, enable: bool) -> Self {
-        self.configure(EnableMetrics(enable))
+        // self.configure(EnableMetrics(enable))
+        self.with_config(move |config| {
+            config.enable_metrics = Some(enable);
+        })
     }
 }
 

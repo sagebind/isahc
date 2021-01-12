@@ -72,6 +72,7 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
 /// ```
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
+    config: RequestConfig,
     defaults: http::Extensions,
     interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
@@ -93,20 +94,25 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
+        let mut config = RequestConfig::default();
         let mut defaults = http::Extensions::new();
 
         // Always start out with latest compatible HTTP version.
         defaults.insert(VersionNegotiation::default());
+        config.version_negotiation = Some(VersionNegotiation::default());
 
         // Enable automatic decompression by default for convenience (and
         // maintain backwards compatibility).
         defaults.insert(AutomaticDecompression(true));
+        config.automatic_decompression = Some(true);
 
         // Erase curl's default auth method of Basic.
         defaults.insert(Authentication::default());
+        config.authentication = Some(Authentication::default());
 
         Self {
             agent_builder: AgentBuilder::default(),
+            config,
             defaults,
             interceptors: vec![
                 // Add redirect support. Note that this is _always_ the first,
@@ -464,6 +470,7 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            config: self.config,
             defaults: self.defaults,
             interceptors: self.interceptors,
         };
@@ -474,6 +481,7 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            config: self.config,
             defaults: self.defaults,
             interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
@@ -496,6 +504,12 @@ impl Configurable for HttpClientBuilder {
 impl ConfigurableBase for HttpClientBuilder {
     fn configure(mut self, option: impl Send + Sync + 'static) -> Self {
         self.defaults.insert(option);
+        self
+    }
+
+    #[inline]
+    fn with_config(mut self, f: impl FnOnce(&mut RequestConfig)) -> Self {
+        f(&mut self.config);
         self
     }
 }
@@ -603,6 +617,8 @@ pub struct HttpClient {
 struct Inner {
     /// This is how we talk to our background agent thread.
     agent: agent::Handle,
+
+    config: RequestConfig,
 
     /// Map of config values that should be used to configure execution if not
     /// specified in a request.
@@ -1067,39 +1083,41 @@ impl HttpClient {
             }};
         }
 
-        set_opts!(
-            &mut easy,
-            request.extensions(),
-            self.inner.defaults,
-            [
-                Timeout,
-                ConnectTimeout,
-                TcpKeepAlive,
-                TcpNoDelay,
-                NetworkInterface,
-                Dialer,
-                AutomaticDecompression,
-                Authentication,
-                Credentials,
-                MaxAgeConn,
-                MaxUploadSpeed,
-                MaxDownloadSpeed,
-                VersionNegotiation,
-                proxy::Proxy<Option<http::Uri>>,
-                proxy::Blacklist,
-                proxy::Proxy<Authentication>,
-                proxy::Proxy<Credentials>,
-                DnsCache,
-                dns::ResolveMap,
-                ssl::Ciphers,
-                ClientCertificate,
-                CaCertificate,
-                SslOption,
-                CloseConnection,
-                EnableMetrics,
-                IpVersion,
-            ]
-        );
+        // set_opts!(
+        //     &mut easy,
+        //     request.extensions(),
+        //     self.inner.defaults,
+        //     [
+        //         Timeout,
+        //         ConnectTimeout,
+        //         TcpKeepAlive,
+        //         TcpNoDelay,
+        //         NetworkInterface,
+        //         Dialer,
+        //         AutomaticDecompression,
+        //         Authentication,
+        //         Credentials,
+        //         MaxAgeConn,
+        //         MaxUploadSpeed,
+        //         MaxDownloadSpeed,
+        //         VersionNegotiation,
+        //         proxy::Proxy<Option<http::Uri>>,
+        //         proxy::Blacklist,
+        //         proxy::Proxy<Authentication>,
+        //         proxy::Proxy<Credentials>,
+        //         DnsCache,
+        //         dns::ResolveMap,
+        //         ssl::Ciphers,
+        //         ClientCertificate,
+        //         CaCertificate,
+        //         SslOption,
+        //         CloseConnection,
+        //         EnableMetrics,
+        //         IpVersion,
+        //     ]
+        // );
+
+        self.configure_easy_handle(&mut easy, request.extensions().get())?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -1178,6 +1196,95 @@ impl HttpClient {
 
         Ok((easy, future))
     }
+
+    #[inline]
+    fn get_config<'a, T, F>(&'a self, config: Option<&'a RequestConfig>, f: F) -> Option<T>
+    where
+        T: 'a,
+        F: Fn(&'a RequestConfig) -> Option<T> + 'a,
+    {
+        config.and_then(|c| f(c)).or_else(|| f(&self.inner.config))
+    }
+
+    fn configure_easy_handle(
+        &self,
+        easy: &mut curl::easy::Easy2<RequestHandler>,
+        config: Option<&RequestConfig>,
+    ) -> Result<(), curl::Error> {
+        if let Some(timeout) = self.get_config(config, |c| c.timeout) {
+            easy.timeout(timeout)?;
+        }
+
+        if let Some(timeout) = self.get_config(config, |c| c.connect_timeout) {
+            easy.connect_timeout(timeout)?;
+        }
+
+        if let Some(negotiation) = self.get_config(config, |c| c.version_negotiation.as_ref()) {
+            negotiation.set_opt(easy)?;
+        }
+
+        #[allow(unsafe_code)]
+        if let Some(enable) = self.get_config(config, |c| c.automatic_decompression) {
+            if enable {
+                // Enable automatic decompression, and also populate the
+                // Accept-Encoding header with all supported encodings if not
+                // explicitly set.
+                easy.accept_encoding("")?;
+            } else {
+                // Use raw FFI because safe wrapper doesn't let us set to null.
+                unsafe {
+                    match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_ACCEPT_ENCODING, 0) {
+                        curl_sys::CURLE_OK => {},
+                        code => return Err(curl::Error::new(code)),
+                    }
+                }
+            }
+        }
+
+        if let Some(auth) = self.get_config(config, |c| c.authentication.as_ref()) {
+            auth.set_opt(easy)?;
+        }
+
+        if let Some(credentials) = self.get_config(config, |c| c.credentials.as_ref()) {
+            credentials.set_opt(easy)?;
+        }
+
+        if let Some(interval) = self.get_config(config, |c| c.tcp_keepalive) {
+            easy.tcp_keepalive(true)?;
+            easy.tcp_keepintvl(interval)?;
+        }
+
+        if let Some(enable) = self.get_config(config, |c| c.tcp_nodelay) {
+            easy.tcp_nodelay(enable)?;
+        }
+
+        if let Some(max) = self.get_config(config, |c| c.max_upload_speed) {
+            easy.max_send_speed(max)?;
+        }
+
+        if let Some(max) = self.get_config(config, |c| c.max_download_speed) {
+            easy.max_recv_speed(max)?;
+        }
+
+        if let Some(enable) = self.get_config(config, |c| c.enable_metrics) {
+            easy.progress(enable)?;
+        }
+
+        if let Some(version) = self.get_config(config, |c| c.ip_version.as_ref()) {
+            easy.ip_resolve(match version {
+                IpVersion::V4 => curl::easy::IpResolve::V4,
+                IpVersion::V6 => curl::easy::IpResolve::V6,
+                IpVersion::Any => curl::easy::IpResolve::Any,
+            })?;
+        }
+
+        if let Some(dialer) = self.get_config(config, |c| c.dial.as_ref()) {
+            dialer.set_opt(easy)?;
+        }
+
+
+        Ok(())
+    }
 }
 
 impl crate::interceptor::Invoke for &HttpClient {
@@ -1194,11 +1301,14 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // Check if automatic decompression is enabled; we'll need to know
             // this later after the response is sent.
-            let is_automatic_decompression = request
-                .extensions()
-                .get()
-                .or_else(|| self.inner.defaults.get())
-                .map(|AutomaticDecompression(enabled)| *enabled)
+            // let is_automatic_decompression = request
+            //     .extensions()
+            //     .get()
+            //     .or_else(|| self.inner.defaults.get())
+            //     .map(|AutomaticDecompression(enabled)| *enabled)
+            //     .unwrap_or(false);
+            let is_automatic_decompression = self
+                .get_config(request.extensions().get(), |c| c.automatic_decompression)
                 .unwrap_or(false);
 
             // Create and configure a curl easy handle to fulfil the request.
