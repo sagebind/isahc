@@ -1,5 +1,5 @@
 use crate::{metrics::Metrics, redirect::EffectiveUri};
-use futures_lite::io::{AsyncRead, AsyncWrite};
+use futures_lite::io::{AsyncRead, AsyncWrite, copy as copy_async};
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -230,9 +230,9 @@ pub trait ReadResponseExt<R: Read> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(feature = "json")]
-    fn json<D>(&mut self) -> Result<D, serde_json::Error>
+    fn json<T>(&mut self) -> Result<T, serde_json::Error>
     where
-        D: serde::de::DeserializeOwned;
+        T: serde::de::DeserializeOwned;
 }
 
 impl<R: Read> ReadResponseExt<R> for Response<R> {
@@ -347,12 +347,36 @@ pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
     /// ```
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut R>;
+
+    /// Deserialize the response body as JSON into a given type.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`json`](index.html#json) feature
+    /// is enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    /// use serde_json::Value;
+    ///
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// let json: Value = isahc::get_async("https://httpbin.org/json").await?
+    ///     .json().await?;
+    /// println!("author: {}", json["slideshow"]["author"]);
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "json")]
+    fn json<T>(&mut self) -> JsonFuture<'_, R, T>
+    where
+        T: serde::de::DeserializeOwned;
 }
 
 impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
     fn consume(&mut self) -> ConsumeFuture<'_, R> {
         ConsumeFuture::new(async move {
-            futures_lite::io::copy(self.body_mut(), futures_lite::io::sink()).await?;
+            copy_async(self.body_mut(), futures_lite::io::sink()).await?;
 
             Ok(())
         })
@@ -362,12 +386,42 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
     where
         W: AsyncWrite + Unpin + 'a,
     {
-        CopyFuture::new(async move { futures_lite::io::copy(self.body_mut(), writer).await })
+        CopyFuture::new(async move { copy_async(self.body_mut(), writer).await })
     }
 
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut R> {
         crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
+    }
+
+    #[cfg(feature = "json")]
+    fn json<T>(&mut self) -> JsonFuture<'_, R, T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        JsonFuture::new(async move {
+            let mut buf = Vec::new();
+
+            // Serde does not support incremental parsing, so we have to resort
+            // to reading the entire response into memory first and then
+            // deserializing.
+            if let Err(e) = copy_async(self.body_mut(), &mut buf).await {
+                struct ErrorReader(Option<io::Error>);
+
+                impl Read for ErrorReader {
+                    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+                        Err(self.0.take().unwrap())
+                    }
+                }
+
+                // Serde offers no public way to directly create an error from
+                // an I/O error, but we can do so in a roundabout way by parsing
+                // a reader that always returns the desired error.
+                serde_json::from_reader(ErrorReader(Some(e)))
+            } else {
+                serde_json::from_slice(&buf)
+            }
+        })
     }
 }
 
@@ -378,6 +432,10 @@ decl_future! {
 
     /// A future which copies all the response body bytes into a sink.
     pub type CopyFuture<R, W> = impl Future<Output = io::Result<u64>> + SendIf<R, W>;
+
+    /// A future which deserializes the response body as JSON.
+    #[cfg(feature = "json")]
+    pub type JsonFuture<R, T> = impl Future<Output = Result<T, serde_json::Error>> + SendIf<R, T>;
 }
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
