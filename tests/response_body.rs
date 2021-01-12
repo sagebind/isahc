@@ -1,5 +1,10 @@
+use futures_lite::{future::block_on, io::AsyncReadExt};
 use isahc::prelude::*;
+use std::{io, io::Read};
 use testserver::mock;
+
+#[macro_use]
+mod utils;
 
 #[test]
 fn simple_response_body() {
@@ -74,8 +79,6 @@ fn dropping_client_does_not_abort_response_transfer() {
 // See issue #72.
 #[test]
 fn reading_from_response_body_after_eof_continues_to_return_eof() {
-    use std::{io, io::Read};
-
     let m = mock! {
         body: "hello world",
     };
@@ -91,4 +94,42 @@ fn reading_from_response_body_after_eof_continues_to_return_eof() {
     for _ in 0..3 {
         assert_eq!(body.read(&mut buf).unwrap(), 0);
     }
+}
+
+#[test]
+fn consume_unread_response_body() {
+    let body = "wow so large ".repeat(1000);
+
+    let m = {
+        let body = body.clone();
+        mock! {
+            body: body.clone(),
+        }
+    };
+
+    let mut response = isahc::get(m.url()).unwrap();
+    response.consume().unwrap();
+
+    let mut buf = [0; 8192];
+    assert_matches!(response.body_mut().read(&mut buf), Ok(0));
+}
+
+#[test]
+fn consume_unread_response_body_async() {
+    let body = "wow so large ".repeat(1000);
+
+    let m = {
+        let body = body.clone();
+        mock! {
+            body: body.clone(),
+        }
+    };
+
+    block_on(async move {
+        let mut response = isahc::get_async(m.url()).await.unwrap();
+        response.consume().await.unwrap();
+
+        let mut buf = [0; 8192];
+        assert_matches!(response.body_mut().read(&mut buf).await, Ok(0));
+    });
 }
