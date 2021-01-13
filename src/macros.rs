@@ -38,6 +38,7 @@ macro_rules! decl_future {
                 $($($T: ::std::marker::PhantomData<$T>,)*)*
             }
 
+            $(#[$meta])*
             impl<'a, $($($T),*)*> $ident<'a, $($($T),*)*> {
                 pub(crate) fn new<F>(future: F) -> Self
                 where
@@ -50,6 +51,7 @@ macro_rules! decl_future {
                 }
             }
 
+            $(#[$meta])*
             impl<$($($T: Unpin),*)*> ::std::future::Future for $ident<'_, $($($T),*)*> {
                 type Output = $output;
 
@@ -58,6 +60,7 @@ macro_rules! decl_future {
                 }
             }
 
+            $(#[$meta])*
             $(
                 #[allow(unsafe_code)]
                 unsafe impl<$($S: Send),*> Send for $ident<'_, $($S),*> {}
