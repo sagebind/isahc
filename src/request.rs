@@ -60,8 +60,10 @@ impl<T> RequestExt<T> for Request<T> {
         }
 
         #[cfg(feature = "cookies")]
-        if let Some(cookie_jar) = self.extensions().get::<crate::cookies::CookieJar>() {
-            builder = builder.extension(cookie_jar.clone());
+        {
+            if let Some(cookie_jar) = self.extensions().get::<crate::cookies::CookieJar>() {
+                builder = builder.extension(cookie_jar.clone());
+            }
         }
 
         builder
