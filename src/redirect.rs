@@ -1,6 +1,6 @@
 use crate::{
     body::AsyncBody,
-    config::RedirectPolicy,
+    config::{RedirectPolicy, RequestConfig},
     error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
@@ -37,7 +37,8 @@ impl Interceptor for RedirectInterceptor {
             // Get the redirect policy for this request.
             let policy = request
                 .extensions()
-                .get::<RedirectPolicy>()
+                .get::<RequestConfig>()
+                .and_then(|config| config.redirect_policy.as_ref())
                 .cloned()
                 .unwrap_or_default();
 
@@ -53,8 +54,9 @@ impl Interceptor for RedirectInterceptor {
 
             let auto_referer = request
                 .extensions()
-                .get::<crate::config::redirect::AutoReferer>()
-                .is_some();
+                .get::<RequestConfig>()
+                .and_then(|config| config.auto_referer.clone())
+                .unwrap_or(false);
 
             let limit = match policy {
                 RedirectPolicy::Limit(limit) => limit,

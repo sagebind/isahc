@@ -1,7 +1,7 @@
 use crate::{
     body::{AsyncBody, Body},
     client::ResponseFuture,
-    config::{internal::ConfigurableBase, Configurable},
+    config::{internal::ConfigurableBase, Configurable, RequestConfig},
     error::Error,
 };
 use http::{Request, Response};
@@ -55,53 +55,14 @@ impl<T> RequestExt<T> for Request<T> {
 
         *builder.headers_mut().unwrap() = self.headers().clone();
 
-        // Clone known extensions.
-        macro_rules! try_clone_extension {
-            ($extensions:expr, $builder:expr, [$($ty:ty,)*]) => {{
-                let extensions = $extensions;
-                $(
-                    if let Some(extension) = extensions.get::<$ty>() {
-                        $builder = $builder.extension(extension.clone());
-                    }
-                )*
-            }}
+        if let Some(config) = self.extensions().get::<RequestConfig>() {
+            builder = builder.extension(config.clone());
         }
 
-        try_clone_extension!(
-            self.extensions(),
-            builder,
-            [
-                crate::config::RequestConfig,
-                crate::config::Timeout,
-                crate::config::ConnectTimeout,
-                crate::config::TcpKeepAlive,
-                crate::config::TcpNoDelay,
-                crate::config::NetworkInterface,
-                crate::config::Dialer,
-                crate::config::RedirectPolicy,
-                crate::config::redirect::AutoReferer,
-                crate::config::AutomaticDecompression,
-                crate::auth::Authentication,
-                crate::auth::Credentials,
-                crate::config::MaxAgeConn,
-                crate::config::MaxUploadSpeed,
-                crate::config::MaxDownloadSpeed,
-                crate::config::VersionNegotiation,
-                crate::config::proxy::Proxy<Option<http::Uri>>,
-                crate::config::proxy::Blacklist,
-                crate::config::proxy::Proxy<crate::auth::Authentication>,
-                crate::config::proxy::Proxy<crate::auth::Credentials>,
-                crate::config::DnsCache,
-                crate::config::dns::ResolveMap,
-                crate::config::ssl::Ciphers,
-                crate::config::ClientCertificate,
-                crate::config::CaCertificate,
-                crate::config::SslOption,
-                crate::config::CloseConnection,
-                crate::config::EnableMetrics,
-                crate::config::IpVersion,
-            ]
-        );
+        #[cfg(feature = "cookies")]
+        if let Some(cookie_jar) = self.extensions().get::<crate::cookies::CookieJar>() {
+            builder = builder.extension(cookie_jar.clone());
+        }
 
         builder
     }
@@ -121,13 +82,14 @@ impl<T> RequestExt<T> for Request<T> {
     }
 }
 
-impl Configurable for http::request::Builder {}
+impl Configurable for http::request::Builder {
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.extension(cookie_jar)
+    }
+}
 
 impl ConfigurableBase for http::request::Builder {
-    fn configure(self, option: impl Send + Sync + 'static) -> Self {
-        self.extension(option)
-    }
-
     #[inline]
     fn with_config(mut self, f: impl FnOnce(&mut crate::config::RequestConfig)) -> Self {
         if let Some(extensions) = self.extensions_mut() {
