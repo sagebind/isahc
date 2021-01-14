@@ -1195,10 +1195,11 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // Check if automatic decompression is enabled; we'll need to know
             // this later after the response is sent.
-            let is_automatic_decompression = self
-                .inner
-                .config
-                .get(request.extensions().get(), |c| c.automatic_decompression)
+            let is_automatic_decompression = request
+                .extensions()
+                .get::<RequestConfig>()
+                .unwrap()
+                .automatic_decompression
                 .unwrap_or(false);
 
             // Create and configure a curl easy handle to fulfil the request.

@@ -55,17 +55,6 @@ pub struct RequestConfig {
     pub(crate) enable_metrics: Option<bool>,
 }
 
-impl RequestConfig {
-    #[inline]
-    pub(crate) fn get<'a, T, F>(&'a self, overrides: Option<&'a Self>, f: F) -> Option<T>
-    where
-        T: 'a,
-        F: Fn(&'a Self) -> Option<T> + 'a,
-    {
-        overrides.and_then(|c| f(c)).or_else(|| f(self))
-    }
-}
-
 impl SetOpt for RequestConfig {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         eprintln!("{:?}", self);
