@@ -57,8 +57,6 @@ pub struct RequestConfig {
 
 impl SetOpt for RequestConfig {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        eprintln!("{:?}", self);
-
         if let Some(timeout) = self.timeout {
             easy.timeout(timeout)?;
         }
@@ -72,18 +70,24 @@ impl SetOpt for RequestConfig {
         }
 
         #[allow(unsafe_code)]
-        if let Some(enable) = self.automatic_decompression {
-            if enable {
-                // Enable automatic decompression, and also populate the
-                // Accept-Encoding header with all supported encodings if not
-                // explicitly set.
-                easy.accept_encoding("")?;
-            } else {
-                // Use raw FFI because safe wrapper doesn't let us set to null.
-                unsafe {
-                    match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_ACCEPT_ENCODING, 0) {
-                        curl_sys::CURLE_OK => {},
-                        code => return Err(curl::Error::new(code)),
+        {
+            if let Some(enable) = self.automatic_decompression {
+                if enable {
+                    // Enable automatic decompression, and also populate the
+                    // Accept-Encoding header with all supported encodings if not
+                    // explicitly set.
+                    easy.accept_encoding("")?;
+                } else {
+                    // Use raw FFI because safe wrapper doesn't let us set to null.
+                    unsafe {
+                        match curl_sys::curl_easy_setopt(
+                            easy.raw(),
+                            curl_sys::CURLOPT_ACCEPT_ENCODING,
+                            0,
+                        ) {
+                            curl_sys::CURLE_OK => {}
+                            code => return Err(curl::Error::new(code)),
+                        }
                     }
                 }
             }
