@@ -1,8 +1,6 @@
 use curl::multi::Socket;
 use polling::{Event, Poller};
-use std::{collections::HashMap, io, sync::Arc, task::Waker, time::Duration};
-
-const EBADF: i32 = 9;
+use std::{collections::{HashMap, HashSet}, io, sync::Arc, task::Waker, time::Duration};
 
 /// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -18,6 +16,10 @@ pub(crate) struct Selector {
 
     /// All of the sockets that we have been asked to keep track of.
     sockets: HashMap<Socket, Registration>,
+
+    /// If a socket is currently invalid when it is registered, we put it in this
+    /// set and try to register it again later.
+    bad_sockets: HashSet<Socket>,
 
     /// Socket events that have occurred. We re-use this vec every call for
     /// efficiency.
@@ -40,6 +42,7 @@ impl Selector {
         Ok(Self {
             poller: Arc::new(Poller::new()?),
             sockets: HashMap::new(),
+            bad_sockets: HashSet::new(),
             events: Vec::new(),
             tick: 0,
         })
@@ -70,10 +73,19 @@ impl Selector {
             tick: self.tick,
         });
 
-        if previous.is_some() {
+        let result = if previous.is_some() {
             poller_modify(&self.poller, socket, readable, writable)
         } else {
             poller_add(&self.poller, socket, readable, writable)
+        };
+
+        match result {
+            Err(e) if is_bad_socket_error(&e) => {
+                tracing::debug!(socket, "bad socket registered, will try again later");
+                self.bad_sockets.insert(socket);
+                Ok(())
+            }
+            result => result,
         }
     }
 
@@ -83,13 +95,15 @@ impl Selector {
         // Remove this socket from our bookkeeping. If we recognize it, also
         // remove it from the underlying poller.
         if self.sockets.remove(&socket).is_some() {
+            self.bad_sockets.remove(&socket);
+
             // There's a good chance that the socket has already been closed.
             // Depending on the poller implementation, it may have already
             // forgotten about this socket (e.g. epoll). Therefore if we get an
             // error back complaining that the socket is invalid, we can safely
             // ignore it.
             if let Err(e) = self.poller.delete(socket) {
-                if e.kind() != io::ErrorKind::NotFound && e.kind() != io::ErrorKind::PermissionDenied && e.raw_os_error() != Some(EBADF) {
+                if !is_bad_socket_error(&e) && e.kind() != io::ErrorKind::PermissionDenied {
                     return Err(e);
                 }
             }
@@ -121,6 +135,22 @@ impl Selector {
             }
         }
 
+        let sockets = &mut self.sockets;
+        let poller = &self.poller;
+        let tick = self.tick;
+        self.bad_sockets.retain(|&socket| {
+            if let Some(registration) = sockets.get_mut(&socket) {
+                if registration.tick != tick {
+                    registration.tick = tick;
+                    poller_add(poller, socket, registration.readable, registration.writable).is_err()
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
+        });
+
         self.tick = self.tick.wrapping_add(1);
 
         // Block until either an I/O event occurs on a socket, the timeout is
@@ -151,17 +181,17 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
     // operation as a modification is sufficient to handle this.
     //
     // This is especially common with the epoll backend.
-    if let Err(e) = filter_error(poller.add(socket, Event {
+    if let Err(e) = poller.add(socket, Event {
         key: socket as usize,
         readable,
         writable,
-    })) {
+    }) {
         tracing::debug!("failed to add interest for socket {}, retrying as a modify: {}", socket, e);
-        filter_error(poller.modify(socket, Event {
+        poller.modify(socket, Event {
             key: socket as usize,
             readable,
             writable,
-        }))?;
+        })?;
     }
 
     Ok(())
@@ -170,34 +200,37 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
 fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
     // If this errors, we retry the operation as an add instead. This is done
     // because epoll is weird.
-    if let Err(e) = filter_error(poller.modify(socket, Event {
+    if let Err(e) = poller.modify(socket, Event {
         key: socket as usize,
         readable,
         writable,
-    })) {
+    }) {
         tracing::debug!("failed to modify interest for socket {}, retrying as an add: {}", socket, e);
-        filter_error(poller.add(socket, Event {
+        poller.add(socket, Event {
             key: socket as usize,
             readable,
             writable,
-        }))?;
+        })?;
     }
 
     Ok(())
 }
 
-fn filter_error(result: io::Result<()>) -> io::Result<()> {
-    match result {
-        Ok(()) => Ok(()),
-        Err(e) if is_benign_error(&e) => Ok(()),
-        Err(e) => Err(e),
-    }
-}
+fn is_bad_socket_error(error: &io::Error) -> bool {
+    const EBADF: i32 = 9;
+    const ERROR_INVALID_HANDLE: i32 = 6;
 
-fn is_benign_error(error: &io::Error) -> bool {
-    if cfg!(target_os = "macos") {
-        error.raw_os_error() == Some(EBADF)
-    } else {
-        false
+    if error.kind() == io::ErrorKind::NotFound || error.kind() == io::ErrorKind::InvalidInput {
+        return true;
     }
+
+    if cfg!(unix) && error.raw_os_error() == Some(EBADF) {
+        return true;
+    }
+
+    if cfg!(windows) && error.raw_os_error() == Some(ERROR_INVALID_HANDLE) {
+        return true;
+    }
+
+    false
 }

@@ -536,12 +536,12 @@ impl AgentContext {
         while let Ok((socket, events, _)) = self.socket_updates.try_recv() {
             // Curl is asking us to stop polling this socket.
             if events.remove() {
-                self.selector.deregister(socket)?;
+                self.selector.deregister(socket).unwrap();
             } else {
                 let readable = events.input() || events.input_and_output();
                 let writable = events.output() || events.input_and_output();
 
-                self.selector.register(socket, readable, writable)?;
+                self.selector.register(socket, readable, writable).unwrap();
             }
         }
 
