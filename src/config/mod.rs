@@ -371,7 +371,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// let client = HttpClient::builder()
     ///     .proxy(Some("http://proxy:80".parse()?))
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// Explicitly disable the use of a proxy:
@@ -382,7 +382,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// let client = HttpClient::builder()
     ///     .proxy(None)
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
         self.with_config(move |config| {
@@ -434,7 +434,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .proxy_authentication(Authentication::basic())
     ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {

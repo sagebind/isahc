@@ -1,7 +1,6 @@
 use curl::multi::Socket;
 use polling::{Event, Poller};
-use slab::Slab;
-use std::{io::Error, sync::Arc, task::Waker, time::Duration};
+use std::{collections::HashMap, io, sync::Arc, task::Waker, time::Duration};
 
 /// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -14,7 +13,7 @@ pub(crate) struct Selector {
     poller: Arc<Poller>,
 
     /// All of the sockets that we have beeb asked to keep track of.
-    sockets: Slab<Registration>,
+    sockets: HashMap<Socket, Registration>,
 
     /// Socket events that have occurred. We re-use this vec every call for
     /// efficiency.
@@ -23,16 +22,15 @@ pub(crate) struct Selector {
 
 /// Information stored about each registered socket.
 struct Registration {
-    socket: Socket,
     readable: bool,
     writable: bool,
 }
 
 impl Selector {
-    pub(crate) fn new() -> Result<Self, Error> {
+    pub(crate) fn new() -> io::Result<Self> {
         Ok(Self {
             poller: Arc::new(Poller::new()?),
-            sockets: Slab::new(),
+            sockets: HashMap::new(),
             events: Vec::new(),
         })
     }
@@ -52,61 +50,45 @@ impl Selector {
     /// Register a socket with the selector. A new key will be returned to refer
     /// to the registration later.
     #[tracing::instrument(level = "trace", skip(self))]
-    pub(crate) fn add(&mut self, socket: Socket, readable: bool, writable: bool) -> Result<usize, Error> {
-        let entry = self.sockets.vacant_entry();
-        let key = entry.key();
-
-        // Add the socket to our poller.
-        poller_add(&self.poller, socket, key, readable, writable)?;
-
-        entry.insert(Registration {
-            socket,
+    pub(crate) fn register(&mut self, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+        let previous = self.sockets.insert(socket, Registration {
             readable,
             writable,
         });
 
-        Ok(key)
-    }
-
-    #[tracing::instrument(level = "trace", skip(self))]
-    pub(crate) fn update(&mut self, key: usize, readable: bool, writable: bool) -> Result<(), Error> {
-        if let Some(registration) = self.sockets.get_mut(key) {
-            // Update the interest we have recorded for this socket.
-            registration.readable = readable;
-            registration.writable = writable;
-
-            // Update the socket interests with our poller.
-            poller_modify(&self.poller, registration.socket, key, readable, writable)
+        if previous.is_some() {
+            poller_modify(&self.poller, socket, readable, writable)
         } else {
-            // Curl should never give us a key that we did not first give to
-            // curl!
-            tracing::warn!("update request for unknown key");
-
-            Ok(())
+            poller_add(&self.poller, socket, readable, writable)
         }
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
-    pub(crate) fn remove(&mut self, key: usize) {
+    pub(crate) fn deregister(&mut self, socket: Socket) {
         // Remove this socket from our bookkeeping.
-        let registration = self.sockets.remove(key);
-
-        // There's a good chance that curl has already closed this socket, at
-        // which point the poller implementation may have already forgotten
-        // about this socket (e.g. epoll). Therefore if we get an error back we
-        // just ignore it, as it is almost certainly benign.
-        if let Err(e) = self.poller.delete(registration.socket) {
-            tracing::debug!(key = key, fd = registration.socket, "error removing socket from poller: {}", e);
+        if self.sockets.remove(&socket).is_some() {
+            // There's a good chance that curl has already closed this socket,
+            // at which point the poller implementation may have already
+            // forgotten about this socket (e.g. epoll). Therefore if we get an
+            // error back we just ignore it, as it is almost certainly benign.
+            if let Err(e) = self.poller.delete(socket) {
+                tracing::debug!(fd = socket, "error removing socket from poller: {}", e);
+            }
         }
     }
 
     /// Block until activity is detected or a timeout passes.
-    pub(crate) fn poll(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
+    pub(crate) fn poll(&mut self, timeout: Option<Duration>) -> io::Result<bool> {
         // Since our I/O events are oneshot, make sure we re-register sockets
         // with the poller that previously were triggered last time we polled.
+        //
+        // We don't do this immediately after polling because the caller may
+        // choose to de-register a socket before the next call. That's why we
+        // wait until the last minute.
         for event in self.events.drain(..) {
-            if let Some(registration) = self.sockets.get(event.key) {
-                poller_modify(&self.poller, registration.socket, event.key, registration.readable, registration.writable)?;
+            let socket = event.key as Socket;
+            if let Some(registration) = self.sockets.get(&socket) {
+                poller_modify(&self.poller, socket, registration.readable, registration.writable)?;
             }
         }
 
@@ -114,38 +96,33 @@ impl Selector {
         // reached, or the agent handle interrupts us.
         self.poller.wait(&mut self.events, timeout)?;
 
-        Ok(())
+        Ok(!self.events.is_empty())
     }
 
-    pub(crate) fn events(&self) -> impl Iterator<Item = (usize, bool, bool)> + '_ {
+    pub(crate) fn events(&self) -> impl Iterator<Item = (Socket, bool, bool)>  {
         self.events.iter().map(|event| (
-            event.key,
+            event.key as Socket,
             event.readable,
             event.writable
-        ))
-    }
-
-    pub(crate) fn get_socket(&self, key: usize) -> Option<Socket> {
-        self.sockets.get(key).map(|registration| registration.socket)
+        )).collect::<Vec<_>>().into_iter()
     }
 }
 
-fn poller_add(poller: &Poller, socket: Socket, key: usize, readable: bool, writable: bool) -> Result<(), Error> {
-    // If this errors, we retry the operation as a modification instead.
-    // This is because this new socket might re-use a file descriptor that
-    // was previously closed, but is still registered with the poller.
-    // Retrying the operation as a modification is sufficient to handle
-    // this.
+fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+    // If this errors, we retry the operation as a modification instead. This is
+    // because this new socket might re-use a file descriptor that was
+    // previously closed, but is still registered with the poller. Retrying the
+    // operation as a modification is sufficient to handle this.
     //
     // This is especially common with the epoll backend.
     if let Err(e) = poller.add(socket, Event {
-        key,
+        key: socket as usize,
         readable,
         writable,
     }) {
-        tracing::debug!("failed to add interest for socket key {}, retrying as a modify: {}", key, e);
+        tracing::debug!("failed to add interest for socket {}, retrying as a modify: {}", socket, e);
         poller.modify(socket, Event {
-            key,
+            key: socket as usize,
             readable,
             writable,
         })?;
@@ -154,17 +131,17 @@ fn poller_add(poller: &Poller, socket: Socket, key: usize, readable: bool, writa
     Ok(())
 }
 
-fn poller_modify(poller: &Poller, socket: Socket, key: usize, readable: bool, writable: bool) -> Result<(), Error> {
-    // If this errors, we retry the operation as an add instead. This is
-    // done because epoll is weird.
+fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+    // If this errors, we retry the operation as an add instead. This is done
+    // because epoll is weird.
     if let Err(e) = poller.modify(socket, Event {
-        key,
+        key: socket as usize,
         readable,
         writable,
     }) {
-        tracing::debug!("failed to modify interest for socket key {}, retrying as an add: {}", key, e);
+        tracing::debug!("failed to modify interest for socket {}, retrying as an add: {}", socket, e);
         poller.add(socket, Event {
-            key,
+            key: socket as usize,
             readable,
             writable,
         })?;

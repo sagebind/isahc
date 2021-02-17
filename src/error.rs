@@ -145,7 +145,7 @@ pub struct Error(Arc<Inner>);
 struct Inner {
     kind: ErrorKind,
     context: Option<String>,
-    source: Option<Box<dyn StdError + Send + Sync>>,
+    source: Option<Box<dyn SourceError>>,
 }
 
 impl Error {
@@ -312,7 +312,7 @@ impl Error {
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        self.0.source.as_ref().map(|source| &**source as _)
+        self.0.source.as_ref().map(|source| source.as_dyn_error())
     }
 }
 
@@ -328,6 +328,7 @@ impl fmt::Debug for Error {
             .field("kind", &self.kind())
             .field("context", &self.0.context)
             .field("source", &self.source())
+            .field("source_type", &self.0.source.as_ref().map(|e| e.type_name()))
             .finish()
     }
 }
@@ -399,6 +400,27 @@ impl From<http::Error> for Error {
             },
             error,
         )
+    }
+}
+
+/// Internal trait object for source errors. This is used to capture additional
+/// methods about the source error value in the vtable.
+trait SourceError: StdError + Send + Sync + 'static {
+    /// Get the type name of the concrete error type when the parent error was
+    /// created. Used for enriching the debug formatting.
+    fn type_name(&self) -> &'static str;
+
+    /// Cast this error as a stdlib error trait object.
+    fn as_dyn_error(&self) -> &(dyn StdError + 'static);
+}
+
+impl<T: StdError + Send + Sync + 'static> SourceError for T {
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn as_dyn_error(&self) -> &(dyn StdError + 'static) {
+        self
     }
 }
 
