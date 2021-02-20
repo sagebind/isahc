@@ -39,7 +39,7 @@ fn ipv4_only_will_not_connect_to_ipv6() {
 
     let result = Request::get(format!("http://localhost:{}", port))
         .ip_version(IpVersion::V4)
-        .timeout(Duration::from_millis(100))
+        .timeout(Duration::from_secs(1))
         .body(())
         .unwrap()
         .send();
@@ -55,7 +55,7 @@ fn ipv6_only_will_not_connect_to_ipv4() {
 
     let result = Request::get(format!("http://localhost:{}", port))
         .ip_version(IpVersion::V6)
-        .timeout(Duration::from_millis(100))
+        .timeout(Duration::from_secs(1))
         .body(())
         .unwrap()
         .send();
