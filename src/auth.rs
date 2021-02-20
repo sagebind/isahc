@@ -1,6 +1,6 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::{internal::SetOpt, proxy::Proxy};
+use crate::config::{proxy::Proxy, request::SetOpt};
 use std::{
     fmt,
     ops::{BitOr, BitOrAssign},

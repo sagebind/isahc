@@ -2,10 +2,10 @@
 
 use crate::{
     agent::{self, AgentBuilder},
-    auth::{Authentication, Credentials},
     body::{AsyncBody, Body},
     config::{
-        internal::{ConfigurableBase, SetOpt},
+        client::ClientConfig,
+        request::{RequestConfig, SetOpt, WithRequestConfig},
         *,
     },
     default_headers::DefaultHeadersInterceptor,
@@ -72,7 +72,8 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
 /// ```
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
-    defaults: http::Extensions,
+    client_config: ClientConfig,
+    request_config: RequestConfig,
     interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
     error: Option<Error>,
@@ -93,21 +94,10 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        let mut defaults = http::Extensions::new();
-
-        // Always start out with latest compatible HTTP version.
-        defaults.insert(VersionNegotiation::default());
-
-        // Enable automatic decompression by default for convenience (and
-        // maintain backwards compatibility).
-        defaults.insert(AutomaticDecompression(true));
-
-        // Erase curl's default auth method of Basic.
-        defaults.insert(Authentication::default());
-
         Self {
             agent_builder: AgentBuilder::default(),
-            defaults,
+            client_config: ClientConfig::default(),
+            request_config: RequestConfig::client_defaults(),
             interceptors: vec![
                 // Add redirect support. Note that this is _always_ the first,
                 // and thus the outermost, interceptor. Also note that this does
@@ -193,7 +183,7 @@ impl HttpClientBuilder {
     ///
     /// The default TTL is 118 seconds.
     pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
-        self.defaults.insert(MaxAgeConn(ttl));
+        self.client_config.connection_cache_ttl = Some(ttl);
         self
     }
 
@@ -253,7 +243,7 @@ impl HttpClientBuilder {
     /// chosen.
     pub fn connection_cache_size(mut self, size: usize) -> Self {
         self.agent_builder = self.agent_builder.connection_cache_size(size);
-        self.defaults.insert(CloseConnection(size == 0));
+        self.client_config.close_connections = size == 0;
         self
     }
 
@@ -283,13 +273,17 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn dns_cache(self, cache: impl Into<DnsCache>) -> Self {
-        // This option is per-request, but we only expose it on the client.
-        // Since the DNS cache is shared between all requests, exposing this
-        // option per-request would actually cause the timeout to alternate
-        // values for every request with a different timeout, resulting in some
-        // confusing (but valid) behavior.
-        self.configure(cache.into())
+    pub fn dns_cache<C>(mut self, cache: C) -> Self
+    where
+        C: Into<DnsCache>,
+    {
+        // This option is technically supported per-request by curl, but we only
+        // expose it on the client. Since the DNS cache is shared between all
+        // requests, exposing this option per-request would actually cause the
+        // timeout to alternate values for every request with a different
+        // timeout, resulting in some confusing (but valid) behavior.
+        self.client_config.dns_cache = Some(cache.into());
+        self
     }
 
     /// Set a mapping of DNS resolve overrides.
@@ -312,11 +306,12 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn dns_resolve(self, map: ResolveMap) -> Self {
+    pub fn dns_resolve(mut self, map: ResolveMap) -> Self {
         // Similar to the dns_cache option, this operation actually affects all
         // requests in a multi handle so we do not expose it per-request to
         // avoid confusing behavior.
-        self.configure(map)
+        self.client_config.dns_resolve = Some(map);
+        self
     }
 
     /// Add a default header to be passed with every request.
@@ -464,7 +459,8 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
-            defaults: self.defaults,
+            client_config: self.client_config,
+            request_config: self.request_config,
             interceptors: self.interceptors,
         };
 
@@ -474,7 +470,8 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
-            defaults: self.defaults,
+            client_config: self.client_config,
+            request_config: self.request_config,
             interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
         };
@@ -493,9 +490,10 @@ impl Configurable for HttpClientBuilder {
     }
 }
 
-impl ConfigurableBase for HttpClientBuilder {
-    fn configure(mut self, option: impl Send + Sync + 'static) -> Self {
-        self.defaults.insert(option);
+impl WithRequestConfig for HttpClientBuilder {
+    #[inline]
+    fn with_config(mut self, f: impl FnOnce(&mut RequestConfig)) -> Self {
+        f(&mut self.request_config);
         self
     }
 }
@@ -604,9 +602,11 @@ struct Inner {
     /// This is how we talk to our background agent thread.
     agent: agent::Handle,
 
-    /// Map of config values that should be used to configure execution if not
-    /// specified in a request.
-    defaults: http::Extensions,
+    /// Client-wide request configuration.
+    client_config: ClientConfig,
+
+    /// Default request configuration to use if not specified in a request.
+    request_config: RequestConfig,
 
     /// Registered interceptors that requests should pass through.
     interceptors: Vec<InterceptorObj>,
@@ -1017,11 +1017,14 @@ impl HttpClient {
         &self,
         mut request: Request<AsyncBody>,
     ) -> Result<Response<AsyncBody>, Error> {
-        // Set redirect policy if not specified.
-        if request.extensions().get::<RedirectPolicy>().is_none() {
-            if let Some(policy) = self.inner.defaults.get::<RedirectPolicy>().cloned() {
-                request.extensions_mut().insert(policy);
-            }
+        // Populate request config, creating if necessary.
+        if let Some(config) = request.extensions_mut().get_mut::<RequestConfig>() {
+            // Merge request configuration with defaults.
+            config.merge(&self.inner.request_config);
+        } else {
+            request
+                .extensions_mut()
+                .insert(self.inner.request_config.clone());
         }
 
         let ctx = interceptor::Context {
@@ -1043,7 +1046,6 @@ impl HttpClient {
         curl::Error,
     > {
         // Prepare the request plumbing.
-        // let (mut parts, body) = request.into_parts();
         let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
@@ -1056,50 +1058,13 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        // Macro to apply all config values given in the request or in defaults.
-        macro_rules! set_opts {
-            ($easy:expr, $extensions:expr, $defaults:expr, [$($option:ty,)*]) => {{
-                $(
-                    if let Some(extension) = $extensions.get::<$option>().or_else(|| $defaults.get()) {
-                        extension.set_opt($easy)?;
-                    }
-                )*
-            }};
-        }
+        request
+            .extensions()
+            .get::<RequestConfig>()
+            .unwrap()
+            .set_opt(&mut easy)?;
 
-        set_opts!(
-            &mut easy,
-            request.extensions(),
-            self.inner.defaults,
-            [
-                Timeout,
-                ConnectTimeout,
-                TcpKeepAlive,
-                TcpNoDelay,
-                NetworkInterface,
-                Dialer,
-                AutomaticDecompression,
-                Authentication,
-                Credentials,
-                MaxAgeConn,
-                MaxUploadSpeed,
-                MaxDownloadSpeed,
-                VersionNegotiation,
-                proxy::Proxy<Option<http::Uri>>,
-                proxy::Blacklist,
-                proxy::Proxy<Authentication>,
-                proxy::Proxy<Credentials>,
-                DnsCache,
-                dns::ResolveMap,
-                ssl::Ciphers,
-                ClientCertificate,
-                CaCertificate,
-                SslOption,
-                CloseConnection,
-                EnableMetrics,
-                IpVersion,
-            ]
-        );
+        self.inner.client_config.set_opt(&mut easy)?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -1165,9 +1130,9 @@ impl HttpClient {
 
         let title_case = request
             .extensions()
-            .get::<TitleCaseHeaders>()
-            .or_else(|| self.inner.defaults.get())
-            .map(|v| v.0)
+            .get::<RequestConfig>()
+            .unwrap()
+            .title_case_headers
             .unwrap_or(false);
 
         for (name, value) in request.headers().iter() {
@@ -1196,9 +1161,9 @@ impl crate::interceptor::Invoke for &HttpClient {
             // this later after the response is sent.
             let is_automatic_decompression = request
                 .extensions()
-                .get()
-                .or_else(|| self.inner.defaults.get())
-                .map(|AutomaticDecompression(enabled)| *enabled)
+                .get::<RequestConfig>()
+                .unwrap()
+                .automatic_decompression
                 .unwrap_or(false);
 
             // Create and configure a curl easy handle to fulfil the request.

@@ -21,6 +21,3 @@ impl Default for RedirectPolicy {
         RedirectPolicy::None
     }
 }
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct AutoReferer;

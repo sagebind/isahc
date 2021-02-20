@@ -14,6 +14,19 @@ Imagine you have a web service that may need to make multiple requests to anothe
 
 While the last solution can be the most difficult to implement, the advantages are clear even for for traditional applications. This is the approach Isahc takes.
 
+## Configuration
+
+Curl is very configurable, and so is Isahc! We try to offer as many knobs as possible that makes sense for a full-featured HTTP client. As a result, there can be quite a lot of configuration fields that need to be passed around!
+
+Configuration is stored in two internal structs:
+
+- `ClientConfig`: This stores options that apply to an HTTP client as a whole.
+- `RequestConfig`: This stores options that can apply to individual requests.
+
+Every HTTP client has both of these structs, and each request can have its own `RequestConfig` that takes precedence any unspecified value in the client's `RequestConfig`.
+
+The `Configurable` trait defines the public API for setting configuration by using well-defined methods, either for a request or for a client. The `RequestConfig` type is private and the user never interacts with it directly, which gives us great flexibility to adjust its representation as needed.
+
 ## Request Lifecycle
 
 To send a new request, a curl easy handle is created to be driven to completion by an HTTP client instance. To avoid exposing any underlying curl details, and to allow us to present our own ergonomic API, users can construct their own `http::Request` struct which we use as a specification for how to configure an easy handle.
