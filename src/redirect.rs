@@ -55,7 +55,7 @@ impl Interceptor for RedirectInterceptor {
             let auto_referer = request
                 .extensions()
                 .get::<RequestConfig>()
-                .and_then(|config| config.auto_referer.clone())
+                .and_then(|config| config.auto_referer)
                 .unwrap_or(false);
 
             let limit = match policy {
