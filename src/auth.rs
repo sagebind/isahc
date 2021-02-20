@@ -1,6 +1,6 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::internal::SetOpt;
+use crate::config::{proxy::Proxy, request::SetOpt};
 use std::{
     fmt,
     ops::{BitOr, BitOrAssign},
@@ -10,8 +10,8 @@ use std::{
 /// used to establish user identity.
 #[derive(Clone)]
 pub struct Credentials {
-    pub(crate) username: String,
-    pub(crate) password: String,
+    username: String,
+    password: String,
 }
 
 impl Credentials {
@@ -28,6 +28,13 @@ impl SetOpt for Credentials {
     fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         easy.username(&self.username)?;
         easy.password(&self.password)
+    }
+}
+
+impl SetOpt for Proxy<Credentials> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.proxy_username(&self.0.username)?;
+        easy.proxy_password(&self.0.password)
     }
 }
 
@@ -109,11 +116,11 @@ impl Authentication {
         Authentication(0b0100)
     }
 
-    pub(crate) const fn contains(&self, other: Self) -> bool {
+    const fn contains(&self, other: Self) -> bool {
         (self.0 & other.0) == other.0
     }
 
-    pub(crate) fn as_auth(&self) -> curl::easy::Auth {
+    fn as_auth(&self) -> curl::easy::Auth {
         let mut auth = curl::easy::Auth::new();
 
         if self.contains(Authentication::basic()) {
@@ -163,6 +170,22 @@ impl SetOpt for Authentication {
         }
 
         easy.http_auth(&self.as_auth())
+    }
+}
+
+impl SetOpt for Proxy<Authentication> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        #[cfg(feature = "spnego")]
+        {
+            if self.0.contains(Authentication::negotiate()) {
+                // Ensure auth engine is enabled, even though credentials do not
+                // need to be specified.
+                easy.proxy_username("")?;
+                easy.proxy_password("")?;
+            }
+        }
+
+        easy.proxy_auth(&self.0.as_auth())
     }
 }
 

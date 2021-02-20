@@ -56,10 +56,6 @@ version = "0.10"
 default-features = false
 features = ["async"]
 
-[dependencies.merge]
-version = "0.1"
-features = ["derive"]
-
 [dependencies.mime]
 version = "0.3"
 optional = true

@@ -1,12 +1,12 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::*;
+use super::{proxy::Proxy, *};
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
 /// HTTP request builder or an HTTP client.
 #[doc(hidden)]
-pub trait ConfigurableBase: Sized {
+pub trait WithRequestConfig: Sized {
     /// Invoke a function to mutate the request configuration for this object.
     fn with_config(self, f: impl FnOnce(&mut RequestConfig)) -> Self;
 }
@@ -14,45 +14,79 @@ pub trait ConfigurableBase: Sized {
 /// A helper trait for applying a configuration value to a given curl handle.
 pub(crate) trait SetOpt {
     /// Apply this configuration property to the given curl handle.
-    #[doc(hidden)]
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
 }
 
-/// Configuration for an HTTP request.
-///
-/// This struct is not exposed directly, but rather is interacted with via the
-/// [`Configurable`] trait.
-#[derive(Clone, Debug, Default, merge::Merge)]
-pub struct RequestConfig {
-    pub(crate) timeout: Option<Duration>,
-    pub(crate) connect_timeout: Option<Duration>,
-    pub(crate) version_negotiation: Option<VersionNegotiation>,
-    pub(crate) redirect_policy: Option<RedirectPolicy>,
-    pub(crate) auto_referer: Option<bool>,
+// Define this struct inside a macro to reduce some boilerplate.
+macro_rules! define_request_config {
+    ($($field:ident: $t:ty,)*) => {
+        /// Configuration for an HTTP request.
+        ///
+        /// This struct is not exposed directly, but rather is interacted with
+        /// via the [`Configurable`] trait.
+        #[derive(Clone, Debug, Default)]
+        pub struct RequestConfig {
+            $(
+                pub(crate) $field: $t,
+            )*
+        }
 
-    /// Enable or disable automatically decompressing the response body.
-    pub(crate) automatic_decompression: Option<bool>,
-    pub(crate) authentication: Option<Authentication>,
-    pub(crate) credentials: Option<Credentials>,
-    pub(crate) tcp_keepalive: Option<Duration>,
-    pub(crate) tcp_nodelay: Option<bool>,
-    pub(crate) interface: Option<NetworkInterface>,
-    pub(crate) ip_version: Option<IpVersion>,
-    pub(crate) dial: Option<Dialer>,
-    pub(crate) proxy: Option<Option<http::Uri>>,
-    pub(crate) proxy_blacklist: Option<proxy::Blacklist>,
-    pub(crate) proxy_authentication: Option<Authentication>,
-    pub(crate) proxy_credentials: Option<Credentials>,
-    pub(crate) max_upload_speed: Option<u64>,
-    pub(crate) max_download_speed: Option<u64>,
-    pub(crate) ssl_client_certificate: Option<ClientCertificate>,
-    pub(crate) ssl_ca_certificate: Option<CaCertificate>,
-    pub(crate) ssl_ciphers: Option<ssl::Ciphers>,
-    pub(crate) ssl_options: Option<SslOption>,
+        impl RequestConfig {
+            pub(crate) fn client_defaults() -> Self {
+                Self {
+                    // Always start out with latest compatible HTTP version.
+                    version_negotiation: Some(VersionNegotiation::default()),
+                    // Enable automatic decompression by default for convenience
+                    // (and maintain backwards compatibility).
+                    automatic_decompression: Some(true),
+                    // Erase curl's default auth method of Basic.
+                    authentication: Some(Authentication::default()),
+                    ..Default::default()
+                }
+            }
 
-    /// Send header names as title case instead of lowercase.
-    pub(crate) title_case_headers: Option<bool>,
-    pub(crate) enable_metrics: Option<bool>,
+            /// Merge another request configuration into this one. Unspecified
+            /// values in this config are replaced with values in the given
+            /// config.
+            pub(crate) fn merge(&mut self, defaults: &Self) {
+                $(
+                    if self.$field.is_none() {
+                        if let Some(value) = defaults.$field.as_ref() {
+                            self.$field = Some(value.clone());
+                        }
+                    }
+                )*
+            }
+        }
+    };
+}
+
+define_request_config! {
+    timeout: Option<Duration>,
+    connect_timeout: Option<Duration>,
+    version_negotiation: Option<VersionNegotiation>,
+    redirect_policy: Option<RedirectPolicy>,
+    auto_referer: Option<bool>,
+    automatic_decompression: Option<bool>,
+    authentication: Option<Authentication>,
+    credentials: Option<Credentials>,
+    tcp_keepalive: Option<Duration>,
+    tcp_nodelay: Option<bool>,
+    interface: Option<NetworkInterface>,
+    ip_version: Option<IpVersion>,
+    dial: Option<Dialer>,
+    proxy: Option<Option<http::Uri>>,
+    proxy_blacklist: Option<proxy::Blacklist>,
+    proxy_authentication: Option<Proxy<Authentication>>,
+    proxy_credentials: Option<Proxy<Credentials>>,
+    max_upload_speed: Option<u64>,
+    max_download_speed: Option<u64>,
+    ssl_client_certificate: Option<ClientCertificate>,
+    ssl_ca_certificate: Option<CaCertificate>,
+    ssl_ciphers: Option<ssl::Ciphers>,
+    ssl_options: Option<SslOption>,
+    title_case_headers: Option<bool>,
+    enable_metrics: Option<bool>,
 }
 
 impl SetOpt for RequestConfig {
@@ -146,22 +180,11 @@ impl SetOpt for RequestConfig {
         }
 
         if let Some(auth) = self.proxy_authentication.as_ref() {
-            #[cfg(feature = "spnego")]
-            {
-                if auth.contains(Authentication::negotiate()) {
-                    // Ensure auth engine is enabled, even though credentials do not
-                    // need to be specified.
-                    easy.proxy_username("")?;
-                    easy.proxy_password("")?;
-                }
-            }
-
-            easy.proxy_auth(&auth.as_auth())?;
+            auth.set_opt(easy)?;
         }
 
         if let Some(credentials) = self.proxy_credentials.as_ref() {
-            easy.proxy_username(&credentials.username)?;
-            easy.proxy_password(&credentials.password)?;
+            credentials.set_opt(easy)?;
         }
 
         Ok(())

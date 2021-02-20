@@ -2,10 +2,9 @@
 
 use crate::{
     agent::{self, AgentBuilder},
-    auth::Authentication,
     body::{AsyncBody, Body},
     config::{
-        internal::{ConfigurableBase, SetOpt},
+        request::{WithRequestConfig, SetOpt},
         *,
     },
     default_headers::DefaultHeadersInterceptor,
@@ -24,7 +23,6 @@ use http::{
     Request,
     Response,
 };
-use merge::Merge;
 use once_cell::sync::Lazy;
 use std::{
     convert::TryFrom,
@@ -49,13 +47,8 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
 #[derive(Debug, Default)]
 struct ClientConfig {
     connection_cache_ttl: Option<Duration>,
-
-    /// Close the connection when the request completes instead of returning it to
-    /// the connection cache.
     close_connections: bool,
-
     dns_cache: Option<DnsCache>,
-
     dns_resolve: Option<ResolveMap>,
 }
 
@@ -86,10 +79,10 @@ struct ClientConfig {
 /// ```
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
-    config: RequestConfig,
+    client_config: ClientConfig,
+    request_config: RequestConfig,
     interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
-    client_config: ClientConfig,
     error: Option<Error>,
 
     #[cfg(feature = "cookies")]
@@ -108,21 +101,10 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        let mut config = RequestConfig::default();
-
-        // Always start out with latest compatible HTTP version.
-        config.version_negotiation = Some(VersionNegotiation::default());
-
-        // Enable automatic decompression by default for convenience (and
-        // maintain backwards compatibility).
-        config.automatic_decompression = Some(true);
-
-        // Erase curl's default auth method of Basic.
-        config.authentication = Some(Authentication::default());
-
         Self {
             agent_builder: AgentBuilder::default(),
-            config,
+            client_config: ClientConfig::default(),
+            request_config: RequestConfig::client_defaults(),
             interceptors: vec![
                 // Add redirect support. Note that this is _always_ the first,
                 // and thus the outermost, interceptor. Also note that this does
@@ -130,7 +112,6 @@ impl HttpClientBuilder {
                 // it, if a request asks for it.
                 InterceptorObj::new(crate::redirect::RedirectInterceptor),
             ],
-            client_config: ClientConfig::default(),
             default_headers: HeaderMap::new(),
             error: None,
 
@@ -485,8 +466,8 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
-            config: self.config,
             client_config: self.client_config,
+            request_config: self.request_config,
             interceptors: self.interceptors,
         };
 
@@ -496,8 +477,8 @@ impl HttpClientBuilder {
                 .agent_builder
                 .spawn()
                 .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
-            config: self.config,
             client_config: self.client_config,
+            request_config: self.request_config,
             interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
         };
@@ -516,10 +497,10 @@ impl Configurable for HttpClientBuilder {
     }
 }
 
-impl ConfigurableBase for HttpClientBuilder {
+impl WithRequestConfig for HttpClientBuilder {
     #[inline]
     fn with_config(mut self, f: impl FnOnce(&mut RequestConfig)) -> Self {
-        f(&mut self.config);
+        f(&mut self.request_config);
         self
     }
 }
@@ -628,10 +609,11 @@ struct Inner {
     /// This is how we talk to our background agent thread.
     agent: agent::Handle,
 
-    /// Default request configuration to use if not specified in a request.
-    config: RequestConfig,
-
+    /// Client-wide request configuration.
     client_config: ClientConfig,
+
+    /// Default request configuration to use if not specified in a request.
+    request_config: RequestConfig,
 
     /// Registered interceptors that requests should pass through.
     interceptors: Vec<InterceptorObj>,
@@ -1043,12 +1025,11 @@ impl HttpClient {
         mut request: Request<AsyncBody>,
     ) -> Result<Response<AsyncBody>, Error> {
         // Populate request config, creating if necessary.
-        if let Some(mut config) = request.extensions_mut().remove::<RequestConfig>() {
+        if let Some(config) = request.extensions_mut().get_mut::<RequestConfig>() {
             // Merge request configuration with defaults.
-            config.merge(self.inner.config.clone());
-            request.extensions_mut().insert(config);
+            config.merge(&self.inner.request_config);
         } else {
-            request.extensions_mut().insert(self.inner.config.clone());
+            request.extensions_mut().insert(self.inner.request_config.clone());
         }
 
         let ctx = interceptor::Context {

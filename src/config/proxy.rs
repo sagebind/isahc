@@ -2,6 +2,11 @@ use super::SetOpt;
 use curl::easy::Easy2;
 use std::iter::FromIterator;
 
+/// Decorator for marking certain configurations to apply to a proxy rather than
+/// the origin itself.
+#[derive(Clone, Debug)]
+pub(crate) struct Proxy<T>(pub(crate) T);
+
 /// A list of host names that do not require a proxy to get reached, even if one
 /// is specified.
 ///

@@ -13,14 +13,14 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::internal::SetOpt;
+use self::{proxy::Proxy, request::SetOpt};
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
 use std::{net::IpAddr, time::Duration};
 
 pub(crate) mod dial;
 pub(crate) mod dns;
-pub(crate) mod internal;
+pub(crate) mod request;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod ssl;
@@ -30,7 +30,7 @@ pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
-pub(crate) use internal::RequestConfig;
+pub(crate) use request::RequestConfig;
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -41,7 +41,7 @@ pub(crate) use internal::RequestConfig;
 /// [`HttpClientBuilder`](crate::HttpClientBuilder).
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
-pub trait Configurable: internal::ConfigurableBase {
+pub trait Configurable: request::WithRequestConfig {
     /// Specify a maximum amount of time that a complete request/response cycle
     /// is allowed to take before being aborted. This includes DNS resolution,
     /// connecting to the server, writing the request, and reading the response.
@@ -442,7 +442,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
-            config.proxy_authentication = Some(authentication);
+            config.proxy_authentication = Some(Proxy(authentication));
         })
     }
 
@@ -453,7 +453,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// [`Configurable::proxy_authentication`].
     fn proxy_credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
-            config.proxy_credentials = Some(credentials);
+            config.proxy_credentials = Some(Proxy(credentials));
         })
     }
 

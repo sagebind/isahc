@@ -1,7 +1,7 @@
 use crate::{
     body::{AsyncBody, Body},
     client::ResponseFuture,
-    config::{internal::ConfigurableBase, Configurable, RequestConfig},
+    config::{request::WithRequestConfig, Configurable, RequestConfig},
     error::Error,
 };
 use http::{Request, Response};
@@ -91,7 +91,7 @@ impl Configurable for http::request::Builder {
     }
 }
 
-impl ConfigurableBase for http::request::Builder {
+impl WithRequestConfig for http::request::Builder {
     #[inline]
     fn with_config(mut self, f: impl FnOnce(&mut crate::config::RequestConfig)) -> Self {
         if let Some(extensions) = self.extensions_mut() {
