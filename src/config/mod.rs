@@ -21,9 +21,9 @@ use std::{net::IpAddr, time::Duration};
 pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
-pub(crate) mod request;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
+pub(crate) mod request;
 pub(crate) mod ssl;
 
 pub use dial::{Dialer, DialerParseError};
@@ -409,10 +409,7 @@ pub trait Configurable: request::WithRequestConfig {
         T: Into<String>,
     {
         self.with_config(move |config| {
-            config.proxy_blacklist = Some(hosts
-                .into_iter()
-                .map(T::into)
-                .collect());
+            config.proxy_blacklist = Some(hosts.into_iter().map(T::into).collect());
         })
     }
 

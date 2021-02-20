@@ -1,5 +1,5 @@
 use crate::{metrics::Metrics, redirect::EffectiveUri};
-use futures_lite::io::{AsyncRead, AsyncWrite, copy as copy_async};
+use futures_lite::io::{copy as copy_async, AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
