@@ -75,11 +75,15 @@ fn any_ip_version_uses_ipv4_or_ipv6() {
     // Each server response with a string indicating which address family used.
     thread::spawn(move || {
         let (mut client, _) = server_v4.accept().unwrap();
-        client.write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv4").unwrap();
+        client
+            .write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv4")
+            .unwrap();
     });
     thread::spawn(move || {
         let (mut client, _) = server_v6.accept().unwrap();
-        client.write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv6").unwrap();
+        client
+            .write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv6")
+            .unwrap();
     });
 
     let mut response = Request::get(format!("http://localhost:{}", port))
