@@ -62,11 +62,10 @@ macro_rules! define_request_config {
 }
 
 define_request_config! {
+    // Used by curl
     timeout: Option<Duration>,
     connect_timeout: Option<Duration>,
     version_negotiation: Option<VersionNegotiation>,
-    redirect_policy: Option<RedirectPolicy>,
-    auto_referer: Option<bool>,
     automatic_decompression: Option<bool>,
     authentication: Option<Authentication>,
     credentials: Option<Credentials>,
@@ -85,8 +84,12 @@ define_request_config! {
     ssl_ca_certificate: Option<CaCertificate>,
     ssl_ciphers: Option<ssl::Ciphers>,
     ssl_options: Option<SslOption>,
-    title_case_headers: Option<bool>,
     enable_metrics: Option<bool>,
+
+    // Used by interceptors
+    redirect_policy: Option<RedirectPolicy>,
+    auto_referer: Option<bool>,
+    title_case_headers: Option<bool>,
 }
 
 impl SetOpt for RequestConfig {
@@ -144,24 +147,12 @@ impl SetOpt for RequestConfig {
             easy.tcp_nodelay(enable)?;
         }
 
-        if let Some(max) = self.max_upload_speed {
-            easy.max_send_speed(max)?;
-        }
-
-        if let Some(max) = self.max_download_speed {
-            easy.max_recv_speed(max)?;
-        }
-
-        if let Some(enable) = self.enable_metrics {
-            easy.progress(enable)?;
+        if let Some(interface) = self.interface.as_ref() {
+            interface.set_opt(easy)?;
         }
 
         if let Some(version) = self.ip_version.as_ref() {
-            easy.ip_resolve(match version {
-                IpVersion::V4 => curl::easy::IpResolve::V4,
-                IpVersion::V6 => curl::easy::IpResolve::V6,
-                IpVersion::Any => curl::easy::IpResolve::Any,
-            })?;
+            version.set_opt(easy)?;
         }
 
         if let Some(dialer) = self.dial.as_ref() {
@@ -185,6 +176,34 @@ impl SetOpt for RequestConfig {
 
         if let Some(credentials) = self.proxy_credentials.as_ref() {
             credentials.set_opt(easy)?;
+        }
+
+        if let Some(max) = self.max_upload_speed {
+            easy.max_send_speed(max)?;
+        }
+
+        if let Some(max) = self.max_download_speed {
+            easy.max_recv_speed(max)?;
+        }
+
+        if let Some(cert) = self.ssl_client_certificate.as_ref() {
+            cert.set_opt(easy)?;
+        }
+
+        if let Some(cert) = self.ssl_ca_certificate.as_ref() {
+            cert.set_opt(easy)?;
+        }
+
+        if let Some(ciphers) = self.ssl_ciphers.as_ref() {
+            ciphers.set_opt(easy)?;
+        }
+
+        if let Some(options) = self.ssl_options.as_ref() {
+            options.set_opt(easy)?;
+        }
+
+        if let Some(enable) = self.enable_metrics {
+            easy.progress(enable)?;
         }
 
         Ok(())

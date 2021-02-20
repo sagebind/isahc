@@ -1,6 +1,6 @@
 use crate::{
     body::AsyncBody,
-    config::{RedirectPolicy, RequestConfig},
+    config::{request::RequestConfig, RedirectPolicy},
     error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},

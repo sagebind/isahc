@@ -4,7 +4,8 @@ use crate::{
     agent::{self, AgentBuilder},
     body::{AsyncBody, Body},
     config::{
-        request::{WithRequestConfig, SetOpt},
+        client::ClientConfig,
+        request::{RequestConfig, SetOpt, WithRequestConfig},
         *,
     },
     default_headers::DefaultHeadersInterceptor,
@@ -43,14 +44,6 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
         env!("CARGO_PKG_VERSION")
     )
 });
-
-#[derive(Debug, Default)]
-struct ClientConfig {
-    connection_cache_ttl: Option<Duration>,
-    close_connections: bool,
-    dns_cache: Option<DnsCache>,
-    dns_resolve: Option<ResolveMap>,
-}
 
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
@@ -1029,7 +1022,9 @@ impl HttpClient {
             // Merge request configuration with defaults.
             config.merge(&self.inner.request_config);
         } else {
-            request.extensions_mut().insert(self.inner.request_config.clone());
+            request
+                .extensions_mut()
+                .insert(self.inner.request_config.clone());
         }
 
         let ctx = interceptor::Context {
@@ -1069,19 +1064,7 @@ impl HttpClient {
             .unwrap()
             .set_opt(&mut easy)?;
 
-        if let Some(ttl) = self.inner.client_config.connection_cache_ttl {
-            easy.maxage_conn(ttl)?;
-        }
-
-        easy.forbid_reuse(self.inner.client_config.close_connections)?;
-
-        if let Some(cache) = self.inner.client_config.dns_cache.as_ref() {
-            cache.set_opt(&mut easy)?;
-        }
-
-        if let Some(map) = self.inner.client_config.dns_resolve.as_ref() {
-            map.set_opt(&mut easy)?;
-        }
+        self.inner.client_config.set_opt(&mut easy)?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.

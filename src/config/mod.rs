@@ -18,6 +18,7 @@ use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
 use std::{net::IpAddr, time::Duration};
 
+pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
 pub(crate) mod request;
@@ -29,8 +30,6 @@ pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
-
-pub(crate) use request::RequestConfig;
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
