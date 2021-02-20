@@ -1330,50 +1330,15 @@
 <span id="1329">1329</span>
 <span id="1330">1330</span>
 <span id="1331">1331</span>
-<span id="1332">1332</span>
-<span id="1333">1333</span>
-<span id="1334">1334</span>
-<span id="1335">1335</span>
-<span id="1336">1336</span>
-<span id="1337">1337</span>
-<span id="1338">1338</span>
-<span id="1339">1339</span>
-<span id="1340">1340</span>
-<span id="1341">1341</span>
-<span id="1342">1342</span>
-<span id="1343">1343</span>
-<span id="1344">1344</span>
-<span id="1345">1345</span>
-<span id="1346">1346</span>
-<span id="1347">1347</span>
-<span id="1348">1348</span>
-<span id="1349">1349</span>
-<span id="1350">1350</span>
-<span id="1351">1351</span>
-<span id="1352">1352</span>
-<span id="1353">1353</span>
-<span id="1354">1354</span>
-<span id="1355">1355</span>
-<span id="1356">1356</span>
-<span id="1357">1357</span>
-<span id="1358">1358</span>
-<span id="1359">1359</span>
-<span id="1360">1360</span>
-<span id="1361">1361</span>
-<span id="1362">1362</span>
-<span id="1363">1363</span>
-<span id="1364">1364</span>
-<span id="1365">1365</span>
-<span id="1366">1366</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">agent</span>::{<span class="self">self</span>, <span class="ident">AgentBuilder</span>},
-    <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
     <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">config</span>::{
-        <span class="ident">internal</span>::{<span class="ident">ConfigurableBase</span>, <span class="ident">SetOpt</span>},
+        <span class="ident">client</span>::<span class="ident">ClientConfig</span>,
+        <span class="ident">request</span>::{<span class="ident">RequestConfig</span>, <span class="ident">SetOpt</span>, <span class="ident">WithRequestConfig</span>},
         <span class="kw-2">*</span>,
     },
     <span class="ident">default_headers</span>::<span class="ident">DefaultHeadersInterceptor</span>,
@@ -1440,7 +1405,8 @@
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HttpClientBuilder</span> {
     <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>,
-    <span class="ident">defaults</span>: <span class="ident">http</span>::<span class="ident">Extensions</span>,
+    <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>,
+    <span class="ident">request_config</span>: <span class="ident">RequestConfig</span>,
     <span class="ident">interceptors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InterceptorObj</span><span class="op">&gt;</span>,
     <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>,
     <span class="ident">error</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span>,
@@ -1461,21 +1427,10 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This is equivalent to the [`Default`] implementation.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">defaults</span> <span class="op">=</span> <span class="ident">http</span>::<span class="ident">Extensions</span>::<span class="ident">new</span>();
-
-        <span class="comment">// Always start out with latest compatible HTTP version.</span>
-        <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">VersionNegotiation</span>::<span class="ident">default</span>());
-
-        <span class="comment">// Enable automatic decompression by default for convenience (and</span>
-        <span class="comment">// maintain backwards compatibility).</span>
-        <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">AutomaticDecompression</span>(<span class="bool-val">true</span>));
-
-        <span class="comment">// Erase curl&#39;s default auth method of Basic.</span>
-        <span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">Authentication</span>::<span class="ident">default</span>());
-
         <span class="self">Self</span> {
             <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>::<span class="ident">default</span>(),
-            <span class="ident">defaults</span>,
+            <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>::<span class="ident">default</span>(),
+            <span class="ident">request_config</span>: <span class="ident">RequestConfig</span>::<span class="ident">client_defaults</span>(),
             <span class="ident">interceptors</span>: <span class="macro">vec</span><span class="macro">!</span>[
                 <span class="comment">// Add redirect support. Note that this is _always_ the first,</span>
                 <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
@@ -1561,7 +1516,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default TTL is 118 seconds.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_ttl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ttl</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">MaxAgeConn</span>(<span class="ident">ttl</span>));
+        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">connection_cache_ttl</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ttl</span>);
         <span class="self">self</span>
     }
 
@@ -1621,7 +1576,7 @@
     <span class="doccomment">/// chosen.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">agent_builder</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">connection_cache_size</span>(<span class="ident">size</span>);
-        <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">CloseConnection</span>(<span class="ident">size</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span>));
+        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">close_connections</span> <span class="op">=</span> <span class="ident">size</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
         <span class="self">self</span>
     }
 
@@ -1651,13 +1606,17 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dns_cache</span>(<span class="self">self</span>, <span class="ident">cache</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">DnsCache</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// This option is per-request, but we only expose it on the client.</span>
-        <span class="comment">// Since the DNS cache is shared between all requests, exposing this</span>
-        <span class="comment">// option per-request would actually cause the timeout to alternate</span>
-        <span class="comment">// values for every request with a different timeout, resulting in some</span>
-        <span class="comment">// confusing (but valid) behavior.</span>
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">cache</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dns_cache</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cache</span>: <span class="ident">C</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">where</span>
+        <span class="ident">C</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">DnsCache</span><span class="op">&gt;</span>,
+    {
+        <span class="comment">// This option is technically supported per-request by curl, but we only</span>
+        <span class="comment">// expose it on the client. Since the DNS cache is shared between all</span>
+        <span class="comment">// requests, exposing this option per-request would actually cause the</span>
+        <span class="comment">// timeout to alternate values for every request with a different</span>
+        <span class="comment">// timeout, resulting in some confusing (but valid) behavior.</span>
+        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">dns_cache</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">cache</span>.<span class="ident">into</span>());
+        <span class="self">self</span>
     }
 
     <span class="doccomment">/// Set a mapping of DNS resolve overrides.</span>
@@ -1680,11 +1639,12 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dns_resolve</span>(<span class="self">self</span>, <span class="ident">map</span>: <span class="ident">ResolveMap</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dns_resolve</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">map</span>: <span class="ident">ResolveMap</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Similar to the dns_cache option, this operation actually affects all</span>
         <span class="comment">// requests in a multi handle so we do not expose it per-request to</span>
         <span class="comment">// avoid confusing behavior.</span>
-        <span class="self">self</span>.<span class="ident">configure</span>(<span class="ident">map</span>)
+        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">dns_resolve</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">map</span>);
+        <span class="self">self</span>
     }
 
     <span class="doccomment">/// Add a default header to be passed with every request.</span>
@@ -1832,7 +1792,8 @@
                 .<span class="ident">agent_builder</span>
                 .<span class="ident">spawn</span>()
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
-            <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
+            <span class="ident">client_config</span>: <span class="self">self</span>.<span class="ident">client_config</span>,
+            <span class="ident">request_config</span>: <span class="self">self</span>.<span class="ident">request_config</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
         };
 
@@ -1842,7 +1803,8 @@
                 .<span class="ident">agent_builder</span>
                 .<span class="ident">spawn</span>()
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
-            <span class="ident">defaults</span>: <span class="self">self</span>.<span class="ident">defaults</span>,
+            <span class="ident">client_config</span>: <span class="self">self</span>.<span class="ident">client_config</span>,
+            <span class="ident">request_config</span>: <span class="self">self</span>.<span class="ident">request_config</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
             <span class="ident">cookie_jar</span>: <span class="self">self</span>.<span class="ident">cookie_jar</span>,
         };
@@ -1861,9 +1823,10 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ConfigurableBase</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
-    <span class="kw">fn</span> <span class="ident">configure</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">option</span>: <span class="kw">impl</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">defaults</span>.<span class="ident">insert</span>(<span class="ident">option</span>);
+<span class="kw">impl</span> <span class="ident">WithRequestConfig</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="kw">impl</span> <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RequestConfig</span>)) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">request_config</span>);
         <span class="self">self</span>
     }
 }
@@ -1972,9 +1935,11 @@
     <span class="doccomment">/// This is how we talk to our background agent thread.</span>
     <span class="ident">agent</span>: <span class="ident">agent</span>::<span class="ident">Handle</span>,
 
-    <span class="doccomment">/// Map of config values that should be used to configure execution if not</span>
-    <span class="doccomment">/// specified in a request.</span>
-    <span class="ident">defaults</span>: <span class="ident">http</span>::<span class="ident">Extensions</span>,
+    <span class="doccomment">/// Client-wide request configuration.</span>
+    <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>,
+
+    <span class="doccomment">/// Default request configuration to use if not specified in a request.</span>
+    <span class="ident">request_config</span>: <span class="ident">RequestConfig</span>,
 
     <span class="doccomment">/// Registered interceptors that requests should pass through.</span>
     <span class="ident">interceptors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InterceptorObj</span><span class="op">&gt;</span>,
@@ -2385,11 +2350,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Set redirect policy if not specified.</span>
-        <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">is_none</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>().<span class="ident">cloned</span>() {
-                <span class="ident">request</span>.<span class="ident">extensions_mut</span>().<span class="ident">insert</span>(<span class="ident">policy</span>);
-            }
+        <span class="comment">// Populate request config, creating if necessary.</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">extensions_mut</span>().<span class="ident">get_mut</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>() {
+            <span class="comment">// Merge request configuration with defaults.</span>
+            <span class="ident">config</span>.<span class="ident">merge</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">request_config</span>);
+        } <span class="kw">else</span> {
+            <span class="ident">request</span>
+                .<span class="ident">extensions_mut</span>()
+                .<span class="ident">insert</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">request_config</span>.<span class="ident">clone</span>());
         }
 
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
@@ -2411,7 +2379,6 @@
         <span class="ident">curl</span>::<span class="ident">Error</span>,
     <span class="op">&gt;</span> {
         <span class="comment">// Prepare the request plumbing.</span>
-        <span class="comment">// let (mut parts, body) = request.into_parts();</span>
         <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">take</span>(<span class="ident">request</span>.<span class="ident">body_mut</span>());
         <span class="kw">let</span> <span class="ident">has_body</span> <span class="op">=</span> <span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>();
         <span class="kw">let</span> <span class="ident">body_length</span> <span class="op">=</span> <span class="ident">body</span>.<span class="ident">len</span>();
@@ -2424,50 +2391,13 @@
 
         <span class="ident">easy</span>.<span class="ident">signal</span>(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Macro to apply all config values given in the request or in defaults.</span>
-        <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">set_opts</span> {
-            (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">easy</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">extensions</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">defaults</span>:<span class="ident">expr</span>, [$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">option</span>:<span class="ident">ty</span>,)<span class="kw-2">*</span>]) <span class="op">=</span><span class="op">&gt;</span> {{
-                $(
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">extension</span>) <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">extensions</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">option</span><span class="op">&gt;</span>().<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">defaults</span>.<span class="ident">get</span>()) {
-                        <span class="ident">extension</span>.<span class="ident">set_opt</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">easy</span>)<span class="question-mark">?</span>;
-                    }
-                )<span class="op">*</span>
-            }};
-        }
+        <span class="ident">request</span>
+            .<span class="ident">extensions</span>()
+            .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">set_opt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">easy</span>)<span class="question-mark">?</span>;
 
-        <span class="macro">set_opts</span><span class="macro">!</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">easy</span>,
-            <span class="ident">request</span>.<span class="ident">extensions</span>(),
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>,
-            [
-                <span class="ident">Timeout</span>,
-                <span class="ident">ConnectTimeout</span>,
-                <span class="ident">TcpKeepAlive</span>,
-                <span class="ident">TcpNoDelay</span>,
-                <span class="ident">NetworkInterface</span>,
-                <span class="ident">Dialer</span>,
-                <span class="ident">AutomaticDecompression</span>,
-                <span class="ident">Authentication</span>,
-                <span class="ident">Credentials</span>,
-                <span class="ident">MaxAgeConn</span>,
-                <span class="ident">MaxUploadSpeed</span>,
-                <span class="ident">MaxDownloadSpeed</span>,
-                <span class="ident">VersionNegotiation</span>,
-                <span class="ident">proxy</span>::<span class="ident">Proxy</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-                <span class="ident">proxy</span>::<span class="ident">Blacklist</span>,
-                <span class="ident">proxy</span>::<span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span>,
-                <span class="ident">proxy</span>::<span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span>,
-                <span class="ident">DnsCache</span>,
-                <span class="ident">dns</span>::<span class="ident">ResolveMap</span>,
-                <span class="ident">ssl</span>::<span class="ident">Ciphers</span>,
-                <span class="ident">ClientCertificate</span>,
-                <span class="ident">CaCertificate</span>,
-                <span class="ident">SslOption</span>,
-                <span class="ident">CloseConnection</span>,
-                <span class="ident">EnableMetrics</span>,
-                <span class="ident">IpVersion</span>,
-            ]
-        );
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">client_config</span>.<span class="ident">set_opt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">easy</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the HTTP method to use. Curl ties in behavior with the request</span>
         <span class="comment">// method, so we need to configure this carefully.</span>
@@ -2533,9 +2463,9 @@
 
         <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">request</span>
             .<span class="ident">extensions</span>()
-            .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TitleCaseHeaders</span><span class="op">&gt;</span>()
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
+            .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">title_case_headers</span>
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
         <span class="kw">for</span> (<span class="ident">name</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">iter</span>() {
@@ -2564,9 +2494,9 @@
             <span class="comment">// this later after the response is sent.</span>
             <span class="kw">let</span> <span class="ident">is_automatic_decompression</span> <span class="op">=</span> <span class="ident">request</span>
                 .<span class="ident">extensions</span>()
-                .<span class="ident">get</span>()
-                .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">defaults</span>.<span class="ident">get</span>())
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">AutomaticDecompression</span>(<span class="ident">enabled</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">enabled</span>)
+                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
+                .<span class="ident">unwrap</span>()
+                .<span class="ident">automatic_decompression</span>
                 .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
             <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>

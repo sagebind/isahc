@@ -172,10 +172,12 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body</span>::<span class="ident">AsyncBody</span>,
-    <span class="ident">config</span>::<span class="ident">RedirectPolicy</span>,
+    <span class="ident">config</span>::{<span class="ident">request</span>::<span class="ident">RequestConfig</span>, <span class="ident">RedirectPolicy</span>},
     <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>},
     <span class="ident">handler</span>::<span class="ident">RequestBody</span>,
     <span class="ident">interceptor</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>},
@@ -212,7 +214,8 @@
             <span class="comment">// Get the redirect policy for this request.</span>
             <span class="kw">let</span> <span class="ident">policy</span> <span class="op">=</span> <span class="ident">request</span>
                 .<span class="ident">extensions</span>()
-                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>()
+                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">config</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">redirect_policy</span>.<span class="ident">as_ref</span>())
                 .<span class="ident">cloned</span>()
                 .<span class="ident">unwrap_or_default</span>();
 
@@ -228,8 +231,9 @@
 
             <span class="kw">let</span> <span class="ident">auto_referer</span> <span class="op">=</span> <span class="ident">request</span>
                 .<span class="ident">extensions</span>()
-                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="kw">crate</span>::<span class="ident">config</span>::<span class="ident">redirect</span>::<span class="ident">AutoReferer</span><span class="op">&gt;</span>()
-                .<span class="ident">is_some</span>();
+                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">config</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">auto_referer</span>)
+                .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
             <span class="kw">let</span> <span class="ident">limit</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">policy</span> {
                 <span class="ident">RedirectPolicy</span>::<span class="ident">Limit</span>(<span class="ident">limit</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">limit</span>,
