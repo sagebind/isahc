@@ -9,22 +9,21 @@
 //! a specialized task executor for tasks related to requests.
 
 use crate::{error::Error, handler::RequestHandler, task::WakerExt};
-use crossbeam_utils::{sync::WaitGroup};
+use crossbeam_utils::sync::WaitGroup;
 use curl::multi::{Events, Multi, Socket, SocketEvents};
 use flume::{Receiver, Sender};
 use slab::Slab;
 use std::{
     io,
-    sync::{Arc, Mutex},
+    sync::Mutex,
     task::Waker,
     thread,
     time::{Duration, Instant},
 };
 
-use self::{selector::Selector, timer::Timer};
+use self::selector::Selector;
 
 mod selector;
-mod timer;
 
 const WAIT_TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -115,27 +114,10 @@ impl AgentBuilder {
             }
 
             let (socket_updates_tx, socket_updates_rx) = flume::unbounded();
-            let timer = Arc::new(Mutex::new(Timer::new()));
-            let timer_ref = timer.clone();
 
             multi
                 .socket_function(move |socket, events, key| {
                     let _ = socket_updates_tx.send((socket, events, key));
-                })
-                .map_err(Error::from_any)?;
-
-            multi
-                .timer_function(move |timeout| {
-                    if let Ok(mut timer) = timer_ref.lock() {
-                        if let Some(timeout) = timeout {
-                            timer.arm(timeout);
-                        } else {
-                            timer.clear();
-                        }
-                        true
-                    } else {
-                        false
-                    }
                 })
                 .map_err(Error::from_any)?;
 
@@ -148,7 +130,6 @@ impl AgentBuilder {
                 waker: selector.waker(),
                 selector,
                 socket_updates: socket_updates_rx,
-                timer,
             };
 
             drop(wait_group_thread);
@@ -227,8 +208,6 @@ struct AgentContext {
 
     /// Queue of socket registration updates from the multi handle.
     socket_updates: Receiver<(Socket, SocketEvents, usize)>,
-
-    timer: Arc<Mutex<Timer>>,
 }
 
 /// A message sent from the main thread to the agent thread.
@@ -496,20 +475,16 @@ impl AgentContext {
 
     /// Block until activity is detected or a timeout passes.
     fn poll(&mut self) -> Result<(), Error> {
-        // Apply any requested socket updates now.
-        self.update_selector()?;
+        let now = Instant::now();
+        let timeout = self.multi.get_timeout().map_err(Error::from_any)?;
 
         // Get the latest timeout value from curl that we should use, limited to
         // a maximum we chose.
-        let timeout = self.timer.lock()
-            .unwrap()
-            .time_remaining()
-            .map(|t| t.min(WAIT_TIMEOUT))
-            .unwrap_or(WAIT_TIMEOUT);
+        let poll_timeout = timeout.map(|t| t.min(WAIT_TIMEOUT)).unwrap_or(WAIT_TIMEOUT);
 
         // Block until either an I/O event occurs on a socket, the timeout is
         // reached, or the agent handle interrupts us.
-        if self.selector.poll(dbg!(Some(timeout)))? {
+        if self.selector.poll(Some(poll_timeout))? {
             // At least one I/O event occurred, handle them.
             for (socket, readable, writable) in self.selector.events() {
                 let mut events = Events::new();
@@ -517,36 +492,27 @@ impl AgentContext {
                 events.output(writable);
                 self.multi
                     .action(socket, &events)
-                    .map_err(Error::from_any).unwrap();
-
-                self.update_selector()?;
+                    .map_err(Error::from_any)?;
             }
         }
 
-        // Check if a timeout expired.
-        if self.timer.lock().unwrap().is_expired() {
-            self.timer.lock().unwrap().clear();
-            self.multi.action(curl_sys::CURL_SOCKET_TIMEOUT, &Events::new()).map_err(Error::from_any)?;
-            self.update_selector()?;
+        // If curl gave us a timeout, check if it has expired.
+        if let Some(timeout) = timeout {
+            if now.elapsed() >= timeout {
+                self.multi.timeout().map_err(Error::from_any)?;
+            }
         }
 
-        Ok(())
-    }
-
-    fn update_selector(&mut self) -> Result<(), Error> {
+        // Apply any requested socket updates now.
         while let Ok((socket, events, _)) = self.socket_updates.try_recv() {
             // Curl is asking us to stop polling this socket.
             if events.remove() {
                 self.selector.deregister(socket);
-            }
-            else {
+            } else {
                 let readable = events.input() || events.input_and_output();
                 let writable = events.output() || events.input_and_output();
 
-                if let Err(e) = self.selector.register(socket, readable, writable) {
-                    // TODO: Ignore I guess?
-                    panic!("failed to register socket {}: {:?}", socket, e);
-                }
+                self.selector.register(socket, readable, writable)?;
             }
         }
 

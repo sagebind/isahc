@@ -94,17 +94,20 @@ impl Selector {
 
         // Block until either an I/O event occurs on a socket, the timeout is
         // reached, or the agent handle interrupts us.
-        self.poller.wait(&mut self.events, timeout)?;
-
-        Ok(!self.events.is_empty())
+        match self.poller.wait(&mut self.events, timeout) {
+            Ok(0) => Ok(false),
+            Ok(_) => Ok(true),
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
-    pub(crate) fn events(&self) -> impl Iterator<Item = (Socket, bool, bool)>  {
+    pub(crate) fn events(&self) -> impl Iterator<Item = (Socket, bool, bool)> + '_  {
         self.events.iter().map(|event| (
             event.key as Socket,
             event.readable,
             event.writable
-        )).collect::<Vec<_>>().into_iter()
+        ))
     }
 }
 
