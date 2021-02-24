@@ -89,7 +89,7 @@ impl Selector {
             // error back complaining that the socket is invalid, we can safely
             // ignore it.
             if let Err(e) = self.poller.delete(socket) {
-                if e.raw_os_error() != Some(EBADF) {
+                if e.kind() != io::ErrorKind::NotFound && e.kind() != io::ErrorKind::PermissionDenied && e.raw_os_error() != Some(EBADF) {
                     return Err(e);
                 }
             }
@@ -195,5 +195,9 @@ fn filter_error(result: io::Result<()>) -> io::Result<()> {
 }
 
 fn is_benign_error(error: &io::Error) -> bool {
-    error.raw_os_error() == Some(EBADF)
+    if cfg!(target_os = "macos") {
+        error.raw_os_error() == Some(EBADF)
+    } else {
+        false
+    }
 }
