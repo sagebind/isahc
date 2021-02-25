@@ -66,7 +66,7 @@ version = "0.11"
 optional = true
 
 [dependencies.publicsuffix]
-version = "1.5"
+version = ">=1.5.0, <1.5.5"
 default-features = false
 optional = true
 
