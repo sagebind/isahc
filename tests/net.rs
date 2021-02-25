@@ -1,9 +1,8 @@
 use isahc::{config::IpVersion, error::ErrorKind, prelude::*, Request};
 use std::{
-    io::Write,
-    net::{Ipv4Addr, Ipv6Addr, TcpListener},
+    io::{self, Read, Write},
+    net::{Ipv4Addr, Ipv6Addr, Shutdown, TcpListener, TcpStream},
     thread,
-    time::Duration,
 };
 use testserver::mock;
 
@@ -31,9 +30,7 @@ fn remote_addr_returns_expected_address_expected_address() {
     assert_eq!(response.remote_addr(), Some(m.addr()));
 }
 
-/// Does not pass under Windows. Very odd.
 #[test]
-#[cfg_attr(windows, ignore)]
 fn ipv4_only_will_not_connect_to_ipv6() {
     // Create server on IPv6 only.
     let server = TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).unwrap();
@@ -41,7 +38,6 @@ fn ipv4_only_will_not_connect_to_ipv6() {
 
     let result = Request::get(format!("http://localhost:{}", port))
         .ip_version(IpVersion::V4)
-        .timeout(Duration::from_secs(1))
         .body(())
         .unwrap()
         .send();
@@ -49,9 +45,7 @@ fn ipv4_only_will_not_connect_to_ipv6() {
     assert_matches!(result, Err(e) if e == ErrorKind::ConnectionFailed);
 }
 
-/// Does not pass under Windows. Very odd.
 #[test]
-#[cfg_attr(windows, ignore)]
 fn ipv6_only_will_not_connect_to_ipv4() {
     // Create server on IPv4 only.
     let server = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
@@ -59,7 +53,6 @@ fn ipv6_only_will_not_connect_to_ipv4() {
 
     let result = Request::get(format!("http://localhost:{}", port))
         .ip_version(IpVersion::V6)
-        .timeout(Duration::from_secs(1))
         .body(())
         .unwrap()
         .send();
@@ -76,18 +69,29 @@ fn any_ip_version_uses_ipv4_or_ipv6() {
     // Create an IPv6 listener on the same port.
     let server_v6 = TcpListener::bind((Ipv6Addr::LOCALHOST, port)).unwrap();
 
+    fn respond(client: &mut TcpStream, response: &[u8]) -> io::Result<()> {
+        client.read(&mut [0; 8192])?;
+        client.write_all(response)?;
+        client.flush()?;
+        client.shutdown(Shutdown::Both)
+    }
+
     // Each server response with a string indicating which address family used.
     thread::spawn(move || {
         let (mut client, _) = server_v4.accept().unwrap();
-        client
-            .write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv4")
-            .unwrap();
+        respond(
+            &mut client,
+            b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv4",
+        )
+        .unwrap();
     });
     thread::spawn(move || {
         let (mut client, _) = server_v6.accept().unwrap();
-        client
-            .write_all(b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv6")
-            .unwrap();
+        respond(
+            &mut client,
+            b"HTTP/1.1 200 OK\r\ncontent-length:4\r\n\r\nipv6",
+        )
+        .unwrap();
     });
 
     let mut response = Request::get(format!("http://localhost:{}", port))
