@@ -219,18 +219,24 @@ fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool
 fn is_bad_socket_error(error: &io::Error) -> bool {
     const EBADF: i32 = 9;
     const ERROR_INVALID_HANDLE: i32 = 6;
+    const ERROR_NOT_FOUND: i32 = 1168;
 
-    if error.kind() == io::ErrorKind::NotFound || error.kind() == io::ErrorKind::InvalidInput {
-        return true;
+    match error.kind() {
+        // Common error codes std understands.
+        io::ErrorKind::NotFound | io::ErrorKind::InvalidInput => true,
+
+        // Check for OS-specific error codes.
+        _ => match error.raw_os_error() {
+            // kqueue likes to return EBADF, especially on removal, since it
+            // automatically removes sockets when they are closed.
+            Some(EBADF) if cfg!(unix) => true,
+
+            // IOCP can return these in rare circumstances. Typically these just
+            // indicate that the socket is no longer registered with the
+            // completion port or was already closed.
+            Some(ERROR_INVALID_HANDLE) | Some(ERROR_NOT_FOUND) if cfg!(windows) => true,
+
+            _ => false
+        }
     }
-
-    if cfg!(unix) && error.raw_os_error() == Some(EBADF) {
-        return true;
-    }
-
-    if cfg!(windows) && error.raw_os_error() == Some(ERROR_INVALID_HANDLE) {
-        return true;
-    }
-
-    false
 }
