@@ -1,13 +1,26 @@
 use isahc::{config::IpVersion, error::ErrorKind, prelude::*, Request};
 use std::{
     io::{self, Read, Write},
-    net::{Ipv4Addr, Ipv6Addr, Shutdown, TcpListener, TcpStream},
+    net::{Ipv4Addr, Ipv6Addr, Shutdown, TcpListener, TcpStream, ToSocketAddrs},
     thread,
 };
 use testserver::mock;
 
 #[macro_use]
 mod utils;
+
+// Check if the test host supports IPv6.
+fn is_ipv6_supported() -> bool {
+    if let Ok(addrs) = "localhost:0".to_socket_addrs() {
+        for addr in addrs {
+            if addr.is_ipv6() {
+                return true;
+            }
+        }
+    }
+
+    false
+}
 
 #[test]
 fn local_addr_returns_expected_address() {
@@ -32,6 +45,11 @@ fn remote_addr_returns_expected_address_expected_address() {
 
 #[test]
 fn ipv4_only_will_not_connect_to_ipv6() {
+    if !is_ipv6_supported() {
+        eprintln!("skipping test because host does not support IPv6");
+        return;
+    }
+
     // Create server on IPv6 only.
     let server = TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).unwrap();
     let port = server.local_addr().unwrap().port();
@@ -47,6 +65,11 @@ fn ipv4_only_will_not_connect_to_ipv6() {
 
 #[test]
 fn ipv6_only_will_not_connect_to_ipv4() {
+    if !is_ipv6_supported() {
+        eprintln!("skipping test because host does not support IPv6");
+        return;
+    }
+
     // Create server on IPv4 only.
     let server = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = server.local_addr().unwrap().port();
