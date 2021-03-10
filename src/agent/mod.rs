@@ -9,7 +9,7 @@
 //! a specialized task executor for tasks related to requests.
 
 use crate::{error::Error, handler::RequestHandler, task::WakerExt};
-use crossbeam_utils::sync::WaitGroup;
+use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
 use flume::{Receiver, Sender};
 use slab::Slab;
@@ -21,6 +21,7 @@ use self::timer::Timer;
 mod selector;
 mod timer;
 
+const NEXT_AGENT_ID: AtomicCell<usize> = AtomicCell::new(0);
 const WAIT_TIMEOUT: Duration = Duration::from_millis(1000);
 
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
@@ -66,6 +67,8 @@ impl AgentBuilder {
         // See #189.
         curl::init();
 
+        let id = NEXT_AGENT_ID.fetch_add(1);
+
         // Create an I/O selector for driving curl's sockets.
         let selector = Selector::new()?;
 
@@ -80,7 +83,7 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = tracing::debug_span!("agent_thread");
+        let agent_span = tracing::debug_span!("agent_thread", id);
         agent_span.follows_from(tracing::Span::current());
 
         let waker = selector.waker();
@@ -135,7 +138,7 @@ impl AgentBuilder {
             waker,
             join_handle: Mutex::new(Some(
                 thread::Builder::new()
-                    .name(format!("isahc-agent-{}", 0))
+                    .name(format!("isahc-agent-{}", id))
                     .spawn(thread_main)?,
             )),
         };
