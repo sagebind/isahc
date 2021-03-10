@@ -1,6 +1,6 @@
 use curl::multi::Socket;
 use polling::{Event, Poller};
-use std::{collections::{HashMap, HashSet}, io, sync::Arc, task::Waker, time::Duration};
+use std::{collections::{HashMap, HashSet}, hash::{BuildHasherDefault, Hasher}, io, sync::Arc, task::Waker, time::Duration};
 
 /// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -15,11 +15,11 @@ pub(crate) struct Selector {
     poller: Arc<Poller>,
 
     /// All of the sockets that we have been asked to keep track of.
-    sockets: HashMap<Socket, Registration>,
+    sockets: HashMap<Socket, Registration, BuildHasherDefault<IntHasher>>,
 
     /// If a socket is currently invalid when it is registered, we put it in this
     /// set and try to register it again later.
-    bad_sockets: HashSet<Socket>,
+    bad_sockets: HashSet<Socket, BuildHasherDefault<IntHasher>>,
 
     /// Socket events that have occurred. We re-use this vec every call for
     /// efficiency.
@@ -41,8 +41,8 @@ impl Selector {
     pub(crate) fn new() -> io::Result<Self> {
         Ok(Self {
             poller: Arc::new(Poller::new()?),
-            sockets: HashMap::new(),
-            bad_sockets: HashSet::new(),
+            sockets: HashMap::with_hasher(Default::default()),
+            bad_sockets: HashSet::with_hasher(Default::default()),
             events: Vec::new(),
             tick: 0,
         })
@@ -65,7 +65,6 @@ impl Selector {
     ///
     /// This method can also be used to update/modify the readiness events you
     /// are interested in for a previously registered socket.
-    #[tracing::instrument(level = "trace", skip(self))]
     pub(crate) fn register(&mut self, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
         let previous = self.sockets.insert(socket, Registration {
             readable,
@@ -81,7 +80,19 @@ impl Selector {
 
         match result {
             Err(e) if is_bad_socket_error(&e) => {
-                tracing::debug!(socket, "bad socket registered, will try again later");
+                // We've been asked to monitor a socket, but the poller thinks
+                // that the socket is invalid or closed. On occasion, curl will
+                // give such sockets with the assumption that we will monitor
+                // them until curl tells us to stop. With stateless pollers such
+                // as `select(2)` this is not a problem, but most
+                // high-performance stateless pollers need the socket to be
+                // valid in order to monitor them.
+                //
+                // To get around this problem, we return `Ok` to the caller and
+                // hold onto this currently invalid socket for later. Whenever
+                // `poll` is called, we retry registering these sockets in the
+                // hope that they will eventually become valid.
+                tracing::debug!(socket, error = ?e, "bad socket registered, will try again later");
                 self.bad_sockets.insert(socket);
                 Ok(())
             }
@@ -90,7 +101,6 @@ impl Selector {
     }
 
     /// Remove a socket from the selector and stop receiving events for it.
-    #[tracing::instrument(level = "trace", skip(self))]
     pub(crate) fn deregister(&mut self, socket: Socket) -> io::Result<()> {
         // Remove this socket from our bookkeeping. If we recognize it, also
         // remove it from the underlying poller.
@@ -115,7 +125,6 @@ impl Selector {
     /// Block until socket activity is detected or a timeout passes.
     ///
     /// Returns `true` if one or more socket events occurred.
-    #[tracing::instrument(level = "trace", skip(self))]
     pub(crate) fn poll(&mut self, timeout: Duration) -> io::Result<bool> {
         // Since our I/O events are oneshot, make sure we re-register sockets
         // with the poller that previously were triggered last time we polled.
@@ -135,19 +144,24 @@ impl Selector {
             }
         }
 
-        let sockets = &mut self.sockets;
-        let poller = &self.poller;
-        let tick = self.tick;
-        self.bad_sockets.retain(|&socket| {
-            if let Some(registration) = sockets.get_mut(&socket) {
-                if registration.tick != tick {
-                    registration.tick = tick;
-                    poller_add(poller, socket, registration.readable, registration.writable).is_err()
+        // Iterate over sockets that have been registered, but failed to be
+        // added to the underlying poller temporarily, and retry adding them.
+        self.bad_sockets.retain({
+            let sockets = &mut self.sockets;
+            let poller = &self.poller;
+            let tick = self.tick;
+
+            move |&socket| {
+                if let Some(registration) = sockets.get_mut(&socket) {
+                    if registration.tick != tick {
+                        registration.tick = tick;
+                        poller_add(poller, socket, registration.readable, registration.writable).is_err()
+                    } else {
+                        true
+                    }
                 } else {
-                    true
+                    false
                 }
-            } else {
-                false
             }
         });
 
@@ -217,6 +231,7 @@ fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool
 }
 
 fn is_bad_socket_error(error: &io::Error) -> bool {
+    // OS-specific error codes that aren't mapped to an `std::io::ErrorKind`.
     const EBADF: i32 = 9;
     const ERROR_INVALID_HANDLE: i32 = 6;
     const ERROR_NOT_FOUND: i32 = 1168;
@@ -238,5 +253,34 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
 
             _ => false
         }
+    }
+}
+
+/// Trivial hash function to use for our maps and sets that use file descriptors
+/// as keys.
+#[derive(Default)]
+struct IntHasher([u8; 8], #[cfg(debug_assertions)] bool);
+
+impl Hasher for IntHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        #[cfg(debug_assertions)]
+        {
+            if self.1 {
+                panic!("socket hash function can only be written to once");
+            } else {
+                self.1 = true;
+            }
+
+            if bytes.len() > 8 {
+                panic!("only a maximum of 8 bytes can be hashed");
+            }
+        }
+
+        (&mut self.0[..bytes.len()]).copy_from_slice(bytes);
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        u64::from_ne_bytes(self.0)
     }
 }

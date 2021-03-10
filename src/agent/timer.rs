@@ -24,13 +24,11 @@ impl Timer {
         self.timeout.load().map(|timeout| timeout.saturating_duration_since(now))
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
     pub(crate) fn start(&self, timeout: Duration) {
         self.timeout.store(Some(Instant::now() + timeout));
     }
 
     pub(crate) fn stop(&self) {
         self.timeout.store(None);
-        tracing::trace!("timer cleared");
     }
 }

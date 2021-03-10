@@ -126,8 +126,7 @@ impl AgentBuilder {
             let result = agent.run();
 
             if let Err(e) = &result {
-                eprintln!("agent shut down with error: {:?}", e);
-                tracing::error!("agent shut down with error: {}", e);
+                tracing::error!("agent shut down with error: {:?}", e);
             }
 
             result
@@ -243,7 +242,7 @@ impl Handle {
                 Ok(())
             }
             Err(flume::SendError(_)) => match self.try_join() {
-                JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
+                JoinResult::Err(e) => panic!("agent thread terminated with error: {:?}", e),
                 JoinResult::Panic => panic!("agent thread panicked"),
                 _ => panic!("agent thread terminated prematurely"),
             },
@@ -344,8 +343,8 @@ impl AgentContext {
                     .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => tracing::warn!(
-                            "agent went away while resuming read for request [id={}]",
-                            id
+                            id,
+                            "agent went away while resuming read for request"
                         ),
                     })
             },
@@ -356,8 +355,8 @@ impl AgentContext {
                     .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => tracing::warn!(
-                            "agent went away while resuming write for request [id={}]",
-                            id
+                            id,
+                            "agent went away while resuming write for request"
                         ),
                     })
             },
@@ -436,7 +435,7 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!("error unpausing read for request [id={}]: {}", token, e);
+                        tracing::debug!(id = token, "error unpausing read for request: {:?}", e);
                     }
                 } else {
                     tracing::warn!(
@@ -455,7 +454,7 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!("error unpausing write for request [id={}]: {}", token, e);
+                        tracing::debug!(id = token, "error unpausing write for request: {:?}", e);
                     }
                 } else {
                     tracing::warn!(
