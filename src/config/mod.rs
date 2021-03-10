@@ -579,7 +579,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use isahc::{config::SslOption, prelude::*, Request};
     ///
     /// let response = Request::get("https://badssl.com")
