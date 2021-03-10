@@ -1,5 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/agent.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>agent.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
-                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/agent/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings"></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../isahc/index.html'><div class='logo-container'><img src='https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+                <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -527,6 +527,38 @@
 <span id="526">526</span>
 <span id="527">527</span>
 <span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -538,28 +570,23 @@
 <span class="doccomment">//! Since request executions are driven through futures, the agent also acts as</span>
 <span class="doccomment">//! a specialized task executor for tasks related to requests.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error</span>::<span class="ident">Error</span>,
-    <span class="ident">handler</span>::<span class="ident">RequestHandler</span>,
-    <span class="ident">task</span>::{<span class="ident">UdpWaker</span>, <span class="ident">WakerExt</span>},
-};
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">sync</span>::<span class="ident">WaitGroup</span>;
-<span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">WaitFd</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error</span>::<span class="ident">Error</span>, <span class="ident">handler</span>::<span class="ident">RequestHandler</span>, <span class="ident">task</span>::<span class="ident">WakerExt</span>};
+<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::{<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>, <span class="ident">sync</span>::<span class="ident">WaitGroup</span>};
+<span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">multi</span>::{<span class="ident">Events</span>, <span class="ident">Multi</span>, <span class="ident">Socket</span>, <span class="ident">SocketEvents</span>};
 <span class="kw">use</span> <span class="ident">flume</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">slab</span>::<span class="ident">Slab</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">io</span>,
-    <span class="ident">net</span>::<span class="ident">UdpSocket</span>,
-    <span class="ident">sync</span>::<span class="ident">Mutex</span>,
-    <span class="ident">task</span>::<span class="ident">Waker</span>,
-    <span class="ident">thread</span>,
-    <span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>},
-};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">io</span>, <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>}, <span class="ident">task</span>::<span class="ident">Waker</span>, <span class="ident">thread</span>, <span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>}};
 
-<span class="kw">const</span> <span class="ident">WAIT_TIMEOUT</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration</span>::<span class="ident">from_millis</span>(<span class="number">100</span>);
+<span class="kw">use</span> <span class="self">self</span>::<span class="ident">selector</span>::<span class="ident">Selector</span>;
+<span class="kw">use</span> <span class="self">self</span>::<span class="ident">timer</span>::<span class="ident">Timer</span>;
+
+<span class="kw">mod</span> <span class="ident">selector</span>;
+<span class="kw">mod</span> <span class="ident">timer</span>;
+
+<span class="kw">const</span> <span class="ident">NEXT_AGENT_ID</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="number">0</span>);
+<span class="kw">const</span> <span class="ident">WAIT_TIMEOUT</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration</span>::<span class="ident">from_millis</span>(<span class="number">1000</span>);
 
 <span class="kw">type</span> <span class="ident">EasyHandle</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>;
-<span class="kw">type</span> <span class="ident">MultiMessage</span> <span class="op">=</span> (<span class="ident">usize</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>);
 
 <span class="doccomment">/// Builder for configuring and spawning an agent.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
@@ -602,13 +629,10 @@
         <span class="comment">// See #189.</span>
         <span class="ident">curl</span>::<span class="ident">init</span>();
 
-        <span class="comment">// Create an UDP socket for the agent thread to listen for wakeups on.</span>
-        <span class="kw">let</span> <span class="ident">wake_socket</span> <span class="op">=</span> <span class="ident">UdpSocket</span>::<span class="ident">bind</span>(<span class="string">&quot;127.0.0.1:0&quot;</span>)<span class="question-mark">?</span>;
-        <span class="ident">wake_socket</span>.<span class="ident">set_nonblocking</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">wake_addr</span> <span class="op">=</span> <span class="ident">wake_socket</span>.<span class="ident">local_addr</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="ident">wake_addr</span>.<span class="ident">port</span>();
-        <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">Waker</span>::<span class="ident">from</span>(<span class="ident">UdpWaker</span>::<span class="ident">connect</span>(<span class="ident">wake_addr</span>)<span class="question-mark">?</span>);
-        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent waker listening on {}&quot;</span>, <span class="ident">wake_addr</span>);
+        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NEXT_AGENT_ID</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>);
+
+        <span class="comment">// Create an I/O selector for driving curl&#39;s sockets.</span>
+        <span class="kw">let</span> <span class="ident">selector</span> <span class="op">=</span> <span class="ident">Selector</span>::<span class="ident">new</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">unbounded</span>();
 
@@ -621,61 +645,62 @@
 
         <span class="comment">// Create a span for the agent thread that outlives this method call,</span>
         <span class="comment">// but rather was caused by it.</span>
-        <span class="kw">let</span> <span class="ident">agent_span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;agent_thread&quot;</span>, <span class="ident">port</span>);
+        <span class="kw">let</span> <span class="ident">agent_span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;agent_thread&quot;</span>, <span class="ident">id</span>);
         <span class="ident">agent_span</span>.<span class="ident">follows_from</span>(<span class="ident">tracing</span>::<span class="ident">Span</span>::<span class="ident">current</span>());
 
+        <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">selector</span>.<span class="ident">waker</span>();
+        <span class="kw">let</span> <span class="ident">message_tx_clone</span> <span class="op">=</span> <span class="ident">message_tx</span>.<span class="ident">clone</span>();
+
+        <span class="kw">let</span> <span class="ident">thread_main</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">agent_span</span>.<span class="ident">enter</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">Multi</span>::<span class="ident">new</span>();
+
+            <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="ident">multi</span>
+                    .<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            }
+
+            <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="ident">multi</span>
+                    .<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            }
+
+            <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
+            <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="ident">multi</span>
+                    .<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            }
+
+            <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span>::<span class="ident">new</span>(
+                <span class="ident">multi</span>,
+                <span class="ident">selector</span>,
+                <span class="ident">message_tx_clone</span>,
+                <span class="ident">message_rx</span>,
+            )<span class="question-mark">?</span>;
+
+            <span class="ident">drop</span>(<span class="ident">wait_group_thread</span>);
+
+            <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, <span class="ident">create_start</span>.<span class="ident">elapsed</span>());
+
+            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">agent</span>.<span class="ident">run</span>();
+
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">result</span> {
+                <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent shut down with error: {:?}&quot;</span>, <span class="ident">e</span>);
+            }
+
+            <span class="ident">result</span>
+        };
+
         <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">Handle</span> {
-            <span class="ident">message_tx</span>: <span class="ident">message_tx</span>.<span class="ident">clone</span>(),
-            <span class="ident">waker</span>: <span class="ident">waker</span>.<span class="ident">clone</span>(),
+            <span class="ident">message_tx</span>,
+            <span class="ident">waker</span>,
             <span class="ident">join_handle</span>: <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="prelude-val">Some</span>(
                 <span class="ident">thread</span>::<span class="ident">Builder</span>::<span class="ident">new</span>()
-                    .<span class="ident">name</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;isahc-agent-{}&quot;</span>, <span class="ident">port</span>))
-                    .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">agent_span</span>.<span class="ident">enter</span>();
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Multi</span>::<span class="ident">new</span>();
-
-                        <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>
-                                .<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)
-                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
-                        }
-
-                        <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>
-                                .<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)
-                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
-                        }
-
-                        <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
-                        <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="ident">multi</span>
-                                .<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)
-                                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
-                        }
-
-                        <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext</span> {
-                            <span class="ident">multi</span>,
-                            <span class="ident">multi_messages</span>: <span class="ident">flume</span>::<span class="ident">unbounded</span>(),
-                            <span class="ident">message_tx</span>,
-                            <span class="ident">message_rx</span>,
-                            <span class="ident">wake_socket</span>,
-                            <span class="ident">requests</span>: <span class="ident">Slab</span>::<span class="ident">new</span>(),
-                            <span class="ident">close_requested</span>: <span class="bool-val">false</span>,
-                            <span class="ident">waker</span>,
-                        };
-
-                        <span class="ident">drop</span>(<span class="ident">wait_group_thread</span>);
-
-                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, <span class="ident">create_start</span>.<span class="ident">elapsed</span>());
-
-                        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">agent</span>.<span class="ident">run</span>();
-
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">result</span> {
-                            <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;agent shut down with error: {}&quot;</span>, <span class="ident">e</span>);
-                        }
-
-                        <span class="ident">result</span>
-                    })<span class="question-mark">?</span>,
+                    .<span class="ident">name</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;isahc-agent-{}&quot;</span>, <span class="ident">id</span>))
+                    .<span class="ident">spawn</span>(<span class="ident">thread_main</span>)<span class="question-mark">?</span>,
             )),
         };
 
@@ -711,17 +736,11 @@
     <span class="doccomment">/// A curl multi handle, of course.</span>
     <span class="ident">multi</span>: <span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Multi</span>,
 
-    <span class="doccomment">/// Queue of messages from the multi handle.</span>
-    <span class="ident">multi_messages</span>: (<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MultiMessage</span><span class="op">&gt;</span>, <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">MultiMessage</span><span class="op">&gt;</span>),
-
     <span class="doccomment">/// Used to send messages to the agent thread.</span>
     <span class="ident">message_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Incoming messages from the agent handle.</span>
     <span class="ident">message_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
-
-    <span class="doccomment">/// Used to wake up the agent when polling.</span>
-    <span class="ident">wake_socket</span>: <span class="ident">UdpSocket</span>,
 
     <span class="doccomment">/// Contains all of the active requests.</span>
     <span class="ident">requests</span>: <span class="ident">Slab</span><span class="op">&lt;</span><span class="ident">curl</span>::<span class="ident">multi</span>::<span class="ident">Easy2Handle</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -731,6 +750,15 @@
 
     <span class="doccomment">/// A waker that can wake up the agent thread while it is polling.</span>
     <span class="ident">waker</span>: <span class="ident">Waker</span>,
+
+    <span class="doccomment">/// This is the poller we use to poll for socket activity!</span>
+    <span class="ident">selector</span>: <span class="ident">Selector</span>,
+
+    <span class="doccomment">/// A timer we use to keep track of curl&#39;s timeouts.</span>
+    <span class="ident">timer</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Timer</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// Queue of socket registration updates from the multi handle.</span>
+    <span class="ident">socket_updates</span>: <span class="ident">Receiver</span><span class="op">&lt;</span>(<span class="ident">Socket</span>, <span class="ident">SocketEvents</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// A message sent from the main thread to the agent thread.</span>
@@ -776,7 +804,7 @@
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
-                <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
+                <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated with error: {:?}&quot;</span>, <span class="ident">e</span>),
                 <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
             },
@@ -816,6 +844,49 @@
 }
 
 <span class="kw">impl</span> <span class="ident">AgentContext</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="kw-2">mut</span> <span class="ident">multi</span>: <span class="ident">Multi</span>,
+        <span class="ident">selector</span>: <span class="ident">Selector</span>,
+        <span class="ident">message_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
+        <span class="ident">message_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Timer</span>::<span class="ident">new</span>());
+        <span class="kw">let</span> (<span class="ident">socket_updates_tx</span>, <span class="ident">socket_updates_rx</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">unbounded</span>();
+
+        <span class="ident">multi</span>
+            .<span class="ident">socket_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">socket_updates_tx</span>.<span class="ident">send</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span>));
+            })
+            .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+
+        <span class="ident">multi</span>.<span class="ident">timer_function</span>({
+            <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">timer</span>.<span class="ident">clone</span>();
+
+            <span class="kw">move</span> <span class="op">|</span><span class="ident">timeout</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">timeout</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">timer</span>.<span class="ident">start</span>(<span class="ident">timeout</span>);
+                    <span class="bool-val">true</span>
+                }
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">timer</span>.<span class="ident">stop</span>();
+                    <span class="bool-val">true</span>
+                }
+            }
+        }).<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
+            <span class="ident">multi</span>,
+            <span class="ident">message_tx</span>,
+            <span class="ident">message_rx</span>,
+            <span class="ident">requests</span>: <span class="ident">Slab</span>::<span class="ident">new</span>(),
+            <span class="ident">close_requested</span>: <span class="bool-val">false</span>,
+            <span class="ident">waker</span>: <span class="ident">selector</span>.<span class="ident">waker</span>(),
+            <span class="ident">selector</span>,
+            <span class="ident">timer</span>,
+            <span class="ident">socket_updates</span>: <span class="ident">socket_updates_rx</span>,
+        })
+    }
+
     <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
     <span class="kw">fn</span> <span class="ident">begin_request</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">EasyHandle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="comment">// Prepare an entry for storing this request while it executes.</span>
@@ -834,8 +905,8 @@
                     .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseRead</span>(<span class="ident">id</span>)) {
                         <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(
-                            <span class="string">&quot;agent went away while resuming read for request [id={}]&quot;</span>,
-                            <span class="ident">id</span>
+                            <span class="ident">id</span>,
+                            <span class="string">&quot;agent went away while resuming read for request&quot;</span>
                         ),
                     })
             },
@@ -846,8 +917,8 @@
                     .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseWrite</span>(<span class="ident">id</span>)) {
                         <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(
-                            <span class="string">&quot;agent went away while resuming write for request [id={}]&quot;</span>,
-                            <span class="ident">id</span>
+                            <span class="ident">id</span>,
+                            <span class="string">&quot;agent went away while resuming write for request&quot;</span>
                         ),
                     })
             },
@@ -875,26 +946,6 @@
         <span class="ident">handle</span>.<span class="ident">get_mut</span>().<span class="ident">set_result</span>(<span class="ident">result</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>));
 
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_wait_fds</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">WaitFd</span>; <span class="number">1</span>] {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fd</span> <span class="op">=</span> <span class="ident">WaitFd</span>::<span class="ident">new</span>();
-
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-        {
-            <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">os</span>::<span class="ident">unix</span>::<span class="ident">io</span>::<span class="ident">AsRawFd</span>;
-            <span class="ident">fd</span>.<span class="ident">set_fd</span>(<span class="self">self</span>.<span class="ident">wake_socket</span>.<span class="ident">as_raw_fd</span>());
-        }
-
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">windows</span>)]</span>
-        {
-            <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">os</span>::<span class="ident">windows</span>::<span class="ident">io</span>::<span class="ident">AsRawSocket</span>;
-            <span class="ident">fd</span>.<span class="ident">set_fd</span>(<span class="self">self</span>.<span class="ident">wake_socket</span>.<span class="ident">as_raw_socket</span>());
-        }
-
-        <span class="ident">fd</span>.<span class="ident">poll_on_read</span>(<span class="bool-val">true</span>);
-
-        [<span class="ident">fd</span>]
     }
 
     <span class="doccomment">/// Polls the message channel for new messages from any agent handles.</span>
@@ -946,7 +997,7 @@
                         <span class="comment">// the transfer alive until it errors through the normal</span>
                         <span class="comment">// means, which is likely to happen this turn of the</span>
                         <span class="comment">// event loop anyway.</span>
-                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;error unpausing read for request [id={}]: {}&quot;</span>, <span class="ident">token</span>, <span class="ident">e</span>);
+                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="ident">token</span>, <span class="string">&quot;error unpausing read for request: {:?}&quot;</span>, <span class="ident">e</span>);
                     }
                 } <span class="kw">else</span> {
                     <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(
@@ -965,7 +1016,7 @@
                         <span class="comment">// the transfer alive until it errors through the normal</span>
                         <span class="comment">// means, which is likely to happen this turn of the</span>
                         <span class="comment">// event loop anyway.</span>
-                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;error unpausing write for request [id={}]: {}&quot;</span>, <span class="ident">token</span>, <span class="ident">e</span>);
+                        <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="ident">token</span>, <span class="string">&quot;error unpausing write for request: {:?}&quot;</span>, <span class="ident">e</span>);
                     }
                 } <span class="kw">else</span> {
                     <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(
@@ -979,38 +1030,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">tracing</span>::<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">dispatch</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">perform</span>().<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Collect messages from curl about requests that have completed,</span>
-        <span class="comment">// whether successfully or with an error.</span>
-        <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">messages</span>(<span class="op">|</span><span class="ident">message</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">result</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">result</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">token</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">token</span>() {
-                    <span class="self">self</span>.<span class="ident">multi_messages</span>.<span class="number">0</span>.<span class="ident">send</span>((<span class="ident">token</span>, <span class="ident">result</span>)).<span class="ident">unwrap</span>();
-                }
-            }
-        });
-
-        <span class="kw">loop</span> {
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">multi_messages</span>.<span class="number">1</span>.<span class="ident">try_recv</span>() {
-                <span class="comment">// A request completed.</span>
-                <span class="prelude-val">Ok</span>((<span class="ident">token</span>, <span class="ident">result</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">complete_request</span>(<span class="ident">token</span>, <span class="ident">result</span>)<span class="question-mark">?</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable</span><span class="macro">!</span>(),
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="doccomment">/// Run the agent in the current thread until requested to stop.</span>
     <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wait_fds</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_wait_fds</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wait_fd_buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">1024</span>];
-
-        <span class="macro">debug_assert_eq</span><span class="macro">!</span>(<span class="ident">wait_fds</span>.<span class="ident">len</span>(), <span class="number">1</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi_messages</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
 
         <span class="comment">// Agent main loop.</span>
         <span class="kw">loop</span> {
@@ -1020,30 +1042,72 @@
                 <span class="kw">break</span>;
             }
 
-            <span class="comment">// Perform any pending reads or writes and handle any state changes.</span>
-            <span class="self">self</span>.<span class="ident">dispatch</span>()<span class="question-mark">?</span>;
-
             <span class="comment">// Block until activity is detected or the timeout passes.</span>
-            <span class="self">self</span>.<span class="ident">multi</span>
-                .<span class="ident">wait</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">wait_fds</span>, <span class="ident">WAIT_TIMEOUT</span>)
-                .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">poll</span>()<span class="question-mark">?</span>;
 
-            <span class="comment">// We might have woken up early from the notify fd, so drain the</span>
-            <span class="comment">// socket to clear it.</span>
-            <span class="kw">if</span> <span class="ident">wait_fds</span>[<span class="number">0</span>].<span class="ident">received_read</span>() {
-                <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;woke up from waker&quot;</span>);
+            <span class="comment">// Collect messages from curl about requests that have completed,</span>
+            <span class="comment">// whether successfully or with an error.</span>
+            <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">messages</span>(<span class="op">|</span><span class="ident">message</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">result</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">result</span>() {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">token</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">token</span>() {
+                        <span class="ident">multi_messages</span>.<span class="ident">push</span>((<span class="ident">token</span>, <span class="ident">result</span>));
+                    }
+                }
+            });
 
-                <span class="comment">// Read data out of the wake socket to clean the buffer. While</span>
-                <span class="comment">// it&#39;s possible that there&#39;s a lot of data in the buffer, it</span>
-                <span class="comment">// is unlikely, so we do just one read. At worst case, the next</span>
-                <span class="comment">// wait call returns immediately.</span>
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wake_socket</span>.<span class="ident">recv_from</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">wait_fd_buf</span>);
+            <span class="kw">for</span> (<span class="ident">token</span>, <span class="ident">result</span>) <span class="kw">in</span> <span class="ident">multi_messages</span>.<span class="ident">drain</span>(..) {
+                <span class="self">self</span>.<span class="ident">complete_request</span>(<span class="ident">token</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
             }
         }
 
         <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;agent shutting down&quot;</span>);
 
         <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">clear</span>();
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Block until activity is detected or a timeout passes.</span>
+    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant</span>::<span class="ident">now</span>();
+        <span class="kw">let</span> <span class="ident">timeout</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">get_remaining</span>(<span class="ident">now</span>);
+
+        <span class="comment">// Get the latest timeout value from curl that we should use, limited to</span>
+        <span class="comment">// a maximum we chose.</span>
+        <span class="kw">let</span> <span class="ident">poll_timeout</span> <span class="op">=</span> <span class="ident">timeout</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">min</span>(<span class="ident">WAIT_TIMEOUT</span>)).<span class="ident">unwrap_or</span>(<span class="ident">WAIT_TIMEOUT</span>);
+
+        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is</span>
+        <span class="comment">// reached, or the agent handle interrupts us.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">poll</span>(<span class="ident">poll_timeout</span>)<span class="question-mark">?</span> {
+            <span class="comment">// At least one I/O event occurred, handle them.</span>
+            <span class="kw">for</span> (<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">events</span>() {
+                <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>, <span class="string">&quot;socket event&quot;</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">events</span> <span class="op">=</span> <span class="ident">Events</span>::<span class="ident">new</span>();
+                <span class="ident">events</span>.<span class="ident">input</span>(<span class="ident">readable</span>);
+                <span class="ident">events</span>.<span class="ident">output</span>(<span class="ident">writable</span>);
+                <span class="self">self</span>.<span class="ident">multi</span>
+                    .<span class="ident">action</span>(<span class="ident">socket</span>, <span class="kw-2">&amp;</span><span class="ident">events</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            }
+        }
+
+        <span class="comment">// If curl gave us a timeout, check if it has expired.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">is_expired</span>(<span class="ident">now</span>) {
+            <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">timeout</span>().<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// Apply any requested socket updates now.</span>
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">socket_updates</span>.<span class="ident">try_recv</span>() {
+            <span class="comment">// Curl is asking us to stop polling this socket.</span>
+            <span class="kw">if</span> <span class="ident">events</span>.<span class="ident">remove</span>() {
+                <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">deregister</span>(<span class="ident">socket</span>).<span class="ident">unwrap</span>();
+            } <span class="kw">else</span> {
+                <span class="kw">let</span> <span class="ident">readable</span> <span class="op">=</span> <span class="ident">events</span>.<span class="ident">input</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">events</span>.<span class="ident">input_and_output</span>();
+                <span class="kw">let</span> <span class="ident">writable</span> <span class="op">=</span> <span class="ident">events</span>.<span class="ident">output</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">events</span>.<span class="ident">input_and_output</span>();
+
+                <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">register</span>(<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>).<span class="ident">unwrap</span>();
+            }
+        }
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1057,5 +1121,5 @@
     <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">Message</span>: <span class="ident">Send</span>);
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-search-js="../../search-index.js"></div>
-    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-search-js="../../../search-index.js"></div>
+    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

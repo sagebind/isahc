@@ -1237,7 +1237,7 @@
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .proxy(Some(&quot;http://proxy:80&quot;.parse()?))</span>
     <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;std::error::Error&gt;&gt;(())</span>
+    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Explicitly disable the use of a proxy:</span>
@@ -1248,7 +1248,7 @@
     <span class="doccomment">/// let client = HttpClient::builder()</span>
     <span class="doccomment">///     .proxy(None)</span>
     <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;std::error::Error&gt;&gt;(())</span>
+    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">proxy</span>(<span class="self">self</span>, <span class="ident">proxy</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
@@ -1300,7 +1300,7 @@
     <span class="doccomment">///     .proxy_authentication(Authentication::basic())</span>
     <span class="doccomment">///     .proxy_credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))</span>
     <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;std::error::Error&gt;&gt;(())</span>
+    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">proxy_authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
@@ -1445,7 +1445,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Examples</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// ```no_run</span>
     <span class="doccomment">/// use isahc::{config::SslOption, prelude::*, Request};</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let response = Request::get(&quot;https://badssl.com&quot;)</span>
