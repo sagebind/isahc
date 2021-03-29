@@ -65,6 +65,7 @@ define_request_config! {
     // Used by curl
     timeout: Option<Duration>,
     connect_timeout: Option<Duration>,
+    low_speed_timeout: Option<(u32, Duration)>,
     version_negotiation: Option<VersionNegotiation>,
     automatic_decompression: Option<bool>,
     authentication: Option<Authentication>,
@@ -96,6 +97,11 @@ impl SetOpt for RequestConfig {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         if let Some(timeout) = self.timeout {
             easy.timeout(timeout)?;
+        }
+
+        if let Some((low_speed, timeout)) = self.low_speed_timeout {
+            easy.low_speed_limit(low_speed)?;
+            easy.low_speed_time(timeout)?;
         }
 
         if let Some(timeout) = self.connect_timeout {
