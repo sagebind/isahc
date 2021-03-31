@@ -89,6 +89,16 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
+    /// Specify a maximum amount of time where transfer rate can go below
+    /// a minimum speed limit. `low_speed` is that limit in bytes/s.
+    ///
+    /// If not set, no low speed limits are imposed.
+    fn low_speed_timeout(self, low_speed: u32, timeout: Duration) -> Self {
+        self.with_config(move |config| {
+            config.low_speed_timeout = Some((low_speed, timeout));
+        })
+    }
+
     /// Configure how the use of HTTP versions should be negotiated with the
     /// server.
     ///
