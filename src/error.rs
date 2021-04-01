@@ -328,7 +328,10 @@ impl fmt::Debug for Error {
             .field("kind", &self.kind())
             .field("context", &self.0.context)
             .field("source", &self.source())
-            .field("source_type", &self.0.source.as_ref().map(|e| e.type_name()))
+            .field(
+                "source_type",
+                &self.0.source.as_ref().map(|e| e.type_name()),
+            )
             .finish()
     }
 }

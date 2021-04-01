@@ -19,8 +19,7 @@
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
-use crate::request::RequestExt;
-use crate::ReadResponseExt;
+use crate::{request::RequestExt, ReadResponseExt};
 use chrono::{prelude::*, Duration};
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};

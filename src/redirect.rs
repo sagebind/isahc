@@ -6,7 +6,7 @@ use crate::{
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
 };
-use http::{HeaderValue, Request, Response, Uri, header::ToStrError};
+use http::{header::ToStrError, HeaderValue, Request, Response, Uri};
 use std::{borrow::Cow, convert::TryFrom, str};
 use url::Url;
 

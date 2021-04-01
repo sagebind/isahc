@@ -1,6 +1,13 @@
 use curl::multi::Socket;
 use polling::{Event, Poller};
-use std::{collections::{HashMap, HashSet}, hash::{BuildHasherDefault, Hasher}, io, sync::Arc, task::Waker, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{BuildHasherDefault, Hasher},
+    io,
+    sync::Arc,
+    task::Waker,
+    time::Duration,
+};
 
 /// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -65,7 +72,12 @@ impl Selector {
     ///
     /// This method can also be used to update/modify the readiness events you
     /// are interested in for a previously registered socket.
-    pub(crate) fn register(&mut self, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+    pub(crate) fn register(
+        &mut self,
+        socket: Socket,
+        readable: bool,
+        writable: bool,
+    ) -> io::Result<()> {
         let previous = self.sockets.insert(socket, Registration {
             readable,
             writable,
@@ -138,7 +150,12 @@ impl Selector {
                 // If the socket was already re-registered this tick, then we
                 // don't need to do this.
                 if registration.tick != self.tick {
-                    poller_modify(&self.poller, socket, registration.readable, registration.writable)?;
+                    poller_modify(
+                        &self.poller,
+                        socket,
+                        registration.readable,
+                        registration.writable,
+                    )?;
                     registration.tick = self.tick;
                 }
             }
@@ -155,7 +172,8 @@ impl Selector {
                 if let Some(registration) = sockets.get_mut(&socket) {
                     if registration.tick != tick {
                         registration.tick = tick;
-                        poller_add(poller, socket, registration.readable, registration.writable).is_err()
+                        poller_add(poller, socket, registration.readable, registration.writable)
+                            .is_err()
                     } else {
                         true
                     }
@@ -179,12 +197,10 @@ impl Selector {
 
     /// Get an iterator over the socket events that occurred during the most
     /// recent call to `poll`.
-    pub(crate) fn events(&self) -> impl Iterator<Item = (Socket, bool, bool)> + '_  {
-        self.events.iter().map(|event| (
-            event.key as Socket,
-            event.readable,
-            event.writable,
-        ))
+    pub(crate) fn events(&self) -> impl Iterator<Item = (Socket, bool, bool)> + '_ {
+        self.events
+            .iter()
+            .map(|event| (event.key as Socket, event.readable, event.writable))
     }
 }
 
@@ -200,7 +216,11 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
         readable,
         writable,
     }) {
-        tracing::debug!("failed to add interest for socket {}, retrying as a modify: {}", socket, e);
+        tracing::debug!(
+            "failed to add interest for socket {}, retrying as a modify: {}",
+            socket,
+            e
+        );
         poller.modify(socket, Event {
             key: socket as usize,
             readable,
@@ -211,7 +231,12 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
     Ok(())
 }
 
-fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+fn poller_modify(
+    poller: &Poller,
+    socket: Socket,
+    readable: bool,
+    writable: bool,
+) -> io::Result<()> {
     // If this errors, we retry the operation as an add instead. This is done
     // because epoll is weird.
     if let Err(e) = poller.modify(socket, Event {
@@ -219,7 +244,11 @@ fn poller_modify(poller: &Poller, socket: Socket, readable: bool, writable: bool
         readable,
         writable,
     }) {
-        tracing::debug!("failed to modify interest for socket {}, retrying as an add: {}", socket, e);
+        tracing::debug!(
+            "failed to modify interest for socket {}, retrying as an add: {}",
+            socket,
+            e
+        );
         poller.add(socket, Event {
             key: socket as usize,
             readable,
@@ -251,8 +280,8 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
             // completion port or was already closed.
             Some(ERROR_INVALID_HANDLE) | Some(ERROR_NOT_FOUND) if cfg!(windows) => true,
 
-            _ => false
-        }
+            _ => false,
+        },
     }
 }
 

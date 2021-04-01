@@ -13,10 +13,15 @@ use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
 use flume::{Receiver, Sender};
 use slab::Slab;
-use std::{io, sync::{Arc, Mutex}, task::Waker, thread, time::{Duration, Instant}};
+use std::{
+    io,
+    sync::{Arc, Mutex},
+    task::Waker,
+    thread,
+    time::{Duration, Instant},
+};
 
-use self::selector::Selector;
-use self::timer::Timer;
+use self::{selector::Selector, timer::Timer};
 
 mod selector;
 mod timer;
@@ -112,12 +117,7 @@ impl AgentBuilder {
                     .map_err(Error::from_any)?;
             }
 
-            let agent = AgentContext::new(
-                multi,
-                selector,
-                message_tx_clone,
-                message_rx,
-            )?;
+            let agent = AgentContext::new(multi, selector, message_tx_clone, message_rx)?;
 
             drop(wait_group_thread);
 
@@ -297,20 +297,22 @@ impl AgentContext {
             })
             .map_err(Error::from_any)?;
 
-        multi.timer_function({
-            let timer = timer.clone();
+        multi
+            .timer_function({
+                let timer = timer.clone();
 
-            move |timeout| match timeout {
-                Some(timeout) => {
-                    timer.start(timeout);
-                    true
+                move |timeout| match timeout {
+                    Some(timeout) => {
+                        timer.start(timeout);
+                        true
+                    }
+                    None => {
+                        timer.stop();
+                        true
+                    }
                 }
-                None => {
-                    timer.stop();
-                    true
-                }
-            }
-        }).map_err(Error::from_any)?;
+            })
+            .map_err(Error::from_any)?;
 
         Ok(Self {
             multi,
@@ -342,10 +344,9 @@ impl AgentContext {
                 self.waker
                     .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => tracing::warn!(
-                            id,
-                            "agent went away while resuming read for request"
-                        ),
+                        Err(_) => {
+                            tracing::warn!(id, "agent went away while resuming read for request")
+                        }
                     })
             },
             {
@@ -354,10 +355,9 @@ impl AgentContext {
                 self.waker
                     .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => tracing::warn!(
-                            id,
-                            "agent went away while resuming write for request"
-                        ),
+                        Err(_) => {
+                            tracing::warn!(id, "agent went away while resuming write for request")
+                        }
                     })
             },
         );
