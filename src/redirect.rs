@@ -6,8 +6,8 @@ use crate::{
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
 };
-use http::{Request, Response, Uri};
-use std::convert::TryFrom;
+use http::{HeaderValue, Request, Response, Uri, header::ToStrError};
+use std::{borrow::Cow, convert::TryFrom, str};
 use url::Url;
 
 /// How many redirects to follow by default if a limit is not specified. We
@@ -141,20 +141,67 @@ fn get_redirect_location<T>(request_uri: &Uri, response: &Response<T>) -> Option
     if response.status().is_redirection() {
         let location = response.headers().get(http::header::LOCATION)?;
 
-        match location.to_str() {
-            Ok(location) => match resolve(request_uri, location) {
+        match parse_location(location) {
+            Ok(location) => match resolve(request_uri, location.as_ref()) {
                 Ok(uri) => return Some(uri),
                 Err(e) => {
-                    tracing::debug!("bad redirect location: {}", e);
+                    tracing::debug!("invalid redirect location: {}", e);
                 }
             },
             Err(e) => {
-                tracing::debug!("bad redirect location: {}", e);
+                tracing::debug!("invalid redirect location: {}", e);
             }
         }
     }
 
     None
+}
+
+/// Parse the given `Location` header value into a string.
+fn parse_location(location: &HeaderValue) -> Result<Cow<'_, str>, ToStrError> {
+    match location.to_str() {
+        // This will return a `str` if the header value contained only legal
+        // US-ASCII characters.
+        Ok(s) => Ok(Cow::Borrowed(s)),
+
+        // Try to parse the location as UTF-8 bytes instead of US-ASCII. This is
+        // technically against the URI spec which requires all literal
+        // characters in the URI to be US-ASCII (see [RFC 3986, Section
+        // 4.1](https://tools.ietf.org/html/rfc3986#section-4.1)).
+        //
+        // This is also more or less against the HTTP spec, which historically
+        // allowed for ISO-8859-1 text in header values but since was restricted
+        // to US-ASCII plus opaque bytes. Never has UTF-8 been encouraged or
+        // allowed as-such. See [RFC 7230, Section
+        // 3.2.4](https://tools.ietf.org/html/rfc7230#section-3.2.4) for more
+        // info.
+        //
+        // However, some bad or misconfigured web servers will do this anyway,
+        // and most web browsers recover from this by allowing and interpreting
+        // UTF-8 characters as themselves even though they _should_ have been
+        // percent-encoded. The third-party URI parsers that we use have no such
+        // leniency, so we percent-encode such bytes (if legal UTF-8) ahead of
+        // time before handing them off to the URI parser.
+        Err(e) => {
+            if str::from_utf8(location.as_bytes()).is_ok() {
+                let mut s = String::with_capacity(location.len());
+
+                for &byte in location.as_bytes() {
+                    if byte.is_ascii() {
+                        s.push(byte as char);
+                    } else {
+                        s.push_str(&format!("%{:02x}", byte));
+                    }
+                }
+
+                Ok(Cow::Owned(s))
+            } else {
+                // Header value isn't legal UTF-8 either, not much we can
+                // reasonably do.
+                Err(e)
+            }
+        }
+    }
 }
 
 /// Resolve one URI in terms of another.
