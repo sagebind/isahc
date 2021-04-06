@@ -283,3 +283,36 @@ fn auto_referer_sets_expected_header() {
     m2.request().expect_header("Referer", m1.url());
     m3.request().expect_header("Referer", m2.url());
 }
+
+#[test]
+#[ignore = "testserver does not support non-ASCII headers yet"]
+fn redirect_with_unencoded_utf8_bytes_in_location() {
+    let m2 = mock! {
+        status: 200,
+        body: "ok",
+    };
+
+    // Put literal non-ASCII UTF-8 characters into the location!
+    let location = m2.url() + "?bad=résumé";
+
+    let m1 = mock! {
+        status: 301,
+        headers {
+            "Location": location,
+        }
+    };
+
+    let mut response = Request::get(m1.url())
+        .redirect_policy(RedirectPolicy::Follow)
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.text().unwrap(), "ok");
+    assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
+
+    assert!(!m1.requests().is_empty());
+    assert!(!m2.requests().is_empty());
+}

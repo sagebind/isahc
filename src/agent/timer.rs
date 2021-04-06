@@ -15,13 +15,16 @@ impl Timer {
     }
 
     pub(crate) fn is_expired(&self, now: Instant) -> bool {
-        self.timeout.load()
+        self.timeout
+            .load()
             .map(|timeout| now >= timeout)
             .unwrap_or(false)
     }
 
     pub(crate) fn get_remaining(&self, now: Instant) -> Option<Duration> {
-        self.timeout.load().map(|timeout| timeout.saturating_duration_since(now))
+        self.timeout
+            .load()
+            .map(|timeout| timeout.saturating_duration_since(now))
     }
 
     pub(crate) fn start(&self, timeout: Duration) {
