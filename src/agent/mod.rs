@@ -9,9 +9,10 @@
 //! a specialized task executor for tasks related to requests.
 
 use crate::{error::Error, handler::RequestHandler, task::WakerExt};
+use async_channel::{Receiver, Sender};
 use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
-use flume::{Receiver, Sender};
+use futures_lite::future::block_on;
 use slab::Slab;
 use std::{
     io,
@@ -77,7 +78,7 @@ impl AgentBuilder {
         // Create an I/O selector for driving curl's sockets.
         let selector = Selector::new()?;
 
-        let (message_tx, message_rx) = flume::unbounded();
+        let (message_tx, message_rx) = async_channel::unbounded();
 
         let wait_group = WaitGroup::new();
         let wait_group_thread = wait_group.clone();
@@ -235,13 +236,13 @@ impl Handle {
     ///
     /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        match self.message_tx.send(message) {
+        match self.message_tx.try_send(message) {
             Ok(()) => {
                 // Wake the agent thread up so it will check its messages soon.
                 self.waker.wake_by_ref();
                 Ok(())
             }
-            Err(flume::SendError(_)) => match self.try_join() {
+            Err(_) => match self.try_join() {
                 JoinResult::Err(e) => panic!("agent thread terminated with error: {:?}", e),
                 JoinResult::Panic => panic!("agent thread panicked"),
                 _ => panic!("agent thread terminated prematurely"),
@@ -289,11 +290,11 @@ impl AgentContext {
         message_rx: Receiver<Message>,
     ) -> Result<Self, Error> {
         let timer = Arc::new(Timer::new());
-        let (socket_updates_tx, socket_updates_rx) = flume::unbounded();
+        let (socket_updates_tx, socket_updates_rx) = async_channel::unbounded();
 
         multi
             .socket_function(move |socket, events, key| {
-                let _ = socket_updates_tx.send((socket, events, key));
+                let _ = socket_updates_tx.try_send((socket, events, key));
             })
             .map_err(Error::from_any)?;
 
@@ -342,7 +343,7 @@ impl AgentContext {
                 let tx = self.message_tx.clone();
 
                 self.waker
-                    .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
+                    .chain(move |inner| match tx.try_send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => {
                             tracing::warn!(id, "agent went away while resuming read for request")
@@ -353,7 +354,7 @@ impl AgentContext {
                 let tx = self.message_tx.clone();
 
                 self.waker
-                    .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
+                    .chain(move |inner| match tx.try_send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => {
                             tracing::warn!(id, "agent went away while resuming write for request")
@@ -394,7 +395,7 @@ impl AgentContext {
     fn poll_messages(&mut self) -> Result<(), Error> {
         while !self.close_requested {
             if self.requests.is_empty() {
-                match self.message_rx.recv() {
+                match block_on(self.message_rx.recv()) {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
                         tracing::warn!("agent handle disconnected without close message");
@@ -405,8 +406,8 @@ impl AgentContext {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(flume::TryRecvError::Empty) => break,
-                    Err(flume::TryRecvError::Disconnected) => {
+                    Err(async_channel::TryRecvError::Empty) => break,
+                    Err(async_channel::TryRecvError::Closed) => {
                         tracing::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
