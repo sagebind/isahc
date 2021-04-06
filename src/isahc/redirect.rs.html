@@ -174,6 +174,53 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body</span>::<span class="ident">AsyncBody</span>,
@@ -183,8 +230,8 @@
     <span class="ident">interceptor</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>},
     <span class="ident">request</span>::<span class="ident">RequestExt</span>,
 };
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>, <span class="ident">Uri</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">header</span>::<span class="ident">ToStrError</span>, <span class="ident">HeaderValue</span>, <span class="ident">Request</span>, <span class="ident">Response</span>, <span class="ident">Uri</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">borrow</span>::<span class="ident">Cow</span>, <span class="ident">convert</span>::<span class="ident">TryFrom</span>, <span class="ident">str</span>};
 <span class="kw">use</span> <span class="ident">url</span>::<span class="ident">Url</span>;
 
 <span class="doccomment">/// How many redirects to follow by default if a limit is not specified. We</span>
@@ -318,20 +365,67 @@
     <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_redirection</span>() {
         <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">LOCATION</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">to_str</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>) {
+        <span class="kw">match</span> <span class="ident">parse_location</span>(<span class="ident">location</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>.<span class="ident">as_ref</span>()) {
                 <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;bad redirect location: {}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
                 }
             },
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;bad redirect location: {}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
             }
         }
     }
 
     <span class="prelude-val">None</span>
+}
+
+<span class="doccomment">/// Parse the given `Location` header value into a string.</span>
+<span class="kw">fn</span> <span class="ident">parse_location</span>(<span class="ident">location</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">ToStrError</span><span class="op">&gt;</span> {
+    <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">to_str</span>() {
+        <span class="comment">// This will return a `str` if the header value contained only legal</span>
+        <span class="comment">// US-ASCII characters.</span>
+        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">s</span>)),
+
+        <span class="comment">// Try to parse the location as UTF-8 bytes instead of US-ASCII. This is</span>
+        <span class="comment">// technically against the URI spec which requires all literal</span>
+        <span class="comment">// characters in the URI to be US-ASCII (see [RFC 3986, Section</span>
+        <span class="comment">// 4.1](https://tools.ietf.org/html/rfc3986#section-4.1)).</span>
+        <span class="comment">//</span>
+        <span class="comment">// This is also more or less against the HTTP spec, which historically</span>
+        <span class="comment">// allowed for ISO-8859-1 text in header values but since was restricted</span>
+        <span class="comment">// to US-ASCII plus opaque bytes. Never has UTF-8 been encouraged or</span>
+        <span class="comment">// allowed as-such. See [RFC 7230, Section</span>
+        <span class="comment">// 3.2.4](https://tools.ietf.org/html/rfc7230#section-3.2.4) for more</span>
+        <span class="comment">// info.</span>
+        <span class="comment">//</span>
+        <span class="comment">// However, some bad or misconfigured web servers will do this anyway,</span>
+        <span class="comment">// and most web browsers recover from this by allowing and interpreting</span>
+        <span class="comment">// UTF-8 characters as themselves even though they _should_ have been</span>
+        <span class="comment">// percent-encoded. The third-party URI parsers that we use have no such</span>
+        <span class="comment">// leniency, so we percent-encode such bytes (if legal UTF-8) ahead of</span>
+        <span class="comment">// time before handing them off to the URI parser.</span>
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">if</span> <span class="ident">str</span>::<span class="ident">from_utf8</span>(<span class="ident">location</span>.<span class="ident">as_bytes</span>()).<span class="ident">is_ok</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">with_capacity</span>(<span class="ident">location</span>.<span class="ident">len</span>());
+
+                <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">byte</span> <span class="kw">in</span> <span class="ident">location</span>.<span class="ident">as_bytes</span>() {
+                    <span class="kw">if</span> <span class="ident">byte</span>.<span class="ident">is_ascii</span>() {
+                        <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">byte</span> <span class="kw">as</span> <span class="ident">char</span>);
+                    } <span class="kw">else</span> {
+                        <span class="ident">s</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;%{:02x}&quot;</span>, <span class="ident">byte</span>));
+                    }
+                }
+
+                <span class="prelude-val">Ok</span>(<span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="ident">s</span>))
+            } <span class="kw">else</span> {
+                <span class="comment">// Header value isn&#39;t legal UTF-8 either, not much we can</span>
+                <span class="comment">// reasonably do.</span>
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>)
+            }
+        }
+    }
 }
 
 <span class="doccomment">/// Resolve one URI in terms of another.</span>

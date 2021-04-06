@@ -1371,10 +1371,10 @@
 <span class="kw">use</span> <span class="ident">tracing_futures</span>::<span class="ident">Instrument</span>;
 
 <span class="kw">static</span> <span class="ident">USER_AGENT</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> {
-    <span class="macro">format</span><span class="macro">!</span>(
+    <span class="macro">format!</span>(
         <span class="string">&quot;curl/{} isahc/{}&quot;</span>,
         <span class="ident">curl</span>::<span class="ident">Version</span>::<span class="ident">get</span>().<span class="ident">version</span>(),
-        <span class="macro">env</span><span class="macro">!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>)
+        <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>)
     )
 });
 
@@ -1431,7 +1431,7 @@
             <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>::<span class="ident">default</span>(),
             <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>::<span class="ident">default</span>(),
             <span class="ident">request_config</span>: <span class="ident">RequestConfig</span>::<span class="ident">client_defaults</span>(),
-            <span class="ident">interceptors</span>: <span class="macro">vec</span><span class="macro">!</span>[
+            <span class="ident">interceptors</span>: <span class="macro">vec!</span>[
                 <span class="comment">// Add redirect support. Note that this is _always_ the first,</span>
                 <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
                 <span class="comment">// not enable redirect following, it just implements support for</span>
@@ -2242,7 +2242,7 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span!</span>(
             <span class="string">&quot;send&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
@@ -2333,7 +2333,7 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span!</span>(
             <span class="string">&quot;send_async&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
@@ -2630,8 +2630,8 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">HttpClient</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">HttpClientBuilder</span>: <span class="ident">Send</span>);
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">HttpClient</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">HttpClientBuilder</span>: <span class="ident">Send</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_default_header</span>() {
@@ -2639,8 +2639,8 @@
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
             .<span class="ident">build</span>();
         <span class="kw">match</span> <span class="ident">client</span> {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert</span><span class="macro">!</span>(<span class="bool-val">true</span>),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert</span><span class="macro">!</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">true</span>),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
         }
     }
 
@@ -2648,18 +2648,18 @@
     <span class="kw">fn</span> <span class="ident">test_default_headers_mut</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>().<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
         <span class="kw">let</span> <span class="ident">headers_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+        <span class="macro">assert!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>()
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value1&quot;</span>)
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value2&quot;</span>);
         <span class="kw">let</span> <span class="ident">headers_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+        <span class="macro">assert!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">header_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">header_map</span>.<span class="ident">is_empty</span>())
+        <span class="macro">assert!</span>(<span class="ident">header_map</span>.<span class="ident">is_empty</span>())
     }
 }
 </pre></div>

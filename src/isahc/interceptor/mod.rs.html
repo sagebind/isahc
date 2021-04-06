@@ -225,7 +225,7 @@
 <span class="doccomment">/// Closures are not supported due to a limitation in Rust&#39;s type inference.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">interceptor</span> {
+<span class="macro">macro_rules!</span> <span class="ident">interceptor</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">request</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ctx</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
         <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">interceptor</span>(
             <span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">request</span>: <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">http</span>::<span class="ident">Request</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">AsyncBody</span><span class="op">&gt;</span>,
@@ -307,7 +307,7 @@
 <span class="kw">mod</span> <span class="ident">private</span> {
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">future</span>::<span class="ident">Future</span>;
 
-    <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_async_fn</span> {
+    <span class="macro">macro_rules!</span> <span class="ident">impl_async_fn</span> {
         ($((<span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnMut</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Fn</span>:<span class="ident">ident</span>, ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>:<span class="ident">ident</span>,)<span class="kw-2">*</span>)),)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {
             $(
                 <span class="kw">pub</span> <span class="kw">trait</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> {
@@ -354,7 +354,7 @@
         }
     }
 
-    <span class="macro">impl_async_fn</span><span class="macro">!</span> {
+    <span class="macro">impl_async_fn!</span> {
         (<span class="ident">AsyncFnOnce0</span>, <span class="ident">AsyncFnMut0</span>, <span class="ident">AsyncFn0</span>, ()),
         (<span class="ident">AsyncFnOnce1</span>, <span class="ident">AsyncFnMut1</span>, <span class="ident">AsyncFn1</span>, (<span class="ident">a0</span>:<span class="ident">A0</span>, )),
         (<span class="ident">AsyncFnOnce2</span>, <span class="ident">AsyncFnMut2</span>, <span class="ident">AsyncFn2</span>, (<span class="ident">a0</span>:<span class="ident">A0</span>, <span class="ident">a1</span>:<span class="ident">A1</span>, )),

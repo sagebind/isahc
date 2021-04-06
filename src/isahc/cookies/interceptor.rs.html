@@ -198,13 +198,13 @@
                         .<span class="ident">into_iter</span>()
                         .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> {
                             <span class="ident">header</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>().<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;invalid encoding in Set-Cookie header&quot;</span>);
+                                <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;invalid encoding in Set-Cookie header&quot;</span>);
                                 <span class="prelude-val">None</span>
                             })
                         })
                         .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> {
                             <span class="ident">Cookie</span>::<span class="ident">parse</span>(<span class="ident">header</span>).<span class="ident">ok</span>().<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;could not parse Set-Cookie header&quot;</span>);
+                                <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;could not parse Set-Cookie header&quot;</span>);
                                 <span class="prelude-val">None</span>
                             })
                         });

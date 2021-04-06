@@ -302,23 +302,23 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">parse_valid_status_line</span>() {
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/0.9  200  \r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="ident">Version</span>::<span class="ident">HTTP_09</span>, <span class="ident">StatusCode</span>::<span class="ident">OK</span>,))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/1.0 500 Internal Server Error\r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="ident">Version</span>::<span class="ident">HTTP_10</span>, <span class="ident">StatusCode</span>::<span class="ident">INTERNAL_SERVER_ERROR</span>,))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/1.1 404 not found \r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="ident">Version</span>::<span class="ident">HTTP_11</span>, <span class="ident">StatusCode</span>::<span class="ident">NOT_FOUND</span>,))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/2 200\r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="ident">Version</span>::<span class="ident">HTTP_2</span>, <span class="ident">StatusCode</span>::<span class="ident">OK</span>,))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/3 200\r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="ident">Version</span>::<span class="ident">HTTP_3</span>, <span class="ident">StatusCode</span>::<span class="ident">OK</span>,))
         );
@@ -326,37 +326,37 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">parse_invalid_status_line</span>() {
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot; \r\n&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTP/foo bar baz\r\n&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;a-header: bar\r\n&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot; \r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTP/foo bar baz\r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;a-header: bar\r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_status_line</span>(<span class="string">b&quot; HTTP/1.1 500 Internal Server Error\r\n&quot;</span>),
             <span class="prelude-val">None</span>
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/4 200\r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/4 200\r\n&quot;</span>), <span class="prelude-val">None</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">parse_valid_headers</span>() {
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_header</span>(<span class="string">b&quot;Empty:&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="string">&quot;empty&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_header</span>(<span class="string">b&quot;CONTENT-LENGTH:20\r\n&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="string">&quot;content-length&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;20&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_header</span>(<span class="string">b&quot;x-Server:     Rust \r&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="string">&quot;x-server&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;Rust&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
         );
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_header</span>(<span class="string">b&quot;X-val: Hello World\r&quot;</span>),
             <span class="prelude-val">Some</span>((<span class="string">&quot;x-val&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;Hello World&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
         );
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">parse_header</span>(<span class="string">b&quot;Location: https://example.com/\r&quot;</span>),
             <span class="prelude-val">Some</span>((
                 <span class="string">&quot;location&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
@@ -367,11 +367,11 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">parse_invalid_headers</span>() {
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;:&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;: bar&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;a\nheader: bar&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;foo : bar\r&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;:&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;: bar&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;a\nheader: bar&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;foo : bar\r&quot;</span>), <span class="prelude-val">None</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -379,7 +379,7 @@
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;foo&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">false</span>),
             <span class="string">&quot;user-agent: foo&quot;</span>
         );
@@ -390,7 +390,7 @@
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">false</span>), <span class="string">&quot;user-agent;&quot;</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">false</span>), <span class="string">&quot;user-agent;&quot;</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -398,7 +398,7 @@
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;foo&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(
+        <span class="macro">assert_eq!</span>(
             <span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">true</span>),
             <span class="string">&quot;User-Agent: foo&quot;</span>
         );

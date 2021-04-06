@@ -306,7 +306,7 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ip_socket</span>(<span class="ident">addr</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Create a string in the format CURLOPT_CONNECT_TO expects.</span>
-        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">IpSocket</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;::{}&quot;</span>, <span class="ident">addr</span>.<span class="ident">into</span>())))
+        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">IpSocket</span>(<span class="macro">format!</span>(<span class="string">&quot;::{}&quot;</span>, <span class="ident">addr</span>.<span class="ident">into</span>())))
     }
 
     <span class="doccomment">/// Connect to a Unix socket described by a file.</span>
@@ -425,14 +425,14 @@
     <span class="kw">fn</span> <span class="ident">parse_tcp_socket_and_port_uri</span>() {
         <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="string">&quot;tcp:127.0.0.1:1200&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">IpSocket</span>(<span class="string">&quot;::127.0.0.1:1200&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">IpSocket</span>(<span class="string">&quot;::127.0.0.1:1200&quot;</span>.<span class="ident">into</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">parse_invalid_tcp_uri</span>() {
         <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="string">&quot;tcp:127.0.0.1-1200&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">result</span>.<span class="ident">is_err</span>());
+        <span class="macro">assert!</span>(<span class="ident">result</span>.<span class="ident">is_err</span>());
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -440,7 +440,7 @@
     <span class="kw">fn</span> <span class="ident">parse_unix_socket_uri</span>() {
         <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="string">&quot;unix:/path/to/my.sock&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -449,7 +449,7 @@
         <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="string">&quot;unix://path/to/my.sock&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="ident">Dialer</span>::<span class="ident">try_from</span>(<span class="ident">uri</span>).<span class="ident">unwrap</span>();
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner</span>::<span class="ident">UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
     }
 }
 </pre></div>

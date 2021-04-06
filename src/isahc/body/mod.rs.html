@@ -426,7 +426,7 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="macro">match_type</span><span class="macro">!</span> {
+        <span class="macro">match_type!</span> {
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">bytes</span>)),
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from_static_impl</span>(<span class="ident">bytes</span>),
             <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from_static_impl</span>(<span class="ident">bytes</span>.<span class="ident">as_bytes</span>()),
@@ -598,8 +598,8 @@
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">AsyncBody</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;AsyncBody({})&quot;</span>, <span class="ident">len</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;AsyncBody(?)&quot;</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AsyncBody({})&quot;</span>, <span class="ident">len</span>),
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AsyncBody(?)&quot;</span>),
         }
     }
 }
@@ -612,38 +612,38 @@
         <span class="ident">io</span>::<span class="ident">AsyncReadExt</span>,
     };
 
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all</span><span class="macro">!</span>(<span class="ident">AsyncBody</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">AsyncBody</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">empty_body</span>() {
         <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">empty</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(<span class="ident">body</span>.<span class="ident">is_empty</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">zero_length_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from</span>(<span class="macro">vec!</span>[]);
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">reader_with_unknown_length</span>() {
         <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">futures_lite</span>::<span class="ident">io</span>::<span class="ident">empty</span>());
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">None</span>);
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">None</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">reader_with_known_length</span>() {
         <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from_reader_sized</span>(<span class="ident">futures_lite</span>::<span class="ident">io</span>::<span class="ident">empty</span>(), <span class="number">0</span>);
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -652,12 +652,12 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from</span>(<span class="string">&quot;hello world&quot;</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
 
-            <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>(), <span class="number">11</span>);
-            <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
-            <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">reset</span>());
+            <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>(), <span class="number">11</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">body</span>.<span class="ident">reset</span>());
             <span class="ident">buf</span>.<span class="ident">clear</span>(); <span class="comment">// read_to_string panics if the destination isn&#39;t empty</span>
-            <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>(), <span class="number">11</span>);
-            <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>(), <span class="number">11</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
         });
     }
 
@@ -665,15 +665,15 @@
     <span class="kw">fn</span> <span class="ident">cannot_reset_reader</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">futures_lite</span>::<span class="ident">io</span>::<span class="ident">empty</span>());
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">reset</span>(), <span class="bool-val">false</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">reset</span>(), <span class="bool-val">false</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">sync_memory_into_async</span>() {
         <span class="kw">let</span> (<span class="ident">body</span>, <span class="ident">writer</span>) <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from</span>(<span class="string">&quot;hello world&quot;</span>).<span class="ident">into_async</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">writer</span>.<span class="ident">is_none</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">11</span>));
+        <span class="macro">assert!</span>(<span class="ident">writer</span>.<span class="ident">is_none</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">11</span>));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -681,7 +681,7 @@
         <span class="ident">block_on</span>(<span class="kw">async</span> {
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">body</span>, <span class="ident">writer</span>) <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="string">&quot;hello world&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_async</span>();
 
-            <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">writer</span>.<span class="ident">is_some</span>());
+            <span class="macro">assert!</span>(<span class="ident">writer</span>.<span class="ident">is_some</span>());
 
             <span class="comment">// Write from the writer concurrently as we read from the body.</span>
             <span class="ident">zip</span>(
@@ -691,7 +691,7 @@
                 <span class="kw">async</span> <span class="kw">move</span> {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
                     <span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-                    <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
+                    <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
                 },
             )
             .<span class="kw">await</span>;

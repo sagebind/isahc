@@ -423,29 +423,29 @@
     <span class="kw">fn</span> <span class="ident">auth_default</span>() {
         <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">default</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">auth_all</span>() {
         <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">all</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">auth_single</span>() {
         <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">basic</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
 
         <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">digest</span>();
 
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
     }
 }
 </pre></div>

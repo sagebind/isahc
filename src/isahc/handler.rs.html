@@ -782,7 +782,7 @@
         <span class="kw">let</span> (<span class="ident">response_body_reader</span>, <span class="ident">response_body_writer</span>) <span class="op">=</span> <span class="ident">pipe</span>::<span class="ident">pipe</span>();
 
         <span class="kw">let</span> <span class="ident">handler</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">span</span>: <span class="ident">tracing</span>::<span class="macro">debug_span</span><span class="macro">!</span>(<span class="string">&quot;handler&quot;</span>, <span class="ident">id</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="ident">field</span>::<span class="ident">Empty</span>),
+            <span class="ident">span</span>: <span class="ident">tracing</span>::<span class="macro">debug_span!</span>(<span class="string">&quot;handler&quot;</span>, <span class="ident">id</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="ident">field</span>::<span class="ident">Empty</span>),
             <span class="ident">sender</span>: <span class="prelude-val">Some</span>(<span class="ident">sender</span>),
             <span class="ident">shared</span>: <span class="ident">shared</span>.<span class="ident">clone</span>(),
             <span class="ident">request_body</span>,
@@ -831,7 +831,7 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">span</span>.<span class="ident">is_none</span>() {
             <span class="bool-val">false</span>
         } <span class="kw">else</span> {
-            <span class="ident">log</span>::<span class="macro">log_enabled</span><span class="macro">!</span>(<span class="ident">log</span>::<span class="ident">Level</span>::<span class="ident">Debug</span>)
+            <span class="ident">log</span>::<span class="macro">log_enabled!</span>(<span class="ident">log</span>::<span class="ident">Level</span>::<span class="ident">Debug</span>)
         }
     }
 
@@ -857,8 +857,8 @@
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">span</span>.<span class="ident">enter</span>();
 
         <span class="comment">// Init should not be called more than once.</span>
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">request_body_waker</span>.<span class="ident">is_none</span>());
-        <span class="macro">debug_assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">response_body_waker</span>.<span class="ident">is_none</span>());
+        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="ident">request_body_waker</span>.<span class="ident">is_none</span>());
+        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="ident">response_body_waker</span>.<span class="ident">is_none</span>());
 
         <span class="self">self</span>.<span class="ident">span</span>.<span class="ident">record</span>(<span class="string">&quot;id&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">id</span>);
         <span class="self">self</span>.<span class="ident">handle</span> <span class="op">=</span> <span class="ident">handle</span>;
@@ -869,7 +869,7 @@
     <span class="doccomment">/// Set the final result for this transfer.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_result</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">set</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
-            <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;attempted to set error multiple times&quot;</span>);
+            <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;attempted to set error multiple times&quot;</span>);
         }
 
         <span class="comment">// Complete the response future, if we haven&#39;t already.</span>
@@ -884,14 +884,14 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sender</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">take</span>() {
             <span class="comment">// If our request has already failed early with an error, return that instead.</span>
             <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">get</span>() {
-                <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;request completed with error: {}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;request completed with error: {}&quot;</span>, <span class="ident">e</span>);
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">clone</span>())
             } <span class="kw">else</span> {
                 <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">build_response</span>())
             };
 
             <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">send</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
-                <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;request canceled by user&quot;</span>);
+                <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;request canceled by user&quot;</span>);
             }
         }
     }
@@ -1035,7 +1035,7 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;header&quot;</span>);
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;header&quot;</span>);
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
 
         <span class="comment">// Curl calls this function for all lines in the response not part of</span>
@@ -1085,7 +1085,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">Abort</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;read&quot;</span>);
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;read&quot;</span>);
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
 
         <span class="comment">// Create a task context using a waker provided by the agent so we can</span>
@@ -1097,7 +1097,7 @@
                 <span class="ident">Poll</span>::<span class="ident">Pending</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">Pause</span>),
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">len</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">len</span>),
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;error reading request body: {}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">tracing</span>::<span class="macro">error!</span>(<span class="string">&quot;error reading request body: {}&quot;</span>, <span class="ident">e</span>);
 
                     <span class="comment">// While we could just return an error here to curl and let</span>
                     <span class="comment">// the error bubble up through naturally, right now we have</span>
@@ -1112,7 +1112,7 @@
             }
         } <span class="kw">else</span> {
             <span class="comment">// The request should never be started without calling init first.</span>
-            <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
+            <span class="ident">tracing</span>::<span class="macro">error!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
             <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">Abort</span>)
         }
     }
@@ -1124,7 +1124,7 @@
     <span class="doccomment">/// seek, we can&#39;t do any async operations in this callback. That&#39;s why we</span>
     <span class="doccomment">/// only support trivial types of seeking.</span>
     <span class="kw">fn</span> <span class="ident">seek</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">whence</span>: <span class="ident">io</span>::<span class="ident">SeekFrom</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SeekResult</span> {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;seek&quot;</span>, <span class="ident">whence</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">whence</span>);
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;seek&quot;</span>, <span class="ident">whence</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">whence</span>);
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
 
         <span class="comment">// If curl wants to seek to the beginning, there&#39;s a chance that we</span>
@@ -1132,7 +1132,7 @@
         <span class="kw">if</span> <span class="ident">whence</span> <span class="op">=</span><span class="op">=</span> <span class="ident">io</span>::<span class="ident">SeekFrom</span>::<span class="ident">Start</span>(<span class="number">0</span>) <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">request_body</span>.<span class="ident">reset</span>() {
             <span class="ident">SeekResult</span>::<span class="prelude-val">Ok</span>
         } <span class="kw">else</span> {
-            <span class="ident">tracing</span>::<span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;seek requested for request body, but it is not supported&quot;</span>);
+            <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;seek requested for request body, but it is not supported&quot;</span>);
             <span class="comment">// We can&#39;t do any other type of seek, sorry :(</span>
             <span class="ident">SeekResult</span>::<span class="ident">CantSeek</span>
         }
@@ -1140,9 +1140,9 @@
 
     <span class="doccomment">/// Gets called by curl when bytes from the response body are received.</span>
     <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">WriteError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span</span><span class="macro">!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;write&quot;</span>);
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">trace_span!</span>(<span class="ident">parent</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">span</span>, <span class="string">&quot;write&quot;</span>);
         <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">enter</span>();
-        <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;received {} bytes of data&quot;</span>, <span class="ident">data</span>.<span class="ident">len</span>());
+        <span class="ident">tracing</span>::<span class="macro">trace!</span>(<span class="string">&quot;received {} bytes of data&quot;</span>, <span class="ident">data</span>.<span class="ident">len</span>());
 
         <span class="comment">// Now that we&#39;ve started receiving the response body, we know no more</span>
         <span class="comment">// redirects can happen and we can complete the future safely.</span>
@@ -1158,18 +1158,18 @@
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">len</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">len</span>),
                 <span class="ident">Poll</span>::<span class="ident">Ready</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">BrokenPipe</span> {
-                        <span class="ident">tracing</span>::<span class="macro">info</span><span class="macro">!</span>(
+                        <span class="ident">tracing</span>::<span class="macro">info!</span>(
                             <span class="string">&quot;response dropped without fully consuming the response body, which may result in sub-optimal performance&quot;</span>
                         );
                     } <span class="kw">else</span> {
-                        <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;error writing response body to buffer: {}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">tracing</span>::<span class="macro">error!</span>(<span class="string">&quot;error writing response body to buffer: {}&quot;</span>, <span class="ident">e</span>);
                     }
                     <span class="prelude-val">Ok</span>(<span class="number">0</span>)
                 }
             }
         } <span class="kw">else</span> {
             <span class="comment">// The request should never be started without calling init first.</span>
-            <span class="ident">tracing</span>::<span class="macro">error</span><span class="macro">!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
+            <span class="ident">tracing</span>::<span class="macro">error!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="number">0</span>)
         }
     }
@@ -1267,13 +1267,13 @@
 
         <span class="kw">match</span> <span class="ident">kind</span> {
             <span class="ident">InfoType</span>::<span class="ident">Text</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">tracing</span>::<span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">String</span>::<span class="ident">from_utf8_lossy</span>(<span class="ident">data</span>).<span class="ident">trim_end</span>())
+                <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">String</span>::<span class="ident">from_utf8_lossy</span>(<span class="ident">data</span>).<span class="ident">trim_end</span>())
             }
             <span class="ident">InfoType</span>::<span class="ident">HeaderIn</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataIn</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&lt;&lt; {}&quot;</span>, <span class="ident">FormatAscii</span>(<span class="ident">data</span>))
+                <span class="ident">tracing</span>::<span class="macro">trace!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&lt;&lt; {}&quot;</span>, <span class="ident">FormatAscii</span>(<span class="ident">data</span>))
             }
             <span class="ident">InfoType</span>::<span class="ident">HeaderOut</span> <span class="op">|</span> <span class="ident">InfoType</span>::<span class="ident">DataOut</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">tracing</span>::<span class="macro">trace</span><span class="macro">!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&gt;&gt; {}&quot;</span>, <span class="ident">FormatAscii</span>(<span class="ident">data</span>))
+                <span class="ident">tracing</span>::<span class="macro">trace!</span>(<span class="ident">target</span>: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&gt;&gt; {}&quot;</span>, <span class="ident">FormatAscii</span>(<span class="ident">data</span>))
             }
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
         }
@@ -1282,7 +1282,7 @@
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">RequestHandler</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;RequestHandler&quot;</span>)
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;RequestHandler&quot;</span>)
     }
 }
 
