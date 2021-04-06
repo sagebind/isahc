@@ -588,7 +588,7 @@
 <span class="kw">mod</span> <span class="ident">selector</span>;
 <span class="kw">mod</span> <span class="ident">timer</span>;
 
-<span class="kw">const</span> <span class="ident">NEXT_AGENT_ID</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="number">0</span>);
+<span class="kw">static</span> <span class="ident">NEXT_AGENT_ID</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="number">0</span>);
 <span class="kw">const</span> <span class="ident">WAIT_TIMEOUT</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration</span>::<span class="ident">from_millis</span>(<span class="number">1000</span>);
 
 <span class="kw">type</span> <span class="ident">EasyHandle</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>;
