@@ -559,6 +559,7 @@
 <span id="558">558</span>
 <span id="559">559</span>
 <span id="560">560</span>
+<span id="561">561</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
 <span class="doccomment">//!</span>
@@ -571,9 +572,10 @@
 <span class="doccomment">//! a specialized task executor for tasks related to requests.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error</span>::<span class="ident">Error</span>, <span class="ident">handler</span>::<span class="ident">RequestHandler</span>, <span class="ident">task</span>::<span class="ident">WakerExt</span>};
+<span class="kw">use</span> <span class="ident">async_channel</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::{<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>, <span class="ident">sync</span>::<span class="ident">WaitGroup</span>};
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">multi</span>::{<span class="ident">Events</span>, <span class="ident">Multi</span>, <span class="ident">Socket</span>, <span class="ident">SocketEvents</span>};
-<span class="kw">use</span> <span class="ident">flume</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
+<span class="kw">use</span> <span class="ident">futures_lite</span>::<span class="ident">future</span>::<span class="ident">block_on</span>;
 <span class="kw">use</span> <span class="ident">slab</span>::<span class="ident">Slab</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">io</span>,
@@ -639,7 +641,7 @@
         <span class="comment">// Create an I/O selector for driving curl&#39;s sockets.</span>
         <span class="kw">let</span> <span class="ident">selector</span> <span class="op">=</span> <span class="ident">Selector</span>::<span class="ident">new</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">unbounded</span>();
+        <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">async_channel</span>::<span class="ident">unbounded</span>();
 
         <span class="kw">let</span> <span class="ident">wait_group</span> <span class="op">=</span> <span class="ident">WaitGroup</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">wait_group_thread</span> <span class="op">=</span> <span class="ident">wait_group</span>.<span class="ident">clone</span>();
@@ -797,13 +799,13 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the agent is not connected, an error is returned.</span>
     <span class="kw">fn</span> <span class="ident">send_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="ident">Message</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">send</span>(<span class="ident">message</span>) {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">try_send</span>(<span class="ident">message</span>) {
             <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// Wake the agent thread up so it will check its messages soon.</span>
                 <span class="self">self</span>.<span class="ident">waker</span>.<span class="ident">wake_by_ref</span>();
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">SendError</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
                 <span class="ident">JoinResult</span>::<span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated with error: {:?}&quot;</span>, <span class="ident">e</span>),
                 <span class="ident">JoinResult</span>::<span class="ident">Panic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
@@ -851,11 +853,11 @@
         <span class="ident">message_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Timer</span>::<span class="ident">new</span>());
-        <span class="kw">let</span> (<span class="ident">socket_updates_tx</span>, <span class="ident">socket_updates_rx</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">unbounded</span>();
+        <span class="kw">let</span> (<span class="ident">socket_updates_tx</span>, <span class="ident">socket_updates_rx</span>) <span class="op">=</span> <span class="ident">async_channel</span>::<span class="ident">unbounded</span>();
 
         <span class="ident">multi</span>
             .<span class="ident">socket_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">socket_updates_tx</span>.<span class="ident">send</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span>));
+                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">socket_updates_tx</span>.<span class="ident">try_send</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span>));
             })
             .<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
 
@@ -904,7 +906,7 @@
                 <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">clone</span>();
 
                 <span class="self">self</span>.<span class="ident">waker</span>
-                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseRead</span>(<span class="ident">id</span>)) {
+                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">try_send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseRead</span>(<span class="ident">id</span>)) {
                         <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="ident">id</span>, <span class="string">&quot;agent went away while resuming read for request&quot;</span>)
@@ -915,7 +917,7 @@
                 <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">clone</span>();
 
                 <span class="self">self</span>.<span class="ident">waker</span>
-                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseWrite</span>(<span class="ident">id</span>)) {
+                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">try_send</span>(<span class="ident">Message</span>::<span class="ident">UnpauseWrite</span>(<span class="ident">id</span>)) {
                         <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="ident">id</span>, <span class="string">&quot;agent went away while resuming write for request&quot;</span>)
@@ -956,7 +958,7 @@
     <span class="kw">fn</span> <span class="ident">poll_messages</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">while</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">close_requested</span> {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">is_empty</span>() {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">recv</span>() {
+                <span class="kw">match</span> <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">recv</span>()) {
                     <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">handle_message</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
                     <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);
@@ -967,8 +969,8 @@
             } <span class="kw">else</span> {
                 <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">try_recv</span>() {
                     <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">handle_message</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">flume</span>::<span class="ident">TryRecvError</span>::<span class="ident">Disconnected</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">async_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Empty</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">async_channel</span>::<span class="ident">TryRecvError</span>::<span class="ident">Closed</span>) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);
                         <span class="self">self</span>.<span class="ident">close_requested</span> <span class="op">=</span> <span class="bool-val">true</span>;
                         <span class="kw">break</span>;

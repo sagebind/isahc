@@ -668,9 +668,9 @@
     <span class="ident">parsing</span>::{<span class="ident">parse_header</span>, <span class="ident">parse_status_line</span>},
     <span class="ident">response</span>::{<span class="ident">LocalAddr</span>, <span class="ident">RemoteAddr</span>},
 };
+<span class="kw">use</span> <span class="ident">async_channel</span>::<span class="ident">Sender</span>;
 <span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::{<span class="ident">InfoType</span>, <span class="ident">ReadError</span>, <span class="ident">SeekResult</span>, <span class="ident">WriteError</span>};
 <span class="kw">use</span> <span class="ident">curl_sys</span>::<span class="ident">CURL</span>;
-<span class="kw">use</span> <span class="ident">flume</span>::<span class="ident">Sender</span>;
 <span class="kw">use</span> <span class="ident">futures_lite</span>::<span class="ident">io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncWrite</span>};
 <span class="kw">use</span> <span class="ident">http</span>::<span class="ident">Response</span>;
 <span class="kw">use</span> <span class="ident">once_cell</span>::<span class="ident">sync</span>::<span class="ident">OnceCell</span>;
@@ -777,7 +777,7 @@
         <span class="self">Self</span>,
         <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) {
-        <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">flume</span>::<span class="ident">bounded</span>(<span class="number">1</span>);
+        <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">async_channel</span>::<span class="ident">bounded</span>(<span class="number">1</span>);
         <span class="kw">let</span> <span class="ident">shared</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Shared</span>::<span class="ident">default</span>());
         <span class="kw">let</span> (<span class="ident">response_body_reader</span>, <span class="ident">response_body_writer</span>) <span class="op">=</span> <span class="ident">pipe</span>::<span class="ident">pipe</span>();
 
@@ -800,7 +800,7 @@
         <span class="comment">// headers.</span>
         <span class="kw">let</span> <span class="ident">future</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">receiver</span>
-                .<span class="ident">recv_async</span>()
+                .<span class="ident">recv</span>()
                 .<span class="kw">await</span>
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">Unknown</span>, <span class="ident">e</span>))<span class="question-mark">?</span><span class="question-mark">?</span>;
 
@@ -838,7 +838,7 @@
     <span class="kw">fn</span> <span class="ident">is_future_canceled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">sender</span>
             .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="ident">Sender</span>::<span class="ident">is_disconnected</span>)
+            .<span class="ident">map</span>(<span class="ident">Sender</span>::<span class="ident">is_closed</span>)
             .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
     }
 
@@ -890,7 +890,7 @@
                 <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">build_response</span>())
             };
 
-            <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">send</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
+            <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">try_send</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
                 <span class="ident">tracing</span>::<span class="macro">debug!</span>(<span class="string">&quot;request canceled by user&quot;</span>);
             }
         }
