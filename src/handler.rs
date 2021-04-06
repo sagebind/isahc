@@ -7,9 +7,9 @@ use crate::{
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
 };
+use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
-use flume::Sender;
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
 use once_cell::sync::OnceCell;
@@ -116,7 +116,7 @@ impl RequestHandler {
         Self,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
-        let (sender, receiver) = flume::bounded(1);
+        let (sender, receiver) = async_channel::bounded(1);
         let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
@@ -139,7 +139,7 @@ impl RequestHandler {
         // headers.
         let future = async move {
             let builder = receiver
-                .recv_async()
+                .recv()
                 .await
                 .map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
@@ -177,7 +177,7 @@ impl RequestHandler {
     fn is_future_canceled(&self) -> bool {
         self.sender
             .as_ref()
-            .map(Sender::is_disconnected)
+            .map(Sender::is_closed)
             .unwrap_or(false)
     }
 
@@ -229,7 +229,7 @@ impl RequestHandler {
                 Ok(self.build_response())
             };
 
-            if sender.send(result).is_err() {
+            if sender.try_send(result).is_err() {
                 tracing::debug!("request canceled by user");
             }
         }

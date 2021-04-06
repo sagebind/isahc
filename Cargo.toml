@@ -31,6 +31,7 @@ text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
 [dependencies]
+async-channel = "1.6"
 crossbeam-utils = "0.8"
 curl = "0.4.34"
 curl-sys = "0.4.37"
@@ -51,11 +52,6 @@ optional = true
 [dependencies.encoding_rs]
 version = "0.8"
 optional = true
-
-[dependencies.flume]
-version = "0.10"
-default-features = false
-features = ["async"]
 
 [dependencies.mime]
 version = "0.3"
