@@ -26,7 +26,7 @@ use self::{selector::Selector, timer::Timer};
 mod selector;
 mod timer;
 
-const NEXT_AGENT_ID: AtomicCell<usize> = AtomicCell::new(0);
+static NEXT_AGENT_ID: AtomicCell<usize> = AtomicCell::new(0);
 const WAIT_TIMEOUT: Duration = Duration::from_millis(1000);
 
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
