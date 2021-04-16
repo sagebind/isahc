@@ -37,9 +37,9 @@
 <span id="36">36</span>
 <span id="37">37</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
 
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
+<span class="kw">use</span> <span class="ident">crossbeam_utils::atomic::AtomicCell</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Timer</span> {
@@ -49,7 +49,7 @@
 <span class="kw">impl</span> <span class="ident">Timer</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">timeout</span>: <span class="ident">AtomicCell</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>),
+            <span class="ident">timeout</span>: <span class="ident">AtomicCell::new</span>(<span class="prelude-val">None</span>),
         }
     }
 
@@ -67,7 +67,7 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">start</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) {
-        <span class="self">self</span>.<span class="ident">timeout</span>.<span class="ident">store</span>(<span class="prelude-val">Some</span>(<span class="ident">Instant</span>::<span class="ident">now</span>() <span class="op">+</span> <span class="ident">timeout</span>));
+        <span class="self">self</span>.<span class="ident">timeout</span>.<span class="ident">store</span>(<span class="prelude-val">Some</span>(<span class="ident">Instant::now</span>() <span class="op">+</span> <span class="ident">timeout</span>));
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">stop</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {

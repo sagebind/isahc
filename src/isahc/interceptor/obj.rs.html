@@ -45,15 +45,15 @@
 <span id="44">44</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">body</span>::<span class="ident">AsyncBody</span>, <span class="ident">error</span>::<span class="ident">Error</span>};
-<span class="kw">use</span> <span class="ident">http</span>::<span class="ident">Request</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">body::AsyncBody</span>, <span class="ident">error::Error</span>};
+<span class="kw">use</span> <span class="ident">http::Request</span>;
 
 <span class="doccomment">/// Type-erased interceptor object.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">InterceptorObj</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">DynInterceptor</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">InterceptorObj</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">interceptor</span>: <span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">interceptor</span>))
+        <span class="self">Self</span>(<span class="ident">Box::new</span>(<span class="ident">interceptor</span>))
     }
 }
 
@@ -64,7 +64,7 @@
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
         <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
         <span class="ident">cx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span>::<span class="prelude-val">Err</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="self">Self</span><span class="ident">::Err</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">dyn_intercept</span>(<span class="ident">request</span>, <span class="ident">cx</span>)
     }
 }
@@ -85,7 +85,7 @@
         <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
         <span class="ident">cx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="self">self</span>.<span class="ident">intercept</span>(<span class="ident">request</span>, <span class="ident">cx</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>) })
+        <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="self">self</span>.<span class="ident">intercept</span>(<span class="ident">request</span>, <span class="ident">cx</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>) })
     }
 }
 </pre></div>

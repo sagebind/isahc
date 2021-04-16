@@ -172,8 +172,8 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Request and response metrics tracking.</span>
 
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">atomic</span>::<span class="ident">AtomicCell</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>, <span class="ident">time</span>::<span class="ident">Duration</span>};
+<span class="kw">use</span> <span class="ident">crossbeam_utils::atomic::AtomicCell</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
 
 <span class="doccomment">/// An object that holds status updates and progress statistics on a particular</span>
 <span class="doccomment">/// request. A [`Metrics`] can be shared between threads, which allows an agent</span>
@@ -222,7 +222,7 @@
 <span class="kw">impl</span> <span class="ident">Metrics</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="ident">Arc</span>::<span class="ident">default</span>(),
+            <span class="ident">inner</span>: <span class="ident">Arc::default</span>(),
         }
     }
 
@@ -258,7 +258,7 @@
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_lookup_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>())
+        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>())
     }
 
     <span class="doccomment">/// Get the amount of time taken to establish a connection to the server</span>
@@ -267,7 +267,7 @@
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(
+        <span class="ident">Duration::from_secs_f64</span>(
             (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
         )
     }
@@ -280,9 +280,9 @@
         <span class="kw">let</span> <span class="ident">app_connect_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">appconnect_time</span>.<span class="ident">load</span>();
 
         <span class="kw">if</span> <span class="ident">app_connect_time</span> <span class="op">&gt;</span> <span class="number">0f64</span> {
-            <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(<span class="ident">app_connect_time</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>())
+            <span class="ident">Duration::from_secs_f64</span>(<span class="ident">app_connect_time</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>())
         } <span class="kw">else</span> {
-            <span class="ident">Duration</span>::<span class="ident">new</span>(<span class="number">0</span>, <span class="number">0</span>)
+            <span class="ident">Duration::new</span>(<span class="number">0</span>, <span class="number">0</span>)
         }
     }
 
@@ -292,7 +292,7 @@
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_start_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>())
+        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>())
     }
 
     <span class="doccomment">/// Get the amount of time spent performing the actual request transfer. The</span>
@@ -301,7 +301,7 @@
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(
+        <span class="ident">Duration::from_secs_f64</span>(
             (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
         )
     }
@@ -312,19 +312,19 @@
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">total_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>())
+        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>())
     }
 
     <span class="doccomment">/// If automatic redirect following is enabled, gets the total time taken</span>
     <span class="doccomment">/// for all redirection steps including name lookup, connect, pretransfer</span>
     <span class="doccomment">/// and transfer before final transaction was started.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">redirect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
-        <span class="ident">Duration</span>::<span class="ident">from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">redirect_time</span>.<span class="ident">load</span>())
+        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">redirect_time</span>.<span class="ident">load</span>())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Metrics</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Metrics</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Metrics&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;upload_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_progress</span>())
             .<span class="ident">field</span>(<span class="string">&quot;upload_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_speed</span>())

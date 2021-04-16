@@ -219,8 +219,8 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Internal traits that define the Isahc configuration system.</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proxy</span>::<span class="ident">Proxy</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>;
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proxy::Proxy</span>, <span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="ident">curl::easy::Easy2</span>;
 
 <span class="doccomment">/// Base trait for any object that can be configured for requests, such as an</span>
 <span class="doccomment">/// HTTP request builder or an HTTP client.</span>
@@ -233,7 +233,7 @@
 <span class="doccomment">/// A helper trait for applying a configuration value to a given curl handle.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">SetOpt</span> {
     <span class="doccomment">/// Apply this configuration property to the given curl handle.</span>
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span>;
 }
 
 <span class="comment">// Define this struct inside a macro to reduce some boilerplate.</span>
@@ -254,13 +254,13 @@
             <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">client_defaults</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
                 <span class="self">Self</span> {
                     <span class="comment">// Always start out with latest compatible HTTP version.</span>
-                    <span class="ident">version_negotiation</span>: <span class="prelude-val">Some</span>(<span class="ident">VersionNegotiation</span>::<span class="ident">default</span>()),
+                    <span class="ident">version_negotiation</span>: <span class="prelude-val">Some</span>(<span class="ident">VersionNegotiation::default</span>()),
                     <span class="comment">// Enable automatic decompression by default for convenience</span>
                     <span class="comment">// (and maintain backwards compatibility).</span>
                     <span class="ident">automatic_decompression</span>: <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
                     <span class="comment">// Erase curl&#39;s default auth method of Basic.</span>
-                    <span class="ident">authentication</span>: <span class="prelude-val">Some</span>(<span class="ident">Authentication</span>::<span class="ident">default</span>()),
-                    ..<span class="ident">Default</span>::<span class="ident">default</span>()
+                    <span class="ident">authentication</span>: <span class="prelude-val">Some</span>(<span class="ident">Authentication::default</span>()),
+                    ..<span class="ident">Default::default</span>()
                 }
             }
 
@@ -294,15 +294,15 @@
     <span class="ident">interface</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>,
     <span class="ident">ip_version</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpVersion</span><span class="op">&gt;</span>,
     <span class="ident">dial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>,
-    <span class="ident">proxy</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">proxy_blacklist</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">proxy</span>::<span class="ident">Blacklist</span><span class="op">&gt;</span>,
+    <span class="ident">proxy</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">proxy_blacklist</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">proxy::Blacklist</span><span class="op">&gt;</span>,
     <span class="ident">proxy_authentication</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">proxy_credentials</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">max_upload_speed</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="ident">max_download_speed</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="ident">ssl_client_certificate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ClientCertificate</span><span class="op">&gt;</span>,
     <span class="ident">ssl_ca_certificate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CaCertificate</span><span class="op">&gt;</span>,
-    <span class="ident">ssl_ciphers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ssl</span>::<span class="ident">Ciphers</span><span class="op">&gt;</span>,
+    <span class="ident">ssl_ciphers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ssl::Ciphers</span><span class="op">&gt;</span>,
     <span class="ident">ssl_options</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslOption</span><span class="op">&gt;</span>,
     <span class="ident">enable_metrics</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
 
@@ -313,7 +313,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">RequestConfig</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
             <span class="ident">easy</span>.<span class="ident">timeout</span>(<span class="ident">timeout</span>)<span class="question-mark">?</span>;
         }
@@ -342,13 +342,13 @@
                 } <span class="kw">else</span> {
                     <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.</span>
                     <span class="kw">unsafe</span> {
-                        <span class="kw">match</span> <span class="ident">curl_sys</span>::<span class="ident">curl_easy_setopt</span>(
+                        <span class="kw">match</span> <span class="ident">curl_sys::curl_easy_setopt</span>(
                             <span class="ident">easy</span>.<span class="ident">raw</span>(),
-                            <span class="ident">curl_sys</span>::<span class="ident">CURLOPT_ACCEPT_ENCODING</span>,
+                            <span class="ident">curl_sys::CURLOPT_ACCEPT_ENCODING</span>,
                             <span class="number">0</span>,
                         ) {
-                            <span class="ident">curl_sys</span>::<span class="ident">CURLE_OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-                            <span class="ident">code</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">curl</span>::<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">code</span>)),
+                            <span class="ident">curl_sys::CURLE_OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                            <span class="ident">code</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">curl::Error::new</span>(<span class="ident">code</span>)),
                         }
                     }
                 }

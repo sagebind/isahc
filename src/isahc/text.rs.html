@@ -157,11 +157,11 @@
 
 <span class="attribute">#![<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">headers</span>::<span class="ident">HasHeaders</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::headers::HasHeaders</span>;
 <span class="kw">use</span> <span class="ident">encoding_rs</span>::{<span class="ident">CoderResult</span>, <span class="ident">Encoding</span>};
-<span class="kw">use</span> <span class="ident">futures_lite</span>::<span class="ident">io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncReadExt</span>};
-<span class="kw">use</span> <span class="ident">http</span>::<span class="ident">Response</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
+<span class="kw">use</span> <span class="ident">futures_lite::io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncReadExt</span>};
+<span class="kw">use</span> <span class="ident">http::Response</span>;
+<span class="kw">use</span> <span class="ident">std::io</span>;
 
 <span class="comment">// This macro abstracts over async and sync decoding, since the implementation</span>
 <span class="comment">// of decoding a stream into text is the same.</span>
@@ -176,7 +176,7 @@
             <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">read</span> {
                 <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
                 <span class="prelude-val">Ok</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">len</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">Interrupted</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">io::ErrorKind::Interrupted</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">continue</span>,
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             };
 
@@ -189,13 +189,13 @@
 
 <span class="macro">decl_future!</span> {
     <span class="doccomment">/// A future returning a response body decoded as text.</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">TextFuture</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>;
+    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">TextFuture</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// A streaming text decoder that supports multiple encodings.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Decoder</span> {
     <span class="doccomment">/// Inner decoder implementation.</span>
-    <span class="ident">decoder</span>: <span class="ident">encoding_rs</span>::<span class="ident">Decoder</span>,
+    <span class="ident">decoder</span>: <span class="ident">encoding_rs::Decoder</span>,
 
     <span class="doccomment">/// The output string that characters are accumulated to.</span>
     <span class="ident">output</span>: <span class="ident">String</span>,
@@ -206,7 +206,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">encoding</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Encoding</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">decoder</span>: <span class="ident">encoding</span>.<span class="ident">new_decoder</span>(),
-            <span class="ident">output</span>: <span class="ident">String</span>::<span class="ident">new</span>(),
+            <span class="ident">output</span>: <span class="ident">String::new</span>(),
         }
     }
 
@@ -214,24 +214,24 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">for_response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">content_type</span>) <span class="op">=</span> <span class="ident">response</span>
             .<span class="ident">content_type</span>()
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> <span class="ident">header</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">mime</span>::<span class="ident">Mime</span><span class="op">&gt;</span>().<span class="ident">ok</span>())
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">header</span><span class="op">|</span> <span class="ident">header</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">mime::Mime</span><span class="op">&gt;</span>().<span class="ident">ok</span>())
         {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">charset</span>) <span class="op">=</span> <span class="ident">content_type</span>.<span class="ident">get_param</span>(<span class="ident">mime</span>::<span class="ident">CHARSET</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">charset</span>) <span class="op">=</span> <span class="ident">content_type</span>.<span class="ident">get_param</span>(<span class="ident">mime::CHARSET</span>) {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">encoding</span>) <span class="op">=</span>
-                    <span class="ident">encoding_rs</span>::<span class="ident">Encoding</span>::<span class="ident">for_label</span>(<span class="ident">charset</span>.<span class="ident">as_str</span>().<span class="ident">as_bytes</span>())
+                    <span class="ident">encoding_rs::Encoding::for_label</span>(<span class="ident">charset</span>.<span class="ident">as_str</span>().<span class="ident">as_bytes</span>())
                 {
-                    <span class="kw">return</span> <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">encoding</span>);
+                    <span class="kw">return</span> <span class="self">Self</span><span class="ident">::new</span>(<span class="ident">encoding</span>);
                 } <span class="kw">else</span> {
-                    <span class="ident">tracing</span>::<span class="macro">warn!</span>(<span class="string">&quot;unknown encoding &#39;{}&#39;, falling back to UTF-8&quot;</span>, <span class="ident">charset</span>);
+                    <span class="macro">tracing::warn!</span>(<span class="string">&quot;unknown encoding &#39;{}&#39;, falling back to UTF-8&quot;</span>, <span class="ident">charset</span>);
                 }
             }
         }
 
-        <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">encoding_rs</span>::<span class="ident">UTF_8</span>)
+        <span class="self">Self</span><span class="ident">::new</span>(<span class="ident">encoding_rs::UTF_8</span>)
     }
 
     <span class="doccomment">/// Consume this decoder to decode text from a given synchronous reader.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">decode_reader</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">reader</span>: <span class="kw">impl</span> <span class="ident">io</span>::<span class="ident">Read</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">decode_reader</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">reader</span>: <span class="kw">impl</span> <span class="ident">io::Read</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="macro">decode_reader!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>))
     }
 
@@ -240,7 +240,7 @@
     <span class="kw">where</span>
         <span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span> <span class="op">+</span> <span class="lifetime">&#39;r</span>,
     {
-        <span class="ident">TextFuture</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="macro">decode_reader!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="kw">await</span>) })
+        <span class="ident">TextFuture::new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="macro">decode_reader!</span>(<span class="self">self</span>, <span class="ident">buf</span>, <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>).<span class="kw">await</span>) })
     }
 
     <span class="doccomment">/// Push additional bytes into the decoder, returning any trailing bytes</span>
@@ -262,8 +262,8 @@
             <span class="ident">buf</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">consumed</span>..];
 
             <span class="kw">match</span> <span class="ident">result</span> {
-                <span class="ident">CoderResult</span>::<span class="ident">InputEmpty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
-                <span class="ident">CoderResult</span>::<span class="ident">OutputFull</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+                <span class="ident">CoderResult::InputEmpty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+                <span class="ident">CoderResult::OutputFull</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
                     .<span class="ident">output</span>
                     .<span class="ident">reserve</span>(<span class="self">self</span>.<span class="ident">decoder</span>.<span class="ident">max_utf8_buffer_length</span>(<span class="ident">buf</span>.<span class="ident">len</span>()).<span class="ident">unwrap</span>()),
             }
@@ -281,13 +281,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">body</span>::<span class="ident">Body</span>;
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::body::Body</span>;
 
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Body</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Body</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">utf8_decode</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoder</span> <span class="op">=</span> <span class="ident">Decoder</span>::<span class="ident">new</span>(<span class="ident">encoding_rs</span>::<span class="ident">UTF_8</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoder</span> <span class="op">=</span> <span class="ident">Decoder::new</span>(<span class="ident">encoding_rs::UTF_8</span>);
 
         <span class="macro">assert_eq!</span>(<span class="ident">decoder</span>.<span class="ident">push</span>(<span class="string">b&quot;hello&quot;</span>), <span class="string">b&quot;&quot;</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">decoder</span>.<span class="ident">push</span>(<span class="string">b&quot; &quot;</span>), <span class="string">b&quot;&quot;</span>);
@@ -296,8 +296,8 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">utf16_decode</span>() {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">encoding_rs</span>::<span class="ident">UTF_16BE</span>.<span class="ident">encode</span>(<span class="string">&quot;hello world!&quot;</span>).<span class="number">0</span>.<span class="ident">into_owned</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoder</span> <span class="op">=</span> <span class="ident">Decoder</span>::<span class="ident">new</span>(<span class="ident">encoding_rs</span>::<span class="ident">UTF_8</span>);
+        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">encoding_rs::UTF_16BE</span>.<span class="ident">encode</span>(<span class="string">&quot;hello world!&quot;</span>).<span class="number">0</span>.<span class="ident">into_owned</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">decoder</span> <span class="op">=</span> <span class="ident">Decoder::new</span>(<span class="ident">encoding_rs::UTF_8</span>);
 
         <span class="kw">for</span> <span class="ident">byte</span> <span class="kw">in</span> <span class="ident">bytes</span> {
             <span class="ident">decoder</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span>[<span class="ident">byte</span>]);

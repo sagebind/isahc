@@ -33,9 +33,9 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">dns</span>::{<span class="ident">DnsCache</span>, <span class="ident">ResolveMap</span>},
-    <span class="ident">request</span>::<span class="ident">SetOpt</span>,
+    <span class="ident">request::SetOpt</span>,
 };
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
+<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ClientConfig</span> {
@@ -46,7 +46,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">ClientConfig</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ttl</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">connection_cache_ttl</span> {
             <span class="ident">easy</span>.<span class="ident">maxage_conn</span>(<span class="ident">ttl</span>)<span class="question-mark">?</span>;
         }

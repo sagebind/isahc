@@ -1337,43 +1337,43 @@
     <span class="ident">agent</span>::{<span class="self">self</span>, <span class="ident">AgentBuilder</span>},
     <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">config</span>::{
-        <span class="ident">client</span>::<span class="ident">ClientConfig</span>,
+        <span class="ident">client::ClientConfig</span>,
         <span class="ident">request</span>::{<span class="ident">RequestConfig</span>, <span class="ident">SetOpt</span>, <span class="ident">WithRequestConfig</span>},
         <span class="kw-2">*</span>,
     },
-    <span class="ident">default_headers</span>::<span class="ident">DefaultHeadersInterceptor</span>,
+    <span class="ident">default_headers::DefaultHeadersInterceptor</span>,
     <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>},
     <span class="ident">handler</span>::{<span class="ident">RequestHandler</span>, <span class="ident">ResponseBodyReader</span>},
-    <span class="ident">headers</span>::<span class="ident">HasHeaders</span>,
+    <span class="ident">headers::HasHeaders</span>,
     <span class="ident">interceptor</span>::{<span class="self">self</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorObj</span>},
-    <span class="ident">parsing</span>::<span class="ident">header_to_curl_string</span>,
+    <span class="ident">parsing::header_to_curl_string</span>,
 };
 <span class="kw">use</span> <span class="ident">futures_lite</span>::{
     <span class="ident">future</span>::{<span class="ident">block_on</span>, <span class="ident">try_zip</span>},
-    <span class="ident">io</span>::<span class="ident">AsyncRead</span>,
+    <span class="ident">io::AsyncRead</span>,
 };
 <span class="kw">use</span> <span class="ident">http</span>::{
     <span class="ident">header</span>::{<span class="ident">HeaderMap</span>, <span class="ident">HeaderName</span>, <span class="ident">HeaderValue</span>},
     <span class="ident">Request</span>,
     <span class="ident">Response</span>,
 };
-<span class="kw">use</span> <span class="ident">once_cell</span>::<span class="ident">sync</span>::<span class="ident">Lazy</span>;
+<span class="kw">use</span> <span class="ident">once_cell::sync::Lazy</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::<span class="ident">TryFrom</span>,
+    <span class="ident">convert::TryFrom</span>,
     <span class="ident">fmt</span>,
-    <span class="ident">future</span>::<span class="ident">Future</span>,
+    <span class="ident">future::Future</span>,
     <span class="ident">io</span>,
-    <span class="ident">pin</span>::<span class="ident">Pin</span>,
-    <span class="ident">sync</span>::<span class="ident">Arc</span>,
+    <span class="ident">pin::Pin</span>,
+    <span class="ident">sync::Arc</span>,
     <span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>},
-    <span class="ident">time</span>::<span class="ident">Duration</span>,
+    <span class="ident">time::Duration</span>,
 };
-<span class="kw">use</span> <span class="ident">tracing_futures</span>::<span class="ident">Instrument</span>;
+<span class="kw">use</span> <span class="ident">tracing_futures::Instrument</span>;
 
-<span class="kw">static</span> <span class="ident">USER_AGENT</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> {
+<span class="kw">static</span> <span class="ident">USER_AGENT</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy::new</span>(<span class="op">|</span><span class="op">|</span> {
     <span class="macro">format!</span>(
         <span class="string">&quot;curl/{} isahc/{}&quot;</span>,
-        <span class="ident">curl</span>::<span class="ident">Version</span>::<span class="ident">get</span>().<span class="ident">version</span>(),
+        <span class="ident">curl::Version::get</span>().<span class="ident">version</span>(),
         <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>)
     )
 });
@@ -1412,12 +1412,12 @@
     <span class="ident">error</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span>,
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span>,
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">new</span>()
+        <span class="self">Self</span><span class="ident">::new</span>()
     }
 }
 
@@ -1428,17 +1428,17 @@
     <span class="doccomment">/// This is equivalent to the [`Default`] implementation.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>::<span class="ident">default</span>(),
-            <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>::<span class="ident">default</span>(),
-            <span class="ident">request_config</span>: <span class="ident">RequestConfig</span>::<span class="ident">client_defaults</span>(),
+            <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder::default</span>(),
+            <span class="ident">client_config</span>: <span class="ident">ClientConfig::default</span>(),
+            <span class="ident">request_config</span>: <span class="ident">RequestConfig::client_defaults</span>(),
             <span class="ident">interceptors</span>: <span class="macro">vec!</span>[
                 <span class="comment">// Add redirect support. Note that this is _always_ the first,</span>
                 <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
                 <span class="comment">// not enable redirect following, it just implements support for</span>
                 <span class="comment">// it, if a request asks for it.</span>
-                <span class="ident">InterceptorObj</span>::<span class="ident">new</span>(<span class="kw">crate</span>::<span class="ident">redirect</span>::<span class="ident">RedirectInterceptor</span>),
+                <span class="ident">InterceptorObj::new</span>(<span class="kw">crate</span><span class="ident">::redirect::RedirectInterceptor</span>),
             ],
-            <span class="ident">default_headers</span>: <span class="ident">HeaderMap</span>::<span class="ident">new</span>(),
+            <span class="ident">default_headers</span>: <span class="ident">HeaderMap::new</span>(),
             <span class="ident">error</span>: <span class="prelude-val">None</span>,
 
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
@@ -1481,7 +1481,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookies</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Note: this method is now essentially the same as setting a default</span>
         <span class="comment">// cookie jar, but remains for backwards compatibility.</span>
-        <span class="self">self</span>.<span class="ident">cookie_jar</span>(<span class="ident">Default</span>::<span class="ident">default</span>())
+        <span class="self">self</span>.<span class="ident">cookie_jar</span>(<span class="ident">Default::default</span>())
     }
 
     <span class="doccomment">/// Add a request interceptor to the client.</span>
@@ -1499,7 +1499,7 @@
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">interceptor_impl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">interceptor</span>: <span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">push</span>(<span class="ident">InterceptorObj</span>::<span class="ident">new</span>(<span class="ident">interceptor</span>));
+        <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">push</span>(<span class="ident">InterceptorObj::new</span>(<span class="ident">interceptor</span>));
         <span class="self">self</span>
     }
 
@@ -1672,21 +1672,21 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_header</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="ident">K</span>, <span class="ident">value</span>: <span class="ident">V</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">HeaderName</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">HeaderName</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">HeaderName</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">HeaderValue</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">HeaderValue</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">HeaderValue</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">HeaderName</span>::<span class="ident">try_from</span>(<span class="ident">key</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">key</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">HeaderValue</span>::<span class="ident">try_from</span>(<span class="ident">value</span>) {
+        <span class="kw">match</span> <span class="ident">HeaderName::try_from</span>(<span class="ident">key</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">key</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">HeaderValue::try_from</span>(<span class="ident">value</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">append</span>(<span class="ident">key</span>, <span class="ident">value</span>);
                 }
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="self">self</span>.<span class="ident">error</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>.<span class="ident">into</span>()));
+                    <span class="self">self</span>.<span class="ident">error</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Error::new</span>(<span class="ident">ErrorKind::ClientInitialization</span>, <span class="ident">e</span>.<span class="ident">into</span>()));
                 }
             },
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="self">self</span>.<span class="ident">error</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>.<span class="ident">into</span>()));
+                <span class="self">self</span>.<span class="ident">error</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Error::new</span>(<span class="ident">ErrorKind::ClientInitialization</span>, <span class="ident">e</span>.<span class="ident">into</span>()));
             }
         }
         <span class="self">self</span>
@@ -1749,15 +1749,15 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default_headers</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">I</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">headers</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">HeaderName</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">HeaderName</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">HeaderName</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">HeaderValue</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">HeaderValue</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">HeaderValue</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">P</span><span class="op">&gt;</span>,
         <span class="ident">P</span>: <span class="ident">HeaderPair</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">clear</span>();
 
-        <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">headers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">HeaderPair</span>::<span class="ident">pair</span>) {
+        <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">headers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">HeaderPair::pair</span>) {
             <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">default_header</span>(<span class="ident">key</span>, <span class="ident">value</span>);
         }
 
@@ -1777,13 +1777,13 @@
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
         {
             <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">clone</span>();
-            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">interceptor</span>::<span class="ident">CookieInterceptor</span>::<span class="ident">new</span>(<span class="ident">jar</span>));
+            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span><span class="ident">::cookies::interceptor::CookieInterceptor::new</span>(<span class="ident">jar</span>));
         }
 
         <span class="comment">// Add default header interceptor if any default headers were specified.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">default_headers</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">let</span> <span class="ident">default_headers</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">default_headers</span>);
-            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="ident">DefaultHeadersInterceptor</span>::<span class="ident">from</span>(<span class="ident">default_headers</span>));
+            <span class="kw">let</span> <span class="ident">default_headers</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">default_headers</span>);
+            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="ident">DefaultHeadersInterceptor::from</span>(<span class="ident">default_headers</span>));
         }
 
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>))]</span>
@@ -1791,7 +1791,7 @@
             <span class="ident">agent</span>: <span class="self">self</span>
                 .<span class="ident">agent_builder</span>
                 .<span class="ident">spawn</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error::new</span>(<span class="ident">ErrorKind::ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
             <span class="ident">client_config</span>: <span class="self">self</span>.<span class="ident">client_config</span>,
             <span class="ident">request_config</span>: <span class="self">self</span>.<span class="ident">request_config</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
@@ -1802,7 +1802,7 @@
             <span class="ident">agent</span>: <span class="self">self</span>
                 .<span class="ident">agent_builder</span>
                 .<span class="ident">spawn</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error</span>::<span class="ident">new</span>(<span class="ident">ErrorKind</span>::<span class="ident">ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error::new</span>(<span class="ident">ErrorKind::ClientInitialization</span>, <span class="ident">e</span>))<span class="question-mark">?</span>,
             <span class="ident">client_config</span>: <span class="self">self</span>.<span class="ident">client_config</span>,
             <span class="ident">request_config</span>: <span class="self">self</span>.<span class="ident">request_config</span>,
             <span class="ident">interceptors</span>: <span class="self">self</span>.<span class="ident">interceptors</span>,
@@ -1810,14 +1810,14 @@
         };
 
         <span class="prelude-val">Ok</span>(<span class="ident">HttpClient</span> {
-            <span class="ident">inner</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">inner</span>),
+            <span class="ident">inner</span>: <span class="ident">Arc::new</span>(<span class="ident">inner</span>),
         })
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Configurable</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="kw">crate</span><span class="ident">::cookies::CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">cookie_jar</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">cookie_jar</span>);
         <span class="self">self</span>
     }
@@ -1831,8 +1831,8 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;HttpClientBuilder&quot;</span>).<span class="ident">finish</span>()
     }
 }
@@ -1933,7 +1933,7 @@
 
 <span class="kw">struct</span> <span class="ident">Inner</span> {
     <span class="doccomment">/// This is how we talk to our background agent thread.</span>
-    <span class="ident">agent</span>: <span class="ident">agent</span>::<span class="ident">Handle</span>,
+    <span class="ident">agent</span>: <span class="ident">agent::Handle</span>,
 
     <span class="doccomment">/// Client-wide request configuration.</span>
     <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>,
@@ -1946,7 +1946,7 @@
 
     <span class="doccomment">/// Configured cookie jar, if any.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span>,
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">HttpClient</span> {
@@ -1954,7 +1954,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the client fails to initialize, an error will be returned.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">HttpClientBuilder</span>::<span class="ident">default</span>().<span class="ident">build</span>()
+        <span class="ident">HttpClientBuilder::default</span>().<span class="ident">build</span>()
     }
 
     <span class="doccomment">/// Get a reference to a global client instance.</span>
@@ -1962,14 +1962,14 @@
     <span class="doccomment">/// TODO: Stabilize.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">shared</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="kw">static</span> <span class="ident">SHARED</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">HttpClient</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">HttpClient</span>::<span class="ident">new</span>().<span class="ident">expect</span>(<span class="string">&quot;shared client failed to initialize&quot;</span>));
+            <span class="ident">Lazy::new</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">HttpClient::new</span>().<span class="ident">expect</span>(<span class="string">&quot;shared client failed to initialize&quot;</span>));
 
         <span class="kw-2">&amp;</span><span class="ident">SHARED</span>
     }
 
     <span class="doccomment">/// Create a new [`HttpClientBuilder`] for building a custom client.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HttpClientBuilder</span> {
-        <span class="ident">HttpClientBuilder</span>::<span class="ident">default</span>()
+        <span class="ident">HttpClientBuilder::default</span>()
     }
 
     <span class="doccomment">/// Get the configured cookie jar for this HTTP client, if any.</span>
@@ -1979,7 +1979,7 @@
     <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
     <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw">crate</span>::<span class="ident">cookies</span>::<span class="ident">CookieJar</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">cookie_jar</span>.<span class="ident">as_ref</span>()
     }
 
@@ -2001,12 +2001,12 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">get</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::get</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2016,12 +2016,12 @@
     <span class="doccomment">/// execute the request synchronously, see [`HttpClient::get`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">get</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::get</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span>::<span class="ident">error</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture::error</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2043,12 +2043,12 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">head</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::head</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2058,12 +2058,12 @@
     <span class="doccomment">/// execute the request synchronously, see [`HttpClient::head`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">head</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::head</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span>::<span class="ident">error</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture::error</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2087,13 +2087,13 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">post</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
+        <span class="kw">match</span> <span class="ident">http::Request::post</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2104,13 +2104,13 @@
     <span class="doccomment">/// execute the request synchronously, see [`HttpClient::post`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">post</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
+        <span class="kw">match</span> <span class="ident">http::Request::post</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span>::<span class="ident">error</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture::error</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2135,13 +2135,13 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">put</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
+        <span class="kw">match</span> <span class="ident">http::Request::put</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2152,13 +2152,13 @@
     <span class="doccomment">/// execute the request synchronously, see [`HttpClient::put`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">put</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
+        <span class="kw">match</span> <span class="ident">http::Request::put</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">body</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span>::<span class="ident">error</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture::error</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2169,12 +2169,12 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">delete</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::delete</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2184,12 +2184,12 @@
     <span class="doccomment">/// execute the request synchronously, see [`HttpClient::delete`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-        <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+        <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+        <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     {
-        <span class="kw">match</span> <span class="ident">http</span>::<span class="ident">Request</span>::<span class="ident">delete</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
+        <span class="kw">match</span> <span class="ident">http::Request::delete</span>(<span class="ident">uri</span>).<span class="ident">body</span>(()) {
             <span class="prelude-val">Ok</span>(<span class="ident">request</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">send_async</span>(<span class="ident">request</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span>::<span class="ident">error</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>(<span class="ident">e</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ResponseFuture::error</span>(<span class="ident">Error::from_any</span>(<span class="ident">e</span>)),
         }
     }
 
@@ -2242,7 +2242,7 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span!</span>(
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="macro">tracing::debug_span!</span>(
             <span class="string">&quot;send&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
@@ -2267,7 +2267,7 @@
                     <span class="comment">// ensures that it is polled first and thus the request is</span>
                     <span class="comment">// initiated before we attempt to write the request body.</span>
                     <span class="kw">let</span> (<span class="ident">response</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">try_zip</span>(<span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>), <span class="kw">async</span> <span class="kw">move</span> {
-                        <span class="ident">writer</span>.<span class="ident">write</span>().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from</span>)
+                        <span class="ident">writer</span>.<span class="ident">write</span>().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Error::from</span>)
                     })
                     .<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -2333,14 +2333,14 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">tracing</span>::<span class="macro">debug_span!</span>(
+        <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="macro">tracing::debug_span!</span>(
             <span class="string">&quot;send_async&quot;</span>,
             <span class="ident">method</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">method</span>(),
             <span class="ident">uri</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">request</span>.<span class="ident">uri</span>(),
         );
 
-        <span class="ident">ResponseFuture</span>::<span class="ident">new</span>(
-            <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into</span>::<span class="ident">into</span>))
+        <span class="ident">ResponseFuture::new</span>(
+            <span class="self">self</span>.<span class="ident">send_async_inner</span>(<span class="ident">request</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>))
                 .<span class="ident">instrument</span>(<span class="ident">span</span>),
         )
     }
@@ -2360,8 +2360,8 @@
                 .<span class="ident">insert</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">request_config</span>.<span class="ident">clone</span>());
         }
 
-        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor</span>::<span class="ident">Context</span> {
-            <span class="ident">invoker</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>),
+        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">interceptor::Context</span> {
+            <span class="ident">invoker</span>: <span class="ident">Arc::new</span>(<span class="self">self</span>),
             <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">interceptors</span>,
         };
 
@@ -2373,18 +2373,18 @@
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>
         (
-            <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>,
+            <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>,
             <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">ResponseBodyReader</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         ),
-        <span class="ident">curl</span>::<span class="ident">Error</span>,
+        <span class="ident">curl::Error</span>,
     <span class="op">&gt;</span> {
         <span class="comment">// Prepare the request plumbing.</span>
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">take</span>(<span class="ident">request</span>.<span class="ident">body_mut</span>());
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">std::mem::take</span>(<span class="ident">request</span>.<span class="ident">body_mut</span>());
         <span class="kw">let</span> <span class="ident">has_body</span> <span class="op">=</span> <span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>();
         <span class="kw">let</span> <span class="ident">body_length</span> <span class="op">=</span> <span class="ident">body</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> (<span class="ident">handler</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="ident">RequestHandler</span>::<span class="ident">new</span>(<span class="ident">body</span>);
+        <span class="kw">let</span> (<span class="ident">handler</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="ident">RequestHandler::new</span>(<span class="ident">body</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">easy</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>::<span class="ident">new</span>(<span class="ident">handler</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">easy</span> <span class="op">=</span> <span class="ident">curl::easy::Easy2::new</span>(<span class="ident">handler</span>);
 
         <span class="comment">// Set whether curl should generate verbose debug data for us to log.</span>
         <span class="ident">easy</span>.<span class="ident">verbose</span>(<span class="ident">easy</span>.<span class="ident">get_ref</span>().<span class="ident">is_debug_enabled</span>())<span class="question-mark">?</span>;
@@ -2404,19 +2404,19 @@
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">indirect_structural_match</span>)]</span>
         <span class="kw">match</span> (<span class="ident">request</span>.<span class="ident">method</span>(), <span class="ident">has_body</span>) {
             <span class="comment">// Normal GET request.</span>
-            (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">GET</span>, <span class="bool-val">false</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="kw-2">&amp;</span><span class="ident">http::Method::GET</span>, <span class="bool-val">false</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">easy</span>.<span class="ident">get</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
             }
             <span class="comment">// Normal HEAD request.</span>
-            (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">HEAD</span>, <span class="bool-val">false</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="kw-2">&amp;</span><span class="ident">http::Method::HEAD</span>, <span class="bool-val">false</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">easy</span>.<span class="ident">nobody</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
             }
             <span class="comment">// POST requests have special redirect behavior.</span>
-            (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">POST</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="kw-2">&amp;</span><span class="ident">http::Method::POST</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">easy</span>.<span class="ident">post</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
             }
             <span class="comment">// Normal PUT request.</span>
-            (<span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">PUT</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="kw-2">&amp;</span><span class="ident">http::Method::PUT</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">easy</span>.<span class="ident">upload</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
             }
             <span class="comment">// Default case is to either treat request like a GET or PUT.</span>
@@ -2442,7 +2442,7 @@
                 .<span class="ident">or</span>(<span class="ident">body_length</span>);
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_length</span> {
-                <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">method</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">http</span>::<span class="ident">Method</span>::<span class="ident">POST</span> {
+                <span class="kw">if</span> <span class="ident">request</span>.<span class="ident">method</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">http::Method::POST</span> {
                     <span class="ident">easy</span>.<span class="ident">post_field_size</span>(<span class="ident">len</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
                     <span class="ident">easy</span>.<span class="ident">in_filesize</span>(<span class="ident">len</span>)<span class="question-mark">?</span>;
@@ -2453,13 +2453,13 @@
                 <span class="comment">// incorrect.</span>
                 <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">insert</span>(
                     <span class="string">&quot;Transfer-Encoding&quot;</span>,
-                    <span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">HeaderValue</span>::<span class="ident">from_static</span>(<span class="string">&quot;chunked&quot;</span>),
+                    <span class="ident">http::header::HeaderValue::from_static</span>(<span class="string">&quot;chunked&quot;</span>),
                 );
             }
         }
 
         <span class="comment">// Generate a header list for curl.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">List</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">curl::easy::List::new</span>();
 
         <span class="kw">let</span> <span class="ident">title_case</span> <span class="op">=</span> <span class="ident">request</span>
             .<span class="ident">extensions</span>()
@@ -2478,16 +2478,16 @@
     }
 }
 
-<span class="kw">impl</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
+<span class="kw">impl</span> <span class="kw">crate</span><span class="ident">::interceptor::Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
     <span class="kw">fn</span> <span class="ident">invoke</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="ident">interceptor</span>::<span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">Box</span>::<span class="ident">pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::interceptor::InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
                 .<span class="ident">headers_mut</span>()
-                .<span class="ident">entry</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">USER_AGENT</span>)
+                .<span class="ident">entry</span>(<span class="ident">http::header::USER_AGENT</span>)
                 .<span class="ident">or_insert</span>(<span class="ident">USER_AGENT</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>());
 
             <span class="comment">// Check if automatic decompression is enabled; we&#39;ll need to know</span>
@@ -2500,7 +2500,7 @@
                 .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
             <span class="comment">// Create and configure a curl easy handle to fulfil the request.</span>
-            <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">Error</span>::<span class="ident">from_any</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> (<span class="ident">easy</span>, <span class="ident">future</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_easy_handle</span>(<span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// Send the request to the agent to be executed.</span>
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">agent</span>.<span class="ident">submit_request</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
@@ -2518,7 +2518,7 @@
                 <span class="comment">// ignore the Content-Length, since it can only cause confusion</span>
                 <span class="comment">// when included with the body.</span>
                 <span class="kw">if</span> <span class="ident">is_automatic_decompression</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http</span>::<span class="ident">header</span>::<span class="ident">CONTENT_ENCODING</span>) {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http::header::CONTENT_ENCODING</span>) {
                         <span class="kw">if</span> <span class="ident">value</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;identity&quot;</span> {
                             <span class="kw">return</span> <span class="bool-val">false</span>;
                         }
@@ -2538,48 +2538,48 @@
                 };
 
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_len</span> {
-                    <span class="ident">AsyncBody</span>::<span class="ident">from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                    <span class="ident">AsyncBody::from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
                 } <span class="kw">else</span> {
-                    <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">body</span>)
+                    <span class="ident">AsyncBody::from_reader</span>(<span class="ident">body</span>)
                 }
             }))
         })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">HttpClient</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">HttpClient</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;HttpClient&quot;</span>).<span class="ident">finish</span>()
     }
 }
 
 <span class="doccomment">/// A future for a request being executed.</span>
 <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span>::<span class="ident">Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;c</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span><span class="ident">::Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;c</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">future</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span>::<span class="ident">Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;c</span>,
+        <span class="ident">F</span>: <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">Future</span><span class="op">&gt;</span><span class="ident">::Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;c</span>,
     {
-        <span class="ident">ResponseFuture</span>(<span class="ident">Box</span>::<span class="ident">pin</span>(<span class="ident">future</span>))
+        <span class="ident">ResponseFuture</span>(<span class="ident">Box::pin</span>(<span class="ident">future</span>))
     }
 
     <span class="kw">fn</span> <span class="ident">error</span>(<span class="ident">error</span>: <span class="ident">Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
+        <span class="self">Self</span><span class="ident">::new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Future</span> <span class="kw">for</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Output</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="self">Self</span><span class="ident">::Output</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_mut</span>().<span class="ident">poll</span>(<span class="ident">cx</span>)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;c</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;ResponseFuture&quot;</span>).<span class="ident">finish</span>()
     }
 }
@@ -2596,16 +2596,16 @@
         <span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>,
         <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
         <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Pin</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">inner</span>);
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">Pin::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">inner</span>);
         <span class="ident">inner</span>.<span class="ident">poll_read</span>(<span class="ident">cx</span>, <span class="ident">buf</span>)
     }
 }
 
 <span class="doccomment">/// Convert a URI to a string. This implementation is a bit faster than the</span>
 <span class="doccomment">/// `Display` implementation that avoids the `std::fmt` machinery.</span>
-<span class="kw">fn</span> <span class="ident">uri_to_string</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">http</span>::<span class="ident">Uri</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
+<span class="kw">fn</span> <span class="ident">uri_to_string</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">http::Uri</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String::new</span>();
 
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">scheme</span>) <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">scheme</span>() {
         <span class="ident">s</span>.<span class="ident">push_str</span>(<span class="ident">scheme</span>.<span class="ident">as_str</span>());
@@ -2630,12 +2630,12 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">HttpClient</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">HttpClientBuilder</span>: <span class="ident">Send</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">HttpClient</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">HttpClientBuilder</span>: <span class="ident">Send</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_default_header</span>() {
-        <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>()
+        <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClientBuilder::new</span>()
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
             .<span class="ident">build</span>();
         <span class="kw">match</span> <span class="ident">client</span> {
@@ -2646,18 +2646,18 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_default_headers_mut</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>().<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder::new</span>().<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
         <span class="kw">let</span> <span class="ident">headers_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
         <span class="macro">assert!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>()
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder::new</span>()
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value1&quot;</span>)
             .<span class="ident">default_header</span>(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value2&quot;</span>);
         <span class="kw">let</span> <span class="ident">headers_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
 
         <span class="macro">assert!</span>(<span class="ident">headers_map</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClientBuilder::new</span>();
         <span class="kw">let</span> <span class="ident">header_map</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>.<span class="ident">default_headers</span>;
         <span class="macro">assert!</span>(<span class="ident">header_map</span>.<span class="ident">is_empty</span>())
     }

@@ -33,9 +33,9 @@
 <span id="32">32</span>
 <span id="33">33</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">SetOpt</span>;
-<span class="kw">use</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">FromIterator</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::SetOpt</span>;
+<span class="kw">use</span> <span class="ident">curl::easy::Easy2</span>;
+<span class="kw">use</span> <span class="ident">std::iter::FromIterator</span>;
 
 <span class="doccomment">/// Decorator for marking certain configurations to apply to a proxy rather than</span>
 <span class="doccomment">/// the origin itself.</span>
@@ -62,7 +62,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Blacklist</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">noproxy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">skip</span>)
     }
 }

@@ -710,13 +710,13 @@
     <span class="ident">rust_2018_idioms</span>,
     <span class="ident">unreachable_pub</span>,
     <span class="ident">unused</span>,
-    <span class="ident">clippy</span>::<span class="ident">all</span>
+    <span class="ident">clippy::all</span>
 )]</span>
 <span class="comment">// These lints suggest to use features not available in our MSRV.</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">manual_strip</span>, <span class="ident">clippy</span>::<span class="ident">match_like_matches_macro</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::manual_strip</span>, <span class="ident">clippy::match_like_matches_macro</span>)]</span>
 
-<span class="kw">use</span> <span class="ident">once_cell</span>::<span class="ident">sync</span>::<span class="ident">Lazy</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+<span class="kw">use</span> <span class="ident">once_cell::sync::Lazy</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">mod</span> <span class="ident">macros</span>;
@@ -751,10 +751,10 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
     <span class="ident">client</span>::{<span class="ident">HttpClient</span>, <span class="ident">HttpClientBuilder</span>, <span class="ident">ResponseFuture</span>},
-    <span class="ident">error</span>::<span class="ident">Error</span>,
-    <span class="ident">http</span>::{<span class="ident">request</span>::<span class="ident">Request</span>, <span class="ident">response</span>::<span class="ident">Response</span>},
-    <span class="ident">metrics</span>::<span class="ident">Metrics</span>,
-    <span class="ident">request</span>::<span class="ident">RequestExt</span>,
+    <span class="ident">error::Error</span>,
+    <span class="ident">http</span>::{<span class="ident">request::Request</span>, <span class="ident">response::Response</span>},
+    <span class="ident">metrics::Metrics</span>,
+    <span class="ident">request::RequestExt</span>,
     <span class="ident">response</span>::{<span class="ident">AsyncReadResponseExt</span>, <span class="ident">ReadResponseExt</span>, <span class="ident">ResponseExt</span>},
 };
 
@@ -775,7 +775,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span> {
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">config</span>::<span class="ident">Configurable</span>,
+        <span class="ident">config::Configurable</span>,
         <span class="ident">AsyncReadResponseExt</span>,
         <span class="ident">ReadResponseExt</span>,
         <span class="ident">RequestExt</span>,
@@ -789,10 +789,10 @@
 <span class="doccomment">/// [`HttpClient::get`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">get</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">get</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send a GET request to the given URI asynchronously.</span>
@@ -801,10 +801,10 @@
 <span class="doccomment">/// [`HttpClient::get_async`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">get_async</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">get_async</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send a HEAD request to the given URI.</span>
@@ -813,10 +813,10 @@
 <span class="doccomment">/// [`HttpClient::head`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">head</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">head</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send a HEAD request to the given URI asynchronously.</span>
@@ -825,10 +825,10 @@
 <span class="doccomment">/// [`HttpClient::head_async`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">head_async</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">head_async</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send a POST request to the given URI with a given request body.</span>
@@ -837,11 +837,11 @@
 <span class="doccomment">/// [`HttpClient::post`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">post</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">post</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
 
 <span class="doccomment">/// Send a POST request to the given URI asynchronously with a given request</span>
@@ -870,11 +870,11 @@
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
 
 <span class="doccomment">/// Send a PUT request to the given URI with a given request body.</span>
@@ -883,11 +883,11 @@
 <span class="doccomment">/// [`HttpClient::put`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">put</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">put</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
 
 <span class="doccomment">/// Send a PUT request to the given URI asynchronously with a given request</span>
@@ -897,11 +897,11 @@
 <span class="doccomment">/// [`HttpClient::put_async`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
     <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
 }
 
 <span class="doccomment">/// Send a DELETE request to the given URI.</span>
@@ -910,10 +910,10 @@
 <span class="doccomment">/// [`HttpClient::delete`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">delete</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">delete</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send a DELETE request to the given URI asynchronously.</span>
@@ -922,10 +922,10 @@
 <span class="doccomment">/// [`HttpClient::delete_async`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">http</span>::<span class="ident">Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span>::<span class="ident">Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http</span>::<span class="ident">Error</span><span class="op">&gt;</span>,
+    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
+    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
 {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">delete_async</span>(<span class="ident">uri</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">delete_async</span>(<span class="ident">uri</span>)
 }
 
 <span class="doccomment">/// Send an HTTP request and return the HTTP response.</span>
@@ -933,7 +933,7 @@
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::send`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">send</span>(<span class="ident">request</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">send</span>(<span class="ident">request</span>)
 }
 
 <span class="doccomment">/// Send an HTTP request and return the HTTP response asynchronously.</span>
@@ -941,7 +941,7 @@
 <span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
 <span class="doccomment">/// [`HttpClient::send_async`] for details.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_async</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-    <span class="ident">HttpClient</span>::<span class="ident">shared</span>().<span class="ident">send_async</span>(<span class="ident">request</span>)
+    <span class="ident">HttpClient::shared</span>().<span class="ident">send_async</span>(<span class="ident">request</span>)
 }
 
 <span class="doccomment">/// Gets a human-readable string with the version number of Isahc and its</span>
@@ -951,12 +951,12 @@
 <span class="doccomment">/// its dependencies.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">version</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
     <span class="kw">static</span> <span class="ident">FEATURES_STRING</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="macro">concat!</span>(<span class="macro">env!</span>(<span class="string">&quot;OUT_DIR&quot;</span>), <span class="string">&quot;/features.txt&quot;</span>));
-    <span class="kw">static</span> <span class="ident">VERSION_STRING</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy</span>::<span class="ident">new</span>(<span class="op">|</span><span class="op">|</span> {
+    <span class="kw">static</span> <span class="ident">VERSION_STRING</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy::new</span>(<span class="op">|</span><span class="op">|</span> {
         <span class="macro">format!</span>(
             <span class="string">&quot;isahc/{} (features:{}) {}&quot;</span>,
             <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>),
             <span class="ident">FEATURES_STRING</span>,
-            <span class="ident">curl</span>::<span class="ident">Version</span>::<span class="ident">num</span>(),
+            <span class="ident">curl::Version::num</span>(),
         )
     });
 

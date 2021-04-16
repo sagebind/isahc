@@ -226,7 +226,7 @@
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Types for working with HTTP authentication methods.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">config</span>::{<span class="ident">proxy</span>::<span class="ident">Proxy</span>, <span class="ident">request</span>::<span class="ident">SetOpt</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::config</span>::{<span class="ident">proxy::Proxy</span>, <span class="ident">request::SetOpt</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fmt</span>,
     <span class="ident">ops</span>::{<span class="ident">BitOr</span>, <span class="ident">BitOrAssign</span>},
@@ -251,14 +251,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Credentials</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">username</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">username</span>)<span class="question-mark">?</span>;
         <span class="ident">easy</span>.<span class="ident">password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">password</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="ident">easy</span>.<span class="ident">proxy_username</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">username</span>)<span class="question-mark">?</span>;
         <span class="ident">easy</span>.<span class="ident">proxy_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">password</span>)
     }
@@ -266,8 +266,8 @@
 
 <span class="comment">// Implement our own debug since we don&#39;t want to print passwords even on</span>
 <span class="comment">// accident.</span>
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Credentials</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Credentials</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Credentials&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;username&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">username</span>)
             .<span class="ident">field</span>(<span class="string">&quot;password&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;*****&quot;</span>)
@@ -281,7 +281,7 @@
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">none</span>()
+        <span class="self">Self</span><span class="ident">::none</span>()
     }
 }
 
@@ -294,11 +294,11 @@
     <span class="doccomment">/// Enable all available authentication schemes.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">all</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">basic</span>().<span class="number">0</span> <span class="op">|</span> <span class="self">Self</span>::<span class="ident">digest</span>().<span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all</span> <span class="op">=</span> <span class="self">Self</span><span class="ident">::basic</span>().<span class="number">0</span> <span class="op">|</span> <span class="self">Self</span><span class="ident">::digest</span>().<span class="number">0</span>;
 
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="ident">all</span> <span class="op">|</span><span class="op">=</span> <span class="self">Self</span>::<span class="ident">negotiate</span>().<span class="number">0</span>;
+            <span class="ident">all</span> <span class="op">|</span><span class="op">=</span> <span class="self">Self</span><span class="ident">::negotiate</span>().<span class="number">0</span>;
         }
 
         <span class="ident">Authentication</span>(<span class="ident">all</span>)
@@ -346,20 +346,20 @@
         (<span class="self">self</span>.<span class="number">0</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="number">0</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">as_auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Auth</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Auth</span>::<span class="ident">new</span>();
+    <span class="kw">fn</span> <span class="ident">as_auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">curl::easy::Auth</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">curl::easy::Auth::new</span>();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()) {
             <span class="ident">auth</span>.<span class="ident">basic</span>(<span class="bool-val">true</span>);
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()) {
             <span class="ident">auth</span>.<span class="ident">digest</span>(<span class="bool-val">true</span>);
         }
 
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">negotiate</span>()) {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
                 <span class="ident">auth</span>.<span class="ident">gssnegotiate</span>(<span class="bool-val">true</span>);
             }
         }
@@ -384,10 +384,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">negotiate</span>()) {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
                 <span class="comment">// Ensure auth engine is enabled, even though credentials do not</span>
                 <span class="comment">// need to be specified.</span>
                 <span class="ident">easy</span>.<span class="ident">username</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
@@ -400,10 +400,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl</span>::<span class="ident">easy</span>::<span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">negotiate</span>()) {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
                 <span class="comment">// Ensure auth engine is enabled, even though credentials do not</span>
                 <span class="comment">// need to be specified.</span>
                 <span class="ident">easy</span>.<span class="ident">proxy_username</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
@@ -417,35 +417,35 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">Authentication</span>;
+    <span class="kw">use</span> <span class="kw">super</span><span class="ident">::Authentication</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">auth_default</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::default</span>();
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">auth_all</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">all</span>();
+        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::all</span>();
 
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">auth_single</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">basic</span>();
+        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::basic</span>();
 
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
 
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication</span>::<span class="ident">digest</span>();
+        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::digest</span>();
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">basic</span>()));
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication</span>::<span class="ident">digest</span>()));
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
+        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
     }
 }
 </pre></div>

@@ -339,13 +339,13 @@
 <span id="338">338</span>
 <span id="339">339</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">AsyncBody</span>;
-<span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future</span>::<span class="ident">yield_now</span>, <span class="ident">io</span>::<span class="ident">AsyncWriteExt</span>};
-<span class="kw">use</span> <span class="ident">sluice</span>::<span class="ident">pipe</span>::{<span class="ident">pipe</span>, <span class="ident">PipeWriter</span>};
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::AsyncBody</span>;
+<span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future::yield_now</span>, <span class="ident">io::AsyncWriteExt</span>};
+<span class="kw">use</span> <span class="ident">sluice::pipe</span>::{<span class="ident">pipe</span>, <span class="ident">PipeWriter</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">borrow</span>::<span class="ident">Cow</span>,
+    <span class="ident">borrow::Cow</span>,
     <span class="ident">fmt</span>,
-    <span class="ident">fs</span>::<span class="ident">File</span>,
+    <span class="ident">fs::File</span>,
     <span class="ident">io</span>::{<span class="ident">Cursor</span>, <span class="ident">ErrorKind</span>, <span class="ident">Read</span>, <span class="prelude-ty">Result</span>},
 };
 
@@ -372,7 +372,7 @@
     <span class="doccomment">/// An empty body represents the *absence* of a body, which is semantically</span>
     <span class="doccomment">/// different than the presence of a body of zero length.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">empty</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Empty</span>)
+        <span class="self">Self</span>(<span class="ident">Inner::Empty</span>)
     }
 
     <span class="doccomment">/// Create a new body from a potentially static byte buffer.</span>
@@ -400,10 +400,10 @@
         <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="macro">match_type!</span> {
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">bytes</span>)),
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>),
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
-            <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>::<span class="ident">from</span>(<span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>()),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>)),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span><span class="ident">::from</span>(<span class="ident">bytes</span>),
+            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span><span class="ident">::from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
+            <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span><span class="ident">::from</span>(<span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>()),
         }
     }
 
@@ -417,7 +417,7 @@
     <span class="kw">where</span>
         <span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Reader</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">reader</span>), <span class="prelude-val">None</span>))
+        <span class="self">Self</span>(<span class="ident">Inner::Reader</span>(<span class="ident">Box::new</span>(<span class="ident">reader</span>), <span class="prelude-val">None</span>))
     }
 
     <span class="doccomment">/// Create a streaming body with a known length.</span>
@@ -433,7 +433,7 @@
     <span class="kw">where</span>
         <span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Reader</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">reader</span>), <span class="prelude-val">Some</span>(<span class="ident">length</span>)))
+        <span class="self">Self</span>(<span class="ident">Inner::Reader</span>(<span class="ident">Box::new</span>(<span class="ident">reader</span>), <span class="prelude-val">Some</span>(<span class="ident">length</span>)))
     }
 
     <span class="doccomment">/// Report if this body is empty.</span>
@@ -444,7 +444,7 @@
     <span class="doccomment">/// zero-length body. This method will only return `true` for the former.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
+            <span class="ident">Inner::Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
         }
     }
@@ -464,9 +464,9 @@
     <span class="doccomment">/// being accurate, and should be treated as a &quot;hint&quot;.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="number">0</span>),
-            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">bytes</span>.<span class="ident">get_ref</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>),
-            <span class="ident">Inner</span>::<span class="ident">Reader</span>(<span class="kw">_</span>, <span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">len</span>,
+            <span class="ident">Inner::Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="number">0</span>),
+            <span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">bytes</span>.<span class="ident">get_ref</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>),
+            <span class="ident">Inner::Reader</span>(<span class="kw">_</span>, <span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">len</span>,
         }
     }
 
@@ -474,8 +474,8 @@
     <span class="doccomment">/// the content. Returns `false` if the body cannot be reset.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Inner::Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
+            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">cursor</span>.<span class="ident">set_position</span>(<span class="number">0</span>);
                 <span class="bool-val">true</span>
             }
@@ -496,16 +496,16 @@
     <span class="doccomment">/// blocking fashion.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_async</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">AsyncBody</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Writer</span><span class="op">&gt;</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">AsyncBody</span>::<span class="ident">empty</span>(), <span class="prelude-val">None</span>),
-            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">AsyncBody</span>::<span class="ident">from_bytes_static</span>(<span class="ident">cursor</span>.<span class="ident">into_inner</span>()), <span class="prelude-val">None</span>),
-            <span class="ident">Inner</span>::<span class="ident">Reader</span>(<span class="ident">reader</span>, <span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Inner::Empty</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">AsyncBody::empty</span>(), <span class="prelude-val">None</span>),
+            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">AsyncBody::from_bytes_static</span>(<span class="ident">cursor</span>.<span class="ident">into_inner</span>()), <span class="prelude-val">None</span>),
+            <span class="ident">Inner::Reader</span>(<span class="ident">reader</span>, <span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> (<span class="ident">pipe_reader</span>, <span class="ident">writer</span>) <span class="op">=</span> <span class="ident">pipe</span>();
 
                 (
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">len</span> {
-                        <span class="ident">AsyncBody</span>::<span class="ident">from_reader_sized</span>(<span class="ident">pipe_reader</span>, <span class="ident">len</span>)
+                        <span class="ident">AsyncBody::from_reader_sized</span>(<span class="ident">pipe_reader</span>, <span class="ident">len</span>)
                     } <span class="kw">else</span> {
-                        <span class="ident">AsyncBody</span>::<span class="ident">from_reader</span>(<span class="ident">pipe_reader</span>)
+                        <span class="ident">AsyncBody::from_reader</span>(<span class="ident">pipe_reader</span>)
                     },
                     <span class="prelude-val">Some</span>(<span class="ident">Writer</span> {
                         <span class="ident">reader</span>,
@@ -520,28 +520,28 @@
 <span class="kw">impl</span> <span class="ident">Read</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner</span>::<span class="ident">Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-            <span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
-            <span class="ident">Inner</span>::<span class="ident">Reader</span>(<span class="ident">reader</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
+            <span class="ident">Inner::Empty</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>),
+            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
+            <span class="ident">Inner::Reader</span>(<span class="ident">reader</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">empty</span>()
+        <span class="self">Self</span><span class="ident">::empty</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span>()<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="kw">_</span>: ()) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>::<span class="ident">empty</span>()
+        <span class="self">Self</span><span class="ident">::empty</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner</span>::<span class="ident">Buffer</span>(<span class="ident">Cursor</span>::<span class="ident">new</span>(<span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="ident">body</span>))))
+        <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">Cursor::new</span>(<span class="ident">Cow::Owned</span>(<span class="ident">body</span>))))
     }
 }
 
@@ -566,15 +566,15 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">file</span>: <span class="ident">File</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">metadata</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">metadata</span>() {
-            <span class="self">Self</span>::<span class="ident">from_reader_sized</span>(<span class="ident">file</span>, <span class="ident">metadata</span>.<span class="ident">len</span>())
+            <span class="self">Self</span><span class="ident">::from_reader_sized</span>(<span class="ident">file</span>, <span class="ident">metadata</span>.<span class="ident">len</span>())
         } <span class="kw">else</span> {
-            <span class="self">Self</span>::<span class="ident">from_reader</span>(<span class="ident">file</span>)
+            <span class="self">Self</span><span class="ident">::from_reader</span>(<span class="ident">file</span>)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Body</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Body({})&quot;</span>, <span class="ident">len</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Body(?)&quot;</span>),
@@ -603,13 +603,13 @@
     <span class="doccomment">/// method is invoked in a controlled environment within a thread dedicated</span>
     <span class="doccomment">/// to blocking operations, this is OK.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">BUF_SIZE</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span><span class="ident">::BUF_SIZE</span>];
 
         <span class="kw">loop</span> {
             <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>) {
                 <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Ok</span>(<span class="ident">len</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">len</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ErrorKind</span>::<span class="ident">Interrupted</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ErrorKind::Interrupted</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">yield_now</span>().<span class="kw">await</span>;
                     <span class="kw">continue</span>;
                 }
@@ -625,11 +625,11 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-    <span class="ident">static_assertions</span>::<span class="macro">assert_impl_all!</span>(<span class="ident">Body</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">Body</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">empty_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">empty</span>();
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::empty</span>();
 
         <span class="macro">assert!</span>(<span class="ident">body</span>.<span class="ident">is_empty</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
@@ -637,7 +637,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">zero_length_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from</span>(<span class="macro">vec!</span>[]);
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from</span>(<span class="macro">vec!</span>[]);
 
         <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
@@ -645,7 +645,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">reader_with_unknown_length</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">empty</span>());
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader</span>(<span class="ident">std::io::empty</span>());
 
         <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">None</span>);
@@ -653,7 +653,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">reader_with_known_length</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from_reader_sized</span>(<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">empty</span>(), <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader_sized</span>(<span class="ident">std::io::empty</span>(), <span class="number">0</span>);
 
         <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
@@ -661,8 +661,8 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">reset_memory_body</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from</span>(<span class="string">&quot;hello world&quot;</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from</span>(<span class="string">&quot;hello world&quot;</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String::new</span>();
 
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>).<span class="ident">unwrap</span>(), <span class="number">11</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
@@ -673,7 +673,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">cannot_reset_reader</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body</span>::<span class="ident">from_reader</span>(<span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">empty</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader</span>(<span class="ident">std::io::empty</span>());
 
         <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">reset</span>(), <span class="bool-val">false</span>);
     }
