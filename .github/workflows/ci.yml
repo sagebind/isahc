@@ -32,7 +32,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.41.1"
+          toolchain: "1.46.0"
           default: true
 
       - run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
