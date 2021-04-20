@@ -47,7 +47,7 @@
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
-//! etc, then you can create a [`Request`][prelude::Request] using a
+//! etc, then you can create a [`Request`][Request] using a
 //! builder-style fluent interface, then finishing it off with a
 //! [`send`][RequestExt::send]:
 //!
