@@ -97,7 +97,7 @@ impl<T> ResponseExt<T> for Response<T> {
         // Return a static empty trailer if the extension does not exist. This
         // offers a more convenient API so that users do not have to unwrap the
         // trailer from an extra Option.
-        self.extensions().get().unwrap_or(Trailer::empty())
+        self.extensions().get().unwrap_or_else(|| Trailer::empty())
     }
 
     fn effective_uri(&self) -> Option<&Uri> {
