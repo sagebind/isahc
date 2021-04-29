@@ -13,20 +13,17 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::internal::SetOpt;
+use self::{proxy::Proxy, request::SetOpt};
 use crate::auth::{Authentication, Credentials};
 use curl::easy::Easy2;
-use std::{
-    iter::FromIterator,
-    net::{IpAddr, SocketAddr},
-    time::Duration,
-};
+use std::{net::IpAddr, time::Duration};
 
+pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
-pub(crate) mod internal;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
+pub(crate) mod request;
 pub(crate) mod ssl;
 
 pub use dial::{Dialer, DialerParseError};
@@ -43,7 +40,7 @@ pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 /// [`HttpClientBuilder`](crate::HttpClientBuilder).
 ///
 /// This trait is sealed and cannot be implemented for types outside of Isahc.
-pub trait Configurable: internal::ConfigurableBase {
+pub trait Configurable: request::WithRequestConfig {
     /// Specify a maximum amount of time that a complete request/response cycle
     /// is allowed to take before being aborted. This includes DNS resolution,
     /// connecting to the server, writing the request, and reading the response.
@@ -66,7 +63,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, Request};
     /// use std::time::Duration;
     ///
     /// // This page is too slow and won't respond in time.
@@ -78,14 +75,28 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn timeout(self, timeout: Duration) -> Self {
-        self.configure(Timeout(timeout))
+        self.with_config(move |config| {
+            config.timeout = Some(timeout);
+        })
     }
 
     /// Set a timeout for establishing connections to a host.
     ///
     /// If not set, a default connect timeout of 300 seconds will be used.
     fn connect_timeout(self, timeout: Duration) -> Self {
-        self.configure(ConnectTimeout(timeout))
+        self.with_config(move |config| {
+            config.connect_timeout = Some(timeout);
+        })
+    }
+
+    /// Specify a maximum amount of time where transfer rate can go below
+    /// a minimum speed limit. `low_speed` is that limit in bytes/s.
+    ///
+    /// If not set, no low speed limits are imposed.
+    fn low_speed_timeout(self, low_speed: u32, timeout: Duration) -> Self {
+        self.with_config(move |config| {
+            config.low_speed_timeout = Some((low_speed, timeout));
+        })
     }
 
     /// Configure how the use of HTTP versions should be negotiated with the
@@ -96,8 +107,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::VersionNegotiation;
-    /// use isahc::prelude::*;
+    /// use isahc::{
+    ///     config::VersionNegotiation,
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// // Never use anything newer than HTTP/1.x for this client.
     /// let http11_client = HttpClient::builder()
     ///     .version_negotiation(VersionNegotiation::http11())
@@ -110,7 +125,9 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn version_negotiation(self, negotiation: VersionNegotiation) -> Self {
-        self.configure(negotiation)
+        self.with_config(move |config| {
+            config.version_negotiation = Some(negotiation);
+        })
     }
 
     /// Set a policy for automatically following server redirects.
@@ -120,8 +137,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::config::RedirectPolicy;
-    /// use isahc::prelude::*;
+    /// use isahc::{config::RedirectPolicy, prelude::*, Request};
     ///
     /// // This URL redirects us to where we want to go.
     /// let response = Request::get("https://httpbin.org/redirect/1")
@@ -138,12 +154,16 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn redirect_policy(self, policy: RedirectPolicy) -> Self {
-        self.configure(policy)
+        self.with_config(move |config| {
+            config.redirect_policy = Some(policy);
+        })
     }
 
     /// Update the `Referer` header automatically when following redirects.
     fn auto_referer(self) -> Self {
-        self.configure(redirect::AutoReferer)
+        self.with_config(move |config| {
+            config.auto_referer = Some(true);
+        })
     }
 
     /// Set a cookie jar to use to accept, store, and supply cookies for
@@ -157,9 +177,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
     #[cfg(feature = "cookies")]
-    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
-        self.configure(cookie_jar)
-    }
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self;
 
     /// Enable or disable automatic decompression of the response body for
     /// various compression algorithms as returned by the server in the
@@ -170,13 +188,16 @@ pub trait Configurable: internal::ConfigurableBase {
     /// decode the HTTP response body for known and available compression
     /// algorithms. If the server returns a response with an unknown or
     /// unavailable encoding, Isahc will return an
-    /// [`InvalidContentEncoding`](crate::Error::InvalidContentEncoding) error.
+    /// [`InvalidContentEncoding`](crate::error::ErrorKind::InvalidContentEncoding)
+    /// error.
     ///
     /// If you do not specify a specific value for the
     /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
     /// header, Isahc will set one for you automatically based on this option.
     fn automatic_decompression(self, decompress: bool) -> Self {
-        self.configure(AutomaticDecompression(decompress))
+        self.with_config(move |config| {
+            config.automatic_decompression = Some(decompress);
+        })
     }
 
     /// Set one or more default HTTP authentication methods to attempt to use
@@ -189,9 +210,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .authentication(Authentication::basic() | Authentication::digest())
     ///     .credentials(Credentials::new("clark", "qwerty"))
@@ -199,7 +223,9 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn authentication(self, authentication: Authentication) -> Self {
-        self.configure(authentication)
+        self.with_config(move |config| {
+            config.authentication = Some(authentication);
+        })
     }
 
     /// Set the credentials to use for HTTP authentication.
@@ -207,17 +233,23 @@ pub trait Configurable: internal::ConfigurableBase {
     /// This setting will do nothing unless you also set one or more
     /// authentication methods using [`Configurable::authentication`].
     fn credentials(self, credentials: Credentials) -> Self {
-        self.configure(credentials)
+        self.with_config(move |config| {
+            config.credentials = Some(credentials);
+        })
     }
 
     /// Enable TCP keepalive with a given probe interval.
     fn tcp_keepalive(self, interval: Duration) -> Self {
-        self.configure(TcpKeepAlive(interval))
+        self.with_config(move |config| {
+            config.tcp_keepalive = Some(interval);
+        })
     }
 
     /// Enables the `TCP_NODELAY` option on connect.
     fn tcp_nodelay(self) -> Self {
-        self.configure(TcpNoDelay)
+        self.with_config(move |config| {
+            config.tcp_nodelay = Some(true);
+        })
     }
 
     /// Bind local socket connections to a particular network interface.
@@ -230,6 +262,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     prelude::*,
     ///     config::NetworkInterface,
+    ///     HttpClient,
+    ///     Request,
     /// };
     /// use std::net::IpAddr;
     ///
@@ -251,8 +285,13 @@ pub trait Configurable: internal::ConfigurableBase {
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn interface(self, interface: impl Into<NetworkInterface>) -> Self {
-        self.configure(interface.into())
+    fn interface<I>(self, interface: I) -> Self
+    where
+        I: Into<NetworkInterface>,
+    {
+        self.with_config(move |config| {
+            config.interface = Some(interface.into());
+        })
     }
 
     /// Select a specific IP version when resolving hostnames. If a given
@@ -263,7 +302,9 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// The default is [`IpVersion::Any`].
     fn ip_version(self, version: IpVersion) -> Self {
-        self.configure(version)
+        self.with_config(move |config| {
+            config.ip_version = Some(version);
+        })
     }
 
     /// Specify a socket to connect to instead of the using the host and port
@@ -277,6 +318,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     config::Dialer,
     ///     prelude::*,
+    ///     Request,
     /// };
     ///
     /// # #[cfg(unix)]
@@ -292,6 +334,7 @@ pub trait Configurable: internal::ConfigurableBase {
     /// use isahc::{
     ///     config::Dialer,
     ///     prelude::*,
+    ///     Request,
     /// };
     /// use std::net::Ipv4Addr;
     ///
@@ -302,8 +345,13 @@ pub trait Configurable: internal::ConfigurableBase {
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn dial(self, dialer: impl Into<Dialer>) -> Self {
-        self.configure(dialer.into())
+    fn dial<D>(self, dialer: D) -> Self
+    where
+        D: Into<Dialer>,
+    {
+        self.with_config(move |config| {
+            config.dial = Some(dialer.into());
+        })
     }
 
     /// Set a proxy to use for requests.
@@ -328,27 +376,28 @@ pub trait Configurable: internal::ConfigurableBase {
     /// Using `http://proxy:80` as a proxy:
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy(Some("http://proxy:80".parse()?))
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
     /// Explicitly disable the use of a proxy:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy(None)
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
-        self.configure(proxy::Proxy(proxy.into()))
+        self.with_config(move |config| {
+            config.proxy = Some(proxy.into());
+        })
     }
 
     /// Disable proxy usage for the provided list of hosts.
@@ -356,8 +405,8 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     // Disable proxy for specified hosts.
     ///     .proxy_blacklist(vec!["a.com", "b.org"])
@@ -369,7 +418,9 @@ pub trait Configurable: internal::ConfigurableBase {
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        self.configure(proxy::Blacklist::from_iter(hosts.into_iter().map(T::into)))
+        self.with_config(move |config| {
+            config.proxy_blacklist = Some(hosts.into_iter().map(T::into).collect());
+        })
     }
 
     /// Set one or more HTTP authentication methods to attempt to use when
@@ -382,18 +433,23 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::auth::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .proxy("http://proxy:80".parse::<http::Uri>()?)
     ///     .proxy_authentication(Authentication::basic())
     ///     .proxy_credentials(Credentials::new("clark", "qwerty"))
     ///     .build()?;
-    /// # Ok::<(), Box<std::error::Error>>(())
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     fn proxy_authentication(self, authentication: Authentication) -> Self {
-        self.configure(proxy::Proxy(authentication))
+        self.with_config(move |config| {
+            config.proxy_authentication = Some(Proxy(authentication));
+        })
     }
 
     /// Set the credentials to use for proxy authentication.
@@ -402,34 +458,27 @@ pub trait Configurable: internal::ConfigurableBase {
     /// authentication methods using
     /// [`Configurable::proxy_authentication`].
     fn proxy_credentials(self, credentials: Credentials) -> Self {
-        self.configure(proxy::Proxy(credentials))
+        self.with_config(move |config| {
+            config.proxy_credentials = Some(Proxy(credentials));
+        })
     }
 
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
     fn max_upload_speed(self, max: u64) -> Self {
-        self.configure(MaxUploadSpeed(max))
+        self.with_config(move |config| {
+            config.max_upload_speed = Some(max);
+        })
     }
 
     /// Set a maximum download speed for the response body, in bytes per second.
     ///
     /// The default is unlimited.
     fn max_download_speed(self, max: u64) -> Self {
-        self.configure(MaxDownloadSpeed(max))
-    }
-
-    /// Set a list of specific DNS servers to be used for DNS resolution.
-    ///
-    /// By default this option is not set and the system's built-in DNS resolver
-    /// is used. This option can only be used if libcurl is compiled with
-    /// [c-ares](https://c-ares.haxx.se), otherwise this option has no effect.
-    fn dns_servers<I, T>(self, servers: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<SocketAddr>,
-    {
-        self.configure(dns::Servers::from_iter(servers.into_iter().map(T::into)))
+        self.with_config(move |config| {
+            config.max_download_speed = Some(max);
+        })
     }
 
     /// Set a custom SSL/TLS client certificate to use for client connections.
@@ -443,8 +492,11 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::config::{ClientCertificate, PrivateKey};
-    /// use isahc::prelude::*;
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     Request,
+    /// };
     ///
     /// let response = Request::get("localhost:3999")
     ///     .ssl_client_certificate(ClientCertificate::pem_file(
@@ -457,9 +509,12 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_client_certificate(ClientCertificate::pem_file(
     ///         "client.pem",
@@ -469,7 +524,9 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
-        self.configure(certificate)
+        self.with_config(move |config| {
+            config.ssl_client_certificate = Some(certificate);
+        })
     }
 
     /// Set a custom SSL/TLS CA certificate bundle to use for client
@@ -486,16 +543,17 @@ pub trait Configurable: internal::ConfigurableBase {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
-        self.configure(certificate)
+        self.with_config(move |config| {
+            config.ssl_ca_certificate = Some(certificate);
+        })
     }
 
     /// Set a list of ciphers to use for SSL/TLS connections.
@@ -510,7 +568,9 @@ pub trait Configurable: internal::ConfigurableBase {
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        self.configure(ssl::Ciphers::from_iter(ciphers.into_iter().map(T::into)))
+        self.with_config(move |config| {
+            config.ssl_ciphers = Some(ciphers.into_iter().map(T::into).collect());
+        })
     }
 
     /// Set various options for this request that control SSL/TLS behavior.
@@ -529,10 +589,9 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// ```no_run
+    /// use isahc::{config::SslOption, prelude::*, Request};
+    ///
     /// let response = Request::get("https://badssl.com")
     ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
     ///     .body(())?
@@ -541,16 +600,17 @@ pub trait Configurable: internal::ConfigurableBase {
     /// ```
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     fn ssl_options(self, options: SslOption) -> Self {
-        self.configure(options)
+        self.with_config(move |config| {
+            config.ssl_options = Some(options);
+        })
     }
 
     /// Enable or disable sending HTTP header names in Title-Case instead of
@@ -564,7 +624,9 @@ pub trait Configurable: internal::ConfigurableBase {
     /// This option has no effect when using HTTP/2 or newer where headers are
     /// required to be lowercase.
     fn title_case_headers(self, enable: bool) -> Self {
-        self.configure(TitleCaseHeaders(enable))
+        self.with_config(move |config| {
+            config.title_case_headers = Some(enable);
+        })
     }
 
     /// Enable or disable comprehensive per-request metrics collection.
@@ -583,7 +645,9 @@ pub trait Configurable: internal::ConfigurableBase {
     ///
     /// By default metrics are disabled.
     fn metrics(self, enable: bool) -> Self {
-        self.configure(EnableMetrics(enable))
+        self.with_config(move |config| {
+            config.enable_metrics = Some(enable);
+        })
     }
 }
 
@@ -706,7 +770,9 @@ impl NetworkInterface {
     /// Bind to whatever the networking stack finds suitable. This is the
     /// default behavior.
     pub fn any() -> Self {
-        Self { interface: None }
+        Self {
+            interface: None,
+        }
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method
@@ -775,114 +841,6 @@ impl SetOpt for NetworkInterface {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct Timeout(pub(crate) Duration);
-
-impl SetOpt for Timeout {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.timeout(self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct ConnectTimeout(pub(crate) Duration);
-
-impl SetOpt for ConnectTimeout {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.connect_timeout(self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct TcpKeepAlive(pub(crate) Duration);
-
-impl SetOpt for TcpKeepAlive {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.tcp_keepalive(true)?;
-        easy.tcp_keepintvl(self.0)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct TcpNoDelay;
-
-impl SetOpt for TcpNoDelay {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.tcp_nodelay(true)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct MaxUploadSpeed(pub(crate) u64);
-
-impl SetOpt for MaxUploadSpeed {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.max_send_speed(self.0)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct MaxDownloadSpeed(pub(crate) u64);
-
-impl SetOpt for MaxDownloadSpeed {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.max_recv_speed(self.0)
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct MaxAgeConn(pub(crate) Duration);
-
-impl SetOpt for MaxAgeConn {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.maxage_conn(self.0)
-    }
-}
-
-/// Close the connection when the request completes instead of returning it to
-/// the connection cache.
-#[derive(Clone, Debug)]
-pub(crate) struct CloseConnection(pub(crate) bool);
-
-impl SetOpt for CloseConnection {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.forbid_reuse(self.0)
-    }
-}
-
-/// Enable or disable automatically decompressing the response body.
-#[derive(Clone, Debug)]
-pub(crate) struct AutomaticDecompression(pub(crate) bool);
-
-impl SetOpt for AutomaticDecompression {
-    #[allow(unsafe_code)]
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        if self.0 {
-            // Enable automatic decompression, and also populate the
-            // Accept-Encoding header with all supported encodings if not
-            // explicitly set.
-            easy.accept_encoding("")
-        } else {
-            // Use raw FFI because safe wrapper doesn't let us set to null.
-            unsafe {
-                match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_ACCEPT_ENCODING, 0) {
-                    curl_sys::CURLE_OK => Ok(()),
-                    code => Err(curl::Error::new(code)),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct EnableMetrics(pub(crate) bool);
-
-impl SetOpt for EnableMetrics {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.progress(self.0)
-    }
-}
-
 /// Supported IP versions that can be used.
 #[derive(Clone, Debug)]
 pub enum IpVersion {
@@ -914,7 +872,3 @@ impl SetOpt for IpVersion {
         })
     }
 }
-
-/// Send header names as title case instead of lowercase.
-#[derive(Clone, Debug)]
-pub(crate) struct TitleCaseHeaders(pub(crate) bool);

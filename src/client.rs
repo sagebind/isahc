@@ -2,19 +2,27 @@
 
 use crate::{
     agent::{self, AgentBuilder},
-    auth::{Authentication, Credentials},
-    config::internal::{ConfigurableBase, SetOpt},
-    config::*,
+    body::{AsyncBody, Body},
+    config::{
+        client::ClientConfig,
+        request::{RequestConfig, SetOpt, WithRequestConfig},
+        *,
+    },
     default_headers::DefaultHeadersInterceptor,
+    error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
-    headers,
+    headers::HasHeaders,
     interceptor::{self, Interceptor, InterceptorObj},
-    Body, Error,
+    parsing::header_to_curl_string,
 };
-use futures_lite::{future::block_on, io::AsyncRead, pin};
+use futures_lite::{
+    future::{block_on, try_zip},
+    io::AsyncRead,
+};
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request, Response,
+    Request,
+    Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -29,11 +37,13 @@ use std::{
 };
 use tracing_futures::Instrument;
 
-static USER_AGENT: Lazy<String> = Lazy::new(|| format!(
-    "curl/{} isahc/{}",
-    curl::Version::get().version(),
-    env!("CARGO_PKG_VERSION")
-));
+static USER_AGENT: Lazy<String> = Lazy::new(|| {
+    format!(
+        "curl/{} isahc/{}",
+        curl::Version::get().version(),
+        env!("CARGO_PKG_VERSION")
+    )
+});
 
 /// An HTTP client builder, capable of creating custom [`HttpClient`] instances
 /// with customized behavior.
@@ -46,8 +56,11 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| format!(
 /// # Examples
 ///
 /// ```
-/// use isahc::config::{RedirectPolicy, VersionNegotiation};
-/// use isahc::prelude::*;
+/// use isahc::{
+///     config::{RedirectPolicy, VersionNegotiation},
+///     prelude::*,
+///     HttpClient,
+/// };
 /// use std::time::Duration;
 ///
 /// let client = HttpClient::builder()
@@ -59,7 +72,8 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| format!(
 /// ```
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
-    defaults: http::Extensions,
+    client_config: ClientConfig,
+    request_config: RequestConfig,
     interceptors: Vec<InterceptorObj>,
     default_headers: HeaderMap<HeaderValue>,
     error: Option<Error>,
@@ -80,21 +94,10 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
-        let mut defaults = http::Extensions::new();
-
-        // Always start out with latest compatible HTTP version.
-        defaults.insert(VersionNegotiation::default());
-
-        // Enable automatic decompression by default for convenience (and
-        // maintain backwards compatibility).
-        defaults.insert(AutomaticDecompression(true));
-
-        // Erase curl's default auth method of Basic.
-        defaults.insert(Authentication::default());
-
         Self {
             agent_builder: AgentBuilder::default(),
-            defaults,
+            client_config: ClientConfig::default(),
+            request_config: RequestConfig::client_defaults(),
             interceptors: vec![
                 // Add redirect support. Note that this is _always_ the first,
                 // and thus the outermost, interceptor. Also note that this does
@@ -116,8 +119,8 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```no_run
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// // Create a client with a cookie jar.
     /// let client = HttpClient::builder()
     ///     .cookies()
@@ -180,7 +183,7 @@ impl HttpClientBuilder {
     ///
     /// The default TTL is 118 seconds.
     pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
-        self.defaults.insert(MaxAgeConn(ttl));
+        self.client_config.connection_cache_ttl = Some(ttl);
         self
     }
 
@@ -240,7 +243,7 @@ impl HttpClientBuilder {
     /// chosen.
     pub fn connection_cache_size(mut self, size: usize) -> Self {
         self.agent_builder = self.agent_builder.connection_cache_size(size);
-        self.defaults.insert(CloseConnection(size == 0));
+        self.client_config.close_connections = size == 0;
         self
     }
 
@@ -257,10 +260,9 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::*;
-    /// # use isahc::prelude::*;
-    /// # use std::time::Duration;
-    /// #
+    /// use isahc::{config::*, prelude::*, HttpClient};
+    /// use std::time::Duration;
+    ///
     /// let client = HttpClient::builder()
     ///     // Cache entries for 10 seconds.
     ///     .dns_cache(Duration::from_secs(10))
@@ -271,13 +273,17 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn dns_cache(self, cache: impl Into<DnsCache>) -> Self {
-        // This option is per-request, but we only expose it on the client.
-        // Since the DNS cache is shared between all requests, exposing this
-        // option per-request would actually cause the timeout to alternate
-        // values for every request with a different timeout, resulting in some
-        // confusing (but valid) behavior.
-        self.configure(cache.into())
+    pub fn dns_cache<C>(mut self, cache: C) -> Self
+    where
+        C: Into<DnsCache>,
+    {
+        // This option is technically supported per-request by curl, but we only
+        // expose it on the client. Since the DNS cache is shared between all
+        // requests, exposing this option per-request would actually cause the
+        // timeout to alternate values for every request with a different
+        // timeout, resulting in some confusing (but valid) behavior.
+        self.client_config.dns_cache = Some(cache.into());
+        self
     }
 
     /// Set a mapping of DNS resolve overrides.
@@ -290,10 +296,9 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::config::ResolveMap;
-    /// # use isahc::prelude::*;
-    /// # use std::net::IpAddr;
-    /// #
+    /// use isahc::{config::ResolveMap, prelude::*, HttpClient};
+    /// use std::net::IpAddr;
+    ///
     /// let client = HttpClient::builder()
     ///     .dns_resolve(ResolveMap::new()
     ///         // Send requests for example.org on port 80 to 127.0.0.1.
@@ -301,11 +306,12 @@ impl HttpClientBuilder {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn dns_resolve(self, map: ResolveMap) -> Self {
+    pub fn dns_resolve(mut self, map: ResolveMap) -> Self {
         // Similar to the dns_cache option, this operation actually affects all
         // requests in a multi handle so we do not expose it per-request to
         // avoid confusing behavior.
-        self.configure(map)
+        self.client_config.dns_resolve = Some(map);
+        self
     }
 
     /// Add a default header to be passed with every request.
@@ -323,8 +329,8 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let client = HttpClient::builder()
     ///     .default_header("some-header", "some-value")
     ///     .build()?;
@@ -343,11 +349,11 @@ impl HttpClientBuilder {
                     self.default_headers.append(key, value);
                 }
                 Err(e) => {
-                    self.error = Some(e.into().into());
+                    self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
                 }
             },
             Err(e) => {
-                self.error = Some(e.into().into());
+                self.error = Some(Error::new(ErrorKind::ClientInitialization, e.into()));
             }
         }
         self
@@ -367,8 +373,8 @@ impl HttpClientBuilder {
     /// Set default headers from a slice:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let mut builder = HttpClient::builder()
     ///     .default_headers(&[
     ///         ("some-header", "value1"),
@@ -382,8 +388,8 @@ impl HttpClientBuilder {
     /// Using an existing header map:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    ///
     /// let mut headers = http::HeaderMap::new();
     /// headers.append("some-header".parse::<http::header::HeaderName>()?, "some-value".parse()?);
     ///
@@ -396,9 +402,9 @@ impl HttpClientBuilder {
     /// Using a hashmap:
     ///
     /// ```
-    /// # use isahc::prelude::*;
-    /// # use std::collections::HashMap;
-    /// #
+    /// use isahc::{prelude::*, HttpClient};
+    /// use std::collections::HashMap;
+    ///
     /// let mut headers = HashMap::new();
     /// headers.insert("some-header", "some-value");
     ///
@@ -429,7 +435,6 @@ impl HttpClientBuilder {
     ///
     /// If the client fails to initialize, an error will be returned.
     #[allow(unused_mut)]
-    #[tracing::instrument(level = "debug", skip(self))]
     pub fn build(mut self) -> Result<HttpClient, Error> {
         if let Some(err) = self.error {
             return Err(err);
@@ -448,16 +453,32 @@ impl HttpClientBuilder {
             self = self.interceptor_impl(DefaultHeadersInterceptor::from(default_headers));
         }
 
-        let inner = InnerHttpClient {
-            agent: self.agent_builder.spawn()?,
-            defaults: self.defaults,
+        #[cfg(not(feature = "cookies"))]
+        let inner = Inner {
+            agent: self
+                .agent_builder
+                .spawn()
+                .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            client_config: self.client_config,
+            request_config: self.request_config,
             interceptors: self.interceptors,
+        };
 
-            #[cfg(feature = "cookies")]
+        #[cfg(feature = "cookies")]
+        let inner = Inner {
+            agent: self
+                .agent_builder
+                .spawn()
+                .map_err(|e| Error::new(ErrorKind::ClientInitialization, e))?,
+            client_config: self.client_config,
+            request_config: self.request_config,
+            interceptors: self.interceptors,
             cookie_jar: self.cookie_jar,
         };
 
-        Ok(HttpClient { inner: Arc::new(inner) })
+        Ok(HttpClient {
+            inner: Arc::new(inner),
+        })
     }
 }
 
@@ -469,9 +490,10 @@ impl Configurable for HttpClientBuilder {
     }
 }
 
-impl ConfigurableBase for HttpClientBuilder {
-    fn configure(mut self, option: impl Send + Sync + 'static) -> Self {
-        self.defaults.insert(option);
+impl WithRequestConfig for HttpClientBuilder {
+    #[inline]
+    fn with_config(mut self, f: impl FnOnce(&mut RequestConfig)) -> Self {
+        f(&mut self.request_config);
         self
     }
 }
@@ -533,7 +555,7 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// # Examples
 ///
 /// ```no_run
-/// use isahc::prelude::*;
+/// use isahc::{prelude::*, HttpClient};
 ///
 /// // Create a new client using reasonable defaults.
 /// let client = HttpClient::new()?;
@@ -552,6 +574,7 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// use isahc::{
 ///     config::{RedirectPolicy, VersionNegotiation},
 ///     prelude::*,
+///     HttpClient,
 /// };
 /// use std::time::Duration;
 ///
@@ -572,16 +595,18 @@ impl<'a, K: Copy, V: Copy> HeaderPair<K, V> for &'a (K, V) {
 /// what can be configured.
 #[derive(Clone)]
 pub struct HttpClient {
-    inner: Arc<InnerHttpClient>,
+    inner: Arc<Inner>,
 }
 
-struct InnerHttpClient {
+struct Inner {
     /// This is how we talk to our background agent thread.
     agent: agent::Handle,
 
-    /// Map of config values that should be used to configure execution if not
-    /// specified in a request.
-    defaults: http::Extensions,
+    /// Client-wide request configuration.
+    client_config: ClientConfig,
+
+    /// Default request configuration to use if not specified in a request.
+    request_config: RequestConfig,
 
     /// Registered interceptors that requests should pass through.
     interceptors: Vec<InterceptorObj>,
@@ -595,7 +620,6 @@ impl HttpClient {
     /// Create a new HTTP client using the default configuration.
     ///
     /// If the client fails to initialize, an error will be returned.
-    #[tracing::instrument(level = "debug")]
     pub fn new() -> Result<Self, Error> {
         HttpClientBuilder::default().build()
     }
@@ -603,10 +627,9 @@ impl HttpClient {
     /// Get a reference to a global client instance.
     ///
     /// TODO: Stabilize.
-    #[tracing::instrument(level = "debug")]
     pub(crate) fn shared() -> &'static Self {
-        static SHARED: Lazy<HttpClient> = Lazy::new(|| HttpClient::new()
-            .expect("shared client failed to initialize"));
+        static SHARED: Lazy<HttpClient> =
+            Lazy::new(|| HttpClient::new().expect("shared client failed to initialize"));
 
         &SHARED
     }
@@ -635,9 +658,9 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
-    /// # let client = HttpClient::new()?;
+    /// let client = HttpClient::new()?;
     /// let mut response = client.get("https://example.org")?;
     /// println!("{}", response.text()?);
     /// # Ok::<(), isahc::Error>(())
@@ -648,7 +671,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.get_async(uri))
+        match http::Request::get(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a GET request to the given URI asynchronously.
@@ -660,7 +686,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::get(uri), Body::empty())
+        match http::Request::get(uri).body(()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a HEAD request to the given URI.
@@ -671,8 +700,9 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// # use isahc::prelude::*;
-    /// # let client = HttpClient::new()?;
+    /// use isahc::{prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::new()?;
     /// let response = client.head("https://example.org")?;
     /// println!("Page size: {:?}", response.headers()["content-length"]);
     /// # Ok::<(), isahc::Error>(())
@@ -683,7 +713,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.head_async(uri))
+        match http::Request::head(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a HEAD request to the given URI asynchronously.
@@ -695,7 +728,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::head(uri), Body::empty())
+        match http::Request::head(uri).body(()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a POST request to the given URI with a given request body.
@@ -706,7 +742,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -716,12 +752,16 @@ impl HttpClient {
     /// }"#)?;
     /// # Ok::<(), isahc::Error>(())
     #[inline]
-    pub fn post<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    pub fn post<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        block_on(self.post_async(uri, body))
+        match http::Request::post(uri).body(body) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a POST request to the given URI asynchronously with a given request
@@ -729,12 +769,16 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::post`].
-    pub fn post_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
+    pub fn post_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<AsyncBody>,
     {
-        self.send_builder_async(http::Request::post(uri), body.into())
+        match http::Request::post(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a PUT request to the given URI with a given request body.
@@ -745,7 +789,7 @@ impl HttpClient {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -756,12 +800,16 @@ impl HttpClient {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[inline]
-    pub fn put<U>(&self, uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+    pub fn put<U, B>(&self, uri: U, body: B) -> Result<Response<Body>, Error>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<Body>,
     {
-        block_on(self.put_async(uri, body))
+        match http::Request::put(uri).body(body) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a PUT request to the given URI asynchronously with a given request
@@ -769,12 +817,16 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::put`].
-    pub fn put_async<U>(&self, uri: U, body: impl Into<Body>) -> ResponseFuture<'_>
+    pub fn put_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+        B: Into<AsyncBody>,
     {
-        self.send_builder_async(http::Request::put(uri), body.into())
+        match http::Request::put(uri).body(body) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send a DELETE request to the given URI.
@@ -787,7 +839,10 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        block_on(self.delete_async(uri))
+        match http::Request::delete(uri).body(()) {
+            Ok(request) => self.send(request),
+            Err(e) => Err(Error::from_any(e)),
+        }
     }
 
     /// Send a DELETE request to the given URI asynchronously.
@@ -799,43 +854,43 @@ impl HttpClient {
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        self.send_builder_async(http::Request::delete(uri), Body::empty())
+        match http::Request::delete(uri).body(()) {
+            Ok(request) => self.send_async(request),
+            Err(e) => ResponseFuture::error(Error::from_any(e)),
+        }
     }
 
     /// Send an HTTP request and return the HTTP response.
-    ///
-    /// The response body is provided as a stream that may only be consumed
-    /// once.
-    ///
-    /// This client's configuration can be overridden for this request by
-    /// configuring the request using methods provided by the [`Configurable`]
-    /// trait.
     ///
     /// Upon success, will return a [`Response`] containing the status code,
     /// response headers, and response body from the server. The [`Response`] is
     /// returned as soon as the HTTP response headers are received; the
     /// connection will remain open to stream the response body in real time.
-    /// Dropping the response body without fully consume it will close the
+    /// Dropping the response body without fully consuming it will close the
     /// connection early without downloading the rest of the response body.
     ///
-    /// _Note that the actual underlying socket connection isn't necessarily
-    /// closed on drop. It may remain open to be reused if pipelining is being
-    /// used, the connection is configured as `keep-alive`, and so on._
-    ///
-    /// Since the response body is streamed from the server, it may only be
-    /// consumed once. If you need to inspect the response body more than once,
-    /// you will have to either read it into memory or write it to a file.
+    /// The response body is provided as a stream that may only be consumed
+    /// once. If you need to inspect the response body more than once, you will
+    /// have to either read it into memory or write it to a file.
     ///
     /// The response body is not a direct stream from the server, but uses its
     /// own buffering mechanisms internally for performance. It is therefore
     /// undesirable to wrap the body in additional buffering readers.
     ///
-    /// To execute the request asynchronously, see [`HttpClient::send_async`].
+    /// _Note that the actual underlying socket connection isn't necessarily
+    /// closed on drop. It may remain open to be reused if pipelining is being
+    /// used, the connection is configured as `keep-alive`, and so on._
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the [`Configurable`]
+    /// trait.
+    ///
+    /// To execute a request asynchronously, see [`HttpClient::send_async`].
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient, Request};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -850,21 +905,82 @@ impl HttpClient {
     /// assert!(response.status().is_success());
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    #[inline]
-    #[tracing::instrument(level = "debug", skip(self, request), err)]
-    pub fn send<B: Into<Body>>(&self, request: Request<B>) -> Result<Response<Body>, Error> {
-        block_on(self.send_async(request))
+    pub fn send<B>(&self, request: Request<B>) -> Result<Response<Body>, Error>
+    where
+        B: Into<Body>,
+    {
+        let span = tracing::debug_span!(
+            "send",
+            method = ?request.method(),
+            uri = ?request.uri(),
+        );
+
+        let mut writer_maybe = None;
+
+        let request = request.map(|body| {
+            let (async_body, writer) = body.into().into_async();
+            writer_maybe = writer;
+            async_body
+        });
+
+        let response = block_on(
+            async move {
+                // Instead of simply blocking the current thread until the response
+                // is received, we can use the current thread to read from the
+                // request body synchronously while concurrently waiting for the
+                // response.
+                if let Some(mut writer) = writer_maybe {
+                    // Note that the `send_async` future is given first; this
+                    // ensures that it is polled first and thus the request is
+                    // initiated before we attempt to write the request body.
+                    let (response, _) = try_zip(self.send_async_inner(request), async move {
+                        writer.write().await.map_err(Error::from)
+                    })
+                    .await?;
+
+                    Ok(response)
+                } else {
+                    self.send_async_inner(request).await
+                }
+            }
+            .instrument(span),
+        )?;
+
+        Ok(response.map(|body| body.into_sync()))
     }
 
     /// Send an HTTP request and return the HTTP response asynchronously.
     ///
-    /// See [`HttpClient::send`] for further details.
+    /// Upon success, will return a [`Response`] containing the status code,
+    /// response headers, and response body from the server. The [`Response`] is
+    /// returned as soon as the HTTP response headers are received; the
+    /// connection will remain open to stream the response body in real time.
+    /// Dropping the response body without fully consuming it will close the
+    /// connection early without downloading the rest of the response body.
+    ///
+    /// The response body is provided as a stream that may only be consumed
+    /// once. If you need to inspect the response body more than once, you will
+    /// have to either read it into memory or write it to a file.
+    ///
+    /// The response body is not a direct stream from the server, but uses its
+    /// own buffering mechanisms internally for performance. It is therefore
+    /// undesirable to wrap the body in additional buffering readers.
+    ///
+    /// _Note that the actual underlying socket connection isn't necessarily
+    /// closed on drop. It may remain open to be reused if pipelining is being
+    /// used, the connection is configured as `keep-alive`, and so on._
+    ///
+    /// This client's configuration can be overridden for this request by
+    /// configuring the request using methods provided by the [`Configurable`]
+    /// trait.
+    ///
+    /// To execute a request synchronously, see [`HttpClient::send`].
     ///
     /// # Examples
     ///
     /// ```no_run
     /// # async fn run() -> Result<(), isahc::Error> {
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, HttpClient, Request};
     ///
     /// let client = HttpClient::new()?;
     ///
@@ -880,32 +996,35 @@ impl HttpClient {
     /// # Ok(()) }
     /// ```
     #[inline]
-    pub fn send_async<B: Into<Body>>(&self, request: Request<B>) -> ResponseFuture<'_> {
-        ResponseFuture::new(self.send_async_inner(request.map(Into::into)))
-    }
-
-    #[inline]
-    fn send_builder_async(
-        &self,
-        builder: http::request::Builder,
-        body: Body,
-    ) -> ResponseFuture<'_> {
-        ResponseFuture::new(async move { self.send_async_inner(builder.body(body)?).await })
-    }
-
-    /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(&self, mut request: Request<Body>) -> Result<Response<Body>, Error> {
+    pub fn send_async<B>(&self, request: Request<B>) -> ResponseFuture<'_>
+    where
+        B: Into<AsyncBody>,
+    {
         let span = tracing::debug_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
         );
 
-        // Set redirect policy if not specified.
-        if request.extensions().get::<RedirectPolicy>().is_none() {
-            if let Some(policy) = self.inner.defaults.get::<RedirectPolicy>().cloned() {
-                request.extensions_mut().insert(policy);
-            }
+        ResponseFuture::new(
+            self.send_async_inner(request.map(Into::into))
+                .instrument(span),
+        )
+    }
+
+    /// Actually send the request. All the public methods go through here.
+    async fn send_async_inner(
+        &self,
+        mut request: Request<AsyncBody>,
+    ) -> Result<Response<AsyncBody>, Error> {
+        // Populate request config, creating if necessary.
+        if let Some(config) = request.extensions_mut().get_mut::<RequestConfig>() {
+            // Merge request configuration with defaults.
+            config.merge(&self.inner.request_config);
+        } else {
+            request
+                .extensions_mut()
+                .insert(self.inner.request_config.clone());
         }
 
         let ctx = interceptor::Context {
@@ -913,23 +1032,20 @@ impl HttpClient {
             interceptors: &self.inner.interceptors,
         };
 
-        ctx.send(request)
-            .instrument(span)
-            .await
+        ctx.send(request).await
     }
 
     fn create_easy_handle(
         &self,
-        mut request: Request<Body>,
+        mut request: Request<AsyncBody>,
     ) -> Result<
         (
             curl::easy::Easy2<RequestHandler>,
             impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
         ),
-        Error,
+        curl::Error,
     > {
         // Prepare the request plumbing.
-        // let (mut parts, body) = request.into_parts();
         let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
@@ -942,51 +1058,13 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        // Macro to apply all config values given in the request or in defaults.
-        macro_rules! set_opts {
-            ($easy:expr, $extensions:expr, $defaults:expr, [$($option:ty,)*]) => {{
-                $(
-                    if let Some(extension) = $extensions.get::<$option>().or_else(|| $defaults.get()) {
-                        extension.set_opt($easy)?;
-                    }
-                )*
-            }};
-        }
+        request
+            .extensions()
+            .get::<RequestConfig>()
+            .unwrap()
+            .set_opt(&mut easy)?;
 
-        set_opts!(
-            &mut easy,
-            request.extensions(),
-            self.inner.defaults,
-            [
-                Timeout,
-                ConnectTimeout,
-                TcpKeepAlive,
-                TcpNoDelay,
-                NetworkInterface,
-                Dialer,
-                AutomaticDecompression,
-                Authentication,
-                Credentials,
-                MaxAgeConn,
-                MaxUploadSpeed,
-                MaxDownloadSpeed,
-                VersionNegotiation,
-                proxy::Proxy<Option<http::Uri>>,
-                proxy::Blacklist,
-                proxy::Proxy<Authentication>,
-                proxy::Proxy<Credentials>,
-                DnsCache,
-                dns::ResolveMap,
-                dns::Servers,
-                ssl::Ciphers,
-                ClientCertificate,
-                CaCertificate,
-                SslOption,
-                CloseConnection,
-                EnableMetrics,
-                IpVersion,
-            ]
-        );
+        self.inner.client_config.set_opt(&mut easy)?;
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -1052,13 +1130,13 @@ impl HttpClient {
 
         let title_case = request
             .extensions()
-            .get::<TitleCaseHeaders>()
-            .or_else(|| self.inner.defaults.get())
-            .map(|v| v.0)
+            .get::<RequestConfig>()
+            .unwrap()
+            .title_case_headers
             .unwrap_or(false);
 
         for (name, value) in request.headers().iter() {
-            headers.append(&headers::to_curl_string(name, value, title_case))?;
+            headers.append(&header_to_curl_string(name, value, title_case))?;
         }
 
         easy.http_headers(headers)?;
@@ -1068,49 +1146,71 @@ impl HttpClient {
 }
 
 impl crate::interceptor::Invoke for &HttpClient {
-    fn invoke<'a>(&'a self, mut request: Request<Body>) -> crate::interceptor::InterceptorFuture<'a, Error> {
-        Box::pin(
-            async move {
-                // Set default user agent if not specified.
-                request
-                    .headers_mut()
-                    .entry(http::header::USER_AGENT)
-                    .or_insert(USER_AGENT.parse().unwrap());
+    fn invoke(
+        &self,
+        mut request: Request<AsyncBody>,
+    ) -> crate::interceptor::InterceptorFuture<'_, Error> {
+        Box::pin(async move {
+            // Set default user agent if not specified.
+            request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
 
-                // Create and configure a curl easy handle to fulfil the request.
-                let (easy, future) = self.create_easy_handle(request)?;
+            // Check if automatic decompression is enabled; we'll need to know
+            // this later after the response is sent.
+            let is_automatic_decompression = request
+                .extensions()
+                .get::<RequestConfig>()
+                .unwrap()
+                .automatic_decompression
+                .unwrap_or(false);
 
-                // Send the request to the agent to be executed.
-                self.inner.agent.submit_request(easy)?;
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = self.create_easy_handle(request).map_err(Error::from_any)?;
 
-                // Await for the response headers.
-                let response = future.await?;
+            // Send the request to the agent to be executed.
+            self.inner.agent.submit_request(easy)?;
 
-                // If a Content-Length header is present, include that information in
-                // the body as well.
-                let content_length = response
-                    .headers()
-                    .get(http::header::CONTENT_LENGTH)
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|v| v.parse().ok());
+            // Await for the response headers.
+            let response = future.await?;
 
-                // Convert the reader into an opaque Body.
-                Ok(response.map(|reader| {
-                    let body = ResponseBody {
-                        inner: reader,
-                        // Extend the lifetime of the agent by including a reference
-                        // to its handle in the response body.
-                        _client: (*self).clone(),
-                    };
-
-                    if let Some(len) = content_length {
-                        Body::from_reader_sized(body, len)
-                    } else {
-                        Body::from_reader(body)
+            // If a Content-Length header is present, include that information in
+            // the body as well.
+            let body_len = response.content_length().filter(|_| {
+                // If automatic decompression is enabled, and will likely be
+                // selected, then the value of Content-Length does not indicate
+                // the uncompressed body length and merely the compressed data
+                // length. If it looks like we are in this scenario then we
+                // ignore the Content-Length, since it can only cause confusion
+                // when included with the body.
+                if is_automatic_decompression {
+                    if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
+                        if value != "identity" {
+                            return false;
+                        }
                     }
-                }))
-            }
-        )
+                }
+
+                true
+            });
+
+            // Convert the reader into an opaque Body.
+            Ok(response.map(|reader| {
+                let body = ResponseBody {
+                    inner: reader,
+                    // Extend the lifetime of the agent by including a reference
+                    // to its handle in the response body.
+                    _client: (*self).clone(),
+                };
+
+                if let Some(len) = body_len {
+                    AsyncBody::from_reader_sized(body, len)
+                } else {
+                    AsyncBody::from_reader(body)
+                }
+            }))
+        })
     }
 }
 
@@ -1121,16 +1221,24 @@ impl fmt::Debug for HttpClient {
 }
 
 /// A future for a request being executed.
-pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = Result<Response<Body>, Error>> + 'c + Send>>);
+#[must_use = "futures do nothing unless you `.await` or poll them"]
+pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>);
 
 impl<'c> ResponseFuture<'c> {
-    fn new(future: impl Future<Output = Result<Response<Body>, Error>> + Send + 'c) -> Self {
+    fn new<F>(future: F) -> Self
+    where
+        F: Future<Output = <Self as Future>::Output> + Send + 'c,
+    {
         ResponseFuture(Box::pin(future))
+    }
+
+    fn error(error: Error) -> Self {
+        Self::new(async move { Err(error) })
     }
 }
 
 impl Future for ResponseFuture<'_> {
-    type Output = Result<Response<Body>, Error>;
+    type Output = Result<Response<AsyncBody>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.0.as_mut().poll(cx)
@@ -1156,8 +1264,7 @@ impl AsyncRead for ResponseBody {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        let inner = &mut self.inner;
-        pin!(inner);
+        let inner = Pin::new(&mut self.inner);
         inner.poll_read(cx, buf)
     }
 }

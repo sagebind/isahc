@@ -1,12 +1,15 @@
 #![cfg(feature = "cookies")]
 
-use isahc::{cookies::CookieJar, prelude::*};
+use isahc::{cookies::CookieJar, prelude::*, HttpClient};
 use testserver::mock;
 
 #[test]
 fn cookie_lifecycle() {
     let jar = CookieJar::default();
-    let client = HttpClient::builder().cookie_jar(jar.clone()).build().unwrap();
+    let client = HttpClient::builder()
+        .cookie_jar(jar.clone())
+        .build()
+        .unwrap();
 
     let m1 = mock! {
         headers {

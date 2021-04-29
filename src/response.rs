@@ -1,5 +1,5 @@
-use crate::{Metrics, trailer::Trailer};
-use futures_lite::io::AsyncRead;
+use crate::{metrics::Metrics, redirect::EffectiveUri, trailer::Trailer};
+use futures_lite::io::{copy as copy_async, AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -69,13 +69,105 @@ pub trait ResponseExt<T> {
     /// metrics you can use
     /// [`Configurable::metrics`](crate::config::Configurable::metrics).
     fn metrics(&self) -> Option<&Metrics>;
+}
+
+impl<T> ResponseExt<T> for Response<T> {
+    fn trailer(&self) -> &Trailer {
+        // Return a static empty trailer if the extension does not exist. This
+        // offers a more convenient API so that users do not have to unwrap the
+        // trailer from an extra Option.
+        self.extensions().get().unwrap_or(Trailer::empty())
+    }
+
+    fn effective_uri(&self) -> Option<&Uri> {
+        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
+    }
+
+    fn local_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<LocalAddr>().map(|v| v.0)
+    }
+
+    fn remote_addr(&self) -> Option<SocketAddr> {
+        self.extensions().get::<RemoteAddr>().map(|v| v.0)
+    }
+
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
+        self.extensions().get()
+    }
+
+    fn metrics(&self) -> Option<&Metrics> {
+        self.extensions().get()
+    }
+}
+
+/// Provides extension methods for consuming HTTP response streams.
+pub trait ReadResponseExt<R: Read> {
+    /// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven't read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get("https://example.org")?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn consume(&mut self) -> io::Result<()> {
+        self.copy_to(io::sink())?;
+
+        Ok(())
+    }
 
     /// Copy the response body into a writer.
     ///
     /// Returns the number of bytes that were written.
-    fn copy_to(&mut self, writer: impl Write) -> io::Result<u64>
-    where
-        T: Read;
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut buf = vec![];
+    /// isahc::get("https://example.org")?.copy_to(&mut buf)?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn copy_to<W: Write>(&mut self, writer: W) -> io::Result<u64>;
 
     /// Write the response body to a file.
     ///
@@ -93,10 +185,7 @@ pub trait ResponseExt<T> {
     ///     .copy_to_file("myimage.jpg")?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    fn copy_to_file(&mut self, path: impl AsRef<Path>) -> io::Result<u64>
-    where
-        T: Read,
-    {
+    fn copy_to_file<P: AsRef<Path>>(&mut self, path: P) -> io::Result<u64> {
         File::create(path).and_then(|f| self.copy_to(f))
     }
 
@@ -132,24 +221,7 @@ pub trait ResponseExt<T> {
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> io::Result<String>
-    where
-        T: Read;
-
-    /// Read the response body as a string asynchronously.
-    ///
-    /// This method consumes the entire response body stream and can only be
-    /// called once.
-    ///
-    /// # Availability
-    ///
-    /// This method is only available when the
-    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
-    /// is by default.
-    #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
-    where
-        T: AsyncRead + Unpin;
+    fn text(&mut self) -> io::Result<String>;
 
     /// Deserialize the response body as JSON into a given type.
     ///
@@ -169,76 +241,233 @@ pub trait ResponseExt<T> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(feature = "json")]
-    fn json<D>(&mut self) -> Result<D, serde_json::Error>
+    fn json<T>(&mut self) -> Result<T, serde_json::Error>
     where
-        D: serde::de::DeserializeOwned,
-        T: Read;
+        T: serde::de::DeserializeOwned;
 }
 
-impl<T> ResponseExt<T> for Response<T> {
-    fn trailer(&self) -> &Trailer {
-        // Return a static empty trailer if the extension does not exist. This
-        // offers a more convenient API so that users do not have to unwrap the
-        // trailer from an extra Option.
-        self.extensions().get().unwrap_or(Trailer::empty())
-    }
-
-    fn effective_uri(&self) -> Option<&Uri> {
-        self.extensions().get::<EffectiveUri>().map(|v| &v.0)
-    }
-
-    fn local_addr(&self) -> Option<SocketAddr> {
-        self.extensions().get::<LocalAddr>().map(|v| v.0)
-    }
-
-    fn remote_addr(&self) -> Option<SocketAddr> {
-        self.extensions().get::<RemoteAddr>().map(|v| v.0)
-    }
-
-    #[cfg(feature = "cookies")]
-    fn cookie_jar(&self) -> Option<&crate::cookies::CookieJar> {
-        self.extensions().get()
-    }
-
-    fn metrics(&self) -> Option<&Metrics> {
-        self.extensions().get()
-    }
-
-    fn copy_to(&mut self, mut writer: impl Write) -> io::Result<u64>
-    where
-        T: Read,
-    {
+impl<R: Read> ReadResponseExt<R> for Response<R> {
+    fn copy_to<W: Write>(&mut self, mut writer: W) -> io::Result<u64> {
         io::copy(self.body_mut(), &mut writer)
     }
 
     #[cfg(feature = "text-decoding")]
-    fn text(&mut self) -> io::Result<String>
-    where
-        T: Read,
-    {
+    fn text(&mut self) -> io::Result<String> {
         crate::text::Decoder::for_response(&self).decode_reader(self.body_mut())
-    }
-
-    #[cfg(feature = "text-decoding")]
-    fn text_async(&mut self) -> crate::text::TextFuture<'_, &mut T>
-    where
-        T: AsyncRead + Unpin,
-    {
-        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
     }
 
     #[cfg(feature = "json")]
     fn json<D>(&mut self) -> Result<D, serde_json::Error>
     where
         D: serde::de::DeserializeOwned,
-        T: Read,
     {
         serde_json::from_reader(self.body_mut())
     }
 }
 
-pub(crate) struct EffectiveUri(pub(crate) Uri);
+/// Provides extension methods for consuming asynchronous HTTP response streams.
+pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
+    /// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven't read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let mut response = isahc::get_async("https://example.org").await?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume().await?;
+    /// # Ok(()) }
+    /// ```
+    fn consume(&mut self) -> ConsumeFuture<'_, R>;
+
+    /// Copy the response body into a writer asynchronously.
+    ///
+    /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let mut buf = vec![];
+    /// isahc::get_async("https://example.org").await?
+    ///     .copy_to(&mut buf).await?;
+    /// println!("Read {} bytes", buf.len());
+    /// # Ok(()) }
+    /// ```
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, R, W>
+    where
+        W: AsyncWrite + Unpin + 'a;
+
+    /// Read the response body as a string asynchronously.
+    ///
+    /// This method consumes the entire response body stream and can only be
+    /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let text = isahc::get_async("https://example.org").await?
+    ///     .text().await?;
+    /// println!("{}", text);
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut R>;
+
+    /// Deserialize the response body as JSON into a given type.
+    ///
+    /// # Caveats
+    ///
+    /// Unlike its [synchronous equivalent](ReadResponseExt::json), this method
+    /// reads the entire response body into memory before attempting
+    /// deserialization. This is due to a Serde limitation since incremental
+    /// partial deserializing is not supported.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`json`](index.html#json) feature
+    /// is enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    /// use serde_json::Value;
+    ///
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// let json: Value = isahc::get_async("https://httpbin.org/json").await?
+    ///     .json().await?;
+    /// println!("author: {}", json["slideshow"]["author"]);
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "json")]
+    fn json<T>(&mut self) -> JsonFuture<'_, R, T>
+    where
+        T: serde::de::DeserializeOwned;
+}
+
+impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
+    fn consume(&mut self) -> ConsumeFuture<'_, R> {
+        ConsumeFuture::new(async move {
+            copy_async(self.body_mut(), futures_lite::io::sink()).await?;
+
+            Ok(())
+        })
+    }
+
+    fn copy_to<'a, W>(&'a mut self, writer: W) -> CopyFuture<'a, R, W>
+    where
+        W: AsyncWrite + Unpin + 'a,
+    {
+        CopyFuture::new(async move { copy_async(self.body_mut(), writer).await })
+    }
+
+    #[cfg(feature = "text-decoding")]
+    fn text(&mut self) -> crate::text::TextFuture<'_, &mut R> {
+        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
+    }
+
+    #[cfg(feature = "json")]
+    fn json<T>(&mut self) -> JsonFuture<'_, R, T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        JsonFuture::new(async move {
+            let mut buf = Vec::new();
+
+            // Serde does not support incremental parsing, so we have to resort
+            // to reading the entire response into memory first and then
+            // deserializing.
+            if let Err(e) = copy_async(self.body_mut(), &mut buf).await {
+                struct ErrorReader(Option<io::Error>);
+
+                impl Read for ErrorReader {
+                    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+                        Err(self.0.take().unwrap())
+                    }
+                }
+
+                // Serde offers no public way to directly create an error from
+                // an I/O error, but we can do so in a roundabout way by parsing
+                // a reader that always returns the desired error.
+                serde_json::from_reader(ErrorReader(Some(e)))
+            } else {
+                serde_json::from_slice(&buf)
+            }
+        })
+    }
+}
+
+decl_future! {
+    /// A future which reads any remaining bytes from the response body stream
+    /// and discard them.
+    pub type ConsumeFuture<R> = impl Future<Output = io::Result<()>> + SendIf<R>;
+
+    /// A future which copies all the response body bytes into a sink.
+    pub type CopyFuture<R, W> = impl Future<Output = io::Result<u64>> + SendIf<R, W>;
+
+    /// A future which deserializes the response body as JSON.
+    #[cfg(feature = "json")]
+    pub type JsonFuture<R, T> = impl Future<Output = Result<T, serde_json::Error>> + SendIf<R, T>;
+}
 
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
 
 pub(crate) struct RemoteAddr(pub(crate) SocketAddr);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static_assertions::assert_impl_all!(CopyFuture<'static, Vec<u8>, Vec<u8>>: Send);
+
+    // *mut T is !Send
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>, Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, Vec<u8>, *mut Vec<u8>>: Send);
+    static_assertions::assert_not_impl_any!(CopyFuture<'static, *mut Vec<u8>, *mut Vec<u8>>: Send);
+}

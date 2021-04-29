@@ -1,9 +1,5 @@
 use chrono::{prelude::*, Duration};
-use std::{
-    error::Error,
-    fmt,
-    str,
-};
+use std::{error::Error, fmt, str};
 
 /// An error which can occur when attempting to parse a cookie string.
 #[derive(Debug)]
@@ -231,7 +227,7 @@ impl PartialEq<String> for Cookie {
 fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
     // Strip quotes, but only if in a legal pair.
     if bytes.starts_with(b"\"") && bytes.ends_with(b"\"") {
-        bytes = &bytes[1..bytes.len() - 2];
+        bytes = &bytes[1..bytes.len() - 1];
     }
 
     // Validate the bytes are all legal cookie octets.
@@ -246,9 +242,10 @@ fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
 
 // https://tools.ietf.org/html/rfc6265#section-4.1.1
 fn is_valid_cookie_value(bytes: &[u8]) -> bool {
-    bytes
-        .iter()
-        .all(|&byte| matches!(byte, 0x21 | 0x23..=0x2B | 0x2D..=0x3A | 0x3C..=0x5B | 0x5D..=0x7E))
+    bytes.iter().all(|&byte| match byte {
+        0x21 | 0x23..=0x2B | 0x2D..=0x3A | 0x3C..=0x5B | 0x5D..=0x7E => true,
+        _ => false,
+    })
 }
 
 // https://tools.ietf.org/html/rfc2616#section-2.2
@@ -304,9 +301,10 @@ mod tests {
         assert!(Cookie::parse(s).is_err());
     }
 
-    #[test]
-    fn parse_simple() {
-        let cookie = Cookie::parse("foo=bar").unwrap();
+    #[test_case("foo=bar")]
+    #[test_case(r#"foo="bar""#)]
+    fn parse_simple(s: &str) {
+        let cookie = Cookie::parse(s).unwrap();
 
         assert_eq!(cookie.name(), "foo");
         assert_eq!(cookie.value(), "bar");

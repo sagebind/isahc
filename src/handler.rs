@@ -1,23 +1,22 @@
 #![allow(unsafe_code)]
 
 use crate::{
-    headers,
-    redirect::RedirectUri,
-    response::{EffectiveUri, LocalAddr, RemoteAddr},
+    body::AsyncBody,
+    error::{Error, ErrorKind},
+    metrics::Metrics,
+    parsing::{parse_header, parse_status_line},
+    response::{LocalAddr, RemoteAddr},
     trailer::TrailerWriter,
-    Body, Error, Metrics,
 };
-use crossbeam_utils::atomic::AtomicCell;
+use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
-use flume::Sender;
-use futures_lite::{io::{AsyncRead, AsyncWrite}, pin};
-use http::{Response, Uri};
+use futures_lite::io::{AsyncRead, AsyncWrite};
+use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;
 use std::{
     ascii,
-    convert::TryInto,
     ffi::CStr,
     fmt,
     future::Future,
@@ -31,7 +30,7 @@ use std::{
     task::{Context, Poll, Waker},
 };
 
-pub(crate) struct RequestBody(pub(crate) Body);
+pub(crate) struct RequestBody(pub(crate) AsyncBody);
 
 /// Manages the state of a single request/response life cycle.
 ///
@@ -39,14 +38,14 @@ pub(crate) struct RequestBody(pub(crate) Body);
 /// the progress of the request, and the handler will incrementally build up a
 /// response struct as the response is received.
 ///
-/// Every request handler has an associated `Future` that can be used to poll
+/// Every request handler has an associated [`Future`] that can be used to poll
 /// the state of the response. The handler will complete the future once the
 /// final HTTP response headers are received. The body of the response (if any)
 /// is made available to the consumer of the future, and is also driven by the
 /// request handler until the response body is fully consumed or discarded.
 ///
 /// If dropped before the response is finished, the associated future will be
-/// completed with an `Aborted` error.
+/// completed with an error.
 pub(crate) struct RequestHandler {
     /// A tracing span for grouping log events under. Since a request is
     /// processed asynchronously inside an agent thread, this span helps
@@ -64,7 +63,7 @@ pub(crate) struct RequestHandler {
     sender: Option<Sender<Result<http::response::Builder, Error>>>,
 
     /// The body to be sent in the request.
-    request_body: Body,
+    request_body: AsyncBody,
 
     /// A waker used with reading the request body asynchronously. Populated by
     /// an agent when the request is initialized.
@@ -106,33 +105,24 @@ unsafe impl Send for RequestHandler {}
 /// State shared by the handler and its future.
 ///
 /// This is also used to keep track of the lifetime of the request.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Shared {
     /// Set to the final result of the transfer received from curl. This is used
     /// to communicate an error while reading the response body if the handler
     /// suddenly aborts.
-    result: OnceCell<Result<(), curl::Error>>,
-
-    /// Set to true whenever the response body is dropped. This is used in the
-    /// opposite manner as the above flag; if the response body is dropped, then
-    /// this communicates to the handler to stop running since the user has lost
-    /// interest in this request.
-    response_body_dropped: AtomicCell<bool>,
+    result: OnceCell<Result<(), Error>>,
 }
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
     pub(crate) fn new(
-        request_body: Body,
+        request_body: AsyncBody,
     ) -> (
         Self,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
-        let (sender, receiver) = flume::bounded(1);
-        let shared = Arc::new(Shared {
-            result: OnceCell::new(),
-            response_body_dropped: AtomicCell::new(false),
-        });
+        let (sender, receiver) = async_channel::bounded(1);
+        let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
@@ -154,14 +144,19 @@ impl RequestHandler {
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
-            let builder = receiver.recv_async().await.map_err(|_| Error::Aborted)??;
+            let builder = receiver
+                .recv()
+                .await
+                .map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
             let reader = ResponseBodyReader {
                 inner: response_body_reader,
                 shared,
             };
 
-            builder.body(reader).map_err(Error::InvalidHttpFormat)
+            builder
+                .body(reader)
+                .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
         (handler, future)
@@ -188,7 +183,7 @@ impl RequestHandler {
     fn is_future_canceled(&self) -> bool {
         self.sender
             .as_ref()
-            .map(Sender::is_disconnected)
+            .map(Sender::is_closed)
             .unwrap_or(false)
     }
 
@@ -216,124 +211,77 @@ impl RequestHandler {
         self.response_body_waker = Some(response_waker);
     }
 
-    /// Handle a result produced by curl for this handler's current transfer.
-    pub(crate) fn on_result(&mut self, result: Result<(), curl::Error>) {
-        let span = tracing::trace_span!(parent: &self.span, "on_result");
-        let _enter = span.enter();
-
-        self.shared.result.set(result.clone()).unwrap();
-
-        match result {
-            Ok(()) => {
-                // Flush the trailer, if we haven't already.
-                self.response_trailer_writer.flush();
-
-                // Complete the associated future, if we haven't already.
-                self.flush_response_headers();
-            },
-            Err(e) => {
-                tracing::debug!("curl error: {}", e);
-                self.complete(Err(e.into()));
-            }
+    /// Set the final result for this transfer.
+    pub(crate) fn set_result(&mut self, result: Result<(), Error>) {
+        if self.shared.result.set(result).is_err() {
+            tracing::debug!("attempted to set error multiple times");
         }
+
+        // Flush the trailer, if we haven't already.
+        self.response_trailer_writer.flush();
+
+        // Complete the response future, if we haven't already.
+        self.complete_response_future();
     }
 
     /// Mark the future as completed successfully with the response headers
     /// received so far.
-    fn flush_response_headers(&mut self) {
-        if self.sender.is_some() {
-            let mut builder = http::Response::builder();
-
-            if let Some(status) = self.response_status_code.take() {
-                builder = builder.status(status);
-            }
-
-            if let Some(version) = self.response_version.take() {
-                builder = builder.version(version);
-            }
-
-            if let Some(headers) = builder.headers_mut() {
-                headers.extend(self.response_headers.drain());
-            }
-
-            if let Some(uri) = self.get_effective_uri() {
-                builder = builder.extension(EffectiveUri(uri));
-            }
-
-            if let Some(uri) = self.get_redirect_uri() {
-                builder = builder.extension(RedirectUri(uri));
-            }
-
-            if let Some(addr) = self.get_local_addr() {
-                builder = builder.extension(LocalAddr(addr));
-            }
-
-            if let Some(addr) = self.get_primary_addr() {
-                builder = builder.extension(RemoteAddr(addr));
-            }
-
-            // Keep the request body around in case interceptors need access to
-            // it. Otherwise we're just going to drop it later.
-            builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
-
-            // Include a handle to the trailer headers. We won't know if there
-            // are any until we reach the end of the response body.
-            builder = builder.extension(self.response_trailer_writer.trailer());
-
-            // Include metrics in response, but only if it was created. If
-            // metrics are disabled then it won't have been created.
-            if let Some(metrics) = self.metrics.clone() {
-                builder = builder.extension(metrics);
-            }
-
-            self.complete(Ok(builder));
-        }
-    }
-
-    /// Complete the associated future with a result.
-    fn complete(&mut self, result: Result<http::response::Builder, Error>) {
-        let span = tracing::trace_span!(parent: &self.span, "complete");
-        let _enter = span.enter();
-
+    fn complete_response_future(&mut self) {
+        // If the sender has been taken already, then the future has already
+        // been completed.
         if let Some(sender) = self.sender.take() {
-            if let Err(e) = result.as_ref() {
+            // If our request has already failed early with an error, return that instead.
+            let result = if let Some(Err(e)) = self.shared.result.get() {
                 tracing::warn!("request completed with error: {}", e);
-            }
+                Err(e.clone())
+            } else {
+                Ok(self.build_response())
+            };
 
-            if sender.send(result).is_err() {
+            if sender.try_send(result).is_err() {
                 tracing::debug!("request canceled by user");
             }
         }
     }
 
-    fn get_effective_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_EFFECTIVE_URL)
-    }
+    fn build_response(&mut self) -> http::response::Builder {
+        let mut builder = http::Response::builder();
 
-    fn get_redirect_uri(&mut self) -> Option<Uri> {
-        self.get_uri(curl_sys::CURLINFO_REDIRECT_URL)
-    }
-
-    fn get_uri(&mut self, info: curl_sys::CURLINFO) -> Option<Uri> {
-        if self.handle.is_null() {
-            return None;
+        if let Some(status) = self.response_status_code.take() {
+            builder = builder.status(status);
         }
 
-        let mut ptr = ptr::null::<c_char>();
-
-        unsafe {
-            if curl_sys::curl_easy_getinfo(self.handle, info, &mut ptr)
-                != curl_sys::CURLE_OK
-            {
-                return None;
-            }
+        if let Some(version) = self.response_version.take() {
+            builder = builder.version(version);
         }
 
-        if ptr.is_null() {
-            return None;
+        if let Some(headers) = builder.headers_mut() {
+            headers.extend(self.response_headers.drain());
         }
 
-        unsafe { CStr::from_ptr(ptr) }.to_bytes().try_into().ok()
+        if let Some(addr) = self.get_local_addr() {
+            builder = builder.extension(LocalAddr(addr));
+        }
+
+        if let Some(addr) = self.get_primary_addr() {
+            builder = builder.extension(RemoteAddr(addr));
+        }
+
+        // Keep the request body around in case interceptors need access to
+        // it. Otherwise we're just going to drop it later.
+        builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
+
+        // Include a handle to the trailer headers. We won't know if there
+        // are any until we reach the end of the response body.
+        builder = builder.extension(self.response_trailer_writer.trailer());
+
+        // Include metrics in response, but only if it was created. If
+        // metrics are disabled then it won't have been created.
+        if let Some(metrics) = self.metrics.clone() {
+            builder = builder.extension(metrics);
+        }
+
+        builder
     }
 
     fn get_primary_addr(&mut self) -> Option<SocketAddr> {
@@ -446,7 +394,7 @@ impl curl::easy::Handler for RequestHandler {
         // the trailer.
         if self.sender.is_none() {
             if let Some(trailer_headers) = self.response_trailer_writer.get_mut() {
-                if let Some((name, value)) = headers::parse_header(data) {
+                if let Some((name, value)) = parse_header(data) {
                     trailer_headers.append(name, value);
                     return true;
                 }
@@ -460,7 +408,7 @@ impl curl::easy::Handler for RequestHandler {
         // HTTP/1.1 connection ourselves.
 
         // Is this the status line?
-        if let Some((version, status)) = headers::parse_status_line(data) {
+        if let Some((version, status)) = parse_status_line(data) {
             self.response_version = Some(version);
             self.response_status_code = Some(status);
 
@@ -472,7 +420,7 @@ impl curl::easy::Handler for RequestHandler {
         }
 
         // Is this a header line?
-        if let Some((name, value)) = headers::parse_header(data) {
+        if let Some((name, value)) = parse_header(data) {
             self.response_headers.append(name, value);
             return true;
         }
@@ -513,6 +461,15 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     tracing::error!("error reading request body: {}", e);
+
+                    // While we could just return an error here to curl and let
+                    // the error bubble up through naturally, right now we have
+                    // the most information about the underlying error  that we
+                    // will ever have. That's why we set the error now, to
+                    // improve the error message. Otherwise we'll return a
+                    // rather generic-sounding I/O error to the caller.
+                    self.set_result(Err(e.into()));
+
                     Err(ReadError::Abort)
                 }
             }
@@ -550,14 +507,9 @@ impl curl::easy::Handler for RequestHandler {
         let _enter = span.enter();
         tracing::trace!("received {} bytes of data", data.len());
 
-        // Abort the request if it has been canceled.
-        if self.shared.response_body_dropped.load() {
-            return Ok(0);
-        }
-
         // Now that we've started receiving the response body, we know no more
         // redirects can happen and we can complete the future safely.
-        self.flush_response_headers();
+        self.complete_response_future();
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous write.
@@ -569,7 +521,9 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::warn!("failed to write response body because the response reader was dropped");
+                        tracing::info!(
+                            "response dropped without fully consuming the response body, which may result in sub-optimal performance"
+                        );
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
                     }
@@ -708,8 +662,7 @@ impl AsyncRead for ResponseBodyReader {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        let inner = &mut self.inner;
-        pin!(inner);
+        let inner = Pin::new(&mut self.inner);
 
         match inner.poll_read(cx, buf) {
             // On EOF, check to see if the transfer was cancelled, and if so,
@@ -719,18 +672,12 @@ impl AsyncRead for ResponseBodyReader {
                 Some(Ok(())) => Poll::Ready(Ok(0)),
 
                 // The transfer finished with an error, so return the error.
-                Some(Err(e)) => Poll::Ready(Err(io::Error::from(Error::from(e.clone())))),
+                Some(Err(e)) => Poll::Ready(Err(io::Error::from(e.clone()))),
 
                 // The transfer did not finish properly at all, so return an error.
                 None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),
-            }
+            },
             poll => poll,
         }
-    }
-}
-
-impl Drop for ResponseBodyReader {
-    fn drop(&mut self) {
-        self.shared.response_body_dropped.store(true);
     }
 }

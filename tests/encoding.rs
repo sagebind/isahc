@@ -2,7 +2,7 @@ use flate2::{
     read::{DeflateEncoder, GzEncoder},
     Compression,
 };
-use isahc::prelude::*;
+use isahc::{prelude::*, Request};
 use std::io::Read;
 use testserver::mock;
 
@@ -25,7 +25,12 @@ fn gzip_encoded_response_is_decoded_automatically() {
     let mut response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.text().unwrap(), body);
-    m.request().expect_header("Accept-Encoding", "deflate, gzip");
+    m.request()
+        .expect_header("Accept-Encoding", "deflate, gzip");
+
+    // Response body size should be unknown, because the actual content is
+    // gzipped.
+    assert_eq!(response.body().len(), None);
 }
 
 #[test]
@@ -59,6 +64,9 @@ fn request_gzip_without_automatic_decompression() {
 
     assert_eq!(body_received, body_encoded);
     m.request().expect_header("Accept-Encoding", "gzip");
+
+    // Response body size should be known.
+    assert_eq!(response.body().len(), Some(31));
 }
 
 #[test]
@@ -80,7 +88,12 @@ fn deflate_encoded_response_is_decoded_automatically() {
     let mut response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.text().unwrap(), body);
-    m.request().expect_header("Accept-Encoding", "deflate, gzip");
+    m.request()
+        .expect_header("Accept-Encoding", "deflate, gzip");
+
+    // Response body size should be unknown, because the actual content is
+    // compressed.
+    assert_eq!(response.body().len(), None);
 }
 
 #[test]
@@ -126,7 +139,7 @@ fn unknown_content_encoding_returns_error() {
         .send();
 
     match result {
-        Err(isahc::Error::InvalidContentEncoding(_)) => {}
+        Err(e) if e.kind() == isahc::error::ErrorKind::InvalidContentEncoding => {}
         _ => panic!("expected unknown encoding error, instead got {:?}", result),
     };
 

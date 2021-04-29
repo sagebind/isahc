@@ -1,7 +1,5 @@
 use rouille::{Request, Response};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::thread;
+use std::{net::SocketAddr, sync::Arc, thread};
 
 pub struct TestServer {
     addr: SocketAddr,
@@ -36,7 +34,7 @@ impl TestServer {
         });
 
         Self {
-            addr: addr,
+            addr,
             counter: Some(counter_outer),
             handle: Some(handle),
         }

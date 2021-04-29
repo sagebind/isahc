@@ -6,10 +6,9 @@
 //!
 //! [rayon]: https://github.com/rayon-rs/rayon
 
-use isahc::prelude::*;
+use isahc::HttpClient;
 use rayon::prelude::*;
-use std::env;
-use std::time::Instant;
+use std::{env, time::Instant};
 
 fn main() -> Result<(), isahc::Error> {
     let count = env::args()

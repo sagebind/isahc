@@ -1,7 +1,11 @@
 use crate::{
+    body::{AsyncBody, Body},
     client::ResponseFuture,
-    config::{internal::ConfigurableBase, Configurable},
-    {Body, Error},
+    config::{
+        request::{RequestConfig, WithRequestConfig},
+        Configurable,
+    },
+    error::Error,
 };
 use http::{Request, Response};
 
@@ -21,7 +25,7 @@ pub trait RequestExt<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::prelude::*;
+    /// use isahc::{prelude::*, Request};
     ///
     /// let response = Request::post("https://httpbin.org/post")
     ///     .header("Content-Type", "application/json")
@@ -42,7 +46,7 @@ pub trait RequestExt<T> {
     /// [`send_async`](crate::send_async).
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>;
+        T: Into<AsyncBody>;
 }
 
 impl<T> RequestExt<T> for Request<T> {
@@ -54,53 +58,16 @@ impl<T> RequestExt<T> for Request<T> {
 
         *builder.headers_mut().unwrap() = self.headers().clone();
 
-        // Clone known extensions.
-        macro_rules! try_clone_extension {
-            ($extensions:expr, $builder:expr, [$($ty:ty,)*]) => {{
-                let extensions = $extensions;
-                $(
-                    if let Some(extension) = extensions.get::<$ty>() {
-                        $builder = $builder.extension(extension.clone());
-                    }
-                )*
-            }}
+        if let Some(config) = self.extensions().get::<RequestConfig>() {
+            builder = builder.extension(config.clone());
         }
 
-        try_clone_extension!(
-            self.extensions(),
-            builder,
-            [
-                crate::config::Timeout,
-                crate::config::ConnectTimeout,
-                crate::config::TcpKeepAlive,
-                crate::config::TcpNoDelay,
-                crate::config::NetworkInterface,
-                crate::config::Dialer,
-                crate::config::RedirectPolicy,
-                crate::config::redirect::AutoReferer,
-                crate::config::AutomaticDecompression,
-                crate::auth::Authentication,
-                crate::auth::Credentials,
-                crate::config::MaxAgeConn,
-                crate::config::MaxUploadSpeed,
-                crate::config::MaxDownloadSpeed,
-                crate::config::VersionNegotiation,
-                crate::config::proxy::Proxy<Option<http::Uri>>,
-                crate::config::proxy::Blacklist,
-                crate::config::proxy::Proxy<crate::auth::Authentication>,
-                crate::config::proxy::Proxy<crate::auth::Credentials>,
-                crate::config::DnsCache,
-                crate::config::dns::ResolveMap,
-                crate::config::dns::Servers,
-                crate::config::ssl::Ciphers,
-                crate::config::ClientCertificate,
-                crate::config::CaCertificate,
-                crate::config::SslOption,
-                crate::config::CloseConnection,
-                crate::config::EnableMetrics,
-                crate::config::IpVersion,
-            ]
-        );
+        #[cfg(feature = "cookies")]
+        {
+            if let Some(cookie_jar) = self.extensions().get::<crate::cookies::CookieJar>() {
+                builder = builder.extension(cookie_jar.clone());
+            }
+        }
 
         builder
     }
@@ -114,16 +81,31 @@ impl<T> RequestExt<T> for Request<T> {
 
     fn send_async(self) -> ResponseFuture<'static>
     where
-        T: Into<Body>,
+        T: Into<AsyncBody>,
     {
         crate::send_async(self)
     }
 }
 
-impl Configurable for http::request::Builder {}
+impl Configurable for http::request::Builder {
+    #[cfg(feature = "cookies")]
+    fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self {
+        self.extension(cookie_jar)
+    }
+}
 
-impl ConfigurableBase for http::request::Builder {
-    fn configure(self, option: impl Send + Sync + 'static) -> Self {
-        self.extension(option)
+impl WithRequestConfig for http::request::Builder {
+    #[inline]
+    fn with_config(mut self, f: impl FnOnce(&mut RequestConfig)) -> Self {
+        if let Some(extensions) = self.extensions_mut() {
+            if let Some(config) = extensions.get_mut() {
+                f(config);
+            } else {
+                extensions.insert(RequestConfig::default());
+                f(extensions.get_mut().unwrap());
+            }
+        }
+
+        self
     }
 }

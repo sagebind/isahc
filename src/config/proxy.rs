@@ -7,16 +7,6 @@ use std::iter::FromIterator;
 #[derive(Clone, Debug)]
 pub(crate) struct Proxy<T>(pub(crate) T);
 
-/// Proxy URI specifies the type and host of a proxy to use.
-impl SetOpt for Proxy<Option<http::Uri>> {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match &self.0 {
-            Some(uri) => easy.proxy(&format!("{}", uri)),
-            None => easy.proxy(""),
-        }
-    }
-}
-
 /// A list of host names that do not require a proxy to get reached, even if one
 /// is specified.
 ///

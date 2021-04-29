@@ -8,25 +8,29 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::handler::RequestHandler;
-use crate::task::{UdpWaker, WakerExt};
-use crate::Error;
-use crossbeam_utils::sync::WaitGroup;
-use curl::multi::WaitFd;
-use flume::{Receiver, Sender};
+use crate::{error::Error, handler::RequestHandler, task::WakerExt};
+use async_channel::{Receiver, Sender};
+use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
+use curl::multi::{Events, Multi, Socket, SocketEvents};
+use futures_lite::future::block_on;
 use slab::Slab;
 use std::{
-    net::UdpSocket,
-    sync::Mutex,
+    io,
+    sync::{Arc, Mutex},
     task::Waker,
     thread,
     time::{Duration, Instant},
 };
 
-const WAIT_TIMEOUT: Duration = Duration::from_millis(100);
+use self::{selector::Selector, timer::Timer};
+
+mod selector;
+mod timer;
+
+static NEXT_AGENT_ID: AtomicCell<usize> = AtomicCell::new(0);
+const WAIT_TIMEOUT: Duration = Duration::from_millis(1000);
 
 type EasyHandle = curl::easy::Easy2<RequestHandler>;
-type MultiMessage = (usize, Result<(), curl::Error>);
 
 /// Builder for configuring and spawning an agent.
 #[derive(Debug, Default)]
@@ -54,7 +58,7 @@ impl AgentBuilder {
 
     /// Spawn a new agent using the configuration in this builder and return a
     /// handle for communicating with the agent.
-    pub(crate) fn spawn(&self) -> Result<Handle, Error> {
+    pub(crate) fn spawn(&self) -> io::Result<Handle> {
         let create_start = Instant::now();
 
         // Initialize libcurl, if necessary, on the current thread.
@@ -69,15 +73,12 @@ impl AgentBuilder {
         // See #189.
         curl::init();
 
-        // Create an UDP socket for the agent thread to listen for wakeups on.
-        let wake_socket = UdpSocket::bind("127.0.0.1:0")?;
-        wake_socket.set_nonblocking(true)?;
-        let wake_addr = wake_socket.local_addr()?;
-        let port = wake_addr.port();
-        let waker = Waker::from(UdpWaker::connect(wake_addr)?);
-        tracing::debug!("agent waker listening on {}", wake_addr);
+        let id = NEXT_AGENT_ID.fetch_add(1);
 
-        let (message_tx, message_rx) = flume::unbounded();
+        // Create an I/O selector for driving curl's sockets.
+        let selector = Selector::new()?;
+
+        let (message_tx, message_rx) = async_channel::unbounded();
 
         let wait_group = WaitGroup::new();
         let wait_group_thread = wait_group.clone();
@@ -88,55 +89,57 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = tracing::debug_span!("agent_thread", port);
+        let agent_span = tracing::debug_span!("agent_thread", id);
         agent_span.follows_from(tracing::Span::current());
 
+        let waker = selector.waker();
+        let message_tx_clone = message_tx.clone();
+
+        let thread_main = move || {
+            let _enter = agent_span.enter();
+            let mut multi = Multi::new();
+
+            if max_connections > 0 {
+                multi
+                    .set_max_total_connections(max_connections)
+                    .map_err(Error::from_any)?;
+            }
+
+            if max_connections_per_host > 0 {
+                multi
+                    .set_max_host_connections(max_connections_per_host)
+                    .map_err(Error::from_any)?;
+            }
+
+            // Only set maxconnects if greater than 0, because 0 actually means unlimited.
+            if connection_cache_size > 0 {
+                multi
+                    .set_max_connects(connection_cache_size)
+                    .map_err(Error::from_any)?;
+            }
+
+            let agent = AgentContext::new(multi, selector, message_tx_clone, message_rx)?;
+
+            drop(wait_group_thread);
+
+            tracing::debug!("agent took {:?} to start up", create_start.elapsed());
+
+            let result = agent.run();
+
+            if let Err(e) = &result {
+                tracing::error!("agent shut down with error: {:?}", e);
+            }
+
+            result
+        };
+
         let handle = Handle {
-            message_tx: message_tx.clone(),
-            waker: waker.clone(),
+            message_tx,
+            waker,
             join_handle: Mutex::new(Some(
                 thread::Builder::new()
-                    .name(format!("isahc-agent-{}", port))
-                    .spawn(move || {
-                        let _enter = agent_span.enter();
-                        let mut multi = curl::multi::Multi::new();
-
-                        if max_connections > 0 {
-                            multi.set_max_total_connections(max_connections)?;
-                        }
-
-                        if max_connections_per_host > 0 {
-                            multi.set_max_host_connections(max_connections_per_host)?;
-                        }
-
-                        // Only set maxconnects if greater than 0, because 0 actually means unlimited.
-                        if connection_cache_size > 0 {
-                            multi.set_max_connects(connection_cache_size)?;
-                        }
-
-                        let agent = AgentContext {
-                            multi,
-                            multi_messages: flume::unbounded(),
-                            message_tx,
-                            message_rx,
-                            wake_socket,
-                            requests: Slab::new(),
-                            close_requested: false,
-                            waker,
-                        };
-
-                        drop(wait_group_thread);
-
-                        tracing::debug!("agent took {:?} to start up", create_start.elapsed());
-
-                        let result = agent.run();
-
-                        if let Err(e) = &result {
-                            tracing::error!("agent shut down with error: {}", e);
-                        }
-
-                        result
-                    })?,
+                    .name(format!("isahc-agent-{}", id))
+                    .spawn(thread_main)?,
             )),
         };
 
@@ -172,17 +175,11 @@ struct AgentContext {
     /// A curl multi handle, of course.
     multi: curl::multi::Multi,
 
-    /// Queue of messages from the multi handle.
-    multi_messages: (Sender<MultiMessage>, Receiver<MultiMessage>),
-
     /// Used to send messages to the agent thread.
     message_tx: Sender<Message>,
 
     /// Incoming messages from the agent handle.
     message_rx: Receiver<Message>,
-
-    /// Used to wake up the agent when polling.
-    wake_socket: UdpSocket,
 
     /// Contains all of the active requests.
     requests: Slab<curl::multi::Easy2Handle<RequestHandler>>,
@@ -192,6 +189,15 @@ struct AgentContext {
 
     /// A waker that can wake up the agent thread while it is polling.
     waker: Waker,
+
+    /// This is the poller we use to poll for socket activity!
+    selector: Selector,
+
+    /// A timer we use to keep track of curl's timeouts.
+    timer: Arc<Timer>,
+
+    /// Queue of socket registration updates from the multi handle.
+    socket_updates: Receiver<(Socket, SocketEvents, usize)>,
 }
 
 /// A message sent from the main thread to the agent thread.
@@ -230,14 +236,14 @@ impl Handle {
     ///
     /// If the agent is not connected, an error is returned.
     fn send_message(&self, message: Message) -> Result<(), Error> {
-        match self.message_tx.send(message) {
+        match self.message_tx.try_send(message) {
             Ok(()) => {
                 // Wake the agent thread up so it will check its messages soon.
                 self.waker.wake_by_ref();
                 Ok(())
             }
-            Err(flume::SendError(_)) => match self.try_join() {
-                JoinResult::Err(e) => panic!("agent thread terminated with error: {}", e),
+            Err(_) => match self.try_join() {
+                JoinResult::Err(e) => panic!("agent thread terminated with error: {:?}", e),
                 JoinResult::Panic => panic!("agent thread panicked"),
                 _ => panic!("agent thread terminated prematurely"),
             },
@@ -277,6 +283,51 @@ impl Drop for Handle {
 }
 
 impl AgentContext {
+    fn new(
+        mut multi: Multi,
+        selector: Selector,
+        message_tx: Sender<Message>,
+        message_rx: Receiver<Message>,
+    ) -> Result<Self, Error> {
+        let timer = Arc::new(Timer::new());
+        let (socket_updates_tx, socket_updates_rx) = async_channel::unbounded();
+
+        multi
+            .socket_function(move |socket, events, key| {
+                let _ = socket_updates_tx.try_send((socket, events, key));
+            })
+            .map_err(Error::from_any)?;
+
+        multi
+            .timer_function({
+                let timer = timer.clone();
+
+                move |timeout| match timeout {
+                    Some(timeout) => {
+                        timer.start(timeout);
+                        true
+                    }
+                    None => {
+                        timer.stop();
+                        true
+                    }
+                }
+            })
+            .map_err(Error::from_any)?;
+
+        Ok(Self {
+            multi,
+            message_tx,
+            message_rx,
+            requests: Slab::new(),
+            close_requested: false,
+            waker: selector.waker(),
+            selector,
+            timer,
+            socket_updates: socket_updates_rx,
+        })
+    }
+
     #[tracing::instrument(level = "trace", skip(self))]
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
         // Prepare an entry for storing this request while it executes.
@@ -292,31 +343,29 @@ impl AgentContext {
                 let tx = self.message_tx.clone();
 
                 self.waker
-                    .chain(move |inner| match tx.send(Message::UnpauseRead(id)) {
+                    .chain(move |inner| match tx.try_send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => tracing::warn!(
-                            "agent went away while resuming read for request [id={}]",
-                            id
-                        ),
+                        Err(_) => {
+                            tracing::warn!(id, "agent went away while resuming read for request")
+                        }
                     })
             },
             {
                 let tx = self.message_tx.clone();
 
                 self.waker
-                    .chain(move |inner| match tx.send(Message::UnpauseWrite(id)) {
+                    .chain(move |inner| match tx.try_send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
-                        Err(_) => tracing::warn!(
-                            "agent went away while resuming write for request [id={}]",
-                            id
-                        ),
+                        Err(_) => {
+                            tracing::warn!(id, "agent went away while resuming write for request")
+                        }
                     })
             },
         );
 
         // Register the request with curl.
-        let mut handle = self.multi.add2(request)?;
-        handle.set_token(id)?;
+        let mut handle = self.multi.add2(request).map_err(Error::from_any)?;
+        handle.set_token(id).map_err(Error::from_any)?;
 
         // Add the handle to our bookkeeping structure.
         entry.insert(handle);
@@ -331,31 +380,11 @@ impl AgentContext {
         result: Result<(), curl::Error>,
     ) -> Result<(), Error> {
         let handle = self.requests.remove(token);
-        let mut handle = self.multi.remove2(handle)?;
+        let mut handle = self.multi.remove2(handle).map_err(Error::from_any)?;
 
-        handle.get_mut().on_result(result);
+        handle.get_mut().set_result(result.map_err(Error::from_any));
 
         Ok(())
-    }
-
-    fn get_wait_fds(&self) -> [WaitFd; 1] {
-        let mut fd = WaitFd::new();
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::io::AsRawFd;
-            fd.set_fd(self.wake_socket.as_raw_fd());
-        }
-
-        #[cfg(windows)]
-        {
-            use std::os::windows::io::AsRawSocket;
-            fd.set_fd(self.wake_socket.as_raw_socket());
-        }
-
-        fd.poll_on_read(true);
-
-        [fd]
     }
 
     /// Polls the message channel for new messages from any agent handles.
@@ -366,7 +395,7 @@ impl AgentContext {
     fn poll_messages(&mut self) -> Result<(), Error> {
         while !self.close_requested {
             if self.requests.is_empty() {
-                match self.message_rx.recv() {
+                match block_on(self.message_rx.recv()) {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
                         tracing::warn!("agent handle disconnected without close message");
@@ -377,8 +406,8 @@ impl AgentContext {
             } else {
                 match self.message_rx.try_recv() {
                     Ok(message) => self.handle_message(message)?,
-                    Err(flume::TryRecvError::Empty) => break,
-                    Err(flume::TryRecvError::Disconnected) => {
+                    Err(async_channel::TryRecvError::Empty) => break,
+                    Err(async_channel::TryRecvError::Closed) => {
                         tracing::warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
@@ -407,7 +436,7 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!("error unpausing read for request [id={}]: {}", token, e);
+                        tracing::debug!(id = token, "error unpausing read for request: {:?}", e);
                     }
                 } else {
                     tracing::warn!(
@@ -426,7 +455,7 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!("error unpausing write for request [id={}]: {}", token, e);
+                        tracing::debug!(id = token, "error unpausing write for request: {:?}", e);
                     }
                 } else {
                     tracing::warn!(
@@ -440,38 +469,9 @@ impl AgentContext {
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
-    fn dispatch(&mut self) -> Result<(), Error> {
-        self.multi.perform()?;
-
-        // Collect messages from curl about requests that have completed,
-        // whether successfully or with an error.
-        self.multi.messages(|message| {
-            if let Some(result) = message.result() {
-                if let Ok(token) = message.token() {
-                    self.multi_messages.0.send((token, result)).unwrap();
-                }
-            }
-        });
-
-        loop {
-            match self.multi_messages.1.try_recv() {
-                // A request completed.
-                Ok((token, result)) => self.complete_request(token, result)?,
-                Err(flume::TryRecvError::Empty) => break,
-                Err(flume::TryRecvError::Disconnected) => unreachable!(),
-            }
-        }
-
-        Ok(())
-    }
-
     /// Run the agent in the current thread until requested to stop.
     fn run(mut self) -> Result<(), Error> {
-        let mut wait_fds = self.get_wait_fds();
-        let mut wait_fd_buf = [0; 1024];
-
-        debug_assert_eq!(wait_fds.len(), 1);
+        let mut multi_messages = Vec::new();
 
         // Agent main loop.
         loop {
@@ -481,28 +481,72 @@ impl AgentContext {
                 break;
             }
 
-            // Perform any pending reads or writes and handle any state changes.
-            self.dispatch()?;
-
             // Block until activity is detected or the timeout passes.
-            self.multi.wait(&mut wait_fds, WAIT_TIMEOUT)?;
+            self.poll()?;
 
-            // We might have woken up early from the notify fd, so drain the
-            // socket to clear it.
-            if wait_fds[0].received_read() {
-                tracing::trace!("woke up from waker");
+            // Collect messages from curl about requests that have completed,
+            // whether successfully or with an error.
+            self.multi.messages(|message| {
+                if let Some(result) = message.result() {
+                    if let Ok(token) = message.token() {
+                        multi_messages.push((token, result));
+                    }
+                }
+            });
 
-                // Read data out of the wake socket to clean the buffer. While
-                // it's possible that there's a lot of data in the buffer, it
-                // is unlikely, so we do just one read. At worst case, the next
-                // wait call returns immediately.
-                let _ = self.wake_socket.recv_from(&mut wait_fd_buf);
+            for (token, result) in multi_messages.drain(..) {
+                self.complete_request(token, result)?;
             }
         }
 
         tracing::debug!("agent shutting down");
 
         self.requests.clear();
+
+        Ok(())
+    }
+
+    /// Block until activity is detected or a timeout passes.
+    fn poll(&mut self) -> Result<(), Error> {
+        let now = Instant::now();
+        let timeout = self.timer.get_remaining(now);
+
+        // Get the latest timeout value from curl that we should use, limited to
+        // a maximum we chose.
+        let poll_timeout = timeout.map(|t| t.min(WAIT_TIMEOUT)).unwrap_or(WAIT_TIMEOUT);
+
+        // Block until either an I/O event occurs on a socket, the timeout is
+        // reached, or the agent handle interrupts us.
+        if self.selector.poll(poll_timeout)? {
+            // At least one I/O event occurred, handle them.
+            for (socket, readable, writable) in self.selector.events() {
+                tracing::trace!(socket, readable, writable, "socket event");
+                let mut events = Events::new();
+                events.input(readable);
+                events.output(writable);
+                self.multi
+                    .action(socket, &events)
+                    .map_err(Error::from_any)?;
+            }
+        }
+
+        // If curl gave us a timeout, check if it has expired.
+        if self.timer.is_expired(now) {
+            self.multi.timeout().map_err(Error::from_any)?;
+        }
+
+        // Apply any requested socket updates now.
+        while let Ok((socket, events, _)) = self.socket_updates.try_recv() {
+            // Curl is asking us to stop polling this socket.
+            if events.remove() {
+                self.selector.deregister(socket).unwrap();
+            } else {
+                let readable = events.input() || events.input_and_output();
+                let writable = events.output() || events.input_and_output();
+
+                self.selector.register(socket, readable, writable).unwrap();
+            }
+        }
 
         Ok(())
     }

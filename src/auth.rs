@@ -1,8 +1,10 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::{internal::SetOpt, proxy::Proxy};
-use std::fmt;
-use std::ops::{BitOr, BitOrAssign};
+use crate::config::{proxy::Proxy, request::SetOpt};
+use std::{
+    fmt,
+    ops::{BitOr, BitOrAssign},
+};
 
 /// Credentials consisting of a username and a secret (password) that can be
 /// used to establish user identity.

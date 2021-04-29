@@ -3,13 +3,14 @@
 //! Here are some of Isahc's key features:
 //!
 //! - Full support for HTTP/1.1 and HTTP/2.
-//! - Configurable request timeouts.
-//! - Fully asynchronous core, with asynchronous and incremental reading and
-//!   writing of request and response bodies.
-//! - Offers an ergonomic synchronous API as well as an asynchronous API with
-//!   support for async/await.
-//! - Optional automatic redirect following.
+//! - Configurable request timeouts, redirect policies, Unix sockets, and many
+//!   more settings.
+//! - Offers an ergonomic synchronous API as well as a runtime-agnostic
+//!   asynchronous API with support for async/await.
+//! - Fully asynchronous core, with incremental reading and writing of request
+//!   and response bodies and connection multiplexing.
 //! - Sessions and cookie persistence.
+//! - Automatic request cancellation on drop.
 //!
 //! # Getting started
 //!
@@ -46,12 +47,12 @@
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
-//! etc, then you can create a [`Request`][prelude::Request] using a
+//! etc, then you can create a [`Request`][Request] using a
 //! builder-style fluent interface, then finishing it off with a
 //! [`send`][RequestExt::send]:
 //!
 //! ```no_run
-//! use isahc::prelude::*;
+//! use isahc::{prelude::*, Request};
 //! use std::time::Duration;
 //!
 //! let response = Request::post("https://httpbin.org/post")
@@ -89,8 +90,15 @@
 //! make common tasks convenient and allow you to configure more advanced
 //! connection and protocol details.
 //!
-//! Some key traits to read about include
-//! [`Configurable`](config::Configurable), [`RequestExt`], and [`ResponseExt`].
+//! Here are some of the key traits to read about:
+//!
+//! - [`Configurable`](config::Configurable): Configure request parameters.
+//! - [`RequestExt`]: Manipulate and send requests.
+//! - [`ResponseExt`]: Get information about the corresponding request or
+//!   response statistics.
+//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.
+//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a
+//!   variety of ways.
 //!
 //! ## Custom clients
 //!
@@ -118,9 +126,14 @@
 //! use isahc::prelude::*;
 //!
 //! let mut response = isahc::get_async("https://httpbin.org/get").await?;
-//! println!("{}", response.text_async().await?);
+//! println!("{}", response.text().await?);
 //! # Ok(()) }
 //! ```
+//!
+//! Since we sent our request using [`get_async`], no blocking will occur, and
+//! the asynchronous versions of all response methods (such as
+//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by
+//! the compiler.
 //!
 //! # Feature flags
 //!
@@ -131,7 +144,7 @@
 //!
 //! ```toml
 //! [dependencies.isahc]
-//! version = "0.8"
+//! version = "1.3"
 //! features = ["psl"]
 //! ```
 //!
@@ -216,13 +229,14 @@
     unused,
     clippy::all
 )]
-// This lint produces a lot of false positives. See
-// https://github.com/rust-lang/rust-clippy/issues/3900.
-#![allow(clippy::cognitive_complexity)]
+// These lints suggest to use features not available in our MSRV.
+#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
 
-use http::{Request, Response};
 use once_cell::sync::Lazy;
 use std::convert::TryFrom;
+
+#[macro_use]
+mod macros;
 
 #[cfg(feature = "cookies")]
 pub mod cookies;
@@ -231,10 +245,10 @@ mod agent;
 mod body;
 mod client;
 mod default_headers;
-mod error;
 mod handler;
 mod headers;
 mod metrics;
+mod parsing;
 mod redirect;
 mod request;
 mod response;
@@ -244,6 +258,7 @@ mod trailer;
 
 pub mod auth;
 pub mod config;
+pub mod error;
 
 #[cfg(feature = "unstable-interceptors")]
 pub mod interceptor;
@@ -252,31 +267,39 @@ pub mod interceptor;
 pub(crate) mod interceptor;
 
 pub use crate::{
-    body::Body,
+    body::{AsyncBody, Body},
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
+    http::{request::Request, response::Response},
     metrics::Metrics,
     request::RequestExt,
-    response::ResponseExt,
+    response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
     trailer::Trailer,
 };
 
-/// Re-export of the standard HTTP types.
+/// Re-export of HTTP types.
 pub use http;
 
-/// A "prelude" for importing common Isahc types.
+/// A "prelude" for importing commonly used Isahc types and traits.
+///
+/// The prelude re-exports most commonly used traits and macros from this crate.
 ///
 /// # Example
+///
+/// Import the prelude with:
 ///
 /// ```
 /// use isahc::prelude::*;
 /// ```
 pub mod prelude {
     #[doc(no_inline)]
-    pub use crate::{config::Configurable, Body, HttpClient, RequestExt, ResponseExt};
-
-    #[doc(no_inline)]
-    pub use http::{Request, Response};
+    pub use crate::{
+        config::Configurable,
+        AsyncReadResponseExt,
+        ReadResponseExt,
+        RequestExt,
+        ResponseExt,
+    };
 }
 
 /// Send a GET request to the given URI.
@@ -331,10 +354,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post`] for details.
-pub fn post<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn post<U, B>(uri: U, body: B) -> Result<Response<Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>,
 {
     HttpClient::shared().post(uri, body)
 }
@@ -344,10 +368,30 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::post_async`] for details.
-pub fn post_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+/// use isahc::prelude::*;
+///
+/// let mut response = isahc::post_async("https://httpbin.org/post", r#"{
+///     "speed": "fast",
+///     "cool_name": true
+/// }"#).await?;
+///
+/// let mut body: Vec<u8> = vec![];
+/// response.copy_to(&mut body).await?;
+///
+/// let msg: serde_json::Value = serde_json::from_slice(&body)?;
+/// println!("{}", msg);
+/// # Ok(()) }
+/// ```
+pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<AsyncBody>,
 {
     HttpClient::shared().post_async(uri, body)
 }
@@ -356,10 +400,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put`] for details.
-pub fn put<U>(uri: U, body: impl Into<Body>) -> Result<Response<Body>, Error>
+pub fn put<U, B>(uri: U, body: B) -> Result<Response<Body>, Error>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<Body>,
 {
     HttpClient::shared().put(uri, body)
 }
@@ -369,10 +414,11 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put_async`] for details.
-pub fn put_async<U>(uri: U, body: impl Into<Body>) -> ResponseFuture<'static>
+pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
+    B: Into<AsyncBody>,
 {
     HttpClient::shared().put_async(uri, body)
 }
@@ -413,7 +459,7 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::send_async`] for details.
-pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static> {
+pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture<'static> {
     HttpClient::shared().send_async(request)
 }
 
@@ -424,12 +470,14 @@ pub fn send_async<B: Into<Body>>(request: Request<B>) -> ResponseFuture<'static>
 /// its dependencies.
 pub fn version() -> &'static str {
     static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
-    static VERSION_STRING: Lazy<String> = Lazy::new(|| format!(
-        "isahc/{} (features:{}) {}",
-        env!("CARGO_PKG_VERSION"),
-        FEATURES_STRING,
-        curl::Version::num(),
-    ));
+    static VERSION_STRING: Lazy<String> = Lazy::new(|| {
+        format!(
+            "isahc/{} (features:{}) {}",
+            env!("CARGO_PKG_VERSION"),
+            FEATURES_STRING,
+            curl::Version::num(),
+        )
+    });
 
     &VERSION_STRING
 }

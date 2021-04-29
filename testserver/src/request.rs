@@ -12,7 +12,8 @@ impl Request {
     pub fn get_header(&self, name: impl AsRef<str>) -> impl Iterator<Item = String> + '_ {
         let name_lower = name.as_ref().to_lowercase();
 
-        self.headers.iter()
+        self.headers
+            .iter()
             .filter(move |(name, _)| name.to_lowercase() == name_lower)
             .map(|(_, value)| value.clone())
     }

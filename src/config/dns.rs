@@ -2,11 +2,7 @@
 
 use super::SetOpt;
 use curl::easy::Easy2;
-use std::{
-    iter::FromIterator,
-    net::{IpAddr, SocketAddr},
-    time::Duration,
-};
+use std::{net::IpAddr, time::Duration};
 
 /// DNS caching configuration.
 ///
@@ -95,30 +91,5 @@ impl SetOpt for ResolveMap {
         }
 
         easy.resolve(list)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Servers(String);
-
-impl FromIterator<SocketAddr> for Servers {
-    fn from_iter<I: IntoIterator<Item = SocketAddr>>(iter: I) -> Self {
-        Servers(
-            iter.into_iter()
-                .map(|addr| addr.to_string())
-                .collect::<Vec<_>>()
-                .join(","),
-        )
-    }
-}
-
-impl SetOpt for Servers {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        // DNS servers should not be hard error.
-        if let Err(e) = easy.dns_servers(&self.0) {
-            tracing::warn!("DNS servers could not be configured: {}", e);
-        }
-
-        Ok(())
     }
 }

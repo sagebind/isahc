@@ -7,6 +7,7 @@ _Formerly known as [chttp]._
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.46+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
 ![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 [![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
@@ -15,14 +16,11 @@ _Formerly known as [chttp]._
 ## Key features
 
 - Full support for HTTP/1.1 and HTTP/2.
-- Configurable request timeouts.
-- Fully asynchronous core, with asynchronous and incremental reading and writing of request and response bodies.
-- Offers an ergonomic synchronous API as well as an asynchronous API with support for [async/await].
-- Optional automatic redirect following.
+- Configurable request timeouts, redirect policies, Unix sockets, and many more settings.
+- Offers an ergonomic synchronous API as well as a runtime-agnostic asynchronous API with support for [async/await].
+- Fully asynchronous core, with incremental reading and writing of request and response bodies and connection multiplexing.
 - Sessions and cookie persistence.
-- Request cancellation on drop.
-- Tweakable redirect policy.
-- Network socket configuration.
+- Automatic request cancellation on drop.
 - Uses the [http] crate as an interface for requests and responses.
 
 <img src="media/isahc.svg.png" width="320" align="right">
@@ -31,24 +29,11 @@ _Formerly known as [chttp]._
 
 Isahc is an acronym that stands for **I**ncredible **S**treaming **A**synchronous **H**TTP **C**lient, and as the name implies, is an asynchronous HTTP client for the [Rust] language. It uses [libcurl] as an HTTP engine inside, and provides an easy-to-use API on top that integrates with Rust idioms.
 
-## No, _who_ is Isahc?
+### No, _who_ is Isahc?
 
 Oh, you mean Isahc the dog! He's an adorable little Siberian husky who loves to play fetch with webservers every day and has a very _cURLy_ tail. He shares a name with the project and acts as the project's mascot.
 
 You can pet him all day if you like, he doesn't mind. Though, he prefers it if you pet him in a standards-compliant way!
-
-## Why use Isahc and not X?
-
-Isahc provides an easy-to-use, flexible, and idiomatic Rust API that makes sending HTTP requests a breeze. The goal of Isahc is to make the easy way _also_ provide excellent performance and correctness for common use cases.
-
-Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. Using curl as an engine for an HTTP client is a great choice for a few reasons:
-
-- It is a stable, actively developed, and very popular library.
-- It is well-supported on a diverse list of platforms.
-- The HTTP protocol has a lot of unexpected gotchas across different servers, and curl has been around the block long enough to handle many of them.
-- It is well optimized and offers the ability to implement asynchronous requests.
-
-Safe Rust bindings to libcurl are provided by the [curl crate], which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
 
 ## [Documentation]
 
@@ -60,7 +45,7 @@ use isahc::prelude::*;
 fn main() -> Result<(), isahc::Error> {
     // Send a GET request and wait for the response headers.
     // Must be `mut` so we can read the response body.
-    let mut response = isahc::get("http://example.org")?;
+    let mut response = isahc::get("https://example.org")?;
 
     // Print some basic info about the response to standard output.
     println!("Status: {}", response.status());
@@ -75,18 +60,24 @@ fn main() -> Result<(), isahc::Error> {
 
 Click [here][documentation] for documentation on the latest version. You can also click [here](https://sagebind.github.io/isahc/isahc/) for built documentation from the latest unreleased `master` build.
 
+## Getting help
+
+Need some help with something Isahc-related? Ask a question on our [discussions page][discussions], where we are happy to try and answer your questions!
+
 ## Installation
 
 Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "0.9"
+isahc = "1.3"
 ```
 
-### Supported Rust versions
+### Minimum supported Rust version
 
-The current release is only guaranteed to work with the latest stable Rust compiler. When Isahc reaches version `1.0`, a more conservative policy will be adopted.
+The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.46 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.46. It might compile with older versions but that could change at any time.
+
+This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
 
 ## Project goals
 
@@ -99,6 +90,19 @@ Non-goals:
 
 - Support for protocols other than HTTP.
 - Alternative engines besides libcurl. Other projects are better suited for this.
+
+## Why use Isahc and not X?
+
+Isahc provides an easy-to-use, flexible, and idiomatic Rust API that makes sending HTTP requests a breeze. The goal of Isahc is to make the easy way _also_ provide excellent performance and correctness for common use cases.
+
+Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. Using curl as an engine for an HTTP client is a great choice for a few reasons:
+
+- It is a stable, actively developed, and very popular library.
+- It is well-supported on a diverse list of platforms.
+- The HTTP protocol has a lot of unexpected gotchas across different servers, and curl has been around the block long enough to handle many of them.
+- It is well optimized and offers the ability to implement asynchronous requests.
+
+Safe Rust bindings to libcurl are provided by the [curl crate], which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
 
 ## When would you *not* use Isahc?
 
@@ -119,6 +123,7 @@ The Isahc logo and related assets are licensed under a [Creative Commons Attribu
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
 [chttp]: https://crates.io/crates/chttp
 [curl crate]: https://crates.io/crates/curl
+[discussions]: https://github.com/sagebind/isahc/discussions
 [documentation]: https://docs.rs/isahc
 [http]: https://github.com/hyperium/http
 [libcurl]: https://curl.haxx.se/libcurl/

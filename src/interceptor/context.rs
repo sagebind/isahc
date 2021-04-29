@@ -1,10 +1,7 @@
-use crate::{Body, Error};
 use super::{Interceptor, InterceptorFuture, InterceptorObj};
+use crate::{body::AsyncBody, error::Error};
 use http::{Request, Response};
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 /// Execution context for an interceptor.
 pub struct Context<'a> {
@@ -15,25 +12,14 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Send a request asynchronously, executing the next interceptor in the
     /// chain, if any.
-    pub async fn send(&self, request: Request<Body>) -> Result<Response<Body>, Error> {
+    pub async fn send(&self, request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
         if let Some(interceptor) = self.interceptors.first() {
             let inner_context = Self {
                 invoker: self.invoker.clone(),
                 interceptors: &self.interceptors[1..],
             };
 
-            match interceptor.intercept(request, inner_context).await {
-                Ok(response) => Ok(response),
-
-                // If the error is an Isahc error, return it directly.
-                Err(e) => match e.downcast::<Error>() {
-                    Ok(e) => Err(*e),
-
-                    // TODO: Introduce a new error variant for errors caused by an
-                    // interceptor. This is a temporary hack.
-                    Err(e) => Err(Error::Curl(e.to_string())),
-                },
-            }
+            interceptor.intercept(request, inner_context).await
         } else {
             self.invoker.invoke(request).await
         }
@@ -47,5 +33,5 @@ impl fmt::Debug for Context<'_> {
 }
 
 pub(crate) trait Invoke {
-    fn invoke<'a>(&'a self, request: Request<Body>) -> InterceptorFuture<'a, Error>;
+    fn invoke(&self, request: Request<AsyncBody>) -> InterceptorFuture<'_, Error>;
 }

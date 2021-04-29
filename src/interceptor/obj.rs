@@ -1,7 +1,6 @@
-use crate::Body;
 use super::{Context, Interceptor, InterceptorFuture};
+use crate::{body::AsyncBody, error::Error};
 use http::Request;
-use std::error::Error;
 
 /// Type-erased interceptor object.
 pub(crate) struct InterceptorObj(Box<dyn DynInterceptor>);
@@ -13,9 +12,13 @@ impl InterceptorObj {
 }
 
 impl Interceptor for InterceptorObj {
-    type Err = Box<dyn Error>;
+    type Err = Error;
 
-    fn intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept<'a>(
+        &'a self,
+        request: Request<AsyncBody>,
+        cx: Context<'a>,
+    ) -> InterceptorFuture<'a, Self::Err> {
         self.0.dyn_intercept(request, cx)
     }
 }
@@ -23,13 +26,19 @@ impl Interceptor for InterceptorObj {
 /// Object-safe version of the interceptor used for type erasure. Implementation
 /// detail of [`InterceptorObj`].
 trait DynInterceptor: Send + Sync {
-    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn Error>>;
+    fn dyn_intercept<'a>(
+        &'a self,
+        request: Request<AsyncBody>,
+        cx: Context<'a>,
+    ) -> InterceptorFuture<'a, Error>;
 }
 
 impl<I: Interceptor> DynInterceptor for I {
-    fn dyn_intercept<'a>(&'a self, request: Request<Body>, cx: Context<'a>) -> InterceptorFuture<'a, Box<dyn Error>> {
-        Box::pin(async move {
-            self.intercept(request, cx).await.map_err(Into::into)
-        })
+    fn dyn_intercept<'a>(
+        &'a self,
+        request: Request<AsyncBody>,
+        cx: Context<'a>,
+    ) -> InterceptorFuture<'a, Error> {
+        Box::pin(async move { self.intercept(request, cx).await.map_err(Error::from_any) })
     }
 }

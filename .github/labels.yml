@@ -31,9 +31,6 @@
 - name: performance
   description: An enhancement or problem with performance
   color: 64b5f6
-- name: question
-  description: Just asking
-  color: ba68c8
 - name: security
   description: A security concern or vulnerability
   color: e57373

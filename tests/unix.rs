@@ -1,9 +1,6 @@
 #![cfg(unix)]
 
-use isahc::{
-    prelude::*,
-    config::Dialer,
-};
+use isahc::{config::Dialer, prelude::*, Request};
 use std::{
     io::{self, Write},
     os::unix::net::UnixListener,
@@ -12,6 +9,7 @@ use std::{
 use tempfile::TempDir;
 
 #[test]
+#[rustfmt::skip]
 fn send_request_to_unix_socket() {
     let temp_dir = TempDir::new().unwrap();
     let socket_path = temp_dir.path().join("test.sock");

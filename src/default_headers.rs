@@ -1,6 +1,7 @@
 use crate::{
+    body::AsyncBody,
+    error::Error,
     interceptor::{Context, Interceptor, InterceptorFuture},
-    Body, Error,
 };
 use http::{HeaderMap, HeaderValue, Request};
 
@@ -12,7 +13,9 @@ pub(crate) struct DefaultHeadersInterceptor {
 
 impl From<HeaderMap<HeaderValue>> for DefaultHeadersInterceptor {
     fn from(headers: HeaderMap<HeaderValue>) -> Self {
-        Self { headers }
+        Self {
+            headers,
+        }
     }
 }
 
@@ -21,7 +24,7 @@ impl Interceptor for DefaultHeadersInterceptor {
 
     fn intercept<'a>(
         &'a self,
-        mut request: Request<Body>,
+        mut request: Request<AsyncBody>,
         ctx: Context<'a>,
     ) -> InterceptorFuture<'a, Self::Err> {
         Box::pin(async move {

@@ -19,21 +19,18 @@
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
-use crate::request::RequestExt;
-use chrono::{
-    prelude::*,
-    Duration,
-};
+use crate::{request::RequestExt, ReadResponseExt};
+use chrono::{prelude::*, Duration};
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
-use publicsuffix::List;
+use publicsuffix::{List, Psl};
 use std::error::Error;
 
 /// How long should we use a cached list before refreshing?
 static TTL: Lazy<Duration> = Lazy::new(|| Duration::hours(24));
 
 /// Global in-memory PSL cache.
-static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(|| Default::default());
+static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
 
 struct ListCache {
     list: List,
@@ -49,7 +46,8 @@ impl Default for ListCache {
             // build, because that would force you to have an active Internet
             // connection in order to compile. And that would be really
             // annoying, especially if you are on a slow connection.
-            list: List::from_str(include_str!("list/public_suffix_list.dat"))
+            list: include_str!("list/public_suffix_list.dat")
+                .parse()
                 .expect("could not parse bundled public suffix list"),
 
             // Refresh the list right away.
@@ -87,7 +85,7 @@ impl ListCache {
         match response.status() {
             http::StatusCode::OK => {
                 // Parse the suffix list.
-                self.list = List::from_reader(response.body_mut())?;
+                self.list = response.text()?.parse()?;
                 self.last_updated = Some(Utc::now());
                 tracing::debug!("public suffix list updated");
             }
@@ -112,16 +110,17 @@ impl ListCache {
 /// If the current list information is stale, a background refresh will be
 /// triggered. The current data will be used to respond to this query.
 pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
-    let domain = domain.as_ref();
+    let domain = domain.as_ref().as_bytes();
 
     with_cache(|cache| {
         // Check if the given domain is a public suffix.
         cache
             .list
-            .parse_domain(domain)
-            .ok()
-            .and_then(|d| d.suffix().map(|d| d == domain))
-            .unwrap_or(false)
+            .suffix(domain)
+            // We don't want to block unknown hosts like `localhost`
+            .filter(publicsuffix::Suffix::is_known)
+            .filter(|suffix| suffix == &domain)
+            .is_some()
     })
 }
 

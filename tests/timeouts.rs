@@ -1,6 +1,13 @@
-use isahc::prelude::*;
-use std::{io::{self, Cursor, Read}, thread, time::Duration};
+use isahc::{prelude::*, Request};
+use std::{
+    io::{self, Cursor, Read},
+    thread,
+    time::Duration,
+};
 use testserver::mock;
+
+#[macro_use]
+mod utils;
 
 /// Issue #3
 #[test]
@@ -18,7 +25,7 @@ fn request_errors_if_read_timeout_is_reached() {
         .send();
 
     // Client should time-out.
-    assert!(matches!(result, Err(isahc::Error::Timeout)));
+    assert_matches!(result, Err(e) if e == isahc::error::ErrorKind::Timeout);
 
     assert_eq!(m.requests().len(), 1);
 }
@@ -48,5 +55,8 @@ fn timeout_during_response_body_produces_error() {
 
     // Because of the short timeout, the response body should abort while being
     // read from.
-    assert_eq!(response.copy_to(std::io::sink()).unwrap_err().kind(), std::io::ErrorKind::TimedOut);
+    assert_eq!(
+        response.copy_to(std::io::sink()).unwrap_err().kind(),
+        std::io::ErrorKind::TimedOut
+    );
 }
