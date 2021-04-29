@@ -12,6 +12,27 @@ use std::{
 pub trait ResponseExt<T> {
     /// Get the trailer of the response containing headers that were received
     /// after the response body.
+    ///
+    /// See the documentation for [`Trailer`] for more details on how to handle
+    /// trailing headers.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get("https://my-site-with-trailers.com")?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    ///
+    /// // Now the trailer will be available as well.
+    /// println!("Trailing headers: {:#?}", response.trailer().try_get().unwrap());
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     fn trailer(&self) -> &Trailer;
 
     /// Get the effective URI of this response. This value differs from the

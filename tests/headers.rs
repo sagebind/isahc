@@ -225,9 +225,15 @@ fn trailer_headers() {
             .unwrap();
     });
 
-    let mut response = isahc::get(url).unwrap();
+    let mut body = None;
+    let response = isahc::get(url).unwrap().map(|b| {
+        body = Some(b);
+        ()
+    });
 
-    io::copy(response.body_mut(), &mut io::sink()).unwrap();
+    thread::spawn(move || {
+        io::copy(body.as_mut().unwrap(), &mut io::sink()).unwrap();
+    });
 
     assert_eq!(response.trailer().wait().get("foo").unwrap(), "bar");
 }
@@ -251,7 +257,7 @@ fn trailer_headers_async() {
         stream
             .write_all(
                 b"\
-        HTTP/1.1 200 OK\r\n\
+            HTTP/1.1 200 OK\r\n\
             transfer-encoding: chunked\r\n\
             trailer: foo\r\n\
             \r\n\
@@ -272,9 +278,9 @@ fn trailer_headers_async() {
             ()
         });
 
-        thread::spawn(move || {
-            io::copy(body.as_mut().unwrap(), &mut io::sink()).unwrap();
-        });
+        thread::spawn(move || block_on(async move {
+            futures_lite::io::copy(body.as_mut().unwrap(), &mut futures_lite::io::sink()).await.unwrap();
+        }));
 
         assert_eq!(response.trailer().wait_async().await.get("foo").unwrap(), "bar");
     });

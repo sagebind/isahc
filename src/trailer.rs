@@ -7,6 +7,19 @@ use std::sync::Arc;
 ///
 /// This object acts as a shared handle that can be cloned and polled from
 /// multiple threads to wait for and act on the response trailer.
+///
+/// There are two typical workflows for accessing trailer headers:
+///
+/// - If you are consuming the response body and then accessing the headers
+///   afterward, then all trailers are guaranteed to have arrived (if any).
+///   [`Trailer::try_get`] will allow you to access them without extra overhead.
+/// - If you are handling trailers in a separate task, callback, or thread, then
+///   either [`Trailer::wait`] or [`Trailer::wait_async`] will allow you to wait
+///   for the trailer headers to arrive and then handle them.
+///
+/// Note that in either approach, trailer headers are delivered to your
+/// application as a single [`HeaderMap`]; it is not possible to handle
+/// individual headers as they arrive.
 #[derive(Clone, Debug)]
 pub struct Trailer {
     shared: Arc<Shared>,
@@ -34,9 +47,7 @@ impl Trailer {
     /// Returns true if the trailer has been received (if any).
     ///
     /// The trailer will not be received until the body stream associated with
-    /// this response has been fully consumed. You can wait for the trailer to
-    /// arrive either by `.await`-ing this handle to wait asynchronously or call
-    /// [`wait`] to wait synchronously.
+    /// this response has been fully consumed.
     #[inline]
     pub fn is_ready(&self) -> bool {
         self.try_get().is_some()
@@ -51,6 +62,10 @@ impl Trailer {
 
     /// Block the current thread until the trailer headers arrive, and then
     /// return them.
+    ///
+    /// This is a blocking operation! If you are writing an asynchronous
+    /// application, then you probably want to use [`Trailer::wait_async`]
+    /// instead.
     pub fn wait(&self) -> &HeaderMap {
         // Fast path: If the headers are already set, return them.
         if let Some(headers) = self.try_get() {
@@ -107,13 +122,11 @@ pub(crate) struct TrailerWriter {
 
 impl TrailerWriter {
     pub(crate) fn new() -> Self {
-        let shared=  Arc::new(Shared {
-            headers: Default::default(),
-            ready: Event::new(),
-        });
-
         Self {
-            shared,
+            shared: Arc::new(Shared {
+                headers: Default::default(),
+                ready: Event::new(),
+            }),
             headers: Some(HeaderMap::new()),
         }
     }
