@@ -40,7 +40,7 @@ impl Trailer {
             shared: Arc::new(Shared {
                 headers: OnceCell::from(HeaderMap::new()),
                 ready: Event::new(),
-            })
+            }),
         })
     }
 

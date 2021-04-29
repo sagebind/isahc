@@ -278,10 +278,17 @@ fn trailer_headers_async() {
             ()
         });
 
-        thread::spawn(move || block_on(async move {
-            futures_lite::io::copy(body.as_mut().unwrap(), &mut futures_lite::io::sink()).await.unwrap();
-        }));
+        thread::spawn(move || {
+            block_on(async move {
+                futures_lite::io::copy(body.as_mut().unwrap(), &mut futures_lite::io::sink())
+                    .await
+                    .unwrap();
+            })
+        });
 
-        assert_eq!(response.trailer().wait_async().await.get("foo").unwrap(), "bar");
+        assert_eq!(
+            response.trailer().wait_async().await.get("foo").unwrap(),
+            "bar"
+        );
     });
 }

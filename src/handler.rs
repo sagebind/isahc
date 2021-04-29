@@ -181,10 +181,7 @@ impl RequestHandler {
     }
 
     fn is_future_canceled(&self) -> bool {
-        self.sender
-            .as_ref()
-            .map(Sender::is_closed)
-            .unwrap_or(false)
+        self.sender.as_ref().map(Sender::is_closed).unwrap_or(false)
     }
 
     /// Initialize the handler and prepare it for the request to begin.
