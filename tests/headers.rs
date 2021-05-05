@@ -195,8 +195,6 @@ fn headers_in_request_builder_must_override_multiple_headers_in_httpclient_build
 
 #[test]
 fn trailer_headers() {
-    tracing_subscriber::fmt::try_init();
-
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -208,7 +206,7 @@ fn trailer_headers() {
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
-                stream.shutdown(Shutdown::Read).unwrap();
+                let _ = stream.shutdown(Shutdown::Read);
             }
         });
 
@@ -228,7 +226,7 @@ fn trailer_headers() {
             )
             .unwrap();
 
-        stream.shutdown(Shutdown::Write).unwrap();
+        let _ = stream.shutdown(Shutdown::Write);
     });
 
     let mut body = None;
@@ -246,10 +244,6 @@ fn trailer_headers() {
 
 #[test]
 fn trailer_headers_async() {
-    tracing_subscriber::fmt::try_init();
-
-    eprintln!("trailer_headers_async:begin");
-
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -261,7 +255,7 @@ fn trailer_headers_async() {
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
-                stream.shutdown(Shutdown::Read).unwrap();
+                let _ = stream.shutdown(Shutdown::Read);
             }
         });
 
@@ -281,7 +275,7 @@ fn trailer_headers_async() {
             )
             .unwrap();
 
-        stream.shutdown(Shutdown::Write).unwrap();
+        let _ = stream.shutdown(Shutdown::Write);
     });
 
     block_on(async move {
@@ -308,8 +302,6 @@ fn trailer_headers_async() {
 
 #[test]
 fn trailer_headers_timeout() {
-    tracing_subscriber::fmt::try_init();
-
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -322,7 +314,7 @@ fn trailer_headers_timeout() {
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
-                stream.shutdown(Shutdown::Read).unwrap();
+                let _ = stream.shutdown(Shutdown::Read);
             }
         });
 
@@ -352,7 +344,7 @@ fn trailer_headers_timeout() {
             .write_all(b"foo: bar\r\n\r\n")
             .unwrap();
 
-        stream.shutdown(Shutdown::Write).unwrap();
+        let _ = stream.shutdown(Shutdown::Write);
     });
 
     let response = isahc::get(url).unwrap();
