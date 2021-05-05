@@ -2,7 +2,7 @@ use futures_lite::future::block_on;
 use isahc::{prelude::*, HttpClient, Request};
 use std::{
     io::{self, Write},
-    net::TcpListener,
+    net::{Shutdown, TcpListener},
     thread,
     time::Duration,
 };
@@ -195,6 +195,8 @@ fn headers_in_request_builder_must_override_multiple_headers_in_httpclient_build
 
 #[test]
 fn trailer_headers() {
+    tracing_subscriber::fmt::try_init();
+
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -206,6 +208,7 @@ fn trailer_headers() {
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
+                stream.shutdown(Shutdown::Read).unwrap();
             }
         });
 
@@ -224,6 +227,8 @@ fn trailer_headers() {
         ",
             )
             .unwrap();
+
+        stream.shutdown(Shutdown::Write).unwrap();
     });
 
     let mut body = None;
@@ -241,6 +246,10 @@ fn trailer_headers() {
 
 #[test]
 fn trailer_headers_async() {
+    tracing_subscriber::fmt::try_init();
+
+    eprintln!("trailer_headers_async:begin");
+
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -252,6 +261,7 @@ fn trailer_headers_async() {
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
+                stream.shutdown(Shutdown::Read).unwrap();
             }
         });
 
@@ -270,6 +280,8 @@ fn trailer_headers_async() {
             ",
             )
             .unwrap();
+
+        stream.shutdown(Shutdown::Write).unwrap();
     });
 
     block_on(async move {
@@ -296,17 +308,21 @@ fn trailer_headers_async() {
 
 #[test]
 fn trailer_headers_timeout() {
+    tracing_subscriber::fmt::try_init();
+
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
 
     thread::spawn(move || {
         let mut stream = listener.accept().unwrap().0;
+        stream.set_nodelay(true).unwrap();
 
         thread::spawn({
             let mut stream = stream.try_clone().unwrap();
 
             move || {
                 io::copy(&mut stream, &mut io::sink()).unwrap();
+                stream.shutdown(Shutdown::Read).unwrap();
             }
         });
 
@@ -316,11 +332,18 @@ fn trailer_headers_timeout() {
             HTTP/1.1 200 OK\r\n\
             transfer-encoding: chunked\r\n\
             trailer: foo\r\n\
-            \r\n\
-            2\r\n\
-            OK\r\n\
-            0\r\n",
+            \r\n",
             )
+            .unwrap();
+
+        for _ in 0..1000 {
+            stream
+                .write_all(b"5\r\nhello\r\n")
+                .unwrap();
+        }
+
+        stream
+            .write_all(b"0\r\n")
             .unwrap();
 
         thread::sleep(Duration::from_millis(200));
@@ -328,11 +351,13 @@ fn trailer_headers_timeout() {
         stream
             .write_all(b"foo: bar\r\n\r\n")
             .unwrap();
+
+        stream.shutdown(Shutdown::Write).unwrap();
     });
 
     let response = isahc::get(url).unwrap();
 
     // Since we don't consume the response body and the trailer is in a separate
     // packet from the header, we won't receive the trailer in time.
-    assert!(response.trailer().wait_timeout(Duration::from_millis(100)).is_none());
+    assert!(response.trailer().wait_timeout(Duration::from_millis(10)).is_none());
 }

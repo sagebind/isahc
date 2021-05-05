@@ -67,26 +67,30 @@ impl Trailer {
     /// application, then you probably want to use [`Trailer::wait_async`]
     /// instead.
     pub fn wait(&self) -> &HeaderMap {
-        // Fast path: If the headers are already set, return them.
-        if let Some(headers) = self.try_get() {
-            return headers;
+        loop {
+            // Fast path: If the headers are already set, return them.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
+
+            // Headers not set, jump into the slow path by creating a new
+            // listener for the ready event.
+            let listener = self.shared.ready.listen();
+
+            // Double-check that the headers are not set.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
+
+            // Otherwise, block until they are set.
+            listener.wait();
+
+            // If we got the notification, then the headers are likely to be
+            // set.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
         }
-
-        // Headers not set, jump into the slow path by creating a new listener
-        // for the ready event.
-        let listener = self.shared.ready.listen();
-
-        // Double-check that the headers are not set.
-        if let Some(headers) = self.try_get() {
-            return headers;
-        }
-
-        // Otherwise, block until they are set.
-        listener.wait();
-
-        // If we got the notification, then the headers are guaranteed to be
-        // set.
-        self.try_get().unwrap()
     }
 
     /// Block the current thread until the trailer headers arrive or a timeout
@@ -124,26 +128,30 @@ impl Trailer {
     /// Wait asynchronously until the trailer headers arrive, and then return
     /// them.
     pub async fn wait_async(&self) -> &HeaderMap {
-        // Fast path: If the headers are already set, return them.
-        if let Some(headers) = self.try_get() {
-            return headers;
+        loop {
+            // Fast path: If the headers are already set, return them.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
+
+            // Headers not set, jump into the slow path by creating a new
+            // listener for the ready event.
+            let listener = self.shared.ready.listen();
+
+            // Double-check that the headers are not set.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
+
+            // Otherwise, wait asynchronously until they are.
+            listener.await;
+
+            // If we got the notification, then the headers are likely to be
+            // set.
+            if let Some(headers) = self.try_get() {
+                return headers;
+            }
         }
-
-        // Headers not set, jump into the slow path by creating a new listener
-        // for the ready event.
-        let listener = self.shared.ready.listen();
-
-        // Double-check that the headers are not set.
-        if let Some(headers) = self.try_get() {
-            return headers;
-        }
-
-        // Otherwise, wait asynchronously until they are.
-        listener.await;
-
-        // If we got the notification, then the headers are guaranteed to be
-        // set.
-        self.try_get().unwrap()
     }
 }
 
@@ -173,20 +181,29 @@ impl TrailerWriter {
         self.headers.as_mut()
     }
 
+    #[inline]
     pub(crate) fn flush(&mut self) {
+        if !self.flush_impl() {
+            tracing::warn!("tried to flush trailer multiple times");
+        }
+    }
+
+    fn flush_impl(&mut self) -> bool {
         if let Some(headers) = self.headers.take() {
             let _ = self.shared.headers.set(headers);
 
             // Wake up any calls waiting for the headers.
             self.shared.ready.notify(usize::max_value());
+
+            true
         } else {
-            tracing::warn!("tried to flush trailer multiple times");
+            false
         }
     }
 }
 
 impl Drop for TrailerWriter {
     fn drop(&mut self) {
-        self.flush();
+        self.flush_impl();
     }
 }
