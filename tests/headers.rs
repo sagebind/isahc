@@ -4,6 +4,7 @@ use std::{
     io::{self, Write},
     net::TcpListener,
     thread,
+    time::Duration,
 };
 use testserver::mock;
 
@@ -291,4 +292,47 @@ fn trailer_headers_async() {
             "bar"
         );
     });
+}
+
+#[test]
+fn trailer_headers_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+
+    thread::spawn(move || {
+        let mut stream = listener.accept().unwrap().0;
+
+        thread::spawn({
+            let mut stream = stream.try_clone().unwrap();
+
+            move || {
+                io::copy(&mut stream, &mut io::sink()).unwrap();
+            }
+        });
+
+        stream
+            .write_all(
+                b"\
+            HTTP/1.1 200 OK\r\n\
+            transfer-encoding: chunked\r\n\
+            trailer: foo\r\n\
+            \r\n\
+            2\r\n\
+            OK\r\n\
+            0\r\n",
+            )
+            .unwrap();
+
+        thread::sleep(Duration::from_millis(200));
+
+        stream
+            .write_all(b"foo: bar\r\n\r\n")
+            .unwrap();
+    });
+
+    let response = isahc::get(url).unwrap();
+
+    // Since we don't consume the response body and the trailer is in a separate
+    // packet from the header, we won't receive the trailer in time.
+    assert!(response.trailer().wait_timeout(Duration::from_millis(100)).is_none());
 }

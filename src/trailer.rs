@@ -1,7 +1,7 @@
 use event_listener::Event;
 use http::HeaderMap;
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 /// Holds the current state of a trailer for a response.
 ///
@@ -87,6 +87,38 @@ impl Trailer {
         // If we got the notification, then the headers are guaranteed to be
         // set.
         self.try_get().unwrap()
+    }
+
+    /// Block the current thread until the trailer headers arrive or a timeout
+    /// expires.
+    ///
+    /// If the given timeout expired before the trailer arrived then `None` is
+    /// returned.
+    ///
+    /// This is a blocking operation! If you are writing an asynchronous
+    /// application, then you probably want to use [`Trailer::wait_async`]
+    /// instead.
+    pub fn wait_timeout(&self, timeout: Duration) -> Option<&HeaderMap> {
+        // Fast path: If the headers are already set, return them.
+        if let Some(headers) = self.try_get() {
+            return Some(headers);
+        }
+
+        // Headers not set, jump into the slow path by creating a new listener
+        // for the ready event.
+        let listener = self.shared.ready.listen();
+
+        // Double-check that the headers are not set.
+        if let Some(headers) = self.try_get() {
+            return Some(headers);
+        }
+
+        // Otherwise, block with a timeout.
+        if listener.wait_timeout(timeout) {
+            self.try_get()
+        } else {
+            None
+        }
     }
 
     /// Wait asynchronously until the trailer headers arrive, and then return
