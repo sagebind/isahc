@@ -2,7 +2,7 @@ use futures_lite::future::block_on;
 use isahc::{prelude::*, HttpClient, Request};
 use std::{
     io::{self, Write},
-    net::{Shutdown, TcpListener},
+    net::{Shutdown, TcpListener, TcpStream},
     thread,
     time::Duration,
 };
@@ -201,14 +201,7 @@ fn trailer_headers() {
     thread::spawn(move || {
         let mut stream = listener.accept().unwrap().0;
 
-        thread::spawn({
-            let mut stream = stream.try_clone().unwrap();
-
-            move || {
-                io::copy(&mut stream, &mut io::sink()).unwrap();
-                let _ = stream.shutdown(Shutdown::Read);
-            }
-        });
+        consume_request_in_background(&stream);
 
         stream
             .write_all(
@@ -250,14 +243,7 @@ fn trailer_headers_async() {
     thread::spawn(move || {
         let mut stream = listener.accept().unwrap().0;
 
-        thread::spawn({
-            let mut stream = stream.try_clone().unwrap();
-
-            move || {
-                io::copy(&mut stream, &mut io::sink()).unwrap();
-                let _ = stream.shutdown(Shutdown::Read);
-            }
-        });
+        consume_request_in_background(&stream);
 
         stream
             .write_all(
@@ -309,14 +295,7 @@ fn trailer_headers_timeout() {
         let mut stream = listener.accept().unwrap().0;
         stream.set_nodelay(true).unwrap();
 
-        thread::spawn({
-            let mut stream = stream.try_clone().unwrap();
-
-            move || {
-                io::copy(&mut stream, &mut io::sink()).unwrap();
-                let _ = stream.shutdown(Shutdown::Read);
-            }
-        });
+        consume_request_in_background(&stream);
 
         stream
             .write_all(
@@ -352,4 +331,13 @@ fn trailer_headers_timeout() {
     // Since we don't consume the response body and the trailer is in a separate
     // packet from the header, we won't receive the trailer in time.
     assert!(response.trailer().wait_timeout(Duration::from_millis(10)).is_none());
+}
+
+fn consume_request_in_background(stream: &TcpStream) {
+    let mut stream = stream.try_clone().unwrap();
+
+    thread::spawn(move || {
+        let _ = io::copy(&mut stream, &mut io::sink());
+        let _ = stream.shutdown(Shutdown::Read);
+    });
 }
