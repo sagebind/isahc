@@ -254,6 +254,7 @@ mod request;
 mod response;
 mod task;
 mod text;
+mod trailer;
 
 pub mod auth;
 pub mod config;
@@ -273,6 +274,7 @@ pub use crate::{
     metrics::Metrics,
     request::RequestExt,
     response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
+    trailer::Trailer,
 };
 
 /// Re-export of HTTP types.

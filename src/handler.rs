@@ -6,6 +6,7 @@ use crate::{
     metrics::Metrics,
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
+    trailer::TrailerWriter,
 };
 use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
@@ -84,6 +85,10 @@ pub(crate) struct RequestHandler {
     /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
 
+    /// Holds the response trailer, if any. Used to communicate the trailer
+    /// headers out-of-band from the response headers and body.
+    response_trailer_writer: TrailerWriter,
+
     /// Metrics object for publishing metrics data to. Lazily initialized.
     metrics: Option<Metrics>,
 
@@ -131,6 +136,7 @@ impl RequestHandler {
             response_headers: http::HeaderMap::new(),
             response_body_writer,
             response_body_waker: None,
+            response_trailer_writer: TrailerWriter::new(),
             metrics: None,
             handle: ptr::null_mut(),
         };
@@ -175,10 +181,7 @@ impl RequestHandler {
     }
 
     fn is_future_canceled(&self) -> bool {
-        self.sender
-            .as_ref()
-            .map(Sender::is_closed)
-            .unwrap_or(false)
+        self.sender.as_ref().map(Sender::is_closed).unwrap_or(false)
     }
 
     /// Initialize the handler and prepare it for the request to begin.
@@ -210,6 +213,9 @@ impl RequestHandler {
         if self.shared.result.set(result).is_err() {
             tracing::debug!("attempted to set error multiple times");
         }
+
+        // Flush the trailer, if we haven't already.
+        self.response_trailer_writer.flush();
 
         // Complete the response future, if we haven't already.
         self.complete_response_future();
@@ -261,6 +267,10 @@ impl RequestHandler {
         // Keep the request body around in case interceptors need access to
         // it. Otherwise we're just going to drop it later.
         builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
+
+        // Include a handle to the trailer headers. We won't know if there
+        // are any until we reach the end of the response body.
+        builder = builder.extension(self.response_trailer_writer.trailer());
 
         // Include metrics in response, but only if it was created. If
         // metrics are disabled then it won't have been created.
@@ -376,6 +386,17 @@ impl curl::easy::Handler for RequestHandler {
 
         let span = tracing::trace_span!(parent: &self.span, "header");
         let _enter = span.enter();
+
+        // If we already returned the response headers, then this header is from
+        // the trailer.
+        if self.sender.is_none() {
+            if let Some(trailer_headers) = self.response_trailer_writer.get_mut() {
+                if let Some((name, value)) = parse_header(data) {
+                    trailer_headers.append(name, value);
+                    return true;
+                }
+            }
+        }
 
         // Curl calls this function for all lines in the response not part of
         // the response body, not just for headers. We need to inspect the

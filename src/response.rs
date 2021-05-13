@@ -1,4 +1,4 @@
-use crate::{metrics::Metrics, redirect::EffectiveUri};
+use crate::{metrics::Metrics, redirect::EffectiveUri, trailer::Trailer};
 use futures_lite::io::{copy as copy_async, AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
@@ -10,6 +10,31 @@ use std::{
 
 /// Provides extension methods for working with HTTP responses.
 pub trait ResponseExt<T> {
+    /// Get the trailer of the response containing headers that were received
+    /// after the response body.
+    ///
+    /// See the documentation for [`Trailer`] for more details on how to handle
+    /// trailing headers.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get("https://my-site-with-trailers.com")?;
+    ///
+    /// println!("Status: {}", response.status());
+    /// println!("Headers: {:#?}", response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    ///
+    /// // Now the trailer will be available as well.
+    /// println!("Trailing headers: {:#?}", response.trailer().try_get().unwrap());
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn trailer(&self) -> &Trailer;
+
     /// Get the effective URI of this response. This value differs from the
     /// original URI provided when making the request if at least one redirect
     /// was followed.
@@ -68,6 +93,13 @@ pub trait ResponseExt<T> {
 }
 
 impl<T> ResponseExt<T> for Response<T> {
+    fn trailer(&self) -> &Trailer {
+        // Return a static empty trailer if the extension does not exist. This
+        // offers a more convenient API so that users do not have to unwrap the
+        // trailer from an extra Option.
+        self.extensions().get().unwrap_or_else(|| Trailer::empty())
+    }
+
     fn effective_uri(&self) -> Option<&Uri> {
         self.extensions().get::<EffectiveUri>().map(|v| &v.0)
     }
