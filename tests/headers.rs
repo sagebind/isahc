@@ -308,20 +308,14 @@ fn trailer_headers_timeout() {
             .unwrap();
 
         for _ in 0..1000 {
-            stream
-                .write_all(b"5\r\nhello\r\n")
-                .unwrap();
+            stream.write_all(b"5\r\nhello\r\n").unwrap();
         }
 
-        stream
-            .write_all(b"0\r\n")
-            .unwrap();
+        stream.write_all(b"0\r\n").unwrap();
 
         thread::sleep(Duration::from_millis(200));
 
-        stream
-            .write_all(b"foo: bar\r\n\r\n")
-            .unwrap();
+        stream.write_all(b"foo: bar\r\n\r\n").unwrap();
 
         let _ = stream.shutdown(Shutdown::Write);
     });
@@ -330,7 +324,12 @@ fn trailer_headers_timeout() {
 
     // Since we don't consume the response body and the trailer is in a separate
     // packet from the header, we won't receive the trailer in time.
-    assert!(response.trailer().wait_timeout(Duration::from_millis(10)).is_none());
+    assert!(
+        response
+            .trailer()
+            .wait_timeout(Duration::from_millis(10))
+            .is_none()
+    );
 }
 
 fn consume_request_in_background(stream: &TcpStream) {
