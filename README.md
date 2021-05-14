@@ -70,7 +70,7 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "1.3"
+isahc = "1.4"
 ```
 
 ### Minimum supported Rust version
