@@ -19,9 +19,15 @@ pub enum ErrorKind {
     BadServerCertificate,
 
     /// The HTTP client failed to initialize.
+    ///
+    /// This error can occur when trying to create a client with invalid
+    /// configuration, if there were insufficient resources to create the
+    /// client, or if a system error occurred when trying to initialize an I/O
+    /// driver.
     ClientInitialization,
 
-    /// Failed to connect to the server.
+    /// Failed to connect to the server. This can occur if the server rejects
+    /// the request on the specified port.
     ConnectionFailed,
 
     /// The server either returned a response using an unknown or unsupported
@@ -45,6 +51,9 @@ pub enum ErrorKind {
     /// An I/O error either sending the request or reading the response. This
     /// could be caused by a problem on the client machine, a problem on the
     /// server machine, or a problem with the network between the two.
+    ///
+    /// You can get more details about the underlying I/O error with
+    /// [`Error::source`][std::error::Error::source].
     Io,
 
     /// Failed to resolve a host name.
@@ -62,6 +71,12 @@ pub enum ErrorKind {
     /// Request processing could not continue because the client needed to
     /// re-send the request body, but was unable to rewind the body stream to
     /// the beginning in order to do so.
+    ///
+    /// If you need Isahc to be able to re-send the request body during a retry
+    /// or redirect then you must load the body into a contiguous memory buffer
+    /// first. Then you can create a rewindable body using
+    /// [`Body::from_bytes_static`][crate::Body::from_bytes_static] or
+    /// [`AsyncBody::from_bytes_static`][crate::AsyncBody::from_bytes_static].
     RequestBodyNotRewindable,
 
     /// A request or operation took longer than the configured timeout time.
@@ -70,7 +85,7 @@ pub enum ErrorKind {
     /// An error ocurred in the secure socket engine.
     TlsEngine,
 
-    /// Number of redirects hit the maximum amount.
+    /// Number of redirects hit the maximum configured amount.
     TooManyRedirects,
 
     /// An unknown error occurred. This likely indicates a problem in the HTTP
@@ -129,6 +144,10 @@ impl PartialEq<ErrorKind> for &'_ ErrorKind {
 
 /// An error encountered while sending an HTTP request or receiving an HTTP
 /// response.
+///
+/// Note that errors are typically caused by failed I/O or protocol errors. 4xx
+/// or 5xx responses successfully received from the server are generally _not_
+/// considered an error case.
 ///
 /// This type is intentionally opaque, as sending an HTTP request involves many
 /// different moving parts, some of which can be platform or device-dependent.
@@ -254,10 +273,10 @@ impl Error {
 
     /// Get the kind of error this represents.
     ///
-    /// The kind returned may not be matchable against any known documented if
-    /// the reason for the error is unknown. Unknown errors may be an indication
-    /// of a bug, or an error condition that we do not recognize appropriately.
-    /// Either way, please report such occurrences to us!
+    /// The kind returned may not be matchable against any documented variants
+    /// if the reason for the error is unknown. Unknown errors may be an
+    /// indication of a bug, or an error condition that we do not recognize
+    /// appropriately. Either way, please report such occurrences to us!
     #[inline]
     pub fn kind(&self) -> &ErrorKind {
         &self.0.kind
@@ -282,6 +301,9 @@ impl Error {
     }
 
     /// Returns true if this is an error likely related to network failures.
+    ///
+    /// Network operations are inherently unreliable. Sometimes retrying the
+    /// request once or twice is enough to resolve the error.
     pub fn is_network(&self) -> bool {
         match self.kind() {
             ErrorKind::ConnectionFailed | ErrorKind::Io | ErrorKind::NameResolution => true,
@@ -297,6 +319,22 @@ impl Error {
             | ErrorKind::TooManyRedirects => true,
             _ => false,
         }
+    }
+
+    /// Returns true if this error is caused from exceeding a configured
+    /// timeout.
+    ///
+    /// A request could time out for any number of reasons, for example:
+    ///
+    /// - Slow or broken network preventing the server from receiving the
+    ///   request or replying in a timely manner.
+    /// - The server received the request but is taking a long time to fulfill
+    ///   the request.
+    ///
+    /// Sometimes retrying the request once or twice is enough to resolve the
+    /// error.
+    pub fn is_timeout(&self) -> bool {
+        self.kind() == ErrorKind::Timeout
     }
 
     /// Returns true if this error is related to SSL/TLS.
