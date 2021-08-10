@@ -97,6 +97,9 @@ pub(crate) struct RequestHandler {
     /// valid at least for the lifetime of this struct (assuming all other
     /// invariants are upheld).
     handle: *mut CURL,
+
+    /// If true, do not warn about prematurely closed responses.
+    pub(crate) disable_connection_reuse_log: bool,
 }
 
 // Would be send implicitly except for the raw CURL pointer.
@@ -139,6 +142,7 @@ impl RequestHandler {
             response_trailer_writer: TrailerWriter::new(),
             metrics: None,
             handle: ptr::null_mut(),
+            disable_connection_reuse_log: false,
         };
 
         // Create a future that resolves when the handler receives the response
@@ -244,11 +248,11 @@ impl RequestHandler {
     fn build_response(&mut self) -> http::response::Builder {
         let mut builder = http::Response::builder();
 
-        if let Some(status) = self.response_status_code.take() {
+        if let Some(status) = self.response_status_code {
             builder = builder.status(status);
         }
 
-        if let Some(version) = self.response_version.take() {
+        if let Some(version) = self.response_version {
             builder = builder.version(version);
         }
 
@@ -518,9 +522,16 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::info!(
-                            "response dropped without fully consuming the response body, which may result in sub-optimal performance"
-                        );
+                        // Only warn about connections closed for HTTP/1.x.
+                        if !self.disable_connection_reuse_log
+                            && self.response_version < Some(http::Version::HTTP_2)
+                        {
+                            tracing::info!("\
+                                response dropped without fully consuming the response body, connection won't be reused\n\
+                                Aborting a response without fully consuming the response body can result in sub-optimal \
+                                performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early."
+                            );
+                        }
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
                     }

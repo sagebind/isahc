@@ -170,23 +170,6 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Set the maximum time-to-live (TTL) for connections to remain in the
-    /// connection cache.
-    ///
-    /// After requests are completed, if the underlying connection is
-    /// reusable, it is added to the connection cache to be reused to reduce
-    /// latency for future requests. This option controls how long such
-    /// connections should be still considered valid before being discarded.
-    ///
-    /// Old connections have a high risk of not working any more and thus
-    /// attempting to use them wastes time if the server has disconnected.
-    ///
-    /// The default TTL is 118 seconds.
-    pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
-        self.client_config.connection_cache_ttl = Some(ttl);
-        self
-    }
-
     /// Set a maximum number of simultaneous connections that this client is
     /// allowed to keep open at one time.
     ///
@@ -244,6 +227,23 @@ impl HttpClientBuilder {
     pub fn connection_cache_size(mut self, size: usize) -> Self {
         self.agent_builder = self.agent_builder.connection_cache_size(size);
         self.client_config.close_connections = size == 0;
+        self
+    }
+
+    /// Set the maximum time-to-live (TTL) for connections to remain in the
+    /// connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is
+    /// reusable, it is added to the connection cache to be reused to reduce
+    /// latency for future requests. This option controls how long such
+    /// connections should be still considered valid before being discarded.
+    ///
+    /// Old connections have a high risk of not working any more and thus
+    /// attempting to use them wastes time if the server has disconnected.
+    ///
+    /// The default TTL is 118 seconds.
+    pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
+        self.client_config.connection_cache_ttl = Some(ttl);
         self
     }
 
@@ -1055,6 +1055,11 @@ impl HttpClient {
 
         // Set whether curl should generate verbose debug data for us to log.
         easy.verbose(easy.get_ref().is_debug_enabled())?;
+
+        // Disable connection reuse logs if connection cache is disabled.
+        if self.inner.client_config.close_connections {
+            easy.get_mut().disable_connection_reuse_log = true;
+        }
 
         easy.signal(false)?;
 
