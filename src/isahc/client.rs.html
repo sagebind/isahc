@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;sagebind&#x2F;isahc&#x2F;master&#x2F;media&#x2F;icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container rust-logo'><img src='https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;sagebind&#x2F;isahc&#x2F;master&#x2F;media&#x2F;isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input"name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;sagebind&#x2F;isahc&#x2F;master&#x2F;media&#x2F;icon.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../isahc/index.html'><div class='logo-container rust-logo'><img src='https:&#x2F;&#x2F;raw.githubusercontent.com&#x2F;sagebind&#x2F;isahc&#x2F;master&#x2F;media&#x2F;isahc.svg.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -1329,6 +1329,11 @@
 <span id="1329">1329</span>
 <span id="1330">1330</span>
 <span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
 </pre><pre class="rust">
 <span class="doccomment">//! The HTTP client implementation.</span>
 
@@ -1411,12 +1416,12 @@
     <span class="ident">error</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span>,
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span>,
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span><span class="ident">::new</span>()
+        <span class="ident"><span class="self">Self</span>::new</span>()
     }
 }
 
@@ -1435,7 +1440,7 @@
                 <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
                 <span class="comment">// not enable redirect following, it just implements support for</span>
                 <span class="comment">// it, if a request asks for it.</span>
-                <span class="ident">InterceptorObj::new</span>(<span class="kw">crate</span><span class="ident">::redirect::RedirectInterceptor</span>),
+                <span class="ident">InterceptorObj::new</span>(<span class="ident"><span class="kw">crate</span>::redirect::RedirectInterceptor</span>),
             ],
             <span class="ident">default_headers</span>: <span class="ident">HeaderMap::new</span>(),
             <span class="ident">error</span>: <span class="prelude-val">None</span>,
@@ -1502,23 +1507,6 @@
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Set the maximum time-to-live (TTL) for connections to remain in the</span>
-    <span class="doccomment">/// connection cache.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// After requests are completed, if the underlying connection is</span>
-    <span class="doccomment">/// reusable, it is added to the connection cache to be reused to reduce</span>
-    <span class="doccomment">/// latency for future requests. This option controls how long such</span>
-    <span class="doccomment">/// connections should be still considered valid before being discarded.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Old connections have a high risk of not working any more and thus</span>
-    <span class="doccomment">/// attempting to use them wastes time if the server has disconnected.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default TTL is 118 seconds.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_ttl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ttl</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">connection_cache_ttl</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ttl</span>);
-        <span class="self">self</span>
-    }
-
     <span class="doccomment">/// Set a maximum number of simultaneous connections that this client is</span>
     <span class="doccomment">/// allowed to keep open at one time.</span>
     <span class="doccomment">///</span>
@@ -1576,6 +1564,23 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">agent_builder</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">agent_builder</span>.<span class="ident">connection_cache_size</span>(<span class="ident">size</span>);
         <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">close_connections</span> <span class="op">=</span> <span class="ident">size</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set the maximum time-to-live (TTL) for connections to remain in the</span>
+    <span class="doccomment">/// connection cache.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// After requests are completed, if the underlying connection is</span>
+    <span class="doccomment">/// reusable, it is added to the connection cache to be reused to reduce</span>
+    <span class="doccomment">/// latency for future requests. This option controls how long such</span>
+    <span class="doccomment">/// connections should be still considered valid before being discarded.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Old connections have a high risk of not working any more and thus</span>
+    <span class="doccomment">/// attempting to use them wastes time if the server has disconnected.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The default TTL is 118 seconds.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connection_cache_ttl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ttl</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">client_config</span>.<span class="ident">connection_cache_ttl</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ttl</span>);
         <span class="self">self</span>
     }
 
@@ -1776,7 +1781,7 @@
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
         {
             <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookie_jar</span>.<span class="ident">clone</span>();
-            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="kw">crate</span><span class="ident">::cookies::interceptor::CookieInterceptor::new</span>(<span class="ident">jar</span>));
+            <span class="self">self</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptor_impl</span>(<span class="ident"><span class="kw">crate</span>::cookies::interceptor::CookieInterceptor::new</span>(<span class="ident">jar</span>));
         }
 
         <span class="comment">// Add default header interceptor if any default headers were specified.</span>
@@ -1816,7 +1821,7 @@
 
 <span class="kw">impl</span> <span class="ident">Configurable</span> <span class="kw">for</span> <span class="ident">HttpClientBuilder</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="kw">crate</span><span class="ident">::cookies::CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">cookie_jar</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">cookie_jar</span>);
         <span class="self">self</span>
     }
@@ -1945,7 +1950,7 @@
 
     <span class="doccomment">/// Configured cookie jar, if any.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span>,
+    <span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">HttpClient</span> {
@@ -1978,7 +1983,7 @@
     <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
     <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw">crate</span><span class="ident">::cookies::CookieJar</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">cookie_jar</span>.<span class="ident">as_ref</span>()
     }
 
@@ -2388,6 +2393,11 @@
         <span class="comment">// Set whether curl should generate verbose debug data for us to log.</span>
         <span class="ident">easy</span>.<span class="ident">verbose</span>(<span class="ident">easy</span>.<span class="ident">get_ref</span>().<span class="ident">is_debug_enabled</span>())<span class="question-mark">?</span>;
 
+        <span class="comment">// Disable connection reuse logs if connection cache is disabled.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">client_config</span>.<span class="ident">close_connections</span> {
+            <span class="ident">easy</span>.<span class="ident">get_mut</span>().<span class="ident">disable_connection_reuse_log</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        }
+
         <span class="ident">easy</span>.<span class="ident">signal</span>(<span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="ident">request</span>
@@ -2477,11 +2487,11 @@
     }
 }
 
-<span class="kw">impl</span> <span class="kw">crate</span><span class="ident">::interceptor::Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
+<span class="kw">impl</span> <span class="ident"><span class="kw">crate</span>::interceptor::Invoke</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HttpClient</span> {
     <span class="kw">fn</span> <span class="ident">invoke</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::interceptor::InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::interceptor::InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
@@ -2565,14 +2575,14 @@
     }
 
     <span class="kw">fn</span> <span class="ident">error</span>(<span class="ident">error</span>: <span class="ident">Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span><span class="ident">::new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
+        <span class="ident"><span class="self">Self</span>::new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="prelude-val">Err</span>(<span class="ident">error</span>) })
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Future</span> <span class="kw">for</span> <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="self">Self</span><span class="ident">::Output</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_mut</span>().<span class="ident">poll</span>(<span class="ident">cx</span>)
     }
 }
