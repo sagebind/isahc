@@ -1,6 +1,8 @@
 //! Types for error handling.
 
-use std::{error::Error as StdError, fmt, io, sync::Arc};
+use std::{error::Error as StdError, fmt, io, net::SocketAddr, sync::Arc};
+
+use once_cell::sync::OnceCell;
 
 /// A non-exhaustive list of error types that can occur while sending an HTTP
 /// request or receiving an HTTP response.
@@ -165,6 +167,7 @@ struct Inner {
     kind: ErrorKind,
     context: Option<String>,
     source: Option<Box<dyn SourceError>>,
+    remote_addr: OnceCell<SocketAddr>,
 }
 
 impl Error {
@@ -186,6 +189,7 @@ impl Error {
             kind,
             context,
             source: Some(Box::new(source)),
+            remote_addr: OnceCell::new(),
         }))
     }
 
@@ -346,6 +350,28 @@ impl Error {
             _ => false,
         }
     }
+
+    /// Get the remote socket address of the last-used connection involved in
+    /// this error, if known.
+    ///
+    /// If the request that caused this error failed to connect to any server,
+    /// then this will be `None`.
+    ///
+    /// # Addresses and proxies
+    ///
+    /// The address returned by this method is the IP address and port that the
+    /// client _connected to_ and not necessarily the real address of the origin
+    /// server. Forward and reverse proxies between the caller and the server
+    /// can cause the address to be returned to reflect the address of the
+    /// nearest proxy rather than the server.
+    pub fn remote_addr(&self) -> Option<SocketAddr> {
+        self.0.remote_addr.get().cloned()
+    }
+
+    pub(crate) fn with_remote_addr(self, addr: SocketAddr) -> Self {
+        let _ = self.0.remote_addr.set(addr);
+        self
+    }
 }
 
 impl StdError for Error {
@@ -370,6 +396,7 @@ impl fmt::Debug for Error {
                 "source_type",
                 &self.0.source.as_ref().map(|e| e.type_name()),
             )
+            .field("remote_addr", &self.0.remote_addr.get())
             .finish()
     }
 }
@@ -390,6 +417,7 @@ impl From<ErrorKind> for Error {
             kind,
             context: None,
             source: None,
+            remote_addr: OnceCell::new(),
         }))
     }
 }

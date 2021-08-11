@@ -210,6 +210,14 @@ impl RequestHandler {
 
     /// Set the final result for this transfer.
     pub(crate) fn set_result(&mut self, result: Result<(), Error>) {
+        let result = result.map_err(|e| {
+            if let Some(addr) = self.get_primary_addr() {
+                e.with_remote_addr(addr)
+            } else {
+                e
+            }
+        });
+
         if self.shared.result.set(result).is_err() {
             tracing::debug!("attempted to set error multiple times");
         }

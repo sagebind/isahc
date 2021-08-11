@@ -34,13 +34,29 @@ fn local_addr_returns_expected_address() {
 }
 
 #[test]
-fn remote_addr_returns_expected_address_expected_address() {
+fn remote_addr_returns_expected_address() {
     let m = mock!();
 
     let response = isahc::get(m.url()).unwrap();
 
     assert!(!m.requests().is_empty());
     assert_eq!(response.remote_addr(), Some(m.addr()));
+}
+
+#[test]
+fn remote_addr_returns_expected_address_on_error() {
+    let server = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let addr = server.local_addr().unwrap();
+
+    thread::spawn(move || {
+        let (mut client, _) = server.accept().unwrap();
+        client.write_all(b"foobar").unwrap();
+        client.flush().unwrap();
+    });
+
+    let error = isahc::get(format!("http://localhost:{}", addr.port())).unwrap_err();
+
+    assert_eq!(error.remote_addr(), Some(addr));
 }
 
 #[test]
