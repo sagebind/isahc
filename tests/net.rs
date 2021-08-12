@@ -44,7 +44,7 @@ fn remote_addr_returns_expected_address() {
 }
 
 #[test]
-fn remote_addr_returns_expected_address_on_error() {
+fn local_and_remote_addr_returns_expected_addresses_on_error() {
     let server = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let addr = server.local_addr().unwrap();
 
@@ -57,6 +57,8 @@ fn remote_addr_returns_expected_address_on_error() {
     let error = isahc::get(format!("http://localhost:{}", addr.port())).unwrap_err();
 
     assert_eq!(error.remote_addr(), Some(addr));
+    assert_eq!(error.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
+    assert!(error.local_addr().unwrap().port() > 0);
 }
 
 #[test]

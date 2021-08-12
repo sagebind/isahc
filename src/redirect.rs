@@ -77,7 +77,7 @@ impl Interceptor for RedirectInterceptor {
                 if let Some(location) = get_redirect_location(&effective_uri, &response) {
                     // If we've reached the limit, return an error as requested.
                     if redirect_count >= limit {
-                        return Err(ErrorKind::TooManyRedirects.into());
+                        return Err(Error::with_response(ErrorKind::TooManyRedirects, &response));
                     }
 
                     // Set referer header.
@@ -113,7 +113,7 @@ impl Interceptor for RedirectInterceptor {
                     // There's not really a good way of handling this gracefully, so
                     // we just return an error so that the user knows about it.
                     if !request_body.reset() {
-                        return Err(ErrorKind::RequestBodyNotRewindable.into());
+                        return Err(Error::with_response(ErrorKind::RequestBodyNotRewindable, &response));
                     }
 
                     // Update the request to point to the new URI.

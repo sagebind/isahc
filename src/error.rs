@@ -2,7 +2,10 @@
 
 use std::{error::Error as StdError, fmt, io, net::SocketAddr, sync::Arc};
 
+use http::Response;
 use once_cell::sync::OnceCell;
+
+use crate::ResponseExt;
 
 /// A non-exhaustive list of error types that can occur while sending an HTTP
 /// request or receiving an HTTP response.
@@ -167,6 +170,7 @@ struct Inner {
     kind: ErrorKind,
     context: Option<String>,
     source: Option<Box<dyn SourceError>>,
+    local_addr: OnceCell<SocketAddr>,
     remote_addr: OnceCell<SocketAddr>,
 }
 
@@ -189,8 +193,24 @@ impl Error {
             kind,
             context,
             source: Some(Box::new(source)),
+            local_addr: OnceCell::new(),
             remote_addr: OnceCell::new(),
         }))
+    }
+
+    /// Create a new error from a given error kind and response.
+    pub(crate) fn with_response<B>(kind: ErrorKind, response: &Response<B>) -> Self {
+        let error = Self::from(kind);
+
+        if let Some(addr) = response.local_addr() {
+            let _ = error.0.local_addr.set(addr);
+        }
+
+        if let Some(addr) = response.remote_addr() {
+            let _ = error.0.remote_addr.set(addr);
+        }
+
+        error
     }
 
     /// Statically cast a given error into an Isahc error, converting if
@@ -351,21 +371,28 @@ impl Error {
         }
     }
 
+    /// Get the local socket address of the last-used connection involved in
+    /// this error, if known.
+    ///
+    /// If the request that caused this error failed to create a local socket
+    /// for connecting then this will return `None`.
+    pub fn local_addr(&self) -> Option<SocketAddr> {
+        self.0.local_addr.get().cloned()
+    }
+
+
     /// Get the remote socket address of the last-used connection involved in
     /// this error, if known.
     ///
     /// If the request that caused this error failed to connect to any server,
-    /// then this will be `None`.
-    ///
-    /// # Addresses and proxies
-    ///
-    /// The address returned by this method is the IP address and port that the
-    /// client _connected to_ and not necessarily the real address of the origin
-    /// server. Forward and reverse proxies between the caller and the server
-    /// can cause the address to be returned to reflect the address of the
-    /// nearest proxy rather than the server.
+    /// then this will return `None`.
     pub fn remote_addr(&self) -> Option<SocketAddr> {
         self.0.remote_addr.get().cloned()
+    }
+
+    pub(crate) fn with_local_addr(self, addr: SocketAddr) -> Self {
+        let _ = self.0.local_addr.set(addr);
+        self
     }
 
     pub(crate) fn with_remote_addr(self, addr: SocketAddr) -> Self {
@@ -417,6 +444,7 @@ impl From<ErrorKind> for Error {
             kind,
             context: None,
             source: None,
+            local_addr: OnceCell::new(),
             remote_addr: OnceCell::new(),
         }))
     }
