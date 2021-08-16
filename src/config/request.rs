@@ -75,6 +75,8 @@ define_request_config! {
     interface: Option<NetworkInterface>,
     ip_version: Option<IpVersion>,
     dial: Option<Dialer>,
+    dns_resolve: Option<ResolveMap>,
+    dns_cache: Option<DnsCache>,
     proxy: Option<Option<http::Uri>>,
     proxy_blacklist: Option<proxy::Blacklist>,
     proxy_authentication: Option<Proxy<Authentication>>,
@@ -163,6 +165,14 @@ impl SetOpt for RequestConfig {
 
         if let Some(dialer) = self.dial.as_ref() {
             dialer.set_opt(easy)?;
+        }
+
+        if let Some(dns_resolver) = self.dns_resolve.as_ref() {
+            dns_resolver.set_opt(easy)?;
+        }
+
+        if let Some(dns_cache) = self.dns_cache.as_ref() {
+            dns_cache.set_opt(easy)?;
         }
 
         if let Some(proxy) = self.proxy.as_ref() {

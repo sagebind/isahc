@@ -354,6 +354,46 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
+    /// Set a mapping of DNS resolve overrides.
+    ///
+    /// Entries in the given map will be used first before using the default DNS
+    /// resolver for host+port pairs.
+    ///
+    /// Note that DNS resolving is only performed when establishing a new
+    ///
+    fn dns_resolve(self, map: ResolveMap) -> Self {
+        // Similar to the dns_cache option, this operation actually affects all
+        // requests in a multi handle so we do not expose it per-request to
+        // avoid confusing behavior.
+        self.with_config(move |config| {
+            config.dns_resolve = Some(map);
+        })
+    }
+
+    /// Configure DNS caching.
+    ///
+    /// By default, DNS entries are cached by the client executing the request
+    /// and are used until the entry expires. Calling this method allows you to
+    /// change the entry timeout duration or disable caching completely.
+    ///
+    /// Note that DNS entry TTLs are not respected, regardless of this setting.
+    ///
+    /// By default caching is enabled with a 60 second timeout.
+    /// ```
+    fn dns_cache<C>(self, cache: C) -> Self
+    where
+        C: Into<DnsCache>,
+    {
+        // This option is technically supported per-request by curl, but we only
+        // expose it on the client. Since the DNS cache is shared between all
+        // requests, exposing this option per-request would actually cause the
+        // timeout to alternate values for every request with a different
+        // timeout, resulting in some confusing (but valid) behavior.
+        self.with_config(move |config| {
+            config.dns_cache = Some(cache.into());
+        })
+    }
+
     /// Set a proxy to use for requests.
     ///
     /// The proxy protocol is specified by the URI scheme.
@@ -770,9 +810,7 @@ impl NetworkInterface {
     /// Bind to whatever the networking stack finds suitable. This is the
     /// default behavior.
     pub fn any() -> Self {
-        Self {
-            interface: None,
-        }
+        Self { interface: None }
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method

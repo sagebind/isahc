@@ -21,8 +21,7 @@ use futures_lite::{
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request,
-    Response,
+    Request, Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -244,73 +243,6 @@ impl HttpClientBuilder {
     /// The default TTL is 118 seconds.
     pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
         self.client_config.connection_cache_ttl = Some(ttl);
-        self
-    }
-
-    /// Configure DNS caching.
-    ///
-    /// By default, DNS entries are cached by the client executing the request
-    /// and are used until the entry expires. Calling this method allows you to
-    /// change the entry timeout duration or disable caching completely.
-    ///
-    /// Note that DNS entry TTLs are not respected, regardless of this setting.
-    ///
-    /// By default caching is enabled with a 60 second timeout.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::*, prelude::*, HttpClient};
-    /// use std::time::Duration;
-    ///
-    /// let client = HttpClient::builder()
-    ///     // Cache entries for 10 seconds.
-    ///     .dns_cache(Duration::from_secs(10))
-    ///     // Cache entries forever.
-    ///     .dns_cache(DnsCache::Forever)
-    ///     // Don't cache anything.
-    ///     .dns_cache(DnsCache::Disable)
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn dns_cache<C>(mut self, cache: C) -> Self
-    where
-        C: Into<DnsCache>,
-    {
-        // This option is technically supported per-request by curl, but we only
-        // expose it on the client. Since the DNS cache is shared between all
-        // requests, exposing this option per-request would actually cause the
-        // timeout to alternate values for every request with a different
-        // timeout, resulting in some confusing (but valid) behavior.
-        self.client_config.dns_cache = Some(cache.into());
-        self
-    }
-
-    /// Set a mapping of DNS resolve overrides.
-    ///
-    /// Entries in the given map will be used first before using the default DNS
-    /// resolver for host+port pairs.
-    ///
-    /// Note that DNS resolving is only performed when establishing a new
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::ResolveMap, prelude::*, HttpClient};
-    /// use std::net::IpAddr;
-    ///
-    /// let client = HttpClient::builder()
-    ///     .dns_resolve(ResolveMap::new()
-    ///         // Send requests for example.org on port 80 to 127.0.0.1.
-    ///         .add("example.org", 80, [127, 0, 0, 1]))
-    ///     .build()?;
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
-    /// ```
-    pub fn dns_resolve(mut self, map: ResolveMap) -> Self {
-        // Similar to the dns_cache option, this operation actually affects all
-        // requests in a multi handle so we do not expose it per-request to
-        // avoid confusing behavior.
-        self.client_config.dns_resolve = Some(map);
         self
     }
 
