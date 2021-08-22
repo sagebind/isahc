@@ -15,32 +15,28 @@ and response bodies and connection multiplexing.</li>
 <p>Sending requests is as easy as calling a single function. Let’s make a
 simple GET request to an example website:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>()<span class="question-mark">?</span>);</pre></div>
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>()<span class="question-mark">?</span>);</code></pre></div>
 <p>By default, sending a request will wait for the response, up until the
 response headers are received. The returned response struct includes the
 response body as an open stream implementing <a href="https://doc.rust-lang.org/nightly/std/io/trait.Read.html"><code>Read</code></a>.</p>
 <p>Sending a POST request is also easy, and takes an additional argument for
 the request body:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">&quot;make me a salad&quot;</span>)<span class="question-mark">?</span>;</pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">&quot;make me a salad&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>Isahc provides several other simple functions for common HTTP request types:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="ident">isahc::put</span>(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">&quot;have a salad&quot;</span>)<span class="question-mark">?</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="ident">isahc::put</span>(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">&quot;have a salad&quot;</span>)<span class="question-mark">?</span>;
 <span class="ident">isahc::head</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
-<span class="ident">isahc::delete</span>(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</pre></div>
+<span class="ident">isahc::delete</span>(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>If you want to customize the request by adding headers, setting timeouts,
 etc, then you can create a <a href="struct.Request.html" title="Request"><code>Request</code></a> using a
 builder-style fluent interface, then finishing it off with a
 <a href="trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
@@ -50,7 +46,7 @@ builder-style fluent interface, then finishing it off with a
         &quot;speed&quot;: &quot;fast&quot;,
         &quot;cool_name&quot;: true
     }&quot;#</span>)<span class="question-mark">?</span>
-    .<span class="ident">send</span>()<span class="question-mark">?</span>;</pre></div>
+    .<span class="ident">send</span>()<span class="question-mark">?</span>;</code></pre></div>
 <p>For even more examples used in complete programs, please check out the
 <a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory
 in the project repo.</p>
@@ -94,11 +90,10 @@ methods available to prevent blocking threads in your code. All request
 methods have an asynchronous variant that ends with <code>_async</code> in the name.
 Here is our first example rewritten to use async/await syntax:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered">
-<span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get_async</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>().<span class="kw">await</span><span class="question-mark">?</span>);</pre></div>
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>().<span class="kw">await</span><span class="question-mark">?</span>);</code></pre></div>
 <p>Since we sent our request using <a href="fn.get_async.html" title="get_async"><code>get_async</code></a>, no blocking will occur, and
 the asynchronous versions of all response methods (such as
 <a href="trait.AsyncReadResponseExt.html#tymethod.text"><code>text</code></a>) will also automatically be selected by
@@ -108,9 +103,9 @@ the compiler.</p>
 flags and optional dependencies. Unstable features are also initially
 released behind feature flags until they are stabilized. You can add the
 feature names below to your <code>Cargo.toml</code> file to enable them:</p>
-<div class="example-wrap"><pre class="language-toml">[dependencies.isahc]
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies.isahc]
 version = &quot;1.4&quot;
-features = [&quot;psl&quot;]</pre></div>
+features = [&quot;psl&quot;]</code></pre></div>
 <p>Below is a list of all available feature flags and their meanings.</p>
 <h2 id="cookies" class="section-header"><a href="#cookies"><code>cookies</code></a></h2>
 <p>Enable persistent HTTP cookie support. Disabled by default.</p>
