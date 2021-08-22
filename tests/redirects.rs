@@ -2,9 +2,6 @@ use isahc::{config::RedirectPolicy, prelude::*, Body, HttpClient, Request};
 use test_case::test_case;
 use testserver::mock;
 
-#[macro_use]
-mod utils;
-
 #[test]
 fn response_301_no_follow() {
     let m = mock! {
@@ -216,13 +213,15 @@ fn redirect_non_rewindable_body_returns_error() {
     // Create a streaming body of unknown size.
     let upload_stream = Body::from_reader(Body::from_bytes_static(b"hello world"));
 
-    let result = Request::post(m1.url())
+    let error = Request::post(m1.url())
         .redirect_policy(RedirectPolicy::Follow)
         .body(upload_stream)
         .unwrap()
-        .send();
+        .send()
+        .unwrap_err();
 
-    assert_matches!(result, Err(e) if e == isahc::error::ErrorKind::RequestBodyNotRewindable);
+    assert_eq!(error, isahc::error::ErrorKind::RequestBodyNotRewindable);
+    assert_eq!(error.remote_addr(), Some(m1.addr()));
     assert_eq!(m1.request().method, "POST");
 }
 
@@ -235,14 +234,16 @@ fn redirect_limit_is_respected() {
         }
     };
 
-    let result = Request::get(m.url())
+    let error = Request::get(m.url())
         .redirect_policy(RedirectPolicy::Limit(5))
         .body(())
         .unwrap()
-        .send();
+        .send()
+        .unwrap_err();
 
     // Request should error with too many redirects.
-    assert_matches!(result, Err(e) if e == isahc::error::ErrorKind::TooManyRedirects);
+    assert_eq!(error, isahc::error::ErrorKind::TooManyRedirects);
+    assert_eq!(error.remote_addr(), Some(m.addr()));
 
     // After request (limit + 1) that returns a redirect should error.
     assert_eq!(m.requests().len(), 6);
