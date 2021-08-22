@@ -422,6 +422,7 @@ impl fmt::Debug for Error {
                 "source_type",
                 &self.0.source.as_ref().map(|e| e.type_name()),
             )
+            .field("local_addr", &self.0.local_addr.get())
             .field("remote_addr", &self.0.remote_addr.get())
             .finish()
     }
