@@ -689,6 +689,18 @@
 <span id="689">689</span>
 <span id="690">690</span>
 <span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -905,6 +917,18 @@
 
     <span class="doccomment">/// Set the final result for this transfer.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_result</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">result</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">e</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_local_addr</span>() {
+                <span class="ident">e</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">with_local_addr</span>(<span class="ident">addr</span>);
+            }
+
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_primary_addr</span>() {
+                <span class="ident">e</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">with_remote_addr</span>(<span class="ident">addr</span>);
+            }
+
+            <span class="ident">e</span>
+        });
+
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">result</span>.<span class="ident">set</span>(<span class="ident">result</span>).<span class="ident">is_err</span>() {
             <span class="macro">tracing::debug!</span>(<span class="string">&quot;attempted to set error multiple times&quot;</span>);
         }

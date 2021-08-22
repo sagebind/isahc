@@ -768,7 +768,7 @@
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="kw-2">&amp;</span><span class="self">self</span>).<span class="ident">decode_reader</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
+        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="self">self</span>).<span class="ident">decode_reader</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
@@ -924,7 +924,7 @@
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::text::TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="kw-2">&amp;</span><span class="self">self</span>).<span class="ident">decode_reader_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
+        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="self">self</span>).<span class="ident">decode_reader_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>

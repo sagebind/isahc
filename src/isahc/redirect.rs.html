@@ -220,6 +220,9 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">body::AsyncBody</span>,
     <span class="ident">config</span>::{<span class="ident">request::RequestConfig</span>, <span class="ident">RedirectPolicy</span>},
@@ -299,7 +302,7 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">location</span>) <span class="op">=</span> <span class="ident">get_redirect_location</span>(<span class="kw-2">&amp;</span><span class="ident">effective_uri</span>, <span class="kw-2">&amp;</span><span class="ident">response</span>) {
                     <span class="comment">// If we&#39;ve reached the limit, return an error as requested.</span>
                     <span class="kw">if</span> <span class="ident">redirect_count</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">limit</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorKind::TooManyRedirects</span>.<span class="ident">into</span>());
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::with_response</span>(<span class="ident">ErrorKind::TooManyRedirects</span>, <span class="kw-2">&amp;</span><span class="ident">response</span>));
                     }
 
                     <span class="comment">// Set referer header.</span>
@@ -335,7 +338,10 @@
                     <span class="comment">// There&#39;s not really a good way of handling this gracefully, so</span>
                     <span class="comment">// we just return an error so that the user knows about it.</span>
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">request_body</span>.<span class="ident">reset</span>() {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorKind::RequestBodyNotRewindable</span>.<span class="ident">into</span>());
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::with_response</span>(
+                            <span class="ident">ErrorKind::RequestBodyNotRewindable</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">response</span>,
+                        ));
                     }
 
                     <span class="comment">// Update the request to point to the new URI.</span>
