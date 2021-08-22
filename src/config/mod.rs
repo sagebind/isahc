@@ -200,6 +200,73 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
+    /// Configure the use of the `Expect` request header when sending request
+    /// bodies with HTTP/1.1.
+    ///
+    /// By default, when sending requests containing a body of large or unknown
+    /// length over HTTP/1.1, Isahc will send the request headers first without
+    /// the body and wait for the server to respond with a 100 (Continue) status
+    /// code, as defined by [RFC 7231, Section
+    /// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1).
+    /// This gives the opportunity for the server to reject the response without
+    /// needing to first transmit the request body over the network, if the body
+    /// contents are not necessary for the server to determine an appropriate
+    /// response.
+    ///
+    /// For servers that do not support this behavior and instead simply wait
+    /// for the request body without responding with a 100 (Continue), there is
+    /// a limited timeout before the response body is sent anyway without
+    /// confirmation. The default timeout is 1 second, but this can be
+    /// configured.
+    ///
+    /// The `Expect` behavior can also be disabled entirely.
+    ///
+    /// This configuration only takes effect when using HTTP/1.1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use isahc::{
+    ///     config::ExpectContinue,
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// // Use the default behavior (enabled).
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::enabled())
+    ///     // or equivalently...
+    ///     .expect_continue(ExpectContinue::default())
+    ///     // or equivalently...
+    ///     .expect_continue(true)
+    ///     .build()?;
+    ///
+    /// // Customize the timeout if the server doesn't respond with a 100
+    /// // (Continue) status.
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::timeout(Duration::from_millis(200)))
+    ///     // or equivalently...
+    ///     .expect_continue(Duration::from_millis(200))
+    ///     .build()?;
+    ///
+    /// // Disable the Expect header entirely.
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::disabled())
+    ///     // or equivalently...
+    ///     .expect_continue(false)
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn expect_continue<T>(self, expect: T) -> Self
+    where
+        T: Into<ExpectContinue>,
+    {
+        self.with_config(move |config| {
+            config.expect_continue = Some(expect.into());
+        })
+    }
+
     /// Set one or more default HTTP authentication methods to attempt to use
     /// when authenticating with the server.
     ///
@@ -870,5 +937,89 @@ impl SetOpt for IpVersion {
             IpVersion::V6 => curl::easy::IpResolve::V6,
             IpVersion::Any => curl::easy::IpResolve::Any,
         })
+    }
+}
+
+/// Controls the use of the `Expect` request header when sending request bodies
+/// with HTTP/1.1.
+///
+/// By default, when sending requests containing a body of large or unknown
+/// length over HTTP/1.1, Isahc will send the request headers first without the
+/// body and wait for the server to respond with a 100 (Continue) status code,
+/// as defined by [RFC 7231, Section
+/// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1). This
+/// gives the opportunity for the server to reject the response without needing
+/// to first transmit the request body over the network, if the body contents
+/// are not necessary for the server to determine an appropriate response.
+///
+/// For servers that do not support this behavior and instead simply wait for
+/// the request body without responding with a 100 (Continue), there is a
+/// limited timeout before the response body is sent anyway without
+/// confirmation. The default timeout is 1 second, but this can be configured.
+///
+/// The `Expect` behavior can also be disabled entirely.
+///
+/// This configuration only takes effect when using HTTP/1.1.
+#[derive(Clone, Debug)]
+pub struct ExpectContinue {
+    timeout: Option<Duration>,
+}
+
+impl ExpectContinue {
+    /// Enable the use of `Expect` and wait for a 100 (Continue) response with a
+    /// default timeout before sending a request body.
+    pub const fn enabled() -> Self {
+        Self::timeout(Duration::from_secs(1))
+    }
+
+    /// Enable the use of `Expect` and wait for a 100 (Continue) response, up to
+    /// the given timeout, before sending a request body.
+    pub const fn timeout(timeout: Duration) -> Self {
+        Self {
+            timeout: Some(timeout),
+        }
+    }
+
+    /// Disable the use and handling of the `Expect` request header.
+    pub const fn disabled() -> Self {
+        Self {
+            timeout: None,
+        }
+    }
+
+    pub(crate) fn is_disabled(&self) -> bool {
+        self.timeout.is_none()
+    }
+}
+
+impl Default for ExpectContinue {
+    fn default() -> Self {
+        Self::enabled()
+    }
+}
+
+impl From<bool> for ExpectContinue {
+    fn from(value: bool) -> Self {
+        if value {
+            Self::enabled()
+        } else {
+            Self::disabled()
+        }
+    }
+}
+
+impl From<Duration> for ExpectContinue {
+    fn from(value: Duration) -> Self {
+        Self::timeout(value)
+    }
+}
+
+impl SetOpt for ExpectContinue {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        if let Some(timeout) = self.timeout {
+            easy.expect_100_timeout(timeout)
+        } else {
+            Ok(())
+        }
     }
 }

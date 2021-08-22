@@ -1063,13 +1063,19 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        request
+        let request_config = request
             .extensions()
             .get::<RequestConfig>()
-            .unwrap()
-            .set_opt(&mut easy)?;
+            .unwrap();
 
+        request_config.set_opt(&mut easy)?;
         self.inner.client_config.set_opt(&mut easy)?;
+
+        // Check if we need to disable the Expect header.
+        let disable_expect_header = request_config.expect_continue
+            .as_ref()
+            .map(|x| x.is_disabled())
+            .unwrap_or_default();
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -1142,6 +1148,10 @@ impl HttpClient {
 
         for (name, value) in request.headers().iter() {
             headers.append(&header_to_curl_string(name, value, title_case))?;
+        }
+
+        if disable_expect_header {
+            headers.append("Expect:")?;
         }
 
         easy.http_headers(headers)?;
