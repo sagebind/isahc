@@ -68,6 +68,7 @@ define_request_config! {
     low_speed_timeout: Option<(u32, Duration)>,
     version_negotiation: Option<VersionNegotiation>,
     automatic_decompression: Option<bool>,
+    expect_continue: Option<ExpectContinue>,
     authentication: Option<Authentication>,
     credentials: Option<Credentials>,
     tcp_keepalive: Option<Duration>,
@@ -134,6 +135,10 @@ impl SetOpt for RequestConfig {
                     }
                 }
             }
+        }
+
+        if let Some(expect_continue) = self.expect_continue.as_ref() {
+            expect_continue.set_opt(easy)?;
         }
 
         if let Some(auth) = self.authentication.as_ref() {
