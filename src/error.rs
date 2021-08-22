@@ -380,7 +380,6 @@ impl Error {
         self.0.local_addr.get().cloned()
     }
 
-
     /// Get the remote socket address of the last-used connection involved in
     /// this error, if known.
     ///

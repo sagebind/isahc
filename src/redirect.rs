@@ -113,7 +113,10 @@ impl Interceptor for RedirectInterceptor {
                     // There's not really a good way of handling this gracefully, so
                     // we just return an error so that the user knows about it.
                     if !request_body.reset() {
-                        return Err(Error::with_response(ErrorKind::RequestBodyNotRewindable, &response));
+                        return Err(Error::with_response(
+                            ErrorKind::RequestBodyNotRewindable,
+                            &response,
+                        ));
                     }
 
                     // Update the request to point to the new URI.

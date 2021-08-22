@@ -274,7 +274,7 @@ impl<R: Read> ReadResponseExt<R> for Response<R> {
 
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> io::Result<String> {
-        crate::text::Decoder::for_response(&self).decode_reader(self.body_mut())
+        crate::text::Decoder::for_response(self).decode_reader(self.body_mut())
     }
 
     #[cfg(feature = "json")]
@@ -430,7 +430,7 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
 
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut R> {
-        crate::text::Decoder::for_response(&self).decode_reader_async(self.body_mut())
+        crate::text::Decoder::for_response(self).decode_reader_async(self.body_mut())
     }
 
     #[cfg(feature = "json")]
