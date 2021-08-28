@@ -19,6 +19,18 @@ fn simple_response_body() {
 }
 
 #[test]
+fn zero_length_response_body() {
+    let m = mock! {
+        body: "",
+    };
+
+    let response = isahc::get(m.url()).unwrap();
+
+    assert_eq!(response.body().len(), Some(0));
+    assert!(!response.body().is_empty());
+}
+
+#[test]
 fn large_response_body() {
     let body = "wow so large ".repeat(1000);
 
@@ -56,6 +68,20 @@ fn response_body_with_chunked_encoding_has_unknown_size() {
     let response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.body().len(), None);
+}
+
+// See issue #341.
+#[test]
+fn head_request_with_content_length_response_returns_empty_body() {
+    let m = mock! {
+        headers {
+            "content-length": 767,
+        }
+    };
+
+    let response = isahc::head(m.url()).unwrap();
+
+    assert!(response.body().is_empty());
 }
 
 // See issue #64.
