@@ -1086,7 +1086,7 @@ impl HttpClient {
                 easy.get(true)?;
             }
             // Normal HEAD request.
-            (&http::Method::HEAD, false) => {
+            (&http::Method::HEAD, _) => {
                 easy.nobody(true)?;
             }
             // POST requests have special redirect behavior.

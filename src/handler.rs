@@ -79,7 +79,7 @@ pub(crate) struct RequestHandler {
     response_headers: http::HeaderMap,
 
     /// Writing end of the pipe where the response body is written.
-    response_body_writer: pipe::PipeWriter,
+    response_body_writer: Option<pipe::PipeWriter>,
 
     /// A waker used with writing the response body asynchronously. Populated by
     /// an agent when the request is initialized.
@@ -137,7 +137,7 @@ impl RequestHandler {
             response_status_code: None,
             response_version: None,
             response_headers: http::HeaderMap::new(),
-            response_body_writer,
+            response_body_writer: Some(response_body_writer),
             response_body_waker: None,
             response_trailer_writer: TrailerWriter::new(),
             metrics: None,
@@ -229,6 +229,9 @@ impl RequestHandler {
         if self.shared.result.set(result).is_err() {
             tracing::debug!("attempted to set error multiple times");
         }
+
+        // Close the response body pipe.
+        self.response_body_writer.take();
 
         // Flush the trailer, if we haven't already.
         self.response_trailer_writer.flush();
@@ -529,7 +532,7 @@ impl curl::easy::Handler for RequestHandler {
         if let Some(waker) = self.response_body_waker.as_ref() {
             let mut context = Context::from_waker(waker);
 
-            match Pin::new(&mut self.response_body_writer).poll_write(&mut context, data) {
+            match Pin::new(self.response_body_writer.as_mut().unwrap()).poll_write(&mut context, data) {
                 Poll::Pending => Err(WriteError::Pause),
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {

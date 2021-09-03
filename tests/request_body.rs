@@ -1,11 +1,6 @@
 use futures_lite::{future::block_on, AsyncRead};
 use isahc::{prelude::*, AsyncBody, Body, Request};
-use std::{
-    error::Error,
-    io::{self, Read},
-    pin::Pin,
-    task::{Context, Poll},
-};
+use std::{error::Error, io::{self, Read}, pin::Pin, task::{Context, Poll}, time::Duration};
 use test_case::test_case;
 use testserver::mock;
 
@@ -92,6 +87,30 @@ fn content_length_header_takes_precedence_over_body_objects_length(method: &str)
     assert_eq!(m.request().method, method);
     m.request().expect_header("content-length", "3");
     m.request().expect_body("abc"); // truncated to 3 bytes
+}
+
+// See issue #342.
+#[test]
+fn head_request_with_upload_ignores_response_content_length() {
+    let body = "hello world";
+
+    let m = mock! {
+        headers {
+            "content-length": 767,
+        }
+    };
+
+    Request::head(m.url())
+        .timeout(Duration::from_millis(100))
+        .body(body)
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(m.request().method, "HEAD");
+    m.request()
+        .expect_header("content-length", body.len().to_string());
+    m.request().expect_body(body);
 }
 
 #[test]
