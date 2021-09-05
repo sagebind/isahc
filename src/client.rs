@@ -1166,6 +1166,8 @@ impl crate::interceptor::Invoke for &HttpClient {
         mut request: Request<AsyncBody>,
     ) -> crate::interceptor::InterceptorFuture<'_, Error> {
         Box::pin(async move {
+            let is_head_request = request.method() == http::Method::HEAD;
+
             // Set default user agent if not specified.
             request
                 .headers_mut()
@@ -1212,17 +1214,21 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // Convert the reader into an opaque Body.
             Ok(response.map(|reader| {
-                let body = ResponseBody {
-                    inner: reader,
-                    // Extend the lifetime of the agent by including a reference
-                    // to its handle in the response body.
-                    _client: (*self).clone(),
-                };
-
-                if let Some(len) = body_len {
-                    AsyncBody::from_reader_sized(body, len)
+                if is_head_request {
+                    AsyncBody::empty()
                 } else {
-                    AsyncBody::from_reader(body)
+                    let body = ResponseBody {
+                        inner: reader,
+                        // Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        _client: (*self).clone(),
+                    };
+
+                    if let Some(len) = body_len {
+                        AsyncBody::from_reader_sized(body, len)
+                    } else {
+                        AsyncBody::from_reader(body)
+                    }
                 }
             }))
         })
