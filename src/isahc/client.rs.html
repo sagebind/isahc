@@ -1344,6 +1344,12 @@
 <span id="1344">1344</span>
 <span id="1345">1345</span>
 <span id="1346">1346</span>
+<span id="1347">1347</span>
+<span id="1348">1348</span>
+<span id="1349">1349</span>
+<span id="1350">1350</span>
+<span id="1351">1351</span>
+<span id="1352">1352</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The HTTP client implementation.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -2512,6 +2518,8 @@
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::interceptor::InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
+            <span class="kw">let</span> <span class="ident">is_head_request</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">method</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">http::Method::HEAD</span>;
+
             <span class="comment">// Set default user agent if not specified.</span>
             <span class="ident">request</span>
                 .<span class="ident">headers_mut</span>()
@@ -2558,17 +2566,21 @@
 
             <span class="comment">// Convert the reader into an opaque Body.</span>
             <span class="prelude-val">Ok</span>(<span class="ident">response</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">reader</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
-                    <span class="ident">inner</span>: <span class="ident">reader</span>,
-                    <span class="comment">// Extend the lifetime of the agent by including a reference</span>
-                    <span class="comment">// to its handle in the response body.</span>
-                    <span class="ident">_client</span>: (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">clone</span>(),
-                };
-
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_len</span> {
-                    <span class="ident">AsyncBody::from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                <span class="kw">if</span> <span class="ident">is_head_request</span> {
+                    <span class="ident">AsyncBody::empty</span>()
                 } <span class="kw">else</span> {
-                    <span class="ident">AsyncBody::from_reader</span>(<span class="ident">body</span>)
+                    <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">ResponseBody</span> {
+                        <span class="ident">inner</span>: <span class="ident">reader</span>,
+                        <span class="comment">// Extend the lifetime of the agent by including a reference</span>
+                        <span class="comment">// to its handle in the response body.</span>
+                        <span class="ident">_client</span>: (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">clone</span>(),
+                    };
+
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">body_len</span> {
+                        <span class="ident">AsyncBody::from_reader_sized</span>(<span class="ident">body</span>, <span class="ident">len</span>)
+                    } <span class="kw">else</span> {
+                        <span class="ident">AsyncBody::from_reader</span>(<span class="ident">body</span>)
+                    }
                 }
             }))
         })
