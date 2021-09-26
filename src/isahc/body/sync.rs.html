@@ -397,12 +397,12 @@
     <span class="kw">where</span>
         <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="macro">match_type!</span> {
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>)),
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>),
-            <span class="op">&lt;</span><span class="ident">bytes</span> <span class="kw">as</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
+        <span class="macro">castaway::match_type!</span>(<span class="ident">bytes</span>, {
+            <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>)),
+            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>),
+            <span class="ident">String</span> <span class="kw">as</span> <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
             <span class="ident">bytes</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>()),
-        }
+        })
     }
 
     <span class="doccomment">/// Create a streaming body that reads from the given reader.</span>

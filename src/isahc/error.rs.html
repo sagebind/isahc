@@ -752,10 +752,10 @@
     <span class="kw">where</span>
         <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
-        <span class="macro">match_type!</span> {
-            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>,
-            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">std::io::Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>.<span class="ident">into</span>(),
-            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">curl::Error</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="macro">castaway::match_type!</span>(<span class="ident">error</span>, {
+            <span class="ident">Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>,
+            <span class="ident">std::io::Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>.<span class="ident">into</span>(),
+            <span class="ident">curl::Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident"><span class="self">Self</span>::with_context</span>(
                     <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_certproblem</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert_badfile</span>() {
                         <span class="ident">ErrorKind::BadClientCertificate</span>
@@ -810,7 +810,7 @@
                     <span class="ident">error</span>,
                 )
             },
-            <span class="op">&lt;</span><span class="ident">error</span> <span class="kw">as</span> <span class="ident">curl::MultiError</span><span class="op">&gt;</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">curl::MultiError</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident"><span class="self">Self</span>::new</span>(
                     <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_socket</span>() {
                         <span class="ident">ErrorKind::Io</span>
@@ -821,7 +821,7 @@
                 )
             },
             <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Error::new</span>(<span class="ident">ErrorKind::Unknown</span>, <span class="ident">error</span>),
-        }
+        })
     }
 
     <span class="doccomment">/// Get the kind of error this represents.</span>
