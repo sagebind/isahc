@@ -223,10 +223,10 @@ impl Error {
     where
         E: StdError + Send + Sync + 'static,
     {
-        match_type! {
-            <error as Error> => error,
-            <error as std::io::Error> => error.into(),
-            <error as curl::Error> => {
+        castaway::match_type!(error, {
+            Error as error => error,
+            std::io::Error as error => error.into(),
+            curl::Error as error => {
                 Self::with_context(
                     if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
                         ErrorKind::BadClientCertificate
@@ -281,7 +281,7 @@ impl Error {
                     error,
                 )
             },
-            <error as curl::MultiError> => {
+            curl::MultiError as error => {
                 Self::new(
                     if error.is_bad_socket() {
                         ErrorKind::Io
@@ -292,7 +292,7 @@ impl Error {
                 )
             },
             error => Error::new(ErrorKind::Unknown, error),
-        }
+        })
     }
 
     /// Get the kind of error this represents.
