@@ -1,7 +1,11 @@
 //! A simple example program that sends a GET request and then prints out all
 //! the cookies in the cookie jar.
 
-use isahc::{cookies::CookieJar, prelude::*, Request};
+use isahc::{
+    cookies::{Cookie, CookieJar},
+    prelude::*,
+    Request,
+};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -21,8 +25,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("Cookie set: {} = {}", cookie.name(), cookie.value());
     }
 
-    // Send another request. The cookies previously set by the server will be
-    // returned to it.
+    // Replace a cookie
+    let cookie = Cookie::builder("foo", "rab").path("/").build()?;
+    cookie_jar.set(cookie, &uri)?;
+
+    // Send another request. The cookies previously set will be sent.
     let mut response = Request::get("http://httpbin.org/cookies")
         .cookie_jar(cookie_jar.clone())
         .body(())?

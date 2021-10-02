@@ -3,7 +3,7 @@ use std::{error::Error, fmt, str};
 
 /// An error which can occur when attempting to parse a cookie string.
 #[derive(Debug)]
-pub(crate) struct ParseError(());
+pub struct ParseError(());
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -12,6 +12,119 @@ impl fmt::Display for ParseError {
 }
 
 impl Error for ParseError {}
+
+/// Builder for a [`Cookie`].
+///
+/// ```rust
+/// use chrono::{Utc, Duration};
+/// use isahc::cookies::Cookie;
+///
+/// let cookie: Cookie = Cookie::builder("name", "value") // or CookieBuilder::new("name", "value")
+///     .domain("example.com")
+///     .path("/")
+///     .secure(true)
+///     .expiration(Utc::now() + Duration::minutes(30))
+///     .build()
+///     .unwrap();
+/// ```
+#[derive(Clone, Debug)]
+pub struct CookieBuilder {
+    /// The name of the cookie.
+    name: String,
+
+    /// The cookie value.
+    value: String,
+
+    /// The domain the cookie belongs to.
+    domain: Option<String>,
+
+    /// A path prefix that this cookie belongs to.
+    path: Option<String>,
+
+    /// True if the cookie is marked as secure (limited in scope to HTTPS).
+    secure: Option<bool>,
+
+    /// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
+    expiration: Option<DateTime<Utc>>,
+}
+
+impl CookieBuilder {
+    /// Create a new cookie builder with a given name and value.
+    #[allow(unused)]
+    pub fn new<N, V>(name: N, value: V) -> Self
+    where
+        N: Into<String>,
+        V: Into<String>,
+    {
+        Self {
+            name: name.into(),
+            value: value.into(),
+            domain: None,
+            path: None,
+            secure: None,
+            expiration: None,
+        }
+    }
+
+    /// Sets the domain the cookie belongs to.
+    pub fn domain<S>(mut self, domain: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.domain = Some(domain.into());
+        self
+    }
+
+    /// Sets the path prefix that this cookie belongs to.
+    pub fn path<S>(mut self, path: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.path = Some(path.into());
+        self
+    }
+
+    /// True if the cookie is marked as secure (limited in scope to HTTPS).
+    pub fn secure(mut self, secure: bool) -> Self {
+        self.secure = Some(secure);
+        self
+    }
+
+    /// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
+    pub fn expiration(mut self, expiration: DateTime<Utc>) -> Self {
+        self.expiration = Some(expiration);
+        self
+    }
+
+    /// Builds the cookie.
+    ///
+    /// Returns an error if either the name or value given contains illegal
+    /// characters. In practice, only a subset of US-ASCII characters are
+    /// allowed in cookies for maximum compatibility with most web servers.
+    pub fn build(self) -> Result<Cookie, ParseError> {
+        let Self {
+            name,
+            value,
+            domain,
+            path,
+            secure,
+            expiration,
+        } = self;
+
+        let mut cookie = Cookie::new(name, value)?;
+        cookie.domain = domain;
+        cookie.path = path;
+        cookie.expiration = expiration;
+
+        if let Some(secure) = secure {
+            cookie.secure = secure;
+        }
+
+        Ok(cookie)
+    }
+}
 
 /// Information stored about an HTTP cookie.
 ///
@@ -57,7 +170,7 @@ impl Cookie {
     /// characters. In practice, only a subset of US-ASCII characters are
     /// allowed in cookies for maximum compatibility with most web servers.
     #[allow(unused)]
-    pub(crate) fn new<N, V>(name: N, value: V) -> Result<Self, ParseError>
+    fn new<N, V>(name: N, value: V) -> Result<Self, ParseError>
     where
         N: Into<String>,
         V: Into<String>,
@@ -78,6 +191,17 @@ impl Cookie {
         } else {
             Err(ParseError(()))
         }
+    }
+
+    /// Create a new cookie builder with a given name and value.
+    /// See [`CookieBuilder::new`] for an example.
+    #[allow(unused)]
+    pub fn builder<N, V>(name: N, value: V) -> CookieBuilder
+    where
+        N: Into<String>,
+        V: Into<String>,
+    {
+        CookieBuilder::new(name, value)
     }
 
     /// Parse a cookie from a cookie string, as defined in [RFC 6265, section
@@ -340,5 +464,25 @@ mod tests {
             cookie.expiration.as_ref().map(|t| t.timestamp()),
             Some(1_445_412_480)
         );
+    }
+
+    #[test]
+    fn create_cookie() {
+        let exp = Utc::now();
+
+        let cookie = Cookie::builder("foo", "bar")
+            .domain("baz.com")
+            .path("/sub")
+            .secure(true)
+            .expiration(exp)
+            .build()
+            .unwrap();
+
+        assert_eq!(cookie.name(), "foo");
+        assert_eq!(cookie.value(), "bar");
+        assert_eq!(cookie.path(), Some("/sub"));
+        assert_eq!(cookie.domain.as_deref(), Some("baz.com"));
+        assert!(cookie.is_secure());
+        assert_eq!(cookie.expiration, Some(exp));
     }
 }

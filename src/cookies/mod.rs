@@ -31,4 +31,7 @@ mod jar;
 #[cfg(feature = "psl")]
 mod psl;
 
-pub use self::{cookie::Cookie, jar::CookieJar};
+pub use self::{
+    cookie::{Cookie, CookieBuilder, ParseError},
+    jar::{CookieJar, CookieRejectedError, CookieRejectedErrorKind},
+};
