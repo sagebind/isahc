@@ -532,6 +532,7 @@ impl AgentContext {
 
         // If curl gave us a timeout, check if it has expired.
         if self.timer.is_expired(now) {
+            self.timer.stop();
             self.multi.timeout().map_err(Error::from_any)?;
         }
 
