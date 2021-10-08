@@ -10,7 +10,7 @@
 after the response body.</p>
 <p>See the documentation for <a href="struct.Trailer.html" title="Trailer"><code>Trailer</code></a> for more details on how to handle
 trailing headers.</p>
-<h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1>
+<h5 id="examples" class="section-header"><a href="#examples">Examples</a></h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get</span>(<span class="string">&quot;https://my-site-with-trailers.com&quot;</span>)<span class="question-mark">?</span>;
@@ -42,7 +42,7 @@ redirects.</p>
 <p>This method only makes sense with a normal Internet request. If some
 other kind of transport is used to perform the request, such as a Unix
 socket, then this method will return <code>None</code>.</p>
-<h1 id="addresses-and-proxies" class="section-header"><a href="#addresses-and-proxies">Addresses and proxies</a></h1>
+<h5 id="addresses-and-proxies" class="section-header"><a href="#addresses-and-proxies">Addresses and proxies</a></h5>
 <p>The address returned by this method is the IP address and port that the
 client <em>connected to</em> and not necessarily the real address of the origin
 server. Forward and reverse proxies between the caller and the server
@@ -50,7 +50,7 @@ can cause the address to be returned to reflect the address of the
 nearest proxy rather than the server.</p>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.cookie_jar" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#84" title="goto source code">[src]</a></div><h4 class="code-header">fn <a href="#tymethod.cookie_jar" class="fnname">cookie_jar</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="cookies/struct.CookieJar.html" title="struct isahc::cookies::CookieJar">CookieJar</a>&gt;</h4></div></summary><div class="docblock"><p>Get the configured cookie jar used for persisting cookies from this
 response, if any.</p>
-<h1 id="availability" class="section-header"><a href="#availability">Availability</a></h1>
+<h5 id="availability" class="section-header"><a href="#availability">Availability</a></h5>
 <p>This method is only available when the <a href="index.html#cookies"><code>cookies</code></a>
 feature is enabled.</p>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.metrics" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#92" title="goto source code">[src]</a></div><h4 class="code-header">fn <a href="#tymethod.metrics" class="fnname">metrics</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="struct.Metrics.html" title="struct isahc::Metrics">Metrics</a>&gt;</h4></div></summary><div class="docblock"><p>If request metrics are enabled for this particular transfer, return a

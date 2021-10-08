@@ -8,7 +8,7 @@
 until the end of the stream is reached. It is usually a good idea to
 call this method before dropping a response if you know you haven’t read
 the entire response body.</p>
-<h1 id="background" class="section-header"><a href="#background">Background</a></h1>
+<h5 id="background" class="section-header"><a href="#background">Background</a></h5>
 <p>By default, if a response stream is dropped before it has been
 completely read from, then that HTTP connection will be terminated.
 Depending on which version of HTTP is being used, this may require
@@ -27,7 +27,7 @@ be expensive.</p>
 connection in order to interrupt the transfer of a particular response.
 If you know that you will be using only HTTP/2 or newer, then calling
 this method is probably unnecessary.</p>
-<h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1>
+<h5 id="examples" class="section-header"><a href="#examples">Examples</a></h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get_async</span>(<span class="string">&quot;https://example.org&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -39,7 +39,7 @@ this method is probably unnecessary.</p>
 <span class="ident">response</span>.<span class="ident">consume</span>().<span class="kw">await</span><span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.copy_to" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#354-356" title="goto source code">[src]</a></div><h4 class="code-header">fn <a href="#tymethod.copy_to" class="fnname">copy_to</a>&lt;'a, W&gt;(&amp;'a mut self, writer: W) -&gt; CopyFuture&lt;'a, R, W&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;W: AsyncWrite + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Unpin.html" title="trait core::marker::Unpin">Unpin</a> + 'a,&nbsp;</span></h4></div></summary><div class="docblock"><p>Copy the response body into a writer asynchronously.</p>
 <p>Returns the number of bytes that were written.</p>
-<h1 id="examples-1" class="section-header"><a href="#examples-1">Examples</a></h1>
+<h5 id="examples-1" class="section-header"><a href="#examples-1">Examples</a></h5>
 <p>Copying the response into an in-memory buffer:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
@@ -51,26 +51,26 @@ this method is probably unnecessary.</p>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.text" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#381" title="goto source code">[src]</a></div><h4 class="code-header">fn <a href="#tymethod.text" class="fnname">text</a>(&amp;mut self) -&gt; TextFuture&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut </a>R&gt;</h4></div></summary><div class="docblock"><p>Read the response body as a string asynchronously.</p>
 <p>This method consumes the entire response body stream and can only be
 called once.</p>
-<h1 id="availability" class="section-header"><a href="#availability">Availability</a></h1>
+<h5 id="availability" class="section-header"><a href="#availability">Availability</a></h5>
 <p>This method is only available when the
 <a href="index.html#text-decoding"><code>text-decoding</code></a> feature is enabled, which it
 is by default.</p>
-<h1 id="examples-2" class="section-header"><a href="#examples-2">Examples</a></h1>
+<h5 id="examples-2" class="section-header"><a href="#examples-2">Examples</a></h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">isahc::get_async</span>(<span class="string">&quot;https://example.org&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>
     .<span class="ident">text</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">text</span>);</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.json" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#410-412" title="goto source code">[src]</a></div><h4 class="code-header">fn <a href="#tymethod.json" class="fnname">json</a>&lt;T&gt;(&amp;mut self) -&gt; JsonFuture&lt;'_, R, T&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="https://docs.rs/serde/1.0.130/serde/de/trait.DeserializeOwned.html" title="trait serde::de::DeserializeOwned">DeserializeOwned</a>,&nbsp;</span></h4></div></summary><div class="docblock"><p>Deserialize the response body as JSON into a given type.</p>
-<h1 id="caveats" class="section-header"><a href="#caveats">Caveats</a></h1>
+<h5 id="caveats" class="section-header"><a href="#caveats">Caveats</a></h5>
 <p>Unlike its <a href="trait.ReadResponseExt.html#tymethod.json">synchronous equivalent</a>, this method
 reads the entire response body into memory before attempting
 deserialization. This is due to a Serde limitation since incremental
 partial deserializing is not supported.</p>
-<h1 id="availability-1" class="section-header"><a href="#availability-1">Availability</a></h1>
+<h5 id="availability-1" class="section-header"><a href="#availability-1">Availability</a></h5>
 <p>This method is only available when the <a href="index.html#json"><code>json</code></a> feature
 is enabled.</p>
-<h1 id="examples-3" class="section-header"><a href="#examples-3">Examples</a></h1>
+<h5 id="examples-3" class="section-header"><a href="#examples-3">Examples</a></h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">serde_json::Value</span>;
 
