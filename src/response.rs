@@ -210,6 +210,18 @@ pub trait ReadResponseExt<R: Read> {
         File::create(path).and_then(|f| self.copy_to(f))
     }
 
+    /// Read the entire response body into memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let image_bytes = isahc::get("https://httpbin.org/image/jpeg")?.bytes()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    fn bytes(&mut self) -> io::Result<Vec<u8>>;
+
     /// Read the response body as a string.
     ///
     /// The encoding used to decode the response body into a string depends on
@@ -270,6 +282,18 @@ pub trait ReadResponseExt<R: Read> {
 impl<R: Read> ReadResponseExt<R> for Response<R> {
     fn copy_to<W: Write>(&mut self, mut writer: W) -> io::Result<u64> {
         io::copy(self.body_mut(), &mut writer)
+    }
+
+    fn bytes(&mut self) -> io::Result<Vec<u8>> {
+        let mut buf = Vec::new();
+
+        if let Some(length) = get_content_length(self) {
+            buf.reserve(length as usize);
+        }
+
+        self.copy_to(&mut buf)?;
+
+        Ok(buf)
     }
 
     #[cfg(feature = "text-decoding")]
@@ -355,6 +379,22 @@ pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
     where
         W: AsyncWrite + Unpin + 'a;
 
+    /// Read the entire response body into memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -> Result<(), isahc::Error> {
+    /// let image_bytes = isahc::get_async("https://httpbin.org/image/jpeg")
+    ///     .await?
+    ///     .bytes()
+    ///     .await?;
+    /// # Ok(()) }
+    /// ```
+    fn bytes(&mut self) -> BytesFuture<'_, &mut R>;
+
     /// Read the response body as a string asynchronously.
     ///
     /// This method consumes the entire response body stream and can only be
@@ -428,6 +468,20 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
         CopyFuture::new(async move { copy_async(self.body_mut(), writer).await })
     }
 
+    fn bytes(&mut self) -> BytesFuture<'_, &mut R> {
+        BytesFuture::new(async move {
+            let mut buf = Vec::new();
+
+            if let Some(length) = get_content_length(self) {
+                buf.reserve(length as usize);
+            }
+
+            copy_async(self.body_mut(), &mut buf).await?;
+
+            Ok(buf)
+        })
+    }
+
     #[cfg(feature = "text-decoding")]
     fn text(&mut self) -> crate::text::TextFuture<'_, &mut R> {
         crate::text::Decoder::for_response(self).decode_reader_async(self.body_mut())
@@ -464,6 +518,15 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
     }
 }
 
+fn get_content_length<T>(response: &Response<T>) -> Option<u64> {
+    response.headers()
+        .get(http::header::CONTENT_LENGTH)?
+        .to_str()
+        .ok()?
+        .parse()
+        .ok()
+}
+
 decl_future! {
     /// A future which reads any remaining bytes from the response body stream
     /// and discard them.
@@ -471,6 +534,9 @@ decl_future! {
 
     /// A future which copies all the response body bytes into a sink.
     pub type CopyFuture<R, W> = impl Future<Output = io::Result<u64>> + SendIf<R, W>;
+
+    /// A future which reads the entire response body into memory.
+    pub type BytesFuture<R> = impl Future<Output = io::Result<Vec<u8>>> + SendIf<R>;
 
     /// A future which deserializes the response body as JSON.
     #[cfg(feature = "json")]
