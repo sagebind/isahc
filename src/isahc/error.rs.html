@@ -633,46 +633,46 @@
 
 <span class="kw">impl</span> <span class="ident">ErrorKind</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::BadClientCertificate</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;a problem occurred with the local certificate&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::BadServerCertificate</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;the server certificate could not be validated&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ClientInitialization</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;failed to initialize client&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ConnectionFailed</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;failed to connect to the server&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::InvalidContentEncoding</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(
+            <span class="ident"><span class="self">Self</span>::BadClientCertificate</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;a problem occurred with the local certificate&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::BadServerCertificate</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;the server certificate could not be validated&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::ClientInitialization</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to initialize client&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::ConnectionFailed</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to connect to the server&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::InvalidContentEncoding</span> =&gt; <span class="prelude-val">Some</span>(
                 <span class="string">&quot;the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed&quot;</span>,
             ),
-            <span class="ident"><span class="self">Self</span>::InvalidCredentials</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident"><span class="self">Self</span>::InvalidCredentials</span> =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;provided authentication credentials were rejected by the server&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::InvalidRequest</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;invalid HTTP request&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::NameResolution</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;failed to resolve host name&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ProtocolViolation</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident"><span class="self">Self</span>::InvalidRequest</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;invalid HTTP request&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::NameResolution</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to resolve host name&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::ProtocolViolation</span> =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;the server made an unrecoverable HTTP protocol violation&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::RequestBodyNotRewindable</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident"><span class="self">Self</span>::RequestBodyNotRewindable</span> =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;request body could not be re-sent because it is not rewindable&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::Timeout</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident"><span class="self">Self</span>::Timeout</span> =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;request or operation took longer than the configured timeout time&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::TlsEngine</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;error ocurred in the secure socket engine&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::TooManyRedirects</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="string">&quot;number of redirects hit the maximum amount&quot;</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="ident"><span class="self">Self</span>::TlsEngine</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;error ocurred in the secure socket engine&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::TooManyRedirects</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;number of redirects hit the maximum amount&quot;</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ErrorKind</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="self">self</span>.<span class="ident">description</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;unknown error&quot;</span>))
     }
 }
 
 <span class="comment">// Improve equality ergonomics for references.</span>
 <span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> <span class="ident">ErrorKind</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) -&gt; <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">other</span>
     }
 }
 
@@ -705,7 +705,7 @@
 
 <span class="kw">impl</span> <span class="ident">Error</span> {
     <span class="doccomment">/// Create a new error from a given error kind and source error.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">source</span>: <span class="ident">E</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">source</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
@@ -714,7 +714,7 @@
 
     <span class="doccomment">/// Create a new error from a given error kind, source error, and context</span>
     <span class="doccomment">/// string.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_context</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">context</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">source</span>: <span class="ident">E</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_context</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">context</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">source</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
@@ -728,7 +728,7 @@
     }
 
     <span class="doccomment">/// Create a new error from a given error kind and response.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">kind</span>);
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">local_addr</span>() {
@@ -748,14 +748,14 @@
     <span class="doccomment">/// This is useful for converting or creating errors from external types</span>
     <span class="doccomment">/// without publicly implementing `From` over them and leaking them into our</span>
     <span class="doccomment">/// API.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_any</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">error</span>: <span class="ident">E</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_any</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">error</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
     {
         <span class="macro">castaway::match_type!</span>(<span class="ident">error</span>, {
-            <span class="ident">Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>,
-            <span class="ident">std::io::Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">error</span>.<span class="ident">into</span>(),
-            <span class="ident">curl::Error</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; <span class="ident">error</span>,
+            <span class="ident">std::io::Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; <span class="ident">error</span>.<span class="ident">into</span>(),
+            <span class="ident">curl::Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; {
                 <span class="ident"><span class="self">Self</span>::with_context</span>(
                     <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_certproblem</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert_badfile</span>() {
                         <span class="ident">ErrorKind::BadClientCertificate</span>
@@ -781,7 +781,7 @@
                         <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_error</span>()
                         <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_stream_error</span>()
                         <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_unsupported_protocol</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">code</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY</span>
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">code</span>() <span class="op">==</span> <span class="ident">curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY</span>
                     {
                         <span class="ident">ErrorKind::ProtocolViolation</span>
                     } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_send_error</span>()
@@ -810,7 +810,7 @@
                     <span class="ident">error</span>,
                 )
             },
-            <span class="ident">curl::MultiError</span> <span class="kw">as</span> <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">curl::MultiError</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; {
                 <span class="ident"><span class="self">Self</span>::new</span>(
                     <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_socket</span>() {
                         <span class="ident">ErrorKind::Io</span>
@@ -820,7 +820,7 @@
                     <span class="ident">error</span>,
                 )
             },
-            <span class="ident">error</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Error::new</span>(<span class="ident">ErrorKind::Unknown</span>, <span class="ident">error</span>),
+            <span class="ident">error</span> =&gt; <span class="ident">Error::new</span>(<span class="ident">ErrorKind::Unknown</span>, <span class="ident">error</span>),
         })
     }
 
@@ -831,7 +831,7 @@
     <span class="doccomment">/// indication of a bug, or an error condition that we do not recognize</span>
     <span class="doccomment">/// appropriately. Either way, please report such occurrences to us!</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span>
     }
 
@@ -841,15 +841,15 @@
     <span class="doccomment">/// invalid data to the server. Requests that return these sorts of errors</span>
     <span class="doccomment">/// probably should not be retried without first fixing the request</span>
     <span class="doccomment">/// parameters.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
             <span class="ident">ErrorKind::BadClientCertificate</span>
             <span class="op">|</span> <span class="ident">ErrorKind::ClientInitialization</span>
             <span class="op">|</span> <span class="ident">ErrorKind::InvalidCredentials</span>
             <span class="op">|</span> <span class="ident">ErrorKind::InvalidRequest</span>
             <span class="op">|</span> <span class="ident">ErrorKind::RequestBodyNotRewindable</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -857,20 +857,20 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Network operations are inherently unreliable. Sometimes retrying the</span>
     <span class="doccomment">/// request once or twice is enough to resolve the error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_network</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_network</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::ConnectionFailed</span> <span class="op">|</span> <span class="ident">ErrorKind::Io</span> <span class="op">|</span> <span class="ident">ErrorKind::NameResolution</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="ident">ErrorKind::ConnectionFailed</span> <span class="op">|</span> <span class="ident">ErrorKind::Io</span> <span class="op">|</span> <span class="ident">ErrorKind::NameResolution</span> =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
         }
     }
 
     <span class="doccomment">/// Returns true if this error was likely the fault of the server.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_server</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_server</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
             <span class="ident">ErrorKind::BadServerCertificate</span>
             <span class="op">|</span> <span class="ident">ErrorKind::ProtocolViolation</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TooManyRedirects</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="op">|</span> <span class="ident">ErrorKind::TooManyRedirects</span> =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -886,17 +886,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Sometimes retrying the request once or twice is enough to resolve the</span>
     <span class="doccomment">/// error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_timeout</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">kind</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ErrorKind::Timeout</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_timeout</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">ErrorKind::Timeout</span>
     }
 
     <span class="doccomment">/// Returns true if this error is related to SSL/TLS.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tls</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tls</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
             <span class="ident">ErrorKind::BadClientCertificate</span>
             <span class="op">|</span> <span class="ident">ErrorKind::BadServerCertificate</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -905,7 +905,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the request that caused this error failed to create a local socket</span>
     <span class="doccomment">/// for connecting then this will return `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
     }
 
@@ -914,35 +914,35 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the request that caused this error failed to connect to any server,</span>
     <span class="doccomment">/// then this will return `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_local_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_local_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
         <span class="self">self</span>
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_remote_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_remote_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
         <span class="self">self</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">StdError</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">source</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">source</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>)<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="ident">source</span>.<span class="ident">as_dyn_error</span>())
     }
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">kind</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">kind</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">kind</span>().<span class="ident">eq</span>(<span class="ident">kind</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Error&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;kind&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kind</span>())
             .<span class="ident">field</span>(<span class="string">&quot;context&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">context</span>)
@@ -958,7 +958,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">context</span>.<span class="ident">as_ref</span>() {
             <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}: {}&quot;</span>, <span class="self">self</span>.<span class="ident">kind</span>(), <span class="ident">s</span>)
         } <span class="kw">else</span> {
@@ -968,7 +968,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span>(<span class="ident">Arc::new</span>(<span class="ident">Inner</span> {
             <span class="ident">kind</span>,
             <span class="ident">context</span>: <span class="prelude-val">None</span>,
@@ -980,7 +980,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">io::Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io::Error</span>) -&gt; <span class="self">Self</span> {
         <span class="comment">// If this I/O error is just a wrapped Isahc error, then unwrap it.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="ident">error</span>.<span class="ident">get_ref</span>() {
             <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>() {
@@ -990,9 +990,9 @@
 
         <span class="ident"><span class="self">Self</span>::new</span>(
             <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">kind</span>() {
-                <span class="ident">io::ErrorKind::ConnectionRefused</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ErrorKind::ConnectionFailed</span>,
-                <span class="ident">io::ErrorKind::TimedOut</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ErrorKind::Timeout</span>,
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ErrorKind::Io</span>,
+                <span class="ident">io::ErrorKind::ConnectionRefused</span> =&gt; <span class="ident">ErrorKind::ConnectionFailed</span>,
+                <span class="ident">io::ErrorKind::TimedOut</span> =&gt; <span class="ident">ErrorKind::Timeout</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">ErrorKind::Io</span>,
             },
             <span class="ident">error</span>,
         )
@@ -1000,11 +1000,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">io::Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">Error</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::ConnectionFailed</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">io::ErrorKind::ConnectionRefused</span>,
-            <span class="ident">ErrorKind::Timeout</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">io::ErrorKind::TimedOut</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">io::ErrorKind::Other</span>,
+            <span class="ident">ErrorKind::ConnectionFailed</span> =&gt; <span class="ident">io::ErrorKind::ConnectionRefused</span>,
+            <span class="ident">ErrorKind::Timeout</span> =&gt; <span class="ident">io::ErrorKind::TimedOut</span>,
+            <span class="kw">_</span> =&gt; <span class="ident">io::ErrorKind::Other</span>,
         };
 
         <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">kind</span>, <span class="ident">error</span>)
@@ -1012,7 +1012,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">http::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Error</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">http::Error</span>) -&gt; <span class="ident">Error</span> {
         <span class="ident"><span class="self">Self</span>::new</span>(
             <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::header::InvalidHeaderName</span><span class="op">&gt;</span>()
                 <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::header::InvalidHeaderValue</span><span class="op">&gt;</span>()
@@ -1034,18 +1034,18 @@
 <span class="kw">trait</span> <span class="ident">SourceError</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> {
     <span class="doccomment">/// Get the type name of the concrete error type when the parent error was</span>
     <span class="doccomment">/// created. Used for enriching the debug formatting.</span>
-    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
+    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
 
     <span class="doccomment">/// Cast this error as a stdlib error trait object.</span>
-    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>);
+    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>);
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span> <span class="ident">SourceError</span> <span class="kw">for</span> <span class="ident">T</span> {
-    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="ident">std::any::type_name</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) {
+    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) {
         <span class="self">self</span>
     }
 }

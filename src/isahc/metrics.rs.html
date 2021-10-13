@@ -218,14 +218,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Metrics</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">inner</span>: <span class="ident">Arc::default</span>(),
         }
     }
 
     <span class="doccomment">/// Number of bytes uploaded / estimated total.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">u64</span>, <span class="ident">u64</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">u64</span>, <span class="ident">u64</span>) {
         (
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_progress</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_total</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
@@ -233,12 +233,12 @@
     }
 
     <span class="doccomment">/// Average upload speed so far in bytes/second.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">f64</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_speed</span>.<span class="ident">load</span>()
     }
 
     <span class="doccomment">/// Number of bytes downloaded / estimated total.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">u64</span>, <span class="ident">u64</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">u64</span>, <span class="ident">u64</span>) {
         (
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_progress</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
             <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_total</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
@@ -246,7 +246,7 @@
     }
 
     <span class="doccomment">/// Average download speed so far in bytes/second.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">f64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">f64</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_speed</span>.<span class="ident">load</span>()
     }
 
@@ -255,7 +255,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_lookup_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_lookup_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>())
     }
 
@@ -264,7 +264,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(
             (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
         )
@@ -274,7 +274,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secure_connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secure_connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="kw">let</span> <span class="ident">app_connect_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">appconnect_time</span>.<span class="ident">load</span>();
 
         <span class="kw">if</span> <span class="ident">app_connect_time</span> <span class="op">&gt;</span> <span class="number">0f64</span> {
@@ -289,7 +289,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_start_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_start_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>())
     }
 
@@ -298,7 +298,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(
             (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
         )
@@ -309,20 +309,20 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
     <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">total_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">total_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>())
     }
 
     <span class="doccomment">/// If automatic redirect following is enabled, gets the total time taken</span>
     <span class="doccomment">/// for all redirection steps including name lookup, connect, pretransfer</span>
     <span class="doccomment">/// and transfer before final transaction was started.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">redirect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">redirect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">redirect_time</span>.<span class="ident">load</span>())
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Metrics</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Metrics&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;upload_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_progress</span>())
             .<span class="ident">field</span>(<span class="string">&quot;upload_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_speed</span>())

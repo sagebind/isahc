@@ -230,18 +230,18 @@
 <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">WithRequestConfig</span>: <span class="ident">Sized</span> {
     <span class="doccomment">/// Invoke a function to mutate the request configuration for this object.</span>
-    <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="self">self</span>, <span class="ident">f</span>: <span class="kw">impl</span> <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RequestConfig</span>)) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;
+    <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="self">self</span>, <span class="ident">f</span>: <span class="kw">impl</span> <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RequestConfig</span>)) -&gt; <span class="self">Self</span>;
 }
 
 <span class="doccomment">/// A helper trait for applying a configuration value to a given curl handle.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">SetOpt</span> {
     <span class="doccomment">/// Apply this configuration property to the given curl handle.</span>
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span>;
 }
 
 <span class="comment">// Define this struct inside a macro to reduce some boilerplate.</span>
 <span class="macro">macro_rules!</span> <span class="ident">define_request_config</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>,)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>,)<span class="kw-2">*</span>) =&gt; {
         <span class="doccomment">/// Configuration for an HTTP request.</span>
         <span class="doccomment">///</span>
         <span class="doccomment">/// This struct is not exposed directly, but rather is interacted with</span>
@@ -254,7 +254,7 @@
         }
 
         <span class="kw">impl</span> <span class="ident">RequestConfig</span> {
-            <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">client_defaults</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+            <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">client_defaults</span>() -&gt; <span class="self">Self</span> {
                 <span class="self">Self</span> {
                     <span class="comment">// Always start out with latest compatible HTTP version.</span>
                     <span class="ident">version_negotiation</span>: <span class="prelude-val">Some</span>(<span class="ident">VersionNegotiation::default</span>()),
@@ -317,7 +317,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">RequestConfig</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
             <span class="ident">easy</span>.<span class="ident">timeout</span>(<span class="ident">timeout</span>)<span class="question-mark">?</span>;
         }
@@ -351,8 +351,8 @@
                             <span class="ident">curl_sys::CURLOPT_ACCEPT_ENCODING</span>,
                             <span class="number">0</span>,
                         ) {
-                            <span class="ident">curl_sys::CURLE_OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-                            <span class="ident">code</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">curl::Error::new</span>(<span class="ident">code</span>)),
+                            <span class="ident">curl_sys::CURLE_OK</span> =&gt; {}
+                            <span class="ident">code</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">curl::Error::new</span>(<span class="ident">code</span>)),
                         }
                     }
                 }
@@ -394,8 +394,8 @@
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">proxy</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy</span>.<span class="ident">as_ref</span>() {
             <span class="kw">match</span> <span class="ident">proxy</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">uri</span>))<span class="question-mark">?</span>,
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">uri</span>) =&gt; <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">uri</span>))<span class="question-mark">?</span>,
+                <span class="prelude-val">None</span> =&gt; <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>,
             }
         }
 

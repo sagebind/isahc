@@ -254,7 +254,7 @@
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
         <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
         <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="comment">// Store the effective URI to include in the response.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">effective_uri</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">uri</span>().<span class="ident">clone</span>();
@@ -268,7 +268,7 @@
                 .<span class="ident">unwrap_or_default</span>();
 
             <span class="comment">// No redirect handling, just proceed normally.</span>
-            <span class="kw">if</span> <span class="ident">policy</span> <span class="op">=</span><span class="op">=</span> <span class="ident">RedirectPolicy::None</span> {
+            <span class="kw">if</span> <span class="ident">policy</span> <span class="op">==</span> <span class="ident">RedirectPolicy::None</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="ident">response</span>
                     .<span class="ident">extensions_mut</span>()
@@ -284,8 +284,8 @@
                 .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
             <span class="kw">let</span> <span class="ident">limit</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">policy</span> {
-                <span class="ident">RedirectPolicy::Limit</span>(<span class="ident">limit</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">limit</span>,
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DEFAULT_REDIRECT_LIMIT</span>,
+                <span class="ident">RedirectPolicy::Limit</span>(<span class="ident">limit</span>) =&gt; <span class="ident">limit</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">DEFAULT_REDIRECT_LIMIT</span>,
             };
 
             <span class="comment">// Keep track of how many redirects we&#39;ve done.</span>
@@ -315,9 +315,9 @@
                     <span class="comment">// specs don&#39;t really say one way or another when this should</span>
                     <span class="comment">// happen for most status codes, so we just mimic curl&#39;s</span>
                     <span class="comment">// behavior here since it is so common.</span>
-                    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">301</span>
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">302</span>
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">=</span><span class="op">=</span> <span class="number">303</span>
+                    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">301</span>
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">302</span>
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">303</span>
                     {
                         <span class="ident">request_builder</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">method</span>(<span class="ident">http::Method::GET</span>);
                     }
@@ -365,18 +365,18 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">get_redirect_location</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">request_uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">get_redirect_location</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">request_uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_redirection</span>() {
         <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http::header::LOCATION</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">parse_location</span>(<span class="ident">location</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>.<span class="ident">as_ref</span>()) {
-                <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) =&gt; <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>.<span class="ident">as_ref</span>()) {
+                <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
             }
         }
@@ -386,11 +386,11 @@
 }
 
 <span class="doccomment">/// Parse the given `Location` header value into a string.</span>
-<span class="kw">fn</span> <span class="ident">parse_location</span>(<span class="ident">location</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">ToStrError</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">parse_location</span>(<span class="ident">location</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderValue</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">ToStrError</span><span class="op">&gt;</span> {
     <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">to_str</span>() {
         <span class="comment">// This will return a `str` if the header value contained only legal</span>
         <span class="comment">// US-ASCII characters.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Cow::Borrowed</span>(<span class="ident">s</span>)),
+        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Cow::Borrowed</span>(<span class="ident">s</span>)),
 
         <span class="comment">// Try to parse the location as UTF-8 bytes instead of US-ASCII. This is</span>
         <span class="comment">// technically against the URI spec which requires all literal</span>
@@ -410,7 +410,7 @@
         <span class="comment">// percent-encoded. The third-party URI parsers that we use have no such</span>
         <span class="comment">// leniency, so we percent-encode such bytes (if legal UTF-8) ahead of</span>
         <span class="comment">// time before handing them off to the URI parser.</span>
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="kw">if</span> <span class="ident">str::from_utf8</span>(<span class="ident">location</span>.<span class="ident">as_bytes</span>()).<span class="ident">is_ok</span>() {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String::with_capacity</span>(<span class="ident">location</span>.<span class="ident">len</span>());
 
@@ -433,19 +433,19 @@
 }
 
 <span class="doccomment">/// Resolve one URI in terms of another.</span>
-<span class="kw">fn</span> <span class="ident">resolve</span>(<span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uri</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">std::error::Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">resolve</span>(<span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uri</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">std::error::Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="comment">// Optimistically check if this is an absolute URI.</span>
     <span class="kw">match</span> <span class="ident">Url::parse</span>(<span class="ident">target</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">url</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Uri::try_from</span>(<span class="ident">url</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>),
+        <span class="prelude-val">Ok</span>(<span class="ident">url</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Uri::try_from</span>(<span class="ident">url</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>),
 
         <span class="comment">// Relative URI, resolve against the base.</span>
-        <span class="prelude-val">Err</span>(<span class="ident">url::ParseError::RelativeUrlWithoutBase</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Err</span>(<span class="ident">url::ParseError::RelativeUrlWithoutBase</span>) =&gt; {
             <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="ident">base</span>.<span class="ident">to_string</span>().<span class="ident">as_str</span>())<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(<span class="ident">Uri::try_from</span>(<span class="ident">base</span>.<span class="ident">join</span>(<span class="ident">target</span>)<span class="question-mark">?</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>)
         }
 
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">e</span>)),
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">e</span>)),
     }
 }
 </code></pre></div>
