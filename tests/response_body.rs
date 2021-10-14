@@ -19,6 +19,32 @@ fn simple_response_body() {
 }
 
 #[test]
+fn response_body_bytes() {
+    let m = mock! {
+        body: "hello world",
+    };
+
+    let mut response = isahc::get(m.url()).unwrap();
+    let bytes = response.bytes().unwrap();
+
+    assert_eq!(bytes, "hello world".as_bytes());
+}
+
+#[test]
+fn response_body_bytes_async() {
+    let m = mock! {
+        body: "hello world",
+    };
+
+    block_on(async move {
+        let mut response = isahc::get_async(m.url()).await.unwrap();
+        let bytes = response.bytes().await.unwrap();
+
+        assert_eq!(bytes, "hello world".as_bytes());
+    });
+}
+
+#[test]
 fn zero_length_response_body() {
     let m = mock! {
         body: "",
