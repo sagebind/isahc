@@ -107,8 +107,6 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Interceptor that provides automatic cookie session management for any</span>
 <span class="doccomment">//! request with an attached cookie jar.</span>
 
@@ -130,9 +128,7 @@
 
 <span class="kw">impl</span> <span class="ident">CookieInterceptor</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cookie_jar</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CookieJar</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">cookie_jar</span>,
-        }
+        <span class="self">Self</span> { <span class="ident">cookie_jar</span> }
     }
 }
 
@@ -208,7 +204,7 @@
                         });
 
                     <span class="kw">for</span> <span class="ident">cookie</span> <span class="kw">in</span> <span class="ident">cookies</span> {
-                        <span class="ident">jar</span>.<span class="ident">set</span>(<span class="ident">cookie</span>, <span class="ident">request_uri</span>);
+                        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">jar</span>.<span class="ident">set</span>(<span class="ident">cookie</span>, <span class="ident">request_uri</span>);
                     }
                 }
 
