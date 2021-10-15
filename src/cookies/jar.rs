@@ -2,10 +2,57 @@ use super::Cookie;
 use http::Uri;
 use std::{
     collections::HashSet,
+    error::Error,
+    fmt,
     hash::{Hash, Hasher},
     net::{Ipv4Addr, Ipv6Addr},
     sync::{Arc, RwLock},
 };
+
+/// Returned when a [`Cookie`] fails to be added to the [`CookieJar`].
+#[derive(Clone, Debug)]
+pub struct CookieRejectedError {
+    kind: CookieRejectedErrorKind,
+    cookie: Cookie,
+}
+
+/// The reason why the [`Cookie`] was rejected.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CookieRejectedErrorKind {
+    /// The absolute request URI did not contain a valid host.
+    InvalidRequestDomain,
+
+    /// The [`Cookie`]'s specified domain was not valid.
+    ///
+    /// This can be for a number of reasons:
+    /// 1. The domain was a top-level domain.
+    /// 2. The domain is disallowed, for example if it is a public suffix.
+    InvalidCookieDomain,
+
+    /// The domain of the [`Cookie`] did not match the domain of the absolute request URI.
+    DomainMismatch,
+}
+
+impl CookieRejectedError {
+    /// Get the kind of error that occurred.
+    pub fn kind(&self) -> CookieRejectedErrorKind {
+        self.kind
+    }
+
+    /// Get back the [`Cookie`] that failed to be set.
+    pub fn cookie(self) -> Cookie {
+        self.cookie
+    }
+}
+
+impl fmt::Display for CookieRejectedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid cookie for given request URI")
+    }
+}
+
+impl Error for CookieRejectedError {}
 
 /// Provides automatic cookie session management using an in-memory cookie
 /// store.
@@ -74,8 +121,16 @@ impl CookieJar {
 
     /// Set a cookie for the given absolute request URI.
     ///
-    /// Returns true if the cookie was set, or false if the cookie was rejected.
-    pub(crate) fn set(&self, cookie: Cookie, request_uri: &Uri) -> bool {
+    /// If the cookie was set successfully, returns the cookie that previously existed for
+    /// the given domain, path, and cookie name, if any.
+    ///
+    /// If unsuccessful, returns a [`CookieRejectedError`] which can be used to get back the
+    /// attempted cookie.
+    pub fn set(
+        &self,
+        cookie: Cookie,
+        request_uri: &Uri,
+    ) -> Result<Option<Cookie>, CookieRejectedError> {
         let request_host = if let Some(host) = request_uri.host() {
             host
         } else {
@@ -83,7 +138,10 @@ impl CookieJar {
                 "cookie '{}' dropped, no domain specified in request URI",
                 cookie.name()
             );
-            return false;
+            return Err(CookieRejectedError {
+                kind: CookieRejectedErrorKind::InvalidRequestDomain,
+                cookie,
+            });
         };
 
         // Perform some validations on the domain.
@@ -97,7 +155,10 @@ impl CookieJar {
                     request_host,
                     domain
                 );
-                return false;
+                return Err(CookieRejectedError {
+                    kind: CookieRejectedErrorKind::DomainMismatch,
+                    cookie,
+                });
             }
 
             // Drop cookies for top-level domains.
@@ -107,7 +168,10 @@ impl CookieJar {
                     cookie.name(),
                     domain
                 );
-                return false;
+                return Err(CookieRejectedError {
+                    kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                    cookie,
+                });
             }
 
             // Check the PSL for bad domain suffixes if available.
@@ -120,7 +184,10 @@ impl CookieJar {
                         cookie.name(),
                         domain
                     );
-                    return false;
+                    return Err(CookieRejectedError {
+                        kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                        cookie,
+                    });
                 }
             }
         }
@@ -139,12 +206,14 @@ impl CookieJar {
 
         // Insert the cookie.
         let mut jar = self.cookies.write().unwrap();
-        jar.replace(cookie_with_context);
+        let existing = jar
+            .replace(cookie_with_context)
+            .map(|cookie_with_context| cookie_with_context.cookie);
 
         // Clear expired cookies while we have a write lock.
         jar.retain(|cookie| !cookie.cookie.is_expired());
 
-        true
+        Ok(existing)
     }
 }
 
@@ -278,40 +347,68 @@ mod tests {
     fn cookie_domain_not_allowed() {
         let jar = CookieJar::default();
 
-        assert!(jar.set(
-            Cookie::parse("foo=bar").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
-        assert!(jar.set(
-            Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
-        assert!(jar.set(
-            Cookie::parse("foo=bar; domain=baz.com").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
-        assert!(!jar.set(
-            Cookie::parse("foo=bar; domain=www.bar.baz.com").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
+        assert!(jar
+            .set(
+                Cookie::parse("foo=bar").unwrap(),
+                &"https://bar.baz.com".parse().unwrap()
+            )
+            .is_ok());
+        assert!(jar
+            .set(
+                Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
+                &"https://bar.baz.com".parse().unwrap()
+            )
+            .is_ok());
+        assert!(jar
+            .set(
+                Cookie::parse("foo=bar; domain=baz.com").unwrap(),
+                &"https://bar.baz.com".parse().unwrap()
+            )
+            .is_ok());
+
+        assert!(
+            jar.set(
+                Cookie::parse("foo=bar; domain=www.bar.baz.com").unwrap(),
+                &"https://bar.baz.com".parse().unwrap(),
+            )
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::DomainMismatch
+        );
 
         // TLDs are not allowed.
-        assert!(!jar.set(
-            Cookie::parse("foo=bar; domain=com").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
-        assert!(!jar.set(
-            Cookie::parse("foo=bar; domain=.com").unwrap(),
-            &"https://bar.baz.com".parse().unwrap()
-        ));
+        assert!(
+            jar.set(
+                Cookie::parse("foo=bar; domain=com").unwrap(),
+                &"https://bar.baz.com".parse().unwrap(),
+            )
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::InvalidCookieDomain
+        );
+
+        assert!(
+            jar.set(
+                Cookie::parse("foo=bar; domain=.com").unwrap(),
+                &"https://bar.baz.com".parse().unwrap(),
+            )
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::InvalidCookieDomain
+        );
 
         // If the public suffix list is enabled, also exercise that validation.
         if cfg!(feature = "psl") {
             // wi.us is a public suffix
-            assert!(!jar.set(
-                Cookie::parse("foo=bar; domain=wi.us").unwrap(),
-                &"https://www.state.wi.us".parse().unwrap()
-            ));
+            assert!(
+                jar.set(
+                    Cookie::parse("foo=bar; domain=wi.us").unwrap(),
+                    &"https://www.state.wi.us".parse().unwrap(),
+                )
+                .unwrap_err()
+                .kind()
+                    == CookieRejectedErrorKind::InvalidCookieDomain
+            );
         }
     }
 
@@ -320,14 +417,15 @@ mod tests {
         let uri: Uri = "https://example.com/foo".parse().unwrap();
         let jar = CookieJar::default();
 
-        jar.set(Cookie::parse("foo=bar").unwrap(), &uri);
+        jar.set(Cookie::parse("foo=bar").unwrap(), &uri).unwrap();
 
         assert_eq!(jar.get_by_name(&uri, "foo").unwrap(), "bar");
 
         jar.set(
             Cookie::parse("foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT").unwrap(),
             &uri,
-        );
+        )
+        .unwrap();
 
         assert!(jar.get_for_uri(&uri).into_iter().next().is_none());
     }
