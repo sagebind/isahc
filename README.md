@@ -112,6 +112,12 @@ Not every library is perfect for every use-case. While Isahc strives to be a ful
 - **WebAssembly support**: If your project needs to be able to be compiled to WebAssembly, then Isahc will probably not work for you. Instead you might like an HTTP client that supports multiple backends such as [Surf].
 - **Rustls support**: We hope to support [rustls] as a TLS backend someday, it is not currently supported directly. If for some reason rustls is a hard requirement for you, you'll need to use a different HTTP client for now.
 
+## Sponsors
+
+Special thanks to sponsors of my open-source work!
+
+<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
+
 ## License
 
 This project's source code and documentation are licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
