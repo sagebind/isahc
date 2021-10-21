@@ -1,7 +1,7 @@
 name: Update Sponsors README
 on:
-  push:
-    branches: [master]
+  schedule:
+    - cron: '42 3 */2 * *'
 
 jobs:
   update:
