@@ -62,13 +62,13 @@ jobs:
           args: --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Generate code coverage report
-        uses: actions-rs/tarpaulin@v0.1
+        uses: actions-rs/tarpaulin@v0.1.3
         with:
           version: '0.18.3'
           args: "-p isahc --run-types Tests,Doctests --features ${{ env.FEATURES }}"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
