@@ -1,5 +1,9 @@
-use chrono::{prelude::*, Duration};
-use std::{error::Error, fmt, str};
+use std::{
+    error::Error,
+    fmt,
+    str,
+    time::{Duration, SystemTime},
+};
 
 /// An error which can occur when attempting to parse a cookie string.
 #[derive(Debug)]
@@ -16,14 +20,14 @@ impl Error for ParseError {}
 /// Builder for a [`Cookie`].
 ///
 /// ```rust
-/// use chrono::{Utc, Duration};
 /// use isahc::cookies::Cookie;
+/// use std::time::{Duration, SystemTime};
 ///
 /// let cookie: Cookie = Cookie::builder("name", "value") // or CookieBuilder::new("name", "value")
 ///     .domain("example.com")
 ///     .path("/")
 ///     .secure(true)
-///     .expiration(Utc::now() + Duration::minutes(30))
+///     .expiration(SystemTime::now() + Duration::from_secs(30 * 60))
 ///     .build()
 ///     .unwrap();
 /// ```
@@ -46,7 +50,7 @@ pub struct CookieBuilder {
 
     /// Time when this cookie expires. If not present, then this is a session
     /// cookie that expires when the current client session ends.
-    expiration: Option<DateTime<Utc>>,
+    expiration: Option<SystemTime>,
 }
 
 impl CookieBuilder {
@@ -93,8 +97,11 @@ impl CookieBuilder {
 
     /// Time when this cookie expires. If not present, then this is a session
     /// cookie that expires when the current client session ends.
-    pub fn expiration(mut self, expiration: DateTime<Utc>) -> Self {
-        self.expiration = Some(expiration);
+    pub fn expiration<T>(mut self, expiration: T) -> Self
+    where
+        T: Into<SystemTime>,
+    {
+        self.expiration = Some(expiration.into());
         self
     }
 
@@ -160,7 +167,7 @@ pub struct Cookie {
 
     /// Time when this cookie expires. If not present, then this is a session
     /// cookie that expires when the current client session ends.
-    expiration: Option<DateTime<Utc>>,
+    expiration: Option<SystemTime>,
 }
 
 impl Cookie {
@@ -260,9 +267,10 @@ impl Cookie {
 
     /// Check if the cookie has expired.
     pub(crate) fn is_expired(&self) -> bool {
-        match self.expiration {
-            Some(time) => time < Utc::now(),
-            None => false,
+        if let Some(time) = self.expiration.as_ref() {
+            *time < SystemTime::now()
+        } else {
+            false
         }
     }
 
@@ -289,8 +297,8 @@ impl Cookie {
                 if name.eq_ignore_ascii_case(b"Expires") {
                     if cookie_expiration.is_none() {
                         if let Ok(value) = str::from_utf8(value) {
-                            if let Ok(time) = DateTime::parse_from_rfc2822(value) {
-                                cookie_expiration = Some(time.with_timezone(&Utc));
+                            if let Ok(time) = httpdate::parse_http_date(value) {
+                                cookie_expiration = Some(time);
                             }
                         }
                     }
@@ -301,7 +309,8 @@ impl Cookie {
                 } else if name.eq_ignore_ascii_case(b"Max-Age") {
                     if let Ok(value) = str::from_utf8(value) {
                         if let Ok(seconds) = value.parse() {
-                            cookie_expiration = Some(Utc::now() + Duration::seconds(seconds));
+                            cookie_expiration =
+                                Some(SystemTime::now() + Duration::from_secs(seconds));
                         }
                     }
                 } else if name.eq_ignore_ascii_case(b"Path") {
@@ -416,6 +425,12 @@ mod tests {
     use super::*;
     use test_case::test_case;
 
+    fn system_time_timestamp(time: &SystemTime) -> u64 {
+        time.duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    }
+
     #[test_case("foo")]
     #[test_case("foo;=bar")]
     #[test_case("bad_name@?=bar")]
@@ -449,7 +464,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_set_cookie_header() {
+    fn parse_set_cookie_header_expires() {
         let cookie = Cookie::parse(
             "foo=bar; path=/sub;Secure; DOMAIN=baz.com;expires=Wed, 21 Oct 2015 07:28:00 GMT",
         )
@@ -460,15 +475,37 @@ mod tests {
         assert_eq!(cookie.path(), Some("/sub"));
         assert_eq!(cookie.domain.as_deref(), Some("baz.com"));
         assert!(cookie.is_secure());
+        assert!(cookie.is_expired());
         assert_eq!(
-            cookie.expiration.as_ref().map(|t| t.timestamp()),
+            cookie.expiration.as_ref().map(system_time_timestamp),
             Some(1_445_412_480)
         );
     }
 
     #[test]
+    fn parse_set_cookie_header_max_age() {
+        let cookie =
+            Cookie::parse("foo=bar; path=/sub;Secure; DOMAIN=baz.com; max-age=60").unwrap();
+
+        assert_eq!(cookie.name(), "foo");
+        assert_eq!(cookie.value(), "bar");
+        assert_eq!(cookie.path(), Some("/sub"));
+        assert_eq!(cookie.domain.as_deref(), Some("baz.com"));
+        assert!(cookie.is_secure());
+        assert!(!cookie.is_expired());
+        assert!(
+            cookie
+                .expiration
+                .unwrap()
+                .duration_since(SystemTime::now())
+                .unwrap()
+                <= Duration::from_secs(60)
+        );
+    }
+
+    #[test]
     fn create_cookie() {
-        let exp = Utc::now();
+        let exp = SystemTime::now();
 
         let cookie = Cookie::builder("foo", "bar")
             .domain("baz.com")

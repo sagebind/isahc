@@ -20,10 +20,10 @@ status = "actively-developed"
 
 [features]
 default = ["http2", "static-curl", "text-decoding"]
-cookies = ["chrono"]
+cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
-psl = ["parking_lot", "publicsuffix"]
+psl = ["httpdate", "parking_lot", "publicsuffix"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
@@ -47,12 +47,12 @@ sluice = "0.5.4"
 url = "2.2"
 waker-fn = "1"
 
-[dependencies.chrono]
-version = "0.4"
-optional = true
-
 [dependencies.encoding_rs]
 version = "0.8"
+optional = true
+
+[dependencies.httpdate]
+version = "1"
 optional = true
 
 [dependencies.mime]
