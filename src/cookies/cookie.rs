@@ -20,14 +20,14 @@ impl Error for ParseError {}
 /// Builder for a [`Cookie`].
 ///
 /// ```rust
-/// use chrono::{Utc, Duration};
 /// use isahc::cookies::Cookie;
+/// use std::time::{Duration, SystemTime};
 ///
 /// let cookie: Cookie = Cookie::builder("name", "value") // or CookieBuilder::new("name", "value")
 ///     .domain("example.com")
 ///     .path("/")
 ///     .secure(true)
-///     .expiration(Utc::now() + Duration::minutes(30))
+///     .expiration(SystemTime::now() + Duration::from_secs(30 * 60))
 ///     .build()
 ///     .unwrap();
 /// ```
@@ -475,7 +475,7 @@ mod tests {
         assert_eq!(cookie.path(), Some("/sub"));
         assert_eq!(cookie.domain.as_deref(), Some("baz.com"));
         assert!(cookie.is_secure());
-        assert!(!cookie.is_expired());
+        assert!(cookie.is_expired());
         assert_eq!(
             cookie.expiration.as_ref().map(system_time_timestamp),
             Some(1_445_412_480)
