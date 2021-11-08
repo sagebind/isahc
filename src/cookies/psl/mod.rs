@@ -20,22 +20,21 @@
 //! since a stale list is better than no list at all.
 
 use crate::{request::RequestExt, ReadResponseExt};
-use chrono::{prelude::*, Duration};
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::{List, Psl};
-use std::error::Error;
+use std::{error::Error, time::{Duration, SystemTime}};
 
 /// How long should we use a cached list before refreshing?
-static TTL: Lazy<Duration> = Lazy::new(|| Duration::hours(24));
+static TTL: Lazy<Duration> = Lazy::new(|| Duration::from_secs(24 * 60 * 60));
 
 /// Global in-memory PSL cache.
 static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
 
 struct ListCache {
     list: List,
-    last_refreshed: Option<DateTime<Utc>>,
-    last_updated: Option<DateTime<Utc>>,
+    last_refreshed: Option<SystemTime>,
+    last_updated: Option<SystemTime>,
 }
 
 impl Default for ListCache {
@@ -62,14 +61,17 @@ impl Default for ListCache {
 impl ListCache {
     fn needs_refreshed(&self) -> bool {
         match self.last_refreshed {
-            Some(last_refreshed) => Utc::now() - last_refreshed > *TTL,
+            Some(last_refreshed) => match last_refreshed.elapsed() {
+                Ok(elapsed) => elapsed > *TTL,
+                Err(_) => false,
+            },
             None => true,
         }
     }
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let result = self.try_refresh();
-        self.last_refreshed = Some(Utc::now());
+        self.last_refreshed = Some(SystemTime::now());
         result
     }
 
@@ -77,7 +79,7 @@ impl ListCache {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
-            request = request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
+            request = request.header(http::header::IF_MODIFIED_SINCE, httpdate::fmt_http_date(last_updated));
         }
 
         let mut response = request.body(())?.send()?;
@@ -86,13 +88,13 @@ impl ListCache {
             http::StatusCode::OK => {
                 // Parse the suffix list.
                 self.list = response.text()?.parse()?;
-                self.last_updated = Some(Utc::now());
+                self.last_updated = Some(SystemTime::now());
                 tracing::debug!("public suffix list updated");
             }
 
             http::StatusCode::NOT_MODIFIED => {
                 // List hasn't changed and is still new.
-                self.last_updated = Some(Utc::now());
+                self.last_updated = Some(SystemTime::now());
             }
 
             status => tracing::warn!(
