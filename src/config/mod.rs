@@ -22,12 +22,14 @@ pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
 pub(crate) mod proxy;
+pub(crate) mod host_rule;
 pub(crate) mod redirect;
 pub(crate) mod request;
 pub(crate) mod ssl;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
+pub use host_rule::HostRuleMap;
 pub use redirect::RedirectPolicy;
 pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
