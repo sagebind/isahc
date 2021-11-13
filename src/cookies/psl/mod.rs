@@ -19,23 +19,22 @@
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
-use crate::request::RequestExt;
-use chrono::{prelude::*, Duration};
+use crate::{request::RequestExt, ReadResponseExt};
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
-use publicsuffix::List;
-use std::error::Error;
+use publicsuffix::{List, Psl};
+use std::{error::Error, time::{Duration, SystemTime}};
 
 /// How long should we use a cached list before refreshing?
-static TTL: Lazy<Duration> = Lazy::new(|| Duration::hours(24));
+static TTL: Lazy<Duration> = Lazy::new(|| Duration::from_secs(24 * 60 * 60));
 
 /// Global in-memory PSL cache.
 static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
 
 struct ListCache {
     list: List,
-    last_refreshed: Option<DateTime<Utc>>,
-    last_updated: Option<DateTime<Utc>>,
+    last_refreshed: Option<SystemTime>,
+    last_updated: Option<SystemTime>,
 }
 
 impl Default for ListCache {
@@ -46,7 +45,8 @@ impl Default for ListCache {
             // build, because that would force you to have an active Internet
             // connection in order to compile. And that would be really
             // annoying, especially if you are on a slow connection.
-            list: List::from_str(include_str!("list/public_suffix_list.dat"))
+            list: include_str!("list/public_suffix_list.dat")
+                .parse()
                 .expect("could not parse bundled public suffix list"),
 
             // Refresh the list right away.
@@ -61,14 +61,17 @@ impl Default for ListCache {
 impl ListCache {
     fn needs_refreshed(&self) -> bool {
         match self.last_refreshed {
-            Some(last_refreshed) => Utc::now() - last_refreshed > *TTL,
+            Some(last_refreshed) => match last_refreshed.elapsed() {
+                Ok(elapsed) => elapsed > *TTL,
+                Err(_) => false,
+            },
             None => true,
         }
     }
 
     fn refresh(&mut self) -> Result<(), Box<dyn Error>> {
         let result = self.try_refresh();
-        self.last_refreshed = Some(Utc::now());
+        self.last_refreshed = Some(SystemTime::now());
         result
     }
 
@@ -76,7 +79,7 @@ impl ListCache {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
-            request = request.header(http::header::IF_MODIFIED_SINCE, last_updated.to_rfc2822());
+            request = request.header(http::header::IF_MODIFIED_SINCE, httpdate::fmt_http_date(last_updated));
         }
 
         let mut response = request.body(())?.send()?;
@@ -84,14 +87,14 @@ impl ListCache {
         match response.status() {
             http::StatusCode::OK => {
                 // Parse the suffix list.
-                self.list = List::from_reader(response.body_mut())?;
-                self.last_updated = Some(Utc::now());
+                self.list = response.text()?.parse()?;
+                self.last_updated = Some(SystemTime::now());
                 tracing::debug!("public suffix list updated");
             }
 
             http::StatusCode::NOT_MODIFIED => {
                 // List hasn't changed and is still new.
-                self.last_updated = Some(Utc::now());
+                self.last_updated = Some(SystemTime::now());
             }
 
             status => tracing::warn!(
@@ -109,16 +112,17 @@ impl ListCache {
 /// If the current list information is stale, a background refresh will be
 /// triggered. The current data will be used to respond to this query.
 pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
-    let domain = domain.as_ref();
+    let domain = domain.as_ref().as_bytes();
 
     with_cache(|cache| {
         // Check if the given domain is a public suffix.
         cache
             .list
-            .parse_domain(domain)
-            .ok()
-            .and_then(|d| d.suffix().map(|d| d == domain))
-            .unwrap_or(false)
+            .suffix(domain)
+            // We don't want to block unknown hosts like `localhost`
+            .filter(publicsuffix::Suffix::is_known)
+            .filter(|suffix| suffix == &domain)
+            .is_some()
     })
 }
 

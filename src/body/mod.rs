@@ -75,14 +75,14 @@ impl AsyncBody {
     where
         B: AsRef<[u8]> + 'static,
     {
-        match_type! {
-            <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
-            <bytes as &'static [u8]> => Self::from_static_impl(bytes),
-            <bytes as &'static str> => Self::from_static_impl(bytes.as_bytes()),
-            <bytes as Vec<u8>> => Self::from(bytes),
-            <bytes as String> => Self::from(bytes.into_bytes()),
+        castaway::match_type!(bytes, {
+            Cursor<Cow<'static, [u8]>> as bytes => Self(Inner::Buffer(bytes)),
+            &'static [u8] as bytes => Self::from_static_impl(bytes),
+            &'static str as bytes => Self::from_static_impl(bytes.as_bytes()),
+            Vec<u8> as bytes => Self::from(bytes),
+            String as bytes => Self::from(bytes.into_bytes()),
             bytes => Self::from(bytes.as_ref().to_vec()),
-        }
+        })
     }
 
     #[inline]

@@ -170,23 +170,6 @@ impl HttpClientBuilder {
         self
     }
 
-    /// Set the maximum time-to-live (TTL) for connections to remain in the
-    /// connection cache.
-    ///
-    /// After requests are completed, if the underlying connection is
-    /// reusable, it is added to the connection cache to be reused to reduce
-    /// latency for future requests. This option controls how long such
-    /// connections should be still considered valid before being discarded.
-    ///
-    /// Old connections have a high risk of not working any more and thus
-    /// attempting to use them wastes time if the server has disconnected.
-    ///
-    /// The default TTL is 118 seconds.
-    pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
-        self.client_config.connection_cache_ttl = Some(ttl);
-        self
-    }
-
     /// Set a maximum number of simultaneous connections that this client is
     /// allowed to keep open at one time.
     ///
@@ -244,6 +227,23 @@ impl HttpClientBuilder {
     pub fn connection_cache_size(mut self, size: usize) -> Self {
         self.agent_builder = self.agent_builder.connection_cache_size(size);
         self.client_config.close_connections = size == 0;
+        self
+    }
+
+    /// Set the maximum time-to-live (TTL) for connections to remain in the
+    /// connection cache.
+    ///
+    /// After requests are completed, if the underlying connection is
+    /// reusable, it is added to the connection cache to be reused to reduce
+    /// latency for future requests. This option controls how long such
+    /// connections should be still considered valid before being discarded.
+    ///
+    /// Old connections have a high risk of not working any more and thus
+    /// attempting to use them wastes time if the server has disconnected.
+    ///
+    /// The default TTL is 118 seconds.
+    pub fn connection_cache_ttl(mut self, ttl: Duration) -> Self {
+        self.client_config.connection_cache_ttl = Some(ttl);
         self
     }
 
@@ -1056,15 +1056,26 @@ impl HttpClient {
         // Set whether curl should generate verbose debug data for us to log.
         easy.verbose(easy.get_ref().is_debug_enabled())?;
 
+        // Disable connection reuse logs if connection cache is disabled.
+        if self.inner.client_config.close_connections {
+            easy.get_mut().disable_connection_reuse_log = true;
+        }
+
         easy.signal(false)?;
 
-        request
+        let request_config = request
             .extensions()
             .get::<RequestConfig>()
-            .unwrap()
-            .set_opt(&mut easy)?;
+            .unwrap();
 
+        request_config.set_opt(&mut easy)?;
         self.inner.client_config.set_opt(&mut easy)?;
+
+        // Check if we need to disable the Expect header.
+        let disable_expect_header = request_config.expect_continue
+            .as_ref()
+            .map(|x| x.is_disabled())
+            .unwrap_or_default();
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
@@ -1139,6 +1150,10 @@ impl HttpClient {
             headers.append(&header_to_curl_string(name, value, title_case))?;
         }
 
+        if disable_expect_header {
+            headers.append("Expect:")?;
+        }
+
         easy.http_headers(headers)?;
 
         Ok((easy, future))
@@ -1151,6 +1166,8 @@ impl crate::interceptor::Invoke for &HttpClient {
         mut request: Request<AsyncBody>,
     ) -> crate::interceptor::InterceptorFuture<'_, Error> {
         Box::pin(async move {
+            let is_head_request = request.method() == http::Method::HEAD;
+
             // Set default user agent if not specified.
             request
                 .headers_mut()
@@ -1197,17 +1214,21 @@ impl crate::interceptor::Invoke for &HttpClient {
 
             // Convert the reader into an opaque Body.
             Ok(response.map(|reader| {
-                let body = ResponseBody {
-                    inner: reader,
-                    // Extend the lifetime of the agent by including a reference
-                    // to its handle in the response body.
-                    _client: (*self).clone(),
-                };
-
-                if let Some(len) = body_len {
-                    AsyncBody::from_reader_sized(body, len)
+                if is_head_request {
+                    AsyncBody::empty()
                 } else {
-                    AsyncBody::from_reader(body)
+                    let body = ResponseBody {
+                        inner: reader,
+                        // Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        _client: (*self).clone(),
+                    };
+
+                    if let Some(len) = body_len {
+                        AsyncBody::from_reader_sized(body, len)
+                    } else {
+                        AsyncBody::from_reader(body)
+                    }
                 }
             }))
         })

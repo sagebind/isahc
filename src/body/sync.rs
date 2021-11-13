@@ -58,12 +58,12 @@ impl Body {
     where
         B: AsRef<[u8]> + 'static,
     {
-        match_type! {
-            <bytes as Cursor<Cow<'static, [u8]>>> => Self(Inner::Buffer(bytes)),
-            <bytes as Vec<u8>> => Self::from(bytes),
-            <bytes as String> => Self::from(bytes.into_bytes()),
+        castaway::match_type!(bytes, {
+            Cursor<Cow<'static, [u8]>> as bytes => Self(Inner::Buffer(bytes)),
+            Vec<u8> as bytes => Self::from(bytes),
+            String as bytes => Self::from(bytes.into_bytes()),
             bytes => Self::from(bytes.as_ref().to_vec()),
-        }
+        })
     }
 
     /// Create a streaming body that reads from the given reader.

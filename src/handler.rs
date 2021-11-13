@@ -6,10 +6,11 @@ use crate::{
     metrics::Metrics,
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
+    trailer::TrailerWriter,
 };
+use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
-use flume::Sender;
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
 use once_cell::sync::OnceCell;
@@ -84,6 +85,10 @@ pub(crate) struct RequestHandler {
     /// an agent when the request is initialized.
     response_body_waker: Option<Waker>,
 
+    /// Holds the response trailer, if any. Used to communicate the trailer
+    /// headers out-of-band from the response headers and body.
+    response_trailer_writer: TrailerWriter,
+
     /// Metrics object for publishing metrics data to. Lazily initialized.
     metrics: Option<Metrics>,
 
@@ -92,6 +97,9 @@ pub(crate) struct RequestHandler {
     /// valid at least for the lifetime of this struct (assuming all other
     /// invariants are upheld).
     handle: *mut CURL,
+
+    /// If true, do not warn about prematurely closed responses.
+    pub(crate) disable_connection_reuse_log: bool,
 }
 
 // Would be send implicitly except for the raw CURL pointer.
@@ -116,7 +124,7 @@ impl RequestHandler {
         Self,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
-        let (sender, receiver) = flume::bounded(1);
+        let (sender, receiver) = async_channel::bounded(1);
         let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
@@ -131,15 +139,17 @@ impl RequestHandler {
             response_headers: http::HeaderMap::new(),
             response_body_writer,
             response_body_waker: None,
+            response_trailer_writer: TrailerWriter::new(),
             metrics: None,
             handle: ptr::null_mut(),
+            disable_connection_reuse_log: false,
         };
 
         // Create a future that resolves when the handler receives the response
         // headers.
         let future = async move {
             let builder = receiver
-                .recv_async()
+                .recv()
                 .await
                 .map_err(|e| Error::new(ErrorKind::Unknown, e))??;
 
@@ -175,10 +185,7 @@ impl RequestHandler {
     }
 
     fn is_future_canceled(&self) -> bool {
-        self.sender
-            .as_ref()
-            .map(Sender::is_disconnected)
-            .unwrap_or(false)
+        self.sender.as_ref().map(Sender::is_closed).unwrap_or(false)
     }
 
     /// Initialize the handler and prepare it for the request to begin.
@@ -207,9 +214,24 @@ impl RequestHandler {
 
     /// Set the final result for this transfer.
     pub(crate) fn set_result(&mut self, result: Result<(), Error>) {
+        let result = result.map_err(|mut e| {
+            if let Some(addr) = self.get_local_addr() {
+                e = e.with_local_addr(addr);
+            }
+
+            if let Some(addr) = self.get_primary_addr() {
+                e = e.with_remote_addr(addr);
+            }
+
+            e
+        });
+
         if self.shared.result.set(result).is_err() {
             tracing::debug!("attempted to set error multiple times");
         }
+
+        // Flush the trailer, if we haven't already.
+        self.response_trailer_writer.flush();
 
         // Complete the response future, if we haven't already.
         self.complete_response_future();
@@ -229,7 +251,7 @@ impl RequestHandler {
                 Ok(self.build_response())
             };
 
-            if sender.send(result).is_err() {
+            if sender.try_send(result).is_err() {
                 tracing::debug!("request canceled by user");
             }
         }
@@ -238,11 +260,11 @@ impl RequestHandler {
     fn build_response(&mut self) -> http::response::Builder {
         let mut builder = http::Response::builder();
 
-        if let Some(status) = self.response_status_code.take() {
+        if let Some(status) = self.response_status_code {
             builder = builder.status(status);
         }
 
-        if let Some(version) = self.response_version.take() {
+        if let Some(version) = self.response_version {
             builder = builder.version(version);
         }
 
@@ -261,6 +283,10 @@ impl RequestHandler {
         // Keep the request body around in case interceptors need access to
         // it. Otherwise we're just going to drop it later.
         builder = builder.extension(RequestBody(mem::take(&mut self.request_body)));
+
+        // Include a handle to the trailer headers. We won't know if there
+        // are any until we reach the end of the response body.
+        builder = builder.extension(self.response_trailer_writer.trailer());
 
         // Include metrics in response, but only if it was created. If
         // metrics are disabled then it won't have been created.
@@ -376,6 +402,17 @@ impl curl::easy::Handler for RequestHandler {
 
         let span = tracing::trace_span!(parent: &self.span, "header");
         let _enter = span.enter();
+
+        // If we already returned the response headers, then this header is from
+        // the trailer.
+        if self.sender.is_none() {
+            if let Some(trailer_headers) = self.response_trailer_writer.get_mut() {
+                if let Some((name, value)) = parse_header(data) {
+                    trailer_headers.append(name, value);
+                    return true;
+                }
+            }
+        }
 
         // Curl calls this function for all lines in the response not part of
         // the response body, not just for headers. We need to inspect the
@@ -497,9 +534,16 @@ impl curl::easy::Handler for RequestHandler {
                 Poll::Ready(Ok(len)) => Ok(len),
                 Poll::Ready(Err(e)) => {
                     if e.kind() == io::ErrorKind::BrokenPipe {
-                        tracing::info!(
-                            "response dropped without fully consuming the response body, which may result in sub-optimal performance"
-                        );
+                        // Only warn about connections closed for HTTP/1.x.
+                        if !self.disable_connection_reuse_log
+                            && self.response_version < Some(http::Version::HTTP_2)
+                        {
+                            tracing::info!("\
+                                response dropped without fully consuming the response body, connection won't be reused\n\
+                                Aborting a response without fully consuming the response body can result in sub-optimal \
+                                performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early."
+                            );
+                        }
                     } else {
                         tracing::error!("error writing response body to buffer: {}", e);
                     }

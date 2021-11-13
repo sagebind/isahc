@@ -7,7 +7,7 @@ _Formerly known as [chttp]._
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.41+-yellow.svg)](#minimum-supported-rust-version)
+[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.46+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
 ![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 [![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
@@ -70,12 +70,12 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "1.1"
+isahc = "1.6"
 ```
 
 ### Minimum supported Rust version
 
-The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.41 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.41. It might compile with older versions but that could change at any time.
+The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.46 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.46. It might compile with older versions but that could change at any time.
 
 This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
 
@@ -111,6 +111,12 @@ Not every library is perfect for every use-case. While Isahc strives to be a ful
 - **Tiny binaries**: If you are creating an application where tiny binary size is a key priority, you might find Isahc to be too large for you. While Isahc's dependencies are carefully curated and a number of features can be disabled, Isahc's core feature set includes things like async which does have some file size overhead. You might find something like [ureq] more suitable.
 - **WebAssembly support**: If your project needs to be able to be compiled to WebAssembly, then Isahc will probably not work for you. Instead you might like an HTTP client that supports multiple backends such as [Surf].
 - **Rustls support**: We hope to support [rustls] as a TLS backend someday, it is not currently supported directly. If for some reason rustls is a hard requirement for you, you'll need to use a different HTTP client for now.
+
+## Sponsors
+
+Special thanks to sponsors of my open-source work!
+
+<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
 
 ## License
 

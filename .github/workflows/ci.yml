@@ -16,6 +16,7 @@ jobs:
           - macos-latest
           - windows-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -24,23 +25,44 @@ jobs:
         with:
           submodules: true
 
-      - run: |
+      - name: Install system dependencies
+        run: |
           sudo apt update
           sudo apt install -y libkrb5-dev
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.41.1"
+          toolchain: "1.46.0"
           default: true
 
-      - run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
+      - name: Update Cargo.lock
+        run: cargo update
 
-      - run: cargo run --release --example simple
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Run tests
+        run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
+
+      - name: Run example program
+        run: cargo run --release --example simple
 
   analyze:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
         with:
@@ -53,6 +75,22 @@ jobs:
           components: clippy
           default: true
 
+      - name: Update Cargo.lock
+        run: cargo update
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
       - name: Check Clippy lints
         uses: actions-rs/clippy-check@v1
         with:
@@ -60,13 +98,13 @@ jobs:
           args: --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Generate code coverage report
-        uses: actions-rs/tarpaulin@v0.1
+        uses: actions-rs/tarpaulin@v0.1.3
         with:
-          version: '0.16.0'
-          args: "-p isahc --run-types Doctests Tests --features ${{ env.FEATURES }}"
+          version: '0.18.3'
+          args: "-p isahc --run-types Tests,Doctests --features ${{ env.FEATURES }}"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
