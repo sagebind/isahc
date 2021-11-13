@@ -144,7 +144,7 @@
 //!
 //! ```toml
 //! [dependencies.isahc]
-//! version = "1.5"
+//! version = "1.6"
 //! features = ["psl"]
 //! ```
 //!
