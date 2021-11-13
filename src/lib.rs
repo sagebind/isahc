@@ -47,9 +47,8 @@
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
-//! etc, then you can create a [`Request`][Request] using a
-//! builder-style fluent interface, then finishing it off with a
-//! [`send`][RequestExt::send]:
+//! etc, then you can create a [`Request`][Request] using a builder-style fluent
+//! interface, then finishing it off with a [`send`][RequestExt::send]:
 //!
 //! ```no_run
 //! use isahc::{prelude::*, Request};
@@ -201,6 +200,12 @@
 //! Enable the new interceptors API (replaces the old unstable middleware API).
 //! Unstable until the API is finalized. This an unstable feature whose
 //! interface may change between patch releases.
+//!
+//! ### `unstable-rustls-tls`
+//!
+//! Use [rustls](https://github.com/rustls/rustls) as the TLS backend for HTTPS
+//! requests. Currently unstable as the rustls backend in libcurl currently has
+//! some known issues and is not yet recommended for production use.
 //!
 //! # Logging and tracing
 //!

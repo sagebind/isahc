@@ -28,7 +28,7 @@ spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
-tls-rustls = ["curl/rustls"]
+unstable-rustls-tls = ["curl/rustls"]
 unstable-interceptors = []
 
 [dependencies]
