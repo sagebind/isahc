@@ -22,5 +22,5 @@ fn returns_correct_response_code(status: u16) {
     let response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.status(), status);
-    assert_eq!(m.requests().len(), 1);
+    assert_eq!(m.requests_received(), 1);
 }

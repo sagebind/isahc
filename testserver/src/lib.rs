@@ -1,18 +1,24 @@
+//! HTTP server for testing.
+
+#[macro_use]
+mod macros;
 mod mock;
+mod pool;
 mod request;
 mod responder;
 mod response;
 
 pub mod socks4;
 
+pub use macros::macro_api;
 pub use mock::Mock;
 pub use request::Request;
-pub use responder::Responder;
+pub use responder::{RequestContext, Responder};
 pub use response::Response;
 
 /// Macro to define a mock endpoint using a more concise DSL.
 #[macro_export]
-macro_rules! mock {
+macro_rules! mock_pld {
     (@response($response:expr) status: $status:expr, $($tail:tt)*) => {{
         let mut response = $response;
 
@@ -48,7 +54,7 @@ macro_rules! mock {
     }};
 
     (@response($response:expr) delay: $delay:tt, $($tail:tt)*) => {{
-        let duration = $crate::helpers::parse_duration(stringify!($delay));
+        let duration = $crate::macro_api::parse_duration(stringify!($delay));
         ::std::thread::sleep(duration);
 
         $crate::mock!(@response($response) $($tail)*)
@@ -75,16 +81,27 @@ macro_rules! mock {
     ($($inner:tt)*) => {{
         struct Responder<F>(F);
 
-        impl<F> $crate::Responder for Responder<F>
+        impl<F> Responder<F>
         where
-            F: Send + Sync + 'static + Fn($crate::Request) -> Option<$crate::Response>,
+            F: Send + Sync + 'static + for<'r> Fn(&'r $crate::Request) -> Option<$crate::Response>,
         {
-            fn respond(&self, request: $crate::Request) -> Option<$crate::Response> {
-                (self.0)(request)
+            fn new(f: F) -> Self {
+                Self(f)
             }
         }
 
-        $crate::Mock::new(Responder(move |request| {
+        impl<F> $crate::Responder for Responder<F>
+        where
+            F: Send + Sync + 'static + for<'r> Fn(&'r $crate::Request) -> Option<$crate::Response>,
+        {
+            fn respond(&self, ctx: &mut $crate::RequestContext<'_>) {
+                if let Some(response) = (self.0)(ctx.request()) {
+                    ctx.send(response);
+                }
+            }
+        }
+
+        $crate::Mock::new(Responder::new(move |request| {
             let mut response = $crate::Response::default();
 
             let response = $crate::mock!(@response(response) $($inner)*);
@@ -92,13 +109,4 @@ macro_rules! mock {
             Some(response)
         }))
     }};
-}
-
-#[doc(hidden)]
-pub mod helpers {
-    use std::time::Duration;
-
-    pub fn parse_duration(s: &str) -> Duration {
-        humantime::parse_duration(s).unwrap()
-    }
 }

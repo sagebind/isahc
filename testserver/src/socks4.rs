@@ -4,15 +4,14 @@ use std::{
     io::{self, BufRead, BufReader, Write},
     net::{IpAddr, Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     sync::Arc,
-    thread,
 };
-use threadpool::ThreadPool;
+
+use crate::pool::pool;
 
 #[derive(Clone, Debug)]
 pub struct Socks4Server {
     listener: Arc<TcpListener>,
     addr: SocketAddr,
-    pool: ThreadPool,
 }
 
 impl Socks4Server {
@@ -23,7 +22,6 @@ impl Socks4Server {
         Ok(Self {
             addr: listener.local_addr()?,
             listener: Arc::new(listener),
-            pool: ThreadPool::default(),
         })
     }
 
@@ -38,7 +36,7 @@ impl Socks4Server {
                 Ok(connection) => {
                     let s = self.clone();
 
-                    self.pool.execute(move || {
+                    pool().execute(move || {
                         s.handle(connection).unwrap();
                     });
                 }
@@ -50,7 +48,7 @@ impl Socks4Server {
     }
 
     pub fn spawn(self) {
-        thread::spawn(move || self.run());
+        pool().execute(move || self.run());
     }
 
     fn handle(&self, connection: TcpStream) -> io::Result<()> {
@@ -97,7 +95,7 @@ impl Socks4Server {
         client_writer.flush()?;
 
         // Copy bytes in and to the upstream in parallel.
-        self.pool.execute(move || {
+        pool().execute(move || {
             io::copy(&mut client_reader, &mut upstream_writer).unwrap();
         });
 

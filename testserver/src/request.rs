@@ -2,13 +2,30 @@ use regex::Regex;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Request {
-    pub method: String,
-    pub url: String,
-    pub headers: Vec<(String, String)>,
-    pub body: Option<Vec<u8>>,
+    pub(crate) number: u32,
+    pub(crate) method: String,
+    pub(crate) url: String,
+    pub(crate) headers: Vec<(String, String)>,
+    pub(crate) body: Option<Vec<u8>>,
 }
 
 impl Request {
+    pub fn method(&self) -> &str {
+        self.method.as_str()
+    }
+
+    pub fn url(&self) -> &str {
+        self.url.as_str()
+    }
+
+    /// Get the request number.
+    ///
+    /// This is a monotonically increasing number, starting from 0, that
+    /// indicates the order of requests received by the mock.
+    pub fn number(&self) -> u32 {
+        self.number
+    }
+
     pub fn get_header(&self, name: impl AsRef<str>) -> impl Iterator<Item = String> + '_ {
         let name_lower = name.as_ref().to_lowercase();
 

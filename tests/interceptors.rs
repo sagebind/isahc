@@ -17,5 +17,5 @@ fn change_http_method_with_interceptor() {
 
     client.get(m.url()).unwrap();
 
-    assert_eq!(m.request().method, "HEAD");
+    assert_eq!(m.request().method(), "HEAD");
 }

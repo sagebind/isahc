@@ -155,7 +155,9 @@ fn consume_unread_response_body() {
     let m = {
         let body = body.clone();
         mock! {
-            body: body.clone(),
+            _ => {
+                body: body.clone(),
+            }
         }
     };
 
@@ -173,7 +175,9 @@ fn consume_unread_response_body_async() {
     let m = {
         let body = body.clone();
         mock! {
-            body: body.clone(),
+            _ => {
+                body: body.clone(),
+            },
         }
     };
 

@@ -33,7 +33,7 @@ fn request_with_body_of_known_size(method: &str) {
         .send()
         .unwrap();
 
-    assert_eq!(m.request().method, method);
+    assert_eq!(m.request().method(), method);
     m.request()
         .expect_header("content-length", body.len().to_string());
     m.request()
@@ -63,7 +63,7 @@ fn request_with_body_of_unknown_size_uses_chunked_encoding(method: &str) {
         .send()
         .unwrap();
 
-    assert_eq!(m.request().method, method);
+    assert_eq!(m.request().method(), method);
     m.request().expect_header("transfer-encoding", "chunked");
     m.request().expect_body(body);
 }
@@ -89,7 +89,7 @@ fn content_length_header_takes_precedence_over_body_objects_length(method: &str)
         .send()
         .unwrap();
 
-    assert_eq!(m.request().method, method);
+    assert_eq!(m.request().method(), method);
     m.request().expect_header("content-length", "3");
     m.request().expect_body("abc"); // truncated to 3 bytes
 }
