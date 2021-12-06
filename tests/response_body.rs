@@ -157,7 +157,7 @@ fn consume_unread_response_body() {
         mock! {
             _ => {
                 body: body.clone(),
-            }
+            },
         }
     };
 
