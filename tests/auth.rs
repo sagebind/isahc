@@ -49,7 +49,7 @@ fn negotiate_auth_exists() {
         .send()
         .unwrap();
 
-    assert!(!m.requests().is_empty());
+    assert_eq!(m.requests_received(), 1);
 }
 
 #[cfg(all(feature = "spnego", windows))]

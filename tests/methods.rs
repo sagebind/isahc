@@ -7,7 +7,7 @@ fn get_request() {
 
     isahc::get(m.url()).unwrap();
 
-    assert_eq!(m.request().method, "GET");
+    assert_eq!(m.request().method(), "GET");
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn head_request() {
 
     isahc::head(m.url()).unwrap();
 
-    assert_eq!(m.request().method, "HEAD");
+    assert_eq!(m.request().method(), "HEAD");
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn post_request() {
 
     isahc::post(m.url(), ()).unwrap();
 
-    assert_eq!(m.request().method, "POST");
+    assert_eq!(m.request().method(), "POST");
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn put_request() {
 
     isahc::put(m.url(), ()).unwrap();
 
-    assert_eq!(m.request().method, "PUT");
+    assert_eq!(m.request().method(), "PUT");
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn delete_request() {
 
     isahc::delete(m.url()).unwrap();
 
-    assert_eq!(m.request().method, "DELETE");
+    assert_eq!(m.request().method(), "DELETE");
 }
 
 #[test]
@@ -58,5 +58,5 @@ fn arbitrary_foobar_request() {
         .send()
         .unwrap();
 
-    assert_eq!(m.request().method, "FOOBAR");
+    assert_eq!(m.request().method(), "FOOBAR");
 }

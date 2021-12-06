@@ -8,7 +8,7 @@ fn metrics_are_disabled_by_default() {
 
     let response = isahc::get(m.url()).unwrap();
 
-    assert!(!m.requests().is_empty());
+    assert_eq!(m.requests_received(), 1);
     assert!(response.metrics().is_none());
 }
 
