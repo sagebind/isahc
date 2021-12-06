@@ -262,10 +262,14 @@ impl RequestHandler {
 
         if let Some(status) = self.response_status_code {
             builder = builder.status(status);
-        }
 
-        if let Some(version) = self.response_version {
-            builder = builder.version(version);
+            if let Some(version) = self.response_version {
+                builder = builder.version(version);
+            }
+        } else {
+            // If no status code was sent, then this must be an HTTP/0.9
+            // response.
+            builder = builder.status(200).version(http::Version::HTTP_09);
         }
 
         if let Some(headers) = builder.headers_mut() {

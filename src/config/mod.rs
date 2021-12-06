@@ -733,6 +733,7 @@ pub trait Configurable: request::WithRequestConfig {
 pub struct VersionNegotiation {
     flag: curl::easy::HttpVersion,
     strict: bool,
+    http09_allowed: bool,
 }
 
 impl Default for VersionNegotiation {
@@ -762,6 +763,7 @@ impl VersionNegotiation {
             // the server doesn't list HTTP/2 via ALPN.
             flag: curl::easy::HttpVersion::V2TLS,
             strict: false,
+            http09_allowed: false,
         }
     }
 
@@ -770,6 +772,7 @@ impl VersionNegotiation {
         Self {
             flag: curl::easy::HttpVersion::V10,
             strict: true,
+            http09_allowed: false,
         }
     }
 
@@ -778,6 +781,7 @@ impl VersionNegotiation {
         Self {
             flag: curl::easy::HttpVersion::V11,
             strict: true,
+            http09_allowed: false,
         }
     }
 
@@ -794,6 +798,7 @@ impl VersionNegotiation {
         Self {
             flag: curl::easy::HttpVersion::V2PriorKnowledge,
             strict: true,
+            http09_allowed: false,
         }
     }
 
@@ -803,11 +808,18 @@ impl VersionNegotiation {
         Self {
             flag: curl::easy::HttpVersion::V3,
             strict: true,
+            http09_allowed: false,
         }
+    }
+
+    pub const fn http09(mut self, allowed: bool) -> Self {
+        self.http09_allowed = allowed;
+        self
     }
 }
 
 impl SetOpt for VersionNegotiation {
+    #[allow(unsafe_code)]
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         if let Err(e) = easy.http_version(self.flag) {
             if self.strict {
@@ -815,6 +827,12 @@ impl SetOpt for VersionNegotiation {
             } else {
                 tracing::debug!("failed to set HTTP version: {}", e);
             }
+        }
+
+        // Configure whether HTTP/0.9 should be allowed or not. This will return
+        // an error when using curl 7.64.0 or older, but we just ignore it.
+        unsafe {
+            curl_sys::curl_easy_setopt(easy.raw(), 285, self.http09_allowed as isize);
         }
 
         Ok(())

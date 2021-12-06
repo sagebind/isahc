@@ -35,12 +35,18 @@ macro_rules! __mock_impl {
 
     (
         @responders($builder:ident)
-        #$num:expr => writer |$writer:ident| {},
+        #$num:expr => writer |$writer:ident| {
+            $($body:tt)*
+        },
         $($tail:tt)*
     ) => {
         $builder = $builder.responder($crate::macro_api::ClosureResponder::new(move |ctx| {
             if ctx.request().number() == $num {
                 let mut $writer = ctx.into_raw();
+                {
+                    $($body)*
+                }
+                let _ = $writer.flush();
             }
         }));
 
@@ -69,11 +75,17 @@ macro_rules! __mock_impl {
 
     (
         @responders($builder:ident)
-        _ => writer |$writer:ident| {},
+        _ => writer |$writer:ident| {
+            $($body:tt)*
+        },
         $($tail:tt)*
     ) => {
         $builder = $builder.responder($crate::macro_api::ClosureResponder::new(move |ctx| {
-            $crate::__mock_impl!(@responder(ctx) $response);
+            let mut $writer = ctx.into_raw();
+            {
+                $($body)*
+            }
+            let _ = $writer.flush();
         }));
 
         $crate::__mock_impl!(@responders($builder) $($tail)*);
@@ -99,9 +111,6 @@ macro_rules! __mock_impl {
 
     // For backwards compatibility.
     (@responders($builder:ident) $($response_attrs:tt)+) => {
-        // $crate::__mock_impl!(@responders($builder) _ => {
-        //     $($response_attrs)*
-        // });
         $builder = $builder.responder($crate::macro_api::ClosureResponder::new(move |ctx| {
             let mut response = $crate::Response::default();
 
