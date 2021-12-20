@@ -285,11 +285,7 @@ impl<R: Read> ReadResponseExt<R> for Response<R> {
     }
 
     fn bytes(&mut self) -> io::Result<Vec<u8>> {
-        let mut buf = Vec::new();
-
-        if let Some(length) = get_content_length(self) {
-            buf.reserve(length as usize);
-        }
+        let mut buf = allocate_buffer(self);
 
         self.copy_to(&mut buf)?;
 
@@ -470,11 +466,7 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
 
     fn bytes(&mut self) -> BytesFuture<'_, &mut R> {
         BytesFuture::new(async move {
-            let mut buf = Vec::new();
-
-            if let Some(length) = get_content_length(self) {
-                buf.reserve(length as usize);
-            }
+            let mut buf = allocate_buffer(self);
 
             copy_async(self.body_mut(), &mut buf).await?;
 
@@ -493,7 +485,7 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
         T: serde::de::DeserializeOwned,
     {
         JsonFuture::new(async move {
-            let mut buf = Vec::new();
+            let mut buf = allocate_buffer(self);
 
             // Serde does not support incremental parsing, so we have to resort
             // to reading the entire response into memory first and then
@@ -515,6 +507,14 @@ impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
                 serde_json::from_slice(&buf)
             }
         })
+    }
+}
+
+fn allocate_buffer<T>(response: &Response<T>) -> Vec<u8> {
+    if let Some(length) = get_content_length(response) {
+        Vec::with_capacity(length as usize)
+    } else {
+        Vec::new()
     }
 }
 
