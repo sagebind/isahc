@@ -18,7 +18,7 @@ jobs:
           toolchain: "nightly"
           default: true
 
-      - run: cargo doc --no-deps --features cookies,json
+      - run: cargo doc --no-deps --features cookies,json,nightly
 
       - uses: JamesIves/github-pages-deploy-action@releases/v3
         with:

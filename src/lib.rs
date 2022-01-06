@@ -220,6 +220,8 @@
     html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"
 )]
 #![deny(unsafe_code)]
+#![cfg_attr(feature = "nightly", feature(doc_cfg))]
+#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 #![warn(
     future_incompatible,
     missing_debug_implementations,
