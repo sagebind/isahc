@@ -483,6 +483,8 @@
 <span id="481">481</span>
 <span id="482">482</span>
 <span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Here are some of Isahc&#39;s key features:</span>
@@ -705,6 +707,8 @@
     <span class="ident">html_favicon_url</span> <span class="op">=</span> <span class="string">&quot;https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png&quot;</span>
 )]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">unsafe_code</span>)]</span>
+<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>, <span class="ident">feature</span>(<span class="ident">doc_cfg</span>))]</span>
+<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>, <span class="ident">feature</span>(<span class="ident">doc_auto_cfg</span>))]</span>
 <span class="attribute">#![<span class="ident">warn</span>(
     <span class="ident">future_incompatible</span>,
     <span class="ident">missing_debug_implementations</span>,
@@ -967,5 +971,5 @@
     <span class="kw-2">&amp;</span><span class="ident">VERSION_STRING</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e95e084a1 2021-12-19)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>
