@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 criterion = "0.3"
-curl = { git = "https://github.com/alexcrichton/curl-rust", branch = "rustls" }
+curl = { git = "https://github.com/alexcrichton/curl-rust", branch = "main" }
 rayon = "1"
 rouille = "3"
 
