@@ -160,6 +160,9 @@
 //! makes it available. To configure which HTTP versions to use in a request,
 //! see [`VersionNegotiation`](config::VersionNegotiation).
 //!
+//! To check which HTTP versions are supported at runtime, you can use
+//! [`is_http_version_supported`].
+//!
 //! Enabled by default.
 //!
 //! ## `json`
@@ -239,7 +242,6 @@
 // These lints suggest to use features not available in our MSRV.
 #![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
 
-use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 
 #[macro_use]
@@ -254,6 +256,7 @@ mod client;
 mod default_headers;
 mod handler;
 mod headers;
+mod info;
 mod metrics;
 mod parsing;
 mod redirect;
@@ -278,6 +281,7 @@ pub use crate::{
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
     http::{request::Request, response::Response},
+    info::*,
     metrics::Metrics,
     request::RequestExt,
     response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
@@ -468,23 +472,4 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 /// [`HttpClient::send_async`] for details.
 pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture<'static> {
     HttpClient::shared().send_async(request)
-}
-
-/// Gets a human-readable string with the version number of Isahc and its
-/// dependencies.
-///
-/// This function can be helpful when troubleshooting issues in Isahc or one of
-/// its dependencies.
-pub fn version() -> &'static str {
-    static FEATURES_STRING: &str = include_str!(concat!(env!("OUT_DIR"), "/features.txt"));
-    static VERSION_STRING: Lazy<String> = Lazy::new(|| {
-        format!(
-            "isahc/{} (features:{}) {}",
-            env!("CARGO_PKG_VERSION"),
-            FEATURES_STRING,
-            curl::Version::num(),
-        )
-    });
-
-    &VERSION_STRING
 }

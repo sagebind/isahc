@@ -1,8 +1,7 @@
-use std::{env, error::Error, fs, path::PathBuf};
+use std::{env, error::Error};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let out_dir = PathBuf::from(env::var("OUT_DIR")?);
-    fs::write(out_dir.join("features.txt"), get_feature_string())?;
+    println!("cargo:rustc-env=ISAHC_FEATURES={}", get_feature_string());
 
     Ok(())
 }
@@ -13,6 +12,7 @@ fn get_feature_string() -> String {
         .filter(|(name, _)| name.starts_with("CARGO_FEATURE_"))
         .filter(|(_, value)| value == "1")
         .map(|(name, _)| name.trim_start_matches("CARGO_FEATURE_").to_lowercase())
+        .map(|name| name.replace("_", "-"))
         .collect::<Vec<String>>()
         .join(",")
 }
