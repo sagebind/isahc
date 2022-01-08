@@ -35,8 +35,8 @@ unstable-interceptors = []
 async-channel = "1.6"
 castaway = "0.1"
 crossbeam-utils = "0.8"
-curl = { git = "https://github.com/alexcrichton/curl-rust", branch = "main" }
-curl-sys = { git = "https://github.com/alexcrichton/curl-rust", branch = "main" }
+curl = "0.4.42"
+curl-sys = "0.4.52"
 event-listener = "2.5"
 futures-lite = "1.11"
 http = "0.2.1"
