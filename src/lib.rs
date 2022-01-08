@@ -261,6 +261,7 @@ mod request;
 mod response;
 mod task;
 mod text;
+mod tls;
 mod trailer;
 
 pub mod auth;
