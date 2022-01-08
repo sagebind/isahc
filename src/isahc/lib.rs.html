@@ -485,6 +485,11 @@
 <span id="483">483</span>
 <span id="484">484</span>
 <span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The practical HTTP client that is fun to use.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Here are some of Isahc&#39;s key features:</span>
@@ -534,9 +539,8 @@
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! If you want to customize the request by adding headers, setting timeouts,</span>
-<span class="doccomment">//! etc, then you can create a [`Request`][Request] using a</span>
-<span class="doccomment">//! builder-style fluent interface, then finishing it off with a</span>
-<span class="doccomment">//! [`send`][RequestExt::send]:</span>
+<span class="doccomment">//! etc, then you can create a [`Request`][Request] using a builder-style fluent</span>
+<span class="doccomment">//! interface, then finishing it off with a [`send`][RequestExt::send]:</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```no_run</span>
 <span class="doccomment">//! use isahc::{prelude::*, Request};</span>
@@ -688,6 +692,12 @@
 <span class="doccomment">//! Enable the new interceptors API (replaces the old unstable middleware API).</span>
 <span class="doccomment">//! Unstable until the API is finalized. This an unstable feature whose</span>
 <span class="doccomment">//! interface may change between patch releases.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ### `unstable-rustls-tls`</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Use [rustls](https://github.com/rustls/rustls) as the TLS backend for HTTPS</span>
+<span class="doccomment">//! requests. Currently unstable as the rustls backend in libcurl currently has</span>
+<span class="doccomment">//! some known issues and is not yet recommended for production use.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Logging and tracing</span>
 <span class="doccomment">//!</span>
@@ -971,5 +981,5 @@
     <span class="kw-2">&amp;</span><span class="ident">VERSION_STRING</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e012a191d 2022-01-06)" ></div>
 </body></html>
