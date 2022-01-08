@@ -62,6 +62,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn version_expected() {
+        let version = version();
+
+        assert!(version.starts_with("isahc/1."));
+        assert!(version.contains("curl/7."));
+    }
+
+    #[test]
     fn curl_version_expected() {
         let (major, minor, _patch) = curl_version();
 
