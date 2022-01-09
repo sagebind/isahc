@@ -31,7 +31,8 @@ static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
-unstable-rustls-tls = ["pem", "rustls-ffi", "rustls-native-certs", "curl/rustls"]
+unstable-rustls-tls = ["rustls-ffi", "curl/rustls"]
+unstable-rustls-tls-native-certs = ["unstable-rustls-tls", "data-encoding", "rustls-native-certs"]
 
 [dependencies]
 async-channel = "1.6"
@@ -56,6 +57,10 @@ default-features = false
 version = "0.4.52"
 default-features = false
 
+[dependencies.data-encoding]
+version = "2"
+optional = true
+
 [dependencies.encoding_rs]
 version = "0.8"
 optional = true
@@ -70,10 +75,6 @@ optional = true
 
 [dependencies.parking_lot]
 version = "0.11"
-optional = true
-
-[dependencies.pem]
-version = "1"
 optional = true
 
 [dependencies.publicsuffix]
@@ -131,3 +132,7 @@ required-features = ["json", "serde/derive"]
 
 [workspace]
 members = ["benchmarks", "testserver"]
+
+[patch.crates-io]
+curl = { path = "../curl-rust" }
+curl-sys = { path = "../curl-rust/curl-sys" }

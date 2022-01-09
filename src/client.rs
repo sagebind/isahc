@@ -1156,8 +1156,6 @@ impl HttpClient {
 
         easy.http_headers(headers)?;
 
-        crate::tls::init_default_tls_config(&mut easy);
-
         Ok((easy, future))
     }
 }
