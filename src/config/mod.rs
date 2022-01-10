@@ -14,7 +14,10 @@
 // handle.
 
 use self::{proxy::Proxy, request::SetOpt};
-use crate::auth::{Authentication, Credentials};
+use crate::{
+    auth::{Authentication, Credentials},
+    is_http_version_supported,
+};
 use curl::easy::Easy2;
 use std::{net::IpAddr, time::Duration};
 
@@ -758,9 +761,12 @@ pub trait Configurable: request::WithRequestConfig {
 /// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2
 /// will be available to use.
 #[derive(Clone, Debug)]
-pub struct VersionNegotiation {
-    flag: curl::easy::HttpVersion,
-    strict: bool,
+pub struct VersionNegotiation(VersionNegotiationInner);
+
+#[derive(Clone, Copy, Debug)]
+enum VersionNegotiationInner {
+    LatestCompatible,
+    Strict(curl::easy::HttpVersion),
 }
 
 impl Default for VersionNegotiation {
@@ -782,31 +788,23 @@ impl VersionNegotiation {
     ///
     /// Insecure connections always use HTTP/1.x since there is no standard
     /// mechanism for a server to declare support for insecure HTTP versions,
-    /// and only HTTP/1.x and HTTP/2 support insecure transfers.
+    /// and only HTTP/0.9, HTTP/1.x, and HTTP/2 support insecure transfers.
     pub const fn latest_compatible() -> Self {
-        Self {
-            // In curl land, this basically the most lenient option. Alt-Svc is
-            // used to upgrade to newer versions, and old versions are used if
-            // the server doesn't list HTTP/2 via ALPN.
-            flag: curl::easy::HttpVersion::V2TLS,
-            strict: false,
-        }
+        Self(VersionNegotiationInner::LatestCompatible)
     }
 
     /// Connect via HTTP/1.0 and do not attempt to use a higher version.
     pub const fn http10() -> Self {
-        Self {
-            flag: curl::easy::HttpVersion::V10,
-            strict: true,
-        }
+        Self(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V10,
+        ))
     }
 
     /// Connect via HTTP/1.1 and do not attempt to use a higher version.
     pub const fn http11() -> Self {
-        Self {
-            flag: curl::easy::HttpVersion::V11,
-            strict: true,
-        }
+        Self(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V11,
+        ))
     }
 
     /// Connect via HTTP/2. Failure to connect will not fall back to old
@@ -819,33 +817,37 @@ impl VersionNegotiation {
     /// This strategy is often referred to as [HTTP/2 with Prior
     /// Knowledge](https://http2.github.io/http2-spec/#known-http).
     pub const fn http2() -> Self {
-        Self {
-            flag: curl::easy::HttpVersion::V2PriorKnowledge,
-            strict: true,
-        }
+        Self(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V2PriorKnowledge,
+        ))
     }
 
     /// Connect via HTTP/3. Failure to connect will not fall back to old
     /// versions.
     pub const fn http3() -> Self {
-        Self {
-            flag: curl::easy::HttpVersion::V3,
-            strict: true,
-        }
+        Self(VersionNegotiationInner::Strict(curl::easy::HttpVersion::V3))
     }
 }
 
 impl SetOpt for VersionNegotiation {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        if let Err(e) = easy.http_version(self.flag) {
-            if self.strict {
-                return Err(e);
-            } else {
-                tracing::debug!("failed to set HTTP version: {}", e);
+        match self.0 {
+            VersionNegotiationInner::LatestCompatible => {
+                // If HTTP/2 support is available, this basically the most
+                // lenient way of using it. Alt-Svc is used to upgrade to newer
+                // versions, and old versions are used if the server doesn't
+                // list HTTP/2 via ALPN.
+                //
+                // If HTTP/2 is not available, leaving it the default setting is
+                // the ideal behavior.
+                if is_http_version_supported(http::Version::HTTP_2) {
+                    easy.http_version(curl::easy::HttpVersion::V2TLS)
+                } else {
+                    Ok(())
+                }
             }
+            VersionNegotiationInner::Strict(version) => easy.http_version(version),
         }
-
-        Ok(())
     }
 }
 
