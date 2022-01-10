@@ -1054,6 +1054,8 @@
 <span id="1051">1051</span>
 <span id="1052">1052</span>
 <span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Individual options are separated out into multiple types. Each type acts</span>
@@ -1070,7 +1072,10 @@
 <span class="comment">// handle.</span>
 
 <span class="kw">use</span> <span class="self">self</span>::{<span class="ident">proxy::Proxy</span>, <span class="ident">request::SetOpt</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
+    <span class="ident">is_http_version_supported</span>,
+};
 <span class="kw">use</span> <span class="ident">curl::easy::Easy2</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::IpAddr</span>, <span class="ident">time::Duration</span>};
 
@@ -1814,9 +1819,12 @@
 <span class="doccomment">/// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2</span>
 <span class="doccomment">/// will be available to use.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VersionNegotiation</span> {
-    <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion</span>,
-    <span class="ident">strict</span>: <span class="ident">bool</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VersionNegotiation</span>(<span class="ident">VersionNegotiationInner</span>);
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">enum</span> <span class="ident">VersionNegotiationInner</span> {
+    <span class="ident">LatestCompatible</span>,
+    <span class="ident">Strict</span>(<span class="ident">curl::easy::HttpVersion</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
@@ -1838,31 +1846,23 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Insecure connections always use HTTP/1.x since there is no standard</span>
     <span class="doccomment">/// mechanism for a server to declare support for insecure HTTP versions,</span>
-    <span class="doccomment">/// and only HTTP/1.x and HTTP/2 support insecure transfers.</span>
+    <span class="doccomment">/// and only HTTP/0.9, HTTP/1.x, and HTTP/2 support insecure transfers.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">latest_compatible</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="comment">// In curl land, this basically the most lenient option. Alt-Svc is</span>
-            <span class="comment">// used to upgrade to newer versions, and old versions are used if</span>
-            <span class="comment">// the server doesn&#39;t list HTTP/2 via ALPN.</span>
-            <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion::V2TLS</span>,
-            <span class="ident">strict</span>: <span class="bool-val">false</span>,
-        }
+        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::LatestCompatible</span>)
     }
 
     <span class="doccomment">/// Connect via HTTP/1.0 and do not attempt to use a higher version.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http10</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion::V10</span>,
-            <span class="ident">strict</span>: <span class="bool-val">true</span>,
-        }
+        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
+            <span class="ident">curl::easy::HttpVersion::V10</span>,
+        ))
     }
 
     <span class="doccomment">/// Connect via HTTP/1.1 and do not attempt to use a higher version.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http11</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion::V11</span>,
-            <span class="ident">strict</span>: <span class="bool-val">true</span>,
-        }
+        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
+            <span class="ident">curl::easy::HttpVersion::V11</span>,
+        ))
     }
 
     <span class="doccomment">/// Connect via HTTP/2. Failure to connect will not fall back to old</span>
@@ -1875,33 +1875,37 @@
     <span class="doccomment">/// This strategy is often referred to as [HTTP/2 with Prior</span>
     <span class="doccomment">/// Knowledge](https://http2.github.io/http2-spec/#known-http).</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http2</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion::V2PriorKnowledge</span>,
-            <span class="ident">strict</span>: <span class="bool-val">true</span>,
-        }
+        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
+            <span class="ident">curl::easy::HttpVersion::V2PriorKnowledge</span>,
+        ))
     }
 
     <span class="doccomment">/// Connect via HTTP/3. Failure to connect will not fall back to old</span>
     <span class="doccomment">/// versions.</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http3</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">flag</span>: <span class="ident">curl::easy::HttpVersion::V3</span>,
-            <span class="ident">strict</span>: <span class="bool-val">true</span>,
-        }
+        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(<span class="ident">curl::easy::HttpVersion::V3</span>))
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
     <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="self">self</span>.<span class="ident">flag</span>) {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">strict</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">tracing::debug!</span>(<span class="string">&quot;failed to set HTTP version: {}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
+            <span class="ident">VersionNegotiationInner::LatestCompatible</span> =&gt; {
+                <span class="comment">// If HTTP/2 support is available, this basically the most</span>
+                <span class="comment">// lenient way of using it. Alt-Svc is used to upgrade to newer</span>
+                <span class="comment">// versions, and old versions are used if the server doesn&#39;t</span>
+                <span class="comment">// list HTTP/2 via ALPN.</span>
+                <span class="comment">//</span>
+                <span class="comment">// If HTTP/2 is not available, leaving it the default setting is</span>
+                <span class="comment">// the ideal behavior.</span>
+                <span class="kw">if</span> <span class="ident">is_http_version_supported</span>(<span class="ident">http::Version::HTTP_2</span>) {
+                    <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="ident">curl::easy::HttpVersion::V2TLS</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Ok</span>(())
+                }
             }
+            <span class="ident">VersionNegotiationInner::Strict</span>(<span class="ident">version</span>) =&gt; <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="ident">version</span>),
         }
-
-        <span class="prelude-val">Ok</span>(())
     }
 }
 
