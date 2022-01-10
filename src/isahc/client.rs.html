@@ -1353,6 +1353,7 @@
 <span id="1350">1350</span>
 <span id="1351">1351</span>
 <span id="1352">1352</span>
+<span id="1353">1353</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The HTTP client implementation.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1425,6 +1426,7 @@
 <span class="doccomment">///     .build()?;</span>
 <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
 <span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HttpClientBuilder</span> {
     <span class="ident">agent_builder</span>: <span class="ident">AgentBuilder</span>,
     <span class="ident">client_config</span>: <span class="ident">ClientConfig</span>,

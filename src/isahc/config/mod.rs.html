@@ -1026,6 +1026,34 @@
 <span id="1023">1023</span>
 <span id="1024">1024</span>
 <span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Definition of all client and request configuration options.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Individual options are separated out into multiple types. Each type acts</span>
@@ -1102,6 +1130,7 @@
     <span class="doccomment">///     .expect_err(&quot;page should time out&quot;);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>);
@@ -1111,6 +1140,7 @@
     <span class="doccomment">/// Set a timeout for establishing connections to a host.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If not set, a default connect timeout of 300 seconds will be used.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">connect_timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>);
@@ -1121,6 +1151,7 @@
     <span class="doccomment">/// a minimum speed limit. `low_speed` is that limit in bytes/s.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If not set, no low speed limits are imposed.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">low_speed_timeout</span>(<span class="self">self</span>, <span class="ident">low_speed</span>: <span class="ident">u32</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">low_speed_timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">low_speed</span>, <span class="ident">timeout</span>));
@@ -1152,6 +1183,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">version_negotiation</span>(<span class="self">self</span>, <span class="ident">negotiation</span>: <span class="ident">VersionNegotiation</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">version_negotiation</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">negotiation</span>);
@@ -1181,6 +1213,7 @@
     <span class="doccomment">///     .expect_err(&quot;too many redirects&quot;);</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">redirect_policy</span>(<span class="self">self</span>, <span class="ident">policy</span>: <span class="ident">RedirectPolicy</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">redirect_policy</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>);
@@ -1188,6 +1221,7 @@
     }
 
     <span class="doccomment">/// Update the `Referer` header automatically when following redirects.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">auto_referer</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">auto_referer</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
@@ -1205,6 +1239,7 @@
     <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
     <span class="doccomment">/// feature is enabled.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span>) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Enable or disable automatic decompression of the response body for</span>
@@ -1222,6 +1257,7 @@
     <span class="doccomment">/// If you do not specify a specific value for the</span>
     <span class="doccomment">/// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)</span>
     <span class="doccomment">/// header, Isahc will set one for you automatically based on this option.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">automatic_decompression</span>(<span class="self">self</span>, <span class="ident">decompress</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">automatic_decompression</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">decompress</span>);
@@ -1286,6 +1322,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">expect_continue</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">expect</span>: <span class="ident">T</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ExpectContinue</span><span class="op">&gt;</span>,
@@ -1317,6 +1354,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">authentication</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">authentication</span>);
@@ -1327,6 +1365,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This setting will do nothing unless you also set one or more</span>
     <span class="doccomment">/// authentication methods using [`Configurable::authentication`].</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">credentials</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">credentials</span>);
@@ -1334,6 +1373,7 @@
     }
 
     <span class="doccomment">/// Enable TCP keepalive with a given probe interval.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">tcp_keepalive</span>(<span class="self">self</span>, <span class="ident">interval</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">tcp_keepalive</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">interval</span>);
@@ -1341,6 +1381,7 @@
     }
 
     <span class="doccomment">/// Enables the `TCP_NODELAY` option on connect.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">tcp_nodelay</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">tcp_nodelay</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
@@ -1380,6 +1421,7 @@
     <span class="doccomment">///     .body(())?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">interface</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">interface</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>,
@@ -1396,6 +1438,7 @@
     <span class="doccomment">/// This does not affect requests with an explicit IP address as the host.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is [`IpVersion::Any`].</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">ip_version</span>(<span class="self">self</span>, <span class="ident">version</span>: <span class="ident">IpVersion</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">ip_version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
@@ -1440,6 +1483,7 @@
     <span class="doccomment">///     .body(())?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">dial</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">dialer</span>: <span class="ident">D</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">D</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>,
@@ -1489,6 +1533,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">proxy</span>(<span class="self">self</span>, <span class="ident">proxy</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">proxy</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">proxy</span>.<span class="ident">into</span>());
@@ -1508,6 +1553,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">proxy_blacklist</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">hosts</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
@@ -1541,6 +1587,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">proxy_authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">proxy_authentication</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Proxy</span>(<span class="ident">authentication</span>));
@@ -1552,6 +1599,7 @@
     <span class="doccomment">/// This setting will do nothing unless you also set one or more proxy</span>
     <span class="doccomment">/// authentication methods using</span>
     <span class="doccomment">/// [`Configurable::proxy_authentication`].</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">proxy_credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">proxy_credentials</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Proxy</span>(<span class="ident">credentials</span>));
@@ -1561,6 +1609,7 @@
     <span class="doccomment">/// Set a maximum upload speed for the request body, in bytes per second.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unlimited.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">max_upload_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">max_upload_speed</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>);
@@ -1570,6 +1619,7 @@
     <span class="doccomment">/// Set a maximum download speed for the response body, in bytes per second.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unlimited.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">max_download_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">max_download_speed</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>);
@@ -1618,6 +1668,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">ssl_client_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">ClientCertificate</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">ssl_client_certificate</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">certificate</span>);
@@ -1645,6 +1696,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">ssl_ca_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">CaCertificate</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">ssl_ca_certificate</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">certificate</span>);
@@ -1658,6 +1710,7 @@
     <span class="doccomment">/// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The default is unset and will result in the system defaults being used.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">ciphers</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
@@ -1702,6 +1755,7 @@
     <span class="doccomment">///     .build()?;</span>
     <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">ssl_options</span>(<span class="self">self</span>, <span class="ident">options</span>: <span class="ident">SslOption</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">ssl_options</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">options</span>);
@@ -1718,6 +1772,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This option has no effect when using HTTP/2 or newer where headers are</span>
     <span class="doccomment">/// required to be lowercase.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">title_case_headers</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">title_case_headers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>);
@@ -1739,6 +1794,7 @@
     <span class="doccomment">/// Disabling metrics may be necessary for absolute peak performance.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// By default metrics are disabled.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
             <span class="ident">config</span>.<span class="ident">enable_metrics</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>);

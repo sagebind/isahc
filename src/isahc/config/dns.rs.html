@@ -96,6 +96,7 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
+<span id="96">96</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Configuration of DNS resolution.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SetOpt</span>;
@@ -169,6 +170,7 @@
     }
 
     <span class="doccomment">/// Add a DNS mapping for a given host and port pair.</span>
+    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span><span class="op">&lt;</span><span class="ident">H</span>, <span class="ident">A</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">host</span>: <span class="ident">H</span>, <span class="ident">port</span>: <span class="ident">u16</span>, <span class="ident">addr</span>: <span class="ident">A</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">H</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>,
