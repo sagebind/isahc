@@ -70,6 +70,7 @@ static USER_AGENT: Lazy<String> = Lazy::new(|| {
 ///     .build()?;
 /// # Ok::<(), isahc::Error>(())
 /// ```
+#[must_use = "builders have no effect if unused"]
 pub struct HttpClientBuilder {
     agent_builder: AgentBuilder,
     client_config: ClientConfig,

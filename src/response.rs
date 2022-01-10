@@ -93,6 +93,7 @@ pub trait ResponseExt<T> {
 }
 
 impl<T> ResponseExt<T> for Response<T> {
+    #[allow(clippy::redundant_closure)]
     fn trailer(&self) -> &Trailer {
         // Return a static empty trailer if the extension does not exist. This
         // offers a more convenient API so that users do not have to unwrap the

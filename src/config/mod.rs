@@ -74,6 +74,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .expect_err("page should time out");
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn timeout(self, timeout: Duration) -> Self {
         self.with_config(move |config| {
             config.timeout = Some(timeout);
@@ -83,6 +84,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// Set a timeout for establishing connections to a host.
     ///
     /// If not set, a default connect timeout of 300 seconds will be used.
+    #[must_use = "builders have no effect if unused"]
     fn connect_timeout(self, timeout: Duration) -> Self {
         self.with_config(move |config| {
             config.connect_timeout = Some(timeout);
@@ -93,6 +95,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// a minimum speed limit. `low_speed` is that limit in bytes/s.
     ///
     /// If not set, no low speed limits are imposed.
+    #[must_use = "builders have no effect if unused"]
     fn low_speed_timeout(self, low_speed: u32, timeout: Duration) -> Self {
         self.with_config(move |config| {
             config.low_speed_timeout = Some((low_speed, timeout));
@@ -124,6 +127,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn version_negotiation(self, negotiation: VersionNegotiation) -> Self {
         self.with_config(move |config| {
             config.version_negotiation = Some(negotiation);
@@ -153,6 +157,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .expect_err("too many redirects");
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn redirect_policy(self, policy: RedirectPolicy) -> Self {
         self.with_config(move |config| {
             config.redirect_policy = Some(policy);
@@ -160,6 +165,7 @@ pub trait Configurable: request::WithRequestConfig {
     }
 
     /// Update the `Referer` header automatically when following redirects.
+    #[must_use = "builders have no effect if unused"]
     fn auto_referer(self) -> Self {
         self.with_config(move |config| {
             config.auto_referer = Some(true);
@@ -177,6 +183,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
     #[cfg(feature = "cookies")]
+    #[must_use = "builders have no effect if unused"]
     fn cookie_jar(self, cookie_jar: crate::cookies::CookieJar) -> Self;
 
     /// Enable or disable automatic decompression of the response body for
@@ -194,6 +201,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// If you do not specify a specific value for the
     /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
     /// header, Isahc will set one for you automatically based on this option.
+    #[must_use = "builders have no effect if unused"]
     fn automatic_decompression(self, decompress: bool) -> Self {
         self.with_config(move |config| {
             config.automatic_decompression = Some(decompress);
@@ -258,6 +266,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn expect_continue<T>(self, expect: T) -> Self
     where
         T: Into<ExpectContinue>,
@@ -289,6 +298,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
             config.authentication = Some(authentication);
@@ -299,6 +309,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// This setting will do nothing unless you also set one or more
     /// authentication methods using [`Configurable::authentication`].
+    #[must_use = "builders have no effect if unused"]
     fn credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
             config.credentials = Some(credentials);
@@ -306,6 +317,7 @@ pub trait Configurable: request::WithRequestConfig {
     }
 
     /// Enable TCP keepalive with a given probe interval.
+    #[must_use = "builders have no effect if unused"]
     fn tcp_keepalive(self, interval: Duration) -> Self {
         self.with_config(move |config| {
             config.tcp_keepalive = Some(interval);
@@ -313,6 +325,7 @@ pub trait Configurable: request::WithRequestConfig {
     }
 
     /// Enables the `TCP_NODELAY` option on connect.
+    #[must_use = "builders have no effect if unused"]
     fn tcp_nodelay(self) -> Self {
         self.with_config(move |config| {
             config.tcp_nodelay = Some(true);
@@ -352,6 +365,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn interface<I>(self, interface: I) -> Self
     where
         I: Into<NetworkInterface>,
@@ -368,6 +382,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// This does not affect requests with an explicit IP address as the host.
     ///
     /// The default is [`IpVersion::Any`].
+    #[must_use = "builders have no effect if unused"]
     fn ip_version(self, version: IpVersion) -> Self {
         self.with_config(move |config| {
             config.ip_version = Some(version);
@@ -412,6 +427,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn dial<D>(self, dialer: D) -> Self
     where
         D: Into<Dialer>,
@@ -461,6 +477,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn proxy(self, proxy: impl Into<Option<http::Uri>>) -> Self {
         self.with_config(move |config| {
             config.proxy = Some(proxy.into());
@@ -480,6 +497,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn proxy_blacklist<I, T>(self, hosts: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -513,6 +531,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
             config.proxy_authentication = Some(Proxy(authentication));
@@ -524,6 +543,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// This setting will do nothing unless you also set one or more proxy
     /// authentication methods using
     /// [`Configurable::proxy_authentication`].
+    #[must_use = "builders have no effect if unused"]
     fn proxy_credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
             config.proxy_credentials = Some(Proxy(credentials));
@@ -533,6 +553,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
+    #[must_use = "builders have no effect if unused"]
     fn max_upload_speed(self, max: u64) -> Self {
         self.with_config(move |config| {
             config.max_upload_speed = Some(max);
@@ -542,6 +563,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// Set a maximum download speed for the response body, in bytes per second.
     ///
     /// The default is unlimited.
+    #[must_use = "builders have no effect if unused"]
     fn max_download_speed(self, max: u64) -> Self {
         self.with_config(move |config| {
             config.max_download_speed = Some(max);
@@ -590,6 +612,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
         self.with_config(move |config| {
             config.ssl_client_certificate = Some(certificate);
@@ -617,6 +640,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
         self.with_config(move |config| {
             config.ssl_ca_certificate = Some(certificate);
@@ -630,6 +654,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in the system defaults being used.
+    #[must_use = "builders have no effect if unused"]
     fn ssl_ciphers<I, T>(self, ciphers: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -674,6 +699,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[must_use = "builders have no effect if unused"]
     fn ssl_options(self, options: SslOption) -> Self {
         self.with_config(move |config| {
             config.ssl_options = Some(options);
@@ -690,6 +716,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// This option has no effect when using HTTP/2 or newer where headers are
     /// required to be lowercase.
+    #[must_use = "builders have no effect if unused"]
     fn title_case_headers(self, enable: bool) -> Self {
         self.with_config(move |config| {
             config.title_case_headers = Some(enable);
@@ -711,6 +738,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// Disabling metrics may be necessary for absolute peak performance.
     ///
     /// By default metrics are disabled.
+    #[must_use = "builders have no effect if unused"]
     fn metrics(self, enable: bool) -> Self {
         self.with_config(move |config| {
             config.enable_metrics = Some(enable);

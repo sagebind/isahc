@@ -32,6 +32,7 @@ impl Error for ParseError {}
 ///     .unwrap();
 /// ```
 #[derive(Clone, Debug)]
+#[must_use = "builders have no effect if unused"]
 pub struct CookieBuilder {
     /// The name of the cookie.
     name: String,
