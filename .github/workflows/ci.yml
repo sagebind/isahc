@@ -60,6 +60,40 @@ jobs:
       - name: Run example program
         run: cargo run --release --example simple
 
+  test-minimal-versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: clippy
+          default: true
+
+      - name: Update Cargo.lock
+        run: cargo -Z minimal-versions update
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Run tests
+        run: cargo test --features ${{ env.FEATURES }}
+
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 20
