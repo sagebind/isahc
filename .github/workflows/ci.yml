@@ -79,7 +79,7 @@ jobs:
       # specifies its dependency as "^0.2".
       - name: Override openssl-sys version
         run: |
-          echo '[dependencies.openssl-sys]\nversion = "0.9.45"' >> Cargo.toml
+          echo "[dependencies.openssl-sys]\nversion = \"0.9.45\"" >> Cargo.toml
 
       - name: Update Cargo.lock
         run: cargo -Z minimal-versions update
