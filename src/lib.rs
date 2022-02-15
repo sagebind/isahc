@@ -245,6 +245,9 @@
 use std::convert::TryFrom;
 
 #[macro_use]
+mod log;
+
+#[macro_use]
 mod macros;
 
 #[cfg(feature = "cookies")]

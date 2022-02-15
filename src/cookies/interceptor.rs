@@ -83,13 +83,13 @@ impl Interceptor for CookieInterceptor {
                         .into_iter()
                         .filter_map(|header| {
                             header.to_str().ok().or_else(|| {
-                                tracing::warn!("invalid encoding in Set-Cookie header");
+                                warn!("invalid encoding in Set-Cookie header");
                                 None
                             })
                         })
                         .filter_map(|header| {
                             Cookie::parse(header).ok().or_else(|| {
-                                tracing::warn!("could not parse Set-Cookie header");
+                                warn!("could not parse Set-Cookie header");
                                 None
                             })
                         });

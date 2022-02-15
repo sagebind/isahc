@@ -35,7 +35,6 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tracing_futures::Instrument;
 
 static USER_AGENT: Lazy<String> = Lazy::new(|| {
     format!(
@@ -910,7 +909,7 @@ impl HttpClient {
     where
         B: Into<Body>,
     {
-        let span = tracing::debug_span!(
+        let span = debug_span!(
             "send",
             method = ?request.method(),
             uri = ?request.uri(),
@@ -925,7 +924,7 @@ impl HttpClient {
         });
 
         let response = block_on(
-            async move {
+            instrument_span!(span, async move {
                 // Instead of simply blocking the current thread until the response
                 // is received, we can use the current thread to read from the
                 // request body synchronously while concurrently waiting for the
@@ -943,8 +942,7 @@ impl HttpClient {
                 } else {
                     self.send_async_inner(request).await
                 }
-            }
-            .instrument(span),
+            }),
         )?;
 
         Ok(response.map(|body| body.into_sync()))
@@ -1001,15 +999,14 @@ impl HttpClient {
     where
         B: Into<AsyncBody>,
     {
-        let span = tracing::debug_span!(
+        let span = debug_span!(
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),
         );
 
         ResponseFuture::new(
-            self.send_async_inner(request.map(Into::into))
-                .instrument(span),
+            instrument_span!(span, self.send_async_inner(request.map(Into::into)))
         )
     }
 

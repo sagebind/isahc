@@ -104,7 +104,11 @@ impl Selector {
                 // hold onto this currently invalid socket for later. Whenever
                 // `poll` is called, we retry registering these sockets in the
                 // hope that they will eventually become valid.
-                tracing::debug!(socket, error = ?e, "bad socket registered, will try again later");
+                #[cfg(feature = "tracing")]
+                debug!(socket, error = ?e, "bad socket registered, will try again later");
+                #[cfg(not(feature = "tracing"))]
+                debug!("bad socket registered, will try again later: {:?}", e);
+
                 self.bad_sockets.insert(socket);
                 Ok(())
             }
@@ -216,7 +220,7 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
         readable,
         writable,
     }) {
-        tracing::debug!(
+        debug!(
             "failed to add interest for socket {}, retrying as a modify: {}",
             socket,
             e
@@ -244,7 +248,7 @@ fn poller_modify(
         readable,
         writable,
     }) {
-        tracing::debug!(
+        debug!(
             "failed to modify interest for socket {}, retrying as an add: {}",
             socket,
             e

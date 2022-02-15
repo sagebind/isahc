@@ -89,14 +89,16 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = tracing::debug_span!("agent_thread", id);
+        let agent_span = debug_span!("agent_thread", id);
+        #[cfg(feature = "tracing")]
         agent_span.follows_from(tracing::Span::current());
 
         let waker = selector.waker();
         let message_tx_clone = message_tx.clone();
 
         let thread_main = move || {
-            let _enter = agent_span.enter();
+            enter_span!(agent_span);
+
             let mut multi = Multi::new();
 
             if max_connections > 0 {
@@ -122,12 +124,12 @@ impl AgentBuilder {
 
             drop(wait_group_thread);
 
-            tracing::debug!("agent took {:?} to start up", create_start.elapsed());
+            debug!("agent took {:?} to start up", create_start.elapsed());
 
             let result = agent.run();
 
             if let Err(e) = &result {
-                tracing::error!("agent shut down with error: {:?}", e);
+                error!("agent shut down with error: {:?}", e);
             }
 
             result
@@ -269,14 +271,14 @@ impl Drop for Handle {
     fn drop(&mut self) {
         // Request the agent thread to shut down.
         if self.send_message(Message::Close).is_err() {
-            tracing::error!("agent thread terminated prematurely");
+            error!("agent thread terminated prematurely");
         }
 
         // Wait for the agent thread to shut down before continuing.
         match self.try_join() {
-            JoinResult::Ok => tracing::trace!("agent thread joined cleanly"),
-            JoinResult::Err(e) => tracing::error!("agent thread terminated with error: {}", e),
-            JoinResult::Panic => tracing::error!("agent thread panicked"),
+            JoinResult::Ok => trace!("agent thread joined cleanly"),
+            JoinResult::Err(e) => error!("agent thread terminated with error: {}", e),
+            JoinResult::Panic => error!("agent thread panicked"),
             _ => {}
         }
     }
@@ -328,12 +330,17 @@ impl AgentContext {
         })
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
+        let span = trace_span!("begin_request", ?request);
+        enter_span!(span);
+
         // Prepare an entry for storing this request while it executes.
         let entry = self.requests.vacant_entry();
         let id = entry.key();
         let handle = request.raw();
+
+        let request_span = request.get_ref().span().clone();
+        let response_span = request.get_ref().span().clone();
 
         // Initialize the handler.
         request.get_mut().init(
@@ -346,7 +353,8 @@ impl AgentContext {
                     .chain(move |inner| match tx.try_send(Message::UnpauseRead(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => {
-                            tracing::warn!(id, "agent went away while resuming read for request")
+                            enter_span!(request_span);
+                            warn!("agent went away while resuming read for request")
                         }
                     })
             },
@@ -357,7 +365,8 @@ impl AgentContext {
                     .chain(move |inner| match tx.try_send(Message::UnpauseWrite(id)) {
                         Ok(()) => inner.wake_by_ref(),
                         Err(_) => {
-                            tracing::warn!(id, "agent went away while resuming write for request")
+                            enter_span!(response_span);
+                            warn!("agent went away while resuming write for request")
                         }
                     })
             },
@@ -373,12 +382,14 @@ impl AgentContext {
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
     fn complete_request(
         &mut self,
         token: usize,
         result: Result<(), curl::Error>,
     ) -> Result<(), Error> {
+        let span = trace_span!("complete_request", token, ?result);
+        enter_span!(span);
+
         let handle = self.requests.remove(token);
         let mut handle = self.multi.remove2(handle).map_err(Error::from_any)?;
 
@@ -391,14 +402,16 @@ impl AgentContext {
     ///
     /// If there are no active requests right now, this function will block
     /// until a message is received.
-    #[tracing::instrument(level = "trace", skip(self))]
     fn poll_messages(&mut self) -> Result<(), Error> {
+        let span = trace_span!("poll_messages");
+        enter_span!(span);
+
         while !self.close_requested {
             if self.requests.is_empty() {
                 match block_on(self.message_rx.recv()) {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
-                        tracing::warn!("agent handle disconnected without close message");
+                        warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     }
@@ -408,7 +421,7 @@ impl AgentContext {
                     Ok(message) => self.handle_message(message)?,
                     Err(async_channel::TryRecvError::Empty) => break,
                     Err(async_channel::TryRecvError::Closed) => {
-                        tracing::warn!("agent handle disconnected without close message");
+                        warn!("agent handle disconnected without close message");
                         self.close_requested = true;
                         break;
                     }
@@ -419,15 +432,18 @@ impl AgentContext {
         Ok(())
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
-        tracing::trace!("received message from agent handle");
+        let span = trace_span!("handle_message", ?message);
+        enter_span!(span);
+        trace!("received message from agent handle");
 
         match message {
             Message::Close => self.close_requested = true,
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
+                    enter_span!(request.get_ref().span());
+
                     if let Err(e) = request.unpause_read() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
@@ -436,10 +452,10 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!(id = token, "error unpausing read for request: {:?}", e);
+                        debug!("error unpausing read for request: {:?}", e);
                     }
                 } else {
-                    tracing::warn!(
+                    warn!(
                         "received unpause request for unknown request token: {}",
                         token
                     );
@@ -447,6 +463,8 @@ impl AgentContext {
             }
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
+                    enter_span!(request.get_ref().span());
+
                     if let Err(e) = request.unpause_write() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
@@ -455,10 +473,10 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!(id = token, "error unpausing write for request: {:?}", e);
+                        debug!("error unpausing write for request: {:?}", e);
                     }
                 } else {
-                    tracing::warn!(
+                    warn!(
                         "received unpause request for unknown request token: {}",
                         token
                     );
@@ -499,7 +517,7 @@ impl AgentContext {
             }
         }
 
-        tracing::debug!("agent shutting down");
+        debug!("agent shutting down");
 
         self.requests.clear();
 
@@ -520,7 +538,8 @@ impl AgentContext {
         if self.selector.poll(poll_timeout)? {
             // At least one I/O event occurred, handle them.
             for (socket, readable, writable) in self.selector.events() {
-                tracing::trace!(socket, readable, writable, "socket event");
+                #[cfg(feature = "tracing")]
+                trace!(socket, readable, writable, "socket event");
                 let mut events = Events::new();
                 events.input(readable);
                 events.output(writable);
