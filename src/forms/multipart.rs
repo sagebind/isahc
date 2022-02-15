@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, convert::TryFrom, io, io::Write, iter::repeat_with, pin::Pin, task::{Context, Poll}};
+use std::{collections::VecDeque, convert::TryFrom, io, io::{Write, Read}, iter::repeat_with, pin::Pin, task::{Context, Poll}};
 
 use futures_lite::{
     io::{Chain, Cursor},
@@ -8,21 +8,19 @@ use futures_lite::{
 };
 use http::header::{HeaderValue, HeaderName};
 
-use crate::AsyncBody;
-
-type PartReader = Chain<Chain<Cursor<Vec<u8>>, AsyncBody>, &'static [u8]>;
+use crate::body::{Body, AsyncBody};
 
 /// Builder for constructing a multipart form.
 ///
 /// Generates a multipart form body as described in [RFC
 /// 7578](https://datatracker.ietf.org/doc/html/rfc7578).
 #[derive(Debug)]
-pub struct FormDataBuilder {
+pub struct FormDataBuilder<BODY> {
     boundary: String,
-    fields: Vec<FormPart>,
+    fields: Vec<FormPart<BODY>>,
 }
 
-impl FormDataBuilder {
+impl<BODY> FormDataBuilder<BODY> {
     /// Create a new form builder.
     pub fn new() -> Self {
         Self::with_boundary(generate_boundary())
@@ -44,19 +42,63 @@ impl FormDataBuilder {
     pub fn field<N, V>(self, name: N, value: V) -> Self
     where
         N: Into<String>,
-        V: Into<AsyncBody>,
+        V: Into<BODY>,
     {
         self.part(FormPart::new(name, value))
     }
 
     /// Append a part to this form.
-    pub fn part(mut self, part: FormPart) -> Self {
+    pub fn part(mut self, part: FormPart<BODY>) -> Self {
         self.fields.push(part);
         self
     }
+}
 
+impl FormDataBuilder<Body> {
     /// Build the form.
-    pub fn build(self) -> FormData {
+    pub fn build(self) -> Body {
+        let boundary = self.boundary;
+
+        let mut parts = VecDeque::with_capacity(self.fields.len());
+        let mut len = Some(boundary.len() as u64);
+
+        for part in self.fields {
+            let (read, part_size) = part.into_read(boundary.as_str());
+            parts.push_back(read);
+
+            if let (Some(a), Some(b)) = (len, part_size) {
+                len = Some(a + b);
+            }
+            else {
+                len = None;
+            }
+        }
+
+        let terminator = std::io::Cursor::new(format!("--{}--\r\n", &boundary).into_bytes());
+
+        len = len.map(|size| size + terminator.get_ref().len() as u64);
+
+        let parts = MultiChain {
+            items: parts,
+        };
+
+        let full_reader = parts.chain(terminator);
+
+        let mut body = if let Some(len) = len {
+            Body::from_reader_sized(full_reader, len)
+        } else {
+            Body::from_reader(full_reader)
+        };
+
+        body.content_type = Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap());
+
+        body
+    }
+}
+
+impl FormDataBuilder<AsyncBody> {
+    /// Build the form.
+    pub fn build(self) -> AsyncBody {
         let boundary = self.boundary;
 
         let parts = self
@@ -81,36 +123,46 @@ impl FormDataBuilder {
             .fold(Some(0), |a, b| Some(a? + b?))
             .map(|size| size + terminator.get_ref().len() as u64);
 
-        FormData {
-            len,
-            parts,
-            terminator,
-        }
+        let parts = MultiChain {
+            items: parts,
+        };
+
+        let full_reader = parts.chain(terminator);
+
+        let mut body = if let Some(len) = len {
+            AsyncBody::from_reader_sized(full_reader, len)
+        } else {
+            AsyncBody::from_reader(full_reader)
+        };
+
+        body.content_type = Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap());
+
+        body
     }
 }
 
 /// A single part of a multipart form representing a single field.
 #[derive(Debug)]
-pub struct FormPart {
+pub struct FormPart<BODY> {
     name: String,
     filename: Option<String>,
     content_type: Option<String>,
     headers: Vec<(HeaderName, HeaderValue)>,
-    value: AsyncBody,
+    value: BODY,
     error: Option<http::Error>,
 }
 
-impl FormPart {
+impl<BODY> FormPart<BODY> {
     /// Create a new form part with a name and value.
     pub fn new<N, V>(name: N, value: V) -> Self
     where
         N: Into<String>,
-        V: Into<AsyncBody>,
+        V: Into<BODY>,
     {
         FormPart {
             name: name.into(),
             filename: None,
-            content_type: None,
+            content_type: Some(String::from("text/plain;charset=UTF-8")),
             headers: Vec::new(),
             value: value.into(),
             error: None,
@@ -146,8 +198,48 @@ impl FormPart {
 
         self
     }
+}
 
-    fn into_writer(self, boundary: &str) -> PartReader {
+impl FormPart<Body> {
+    fn into_read(self, boundary: &str) -> (impl Read, Option<u64>) {
+        let mut header = Vec::new();
+
+        write!(header, "--{}\r\n", boundary).unwrap();
+        write!(
+            header,
+            "Content-Disposition: form-data; name=\"{}\"",
+            &self.name
+        )
+        .unwrap();
+
+        if let Some(filename) = self.filename.as_ref() {
+            write!(header, "; filename=\"{}\"", filename).unwrap();
+        }
+
+        header.extend_from_slice(b"\r\n");
+
+        if let Some(content_type) = self.content_type.as_ref() {
+            write!(header, "Content-Type: {}\r\n", content_type).unwrap();
+        }
+
+        for (name, value) in self.headers {
+            header.extend_from_slice(name.as_ref());
+            header.extend_from_slice(b": ");
+            header.extend_from_slice(value.as_ref());
+            header.extend_from_slice(b"\r\n");
+        }
+
+        header.extend_from_slice(b"\r\n");
+
+        let reader = std::io::Cursor::new(header).chain(self.value).chain(std::io::Cursor::new(b"\r\n"));
+
+        (reader, None)
+    }
+}
+
+impl FormPart<AsyncBody> {
+    // Chain<Chain<Cursor<Vec<u8>>, AsyncBody>, &'static [u8]>
+    fn into_writer(self, boundary: &str) -> Chain<Chain<Cursor<Vec<u8>>, AsyncBody>, &'static [u8]> {
         let mut header = Vec::new();
 
         write!(header, "--{}\r\n", boundary).unwrap();
@@ -181,42 +273,46 @@ impl FormPart {
     }
 }
 
-/// A multipart form body.
-#[derive(Debug)]
-pub struct FormData {
-    len: Option<u64>,
-    parts: VecDeque<PartReader>,
-    terminator: Cursor<Vec<u8>>,
+/// A chained reader which can chain multiple readers of the same type together.
+struct MultiChain<R> {
+    items: VecDeque<R>,
 }
 
-impl From<FormData> for AsyncBody {
-    fn from(form: FormData) -> Self {
-        if let Some(len) = form.len {
-            AsyncBody::from_reader_sized(form, len)
-        } else {
-            AsyncBody::from_reader(form)
+impl<R: Read> Read for MultiChain<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        while let Some(item) = self.items.front_mut() {
+            match item.read(buf) {
+                Ok(0) => {
+                    // This item has finished being read, discard it and move to
+                    // the next one.
+                    self.items.pop_front();
+                }
+                result => return result,
+            }
         }
+
+        Ok(0)
     }
 }
 
-impl AsyncRead for FormData {
+impl<R: AsyncRead + Unpin> AsyncRead for MultiChain<R> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        while let Some(part) = self.parts.front_mut() {
-            match ready!(AsyncRead::poll_read(Pin::new(part), cx, buf)) {
+        while let Some(item) = self.items.front_mut() {
+            match ready!(AsyncRead::poll_read(Pin::new(item), cx, buf)) {
                 Ok(0) => {
-                    // This part has finished being read, discard it and move to
+                    // This item has finished being read, discard it and move to
                     // the next one.
-                    self.parts.pop_front();
+                    self.items.pop_front();
                 }
                 result => return Poll::Ready(result),
             }
         }
 
-        AsyncRead::poll_read(Pin::new(&mut self.terminator), cx, buf)
+        Poll::Ready(Ok(0))
     }
 }
 
@@ -231,7 +327,7 @@ mod tests {
 
     #[test]
     fn empty_form() {
-        let mut form: AsyncBody = FormDataBuilder::with_boundary("boundary").build().into();
+        let mut form: AsyncBody = FormDataBuilder::<AsyncBody>::with_boundary("boundary").build();
 
         let expected = "--boundary--\r\n";
 
@@ -248,11 +344,10 @@ mod tests {
 
     #[test]
     fn sized_form() {
-        let mut form: AsyncBody = FormDataBuilder::with_boundary("boundary")
+        let mut form: AsyncBody = FormDataBuilder::<AsyncBody>::with_boundary("boundary")
             .field("foo", "value1")
             .field("bar", "value2")
-            .build()
-            .into();
+            .build();
 
         let expected = "\
             --boundary\r\n\

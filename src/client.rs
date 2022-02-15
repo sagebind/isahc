@@ -1175,6 +1175,13 @@ impl crate::interceptor::Invoke for &HttpClient {
                 .entry(http::header::USER_AGENT)
                 .or_insert(USER_AGENT.parse().unwrap());
 
+            // Copy Content-Type from body if not otherwise specified.
+            if !request.headers().contains_key(http::header::CONTENT_TYPE) {
+                if let Some(content_type) = request.body().content_type().cloned() {
+                    request.headers_mut().insert(http::header::CONTENT_TYPE, content_type);
+                }
+            }
+
             // Check if automatic decompression is enabled; we'll need to know
             // this later after the response is sent.
             let is_automatic_decompression = request
