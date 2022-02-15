@@ -12,7 +12,7 @@ fn no_proxy() {
         .send()
         .unwrap();
 
-    assert_eq!(m.requests().len(), 1);
+    assert_eq!(m.requests_received(), 1);
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn http_proxy() {
     // protocol. The request-target should be the absolute URI of our
     // upstream request target (see [RFC
     // 7230](https://tools.ietf.org/html/rfc7230), sections 5.3 and 5.7).
-    assert_eq!(m.request().url, upstream.to_string());
+    assert_eq!(m.request().url(), upstream.to_string());
     // Host should be the upstream authority, not the proxy host.
     m.request()
         .expect_header("host", upstream.authority().unwrap().as_str());
@@ -71,8 +71,8 @@ fn socks4_proxy() {
         .send()
         .unwrap();
 
-    // ...expecting to receive it through the proxy.
-    assert_eq!(m.requests().len(), 1);
+    // ...expecting to receive it through the proxy.Z
+    assert_eq!(m.requests_received(), 1);
 }
 
 #[test]
@@ -93,5 +93,5 @@ fn proxy_blacklist_works() {
         .send()
         .unwrap();
 
-    assert_eq!(m.requests().len(), 1);
+    assert_eq!(m.requests_received(), 1);
 }

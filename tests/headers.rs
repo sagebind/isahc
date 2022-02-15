@@ -87,12 +87,8 @@ fn set_title_case_headers_to_true() {
 
     client.get(m.url()).unwrap();
 
-    assert_eq!(m.request().method, "GET");
-    m.request()
-        .headers
-        .iter()
-        .find(|(key, value)| key == "Foo-Bar" && value == "baz")
-        .expect("header not found");
+    assert_eq!(m.request().method(), "GET");
+    m.request().expect_header("Foo-Bar", "baz");
 }
 
 #[test]

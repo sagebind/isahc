@@ -17,7 +17,7 @@ fn response_301_no_follow() {
     assert_eq!(response.headers()["Location"], "/2");
     assert_eq!(response.effective_uri().unwrap().path(), "/");
 
-    assert!(!m.requests().is_empty());
+    assert_eq!(m.requests_received(), 1);
 }
 
 #[test]
@@ -46,8 +46,8 @@ fn response_301_auto_follow() {
     assert_eq!(response.text().unwrap(), "ok");
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert!(!m1.requests().is_empty());
-    assert!(!m2.requests().is_empty());
+    assert_eq!(m1.requests_received(), 1);
+    assert_eq!(m2.requests_received(), 1);
 }
 
 #[test]
@@ -82,8 +82,8 @@ fn headers_are_reset_every_redirect() {
     assert_eq!(response.headers()["X-Baz"], "zzz");
     assert!(!response.headers().contains_key("X-Bar"));
 
-    assert!(!m1.requests().is_empty());
-    assert!(!m2.requests().is_empty());
+    assert_eq!(m1.requests_received(), 1);
+    assert_eq!(m2.requests_received(), 1);
 }
 
 #[test_case(301)]
@@ -110,8 +110,8 @@ fn redirect_changes_post_to_get(status: u16) {
     assert_eq!(response.status(), 200);
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert_eq!(m1.request().method, "POST");
-    assert_eq!(m2.request().method, "GET");
+    assert_eq!(m1.request().method(), "POST");
+    assert_eq!(m2.request().method(), "GET");
 }
 
 #[test_case(307)]
@@ -137,8 +137,8 @@ fn redirect_also_sends_post(status: u16) {
     assert_eq!(response.status(), 200);
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert_eq!(m1.request().method, "POST");
-    assert_eq!(m2.request().method, "POST");
+    assert_eq!(m1.request().method(), "POST");
+    assert_eq!(m2.request().method(), "POST");
 }
 
 // Issue #250
@@ -167,8 +167,8 @@ fn redirect_with_response_body() {
     assert_eq!(response.status(), 200);
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert_eq!(m1.request().method, "POST");
-    assert_eq!(m2.request().method, "GET");
+    assert_eq!(m1.request().method(), "POST");
+    assert_eq!(m2.request().method(), "GET");
 }
 
 // Issue #250
@@ -194,8 +194,8 @@ fn redirect_policy_from_client() {
     assert_eq!(response.status(), 200);
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert_eq!(m1.request().method, "POST");
-    assert_eq!(m2.request().method, "GET");
+    assert_eq!(m1.request().method(), "POST");
+    assert_eq!(m2.request().method(), "GET");
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn redirect_non_rewindable_body_returns_error() {
 
     assert_eq!(error, isahc::error::ErrorKind::RequestBodyNotRewindable);
     assert_eq!(error.remote_addr(), Some(m1.addr()));
-    assert_eq!(m1.request().method, "POST");
+    assert_eq!(m1.request().method(), "POST");
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn redirect_limit_is_respected() {
     assert_eq!(error.remote_addr(), Some(m.addr()));
 
     // After request (limit + 1) that returns a redirect should error.
-    assert_eq!(m.requests().len(), 6);
+    assert_eq!(m.requests_received(), 6);
 }
 
 #[test]
@@ -314,6 +314,6 @@ fn redirect_with_unencoded_utf8_bytes_in_location() {
     assert_eq!(response.text().unwrap(), "ok");
     assert_eq!(response.effective_uri().unwrap().to_string(), m2.url());
 
-    assert!(!m1.requests().is_empty());
-    assert!(!m2.requests().is_empty());
+    assert_eq!(m1.requests_received(), 1);
+    assert_eq!(m2.requests_received(), 1);
 }

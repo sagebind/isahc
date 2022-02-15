@@ -19,6 +19,44 @@ fn simple_response_body() {
 }
 
 #[test]
+fn response_body_bytes() {
+    let m = mock! {
+        body: "hello world",
+    };
+
+    let mut response = isahc::get(m.url()).unwrap();
+    let bytes = response.bytes().unwrap();
+
+    assert_eq!(bytes, "hello world".as_bytes());
+}
+
+#[test]
+fn response_body_bytes_async() {
+    let m = mock! {
+        body: "hello world",
+    };
+
+    block_on(async move {
+        let mut response = isahc::get_async(m.url()).await.unwrap();
+        let bytes = response.bytes().await.unwrap();
+
+        assert_eq!(bytes, "hello world".as_bytes());
+    });
+}
+
+#[test]
+fn zero_length_response_body() {
+    let m = mock! {
+        body: "",
+    };
+
+    let response = isahc::get(m.url()).unwrap();
+
+    assert_eq!(response.body().len(), Some(0));
+    assert!(!response.body().is_empty());
+}
+
+#[test]
 fn large_response_body() {
     let body = "wow so large ".repeat(1000);
 
@@ -56,6 +94,20 @@ fn response_body_with_chunked_encoding_has_unknown_size() {
     let response = isahc::get(m.url()).unwrap();
 
     assert_eq!(response.body().len(), None);
+}
+
+// See issue #341.
+#[test]
+fn head_request_with_content_length_response_returns_empty_body() {
+    let m = mock! {
+        headers {
+            "content-length": 767,
+        }
+    };
+
+    let response = isahc::head(m.url()).unwrap();
+
+    assert!(response.body().is_empty());
 }
 
 // See issue #64.
@@ -103,7 +155,9 @@ fn consume_unread_response_body() {
     let m = {
         let body = body.clone();
         mock! {
-            body: body.clone(),
+            _ => {
+                body: body.clone(),
+            },
         }
     };
 
@@ -121,7 +175,9 @@ fn consume_unread_response_body_async() {
     let m = {
         let body = body.clone();
         mock! {
-            body: body.clone(),
+            _ => {
+                body: body.clone(),
+            },
         }
     };
 

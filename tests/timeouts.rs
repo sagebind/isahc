@@ -27,7 +27,7 @@ fn request_errors_if_read_timeout_is_reached() {
     // Client should time-out.
     assert_matches!(result, Err(e) if e == isahc::error::ErrorKind::Timeout);
 
-    assert_eq!(m.requests().len(), 1);
+    assert_eq!(m.requests_received(), 1);
 }
 
 /// Issue #154
@@ -43,7 +43,9 @@ fn timeout_during_response_body_produces_error() {
     }
 
     let m = mock! {
-        body_reader: Cursor::new(vec![0; 100_000]).chain(SlowReader),
+        _ => {
+            body_reader: Cursor::new(vec![0; 100_000]).chain(SlowReader),
+        },
     };
 
     let mut response = Request::get(m.url())

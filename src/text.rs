@@ -63,7 +63,7 @@ impl Decoder {
         {
             if let Some(charset) = content_type.get_param(mime::CHARSET) {
                 if let Some(encoding) =
-                    encoding_rs::Encoding::for_label(charset.as_str().as_bytes())
+                    encoding_rs::Encoding::for_label(charset.as_ref().as_bytes())
                 {
                     return Self::new(encoding);
                 } else {

@@ -28,7 +28,7 @@ fn local_addr_returns_expected_address() {
 
     let response = isahc::get(m.url()).unwrap();
 
-    assert!(!m.requests().is_empty());
+    assert_eq!(m.requests_received(), 1);
     assert_eq!(response.local_addr().unwrap().ip(), Ipv4Addr::LOCALHOST);
     assert!(response.local_addr().unwrap().port() > 0);
 }
@@ -39,7 +39,7 @@ fn remote_addr_returns_expected_address() {
 
     let response = isahc::get(m.url()).unwrap();
 
-    assert!(!m.requests().is_empty());
+    assert_eq!(m.requests_received(), 1);
     assert_eq!(response.remote_addr(), Some(m.addr()));
 }
 

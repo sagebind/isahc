@@ -71,6 +71,7 @@ impl ResolveMap {
     }
 
     /// Add a DNS mapping for a given host and port pair.
+    #[must_use = "builders have no effect if unused"]
     pub fn add<H, A>(mut self, host: H, port: u16, addr: A) -> Self
     where
         H: AsRef<str>,
