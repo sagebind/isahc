@@ -4,7 +4,7 @@
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../isahc/index.html"><div class="logo-container">
                     <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div>
-        </a><h2 class="location"><a href="#">Crate isahc</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 1.6.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><div id="sidebar-vars" data-name="isahc" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../isahc/index.html">
+        </a><h2 class="location"><a href="#">Crate isahc</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 1.6.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div></section><div id="sidebar-vars" data-name="isahc" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../isahc/index.html">
                         <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
     <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">isahc</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/isahc/lib.rs.html#1-475">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The practical HTTP client that is fun to use.</p>
 <p>Here are some of Isahc’s key features:</p>
@@ -19,7 +19,7 @@ and response bodies and connection multiplexing.</li>
 <li>Sessions and cookie persistence.</li>
 <li>Automatic request cancellation on drop.</li>
 </ul>
-<h2 id="getting-started" class="section-header"><a href="#getting-started">Getting started</a></h2>
+<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
 <p>Sending requests is as easy as calling a single function. Let’s make a
 simple GET request to an example website:</p>
 
@@ -57,16 +57,16 @@ interface, then finishing it off with a <a href="trait.RequestExt.html#tymethod.
 <p>For even more examples used in complete programs, please check out the
 <a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory
 in the project repo.</p>
-<h2 id="feature-tour" class="section-header"><a href="#feature-tour">Feature tour</a></h2>
+<h2 id="feature-tour"><a href="#feature-tour">Feature tour</a></h2>
 <p>Below is a brief overview of some notable features of Isahc. Check out the
 rest of the documentation for even more guides and examples.</p>
-<h3 id="easy-request-functions" class="section-header"><a href="#easy-request-functions">Easy request functions</a></h3>
+<h3 id="easy-request-functions"><a href="#easy-request-functions">Easy request functions</a></h3>
 <p>You can start sending requests without any configuration by using the global
 functions in this module, including <a href="fn.get.html" title="get"><code>get</code></a>, <a href="fn.post.html" title="post"><code>post</code></a>, and <a href="fn.send.html" title="send"><code>send</code></a>. These
 use a shared HTTP client instance with sane defaults, so it is easy to get
 up and running. They should work perfectly fine for many use-cases, so don’t
 worry about graduating to more complex APIs if you don’t need them.</p>
-<h3 id="request-and-response-traits" class="section-header"><a href="#request-and-response-traits">Request and response traits</a></h3>
+<h3 id="request-and-response-traits"><a href="#request-and-response-traits">Request and response traits</a></h3>
 <p>Isahc includes a number of traits in the <a href="prelude/index.html" title="prelude"><code>prelude</code></a> module that extend the
 <a href="struct.Request.html" title="Request"><code>Request</code></a> and <a href="struct.Response.html" title="Response"><code>Response</code></a> types with a plethora of extra methods that
 make common tasks convenient and allow you to configure more advanced
@@ -81,13 +81,13 @@ response statistics.</li>
 <li><a href="trait.AsyncReadResponseExt.html" title="AsyncReadResponseExt"><code>AsyncReadResponseExt</code></a>: Consume an asynchronous response body in a
 variety of ways.</li>
 </ul>
-<h3 id="custom-clients" class="section-header"><a href="#custom-clients">Custom clients</a></h3>
+<h3 id="custom-clients"><a href="#custom-clients">Custom clients</a></h3>
 <p>The free-standing functions for sending requests use a shared <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a>
 instance, but you can also create your own client instances, which allows
 you to customize the default behavior for requests that use it.</p>
 <p>See the documentation for <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a> and <a href="struct.HttpClientBuilder.html" title="HttpClientBuilder"><code>HttpClientBuilder</code></a> for more
 information on creating custom clients.</p>
-<h3 id="asynchronous-requests" class="section-header"><a href="#asynchronous-requests">Asynchronous requests</a></h3>
+<h3 id="asynchronous-requests"><a href="#asynchronous-requests">Asynchronous requests</a></h3>
 <p>Requests are always executed asynchronously under the hood. This allows a
 single client to execute a large number of requests concurrently with
 minimal overhead. Even synchronous applications can benefit!</p>
@@ -105,7 +105,7 @@ Here is our first example rewritten to use async/await syntax:</p>
 the asynchronous versions of all response methods (such as
 <a href="trait.AsyncReadResponseExt.html#tymethod.text"><code>text</code></a>) will also automatically be selected by
 the compiler.</p>
-<h2 id="feature-flags" class="section-header"><a href="#feature-flags">Feature flags</a></h2>
+<h2 id="feature-flags"><a href="#feature-flags">Feature flags</a></h2>
 <p>Isahc is designed to be as “pay-as-you-need” as possible using Cargo feature
 flags and optional dependencies. Unstable features are also initially
 released behind feature flags until they are stabilized. You can add the
@@ -114,9 +114,9 @@ feature names below to your <code>Cargo.toml</code> file to enable them:</p>
 version = &quot;1.6&quot;
 features = [&quot;psl&quot;]</code></pre></div>
 <p>Below is a list of all available feature flags and their meanings.</p>
-<h3 id="cookies" class="section-header"><a href="#cookies"><code>cookies</code></a></h3>
+<h3 id="cookies"><a href="#cookies"><code>cookies</code></a></h3>
 <p>Enable persistent HTTP cookie support. Disabled by default.</p>
-<h3 id="http2" class="section-header"><a href="#http2"><code>http2</code></a></h3>
+<h3 id="http2"><a href="#http2"><code>http2</code></a></h3>
 <p>Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does
 not actually affect whether HTTP/2 is used for a given request, but simply
 makes it available. To configure which HTTP versions to use in a request,
@@ -124,36 +124,36 @@ see <a href="config/struct.VersionNegotiation.html"><code>VersionNegotiation</co
 <p>To check which HTTP versions are supported at runtime, you can use
 <a href="fn.is_http_version_supported.html" title="is_http_version_supported"><code>is_http_version_supported</code></a>.</p>
 <p>Enabled by default.</p>
-<h3 id="json" class="section-header"><a href="#json"><code>json</code></a></h3>
+<h3 id="json"><a href="#json"><code>json</code></a></h3>
 <p>Additional serialization and deserialization of JSON bodies via
 <a href="https://serde.rs">serde</a>. Disabled by default.</p>
-<h3 id="psl" class="section-header"><a href="#psl"><code>psl</code></a></h3>
+<h3 id="psl"><a href="#psl"><code>psl</code></a></h3>
 <p>Enable use of the Public Suffix List to filter out potentially malicious
 cross-domain cookies. Implies <code>cookies</code>, disabled by default.</p>
-<h3 id="spnego" class="section-header"><a href="#spnego"><code>spnego</code></a></h3>
+<h3 id="spnego"><a href="#spnego"><code>spnego</code></a></h3>
 <p>Enable support for <a href="https://tools.ietf.org/html/rfc4559">SPNEGO-based HTTP
 authentication</a> (<code>negotiate</code> auth
 scheme). This makes the <code>negotiate</code> scheme available in the API and, if
 <code>static-curl</code> is enabled, compiles libcurl with GSS-API APIs. The <a href="https://web.mit.edu/kerberos/">MIT
 Kerberos</a> headers must be pre-installed at
 compile time.</p>
-<h3 id="static-curl" class="section-header"><a href="#static-curl"><code>static-curl</code></a></h3>
+<h3 id="static-curl"><a href="#static-curl"><code>static-curl</code></a></h3>
 <p>Use a bundled libcurl version and statically link to it. Enabled by default.</p>
-<h3 id="text-decoding" class="section-header"><a href="#text-decoding"><code>text-decoding</code></a></h3>
+<h3 id="text-decoding"><a href="#text-decoding"><code>text-decoding</code></a></h3>
 <p>Enable support for decoding text-based responses in various charsets into
 strings. Enabled by default.</p>
-<h3 id="unstable-apis" class="section-header"><a href="#unstable-apis">Unstable APIs</a></h3>
+<h3 id="unstable-apis"><a href="#unstable-apis">Unstable APIs</a></h3>
 <p>There are also some features that enable new incubating APIs that do not
 have stability guarantees:</p>
-<h4 id="unstable-interceptors" class="section-header"><a href="#unstable-interceptors"><code>unstable-interceptors</code></a></h4>
+<h4 id="unstable-interceptors"><a href="#unstable-interceptors"><code>unstable-interceptors</code></a></h4>
 <p>Enable the new interceptors API (replaces the old unstable middleware API).
 Unstable until the API is finalized. This an unstable feature whose
 interface may change between patch releases.</p>
-<h4 id="unstable-rustls-tls" class="section-header"><a href="#unstable-rustls-tls"><code>unstable-rustls-tls</code></a></h4>
+<h4 id="unstable-rustls-tls"><a href="#unstable-rustls-tls"><code>unstable-rustls-tls</code></a></h4>
 <p>Use <a href="https://github.com/rustls/rustls">rustls</a> as the TLS backend for HTTPS
 requests. Currently unstable as the rustls backend in libcurl currently has
 some known issues and is not yet recommended for production use.</p>
-<h2 id="logging-and-tracing" class="section-header"><a href="#logging-and-tracing">Logging and tracing</a></h2>
+<h2 id="logging-and-tracing"><a href="#logging-and-tracing">Logging and tracing</a></h2>
 <p>Isahc logs quite a bit of useful information at various levels compatible
 with the <a href="https://docs.rs/log">log</a> crate. For even more in-depth
 diagnostics, you can use a <a href="https://docs.rs/tracing">tracing</a> subscriber to
@@ -207,5 +207,5 @@ body.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.send_async.html" title="isahc::send_async fn">send_async</a></div><div class="item-right docblock-short"><p>Send an HTTP request and return the HTTP response asynchronously.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.version.html" title="isahc::version fn">version</a></div><div class="item-right docblock-short"><p>Gets a human-readable string with the version number of Isahc and its
 dependencies.</p>
-</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (71226d717 2022-02-04)" ></div>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (68369a041 2022-02-22)" ></div>
 </body></html>
