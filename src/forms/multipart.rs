@@ -90,7 +90,7 @@ impl FormDataBuilder<Body> {
             Body::from_reader(full_reader)
         };
 
-        body.content_type = Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap());
+        body = body.with_content_type(Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap()));
 
         body
     }
@@ -135,7 +135,7 @@ impl FormDataBuilder<AsyncBody> {
             AsyncBody::from_reader(full_reader)
         };
 
-        body.content_type = Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap());
+        body = body.with_content_type(Some(format!("multipart/form-data; boundary={}", boundary).parse().unwrap()));
 
         body
     }

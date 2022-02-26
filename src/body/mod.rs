@@ -30,7 +30,7 @@ pub use sync::Body;
 ///
 /// For synchronous requests, use [`Body`] instead.
 pub struct AsyncBody {
-    pub(crate) content_type: Option<HeaderValue>,
+    content_type: Option<HeaderValue>,
     repr: Repr,
 }
 
@@ -138,6 +138,11 @@ impl AsyncBody {
         }
     }
 
+    pub(crate) fn with_content_type(mut self, content_type: Option<HeaderValue>) -> Self {
+        self.content_type = content_type;
+        self
+    }
+
     /// Report if this body is empty.
     ///
     /// This is not necessarily the same as checking for `self.len() ==
@@ -173,7 +178,7 @@ impl AsyncBody {
     }
 
     /// Get the content type of this body, if any.
-    pub fn content_type(&self) -> Option<&HeaderValue> {
+    pub(crate) fn content_type(&self) -> Option<&HeaderValue> {
         self.content_type.as_ref()
     }
 
@@ -198,18 +203,14 @@ impl AsyncBody {
     /// generally if the underlying reader only supports blocking under a
     /// specific runtime.
     pub(crate) fn into_sync(self) -> sync::Body {
-        let mut b = match self.repr {
+        match self.repr {
             Repr::Empty => sync::Body::empty(),
             Repr::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
             Repr::Reader(reader, Some(len)) => {
                 sync::Body::from_reader_sized(BlockOn::new(reader), len)
             }
             Repr::Reader(reader, None) => sync::Body::from_reader(BlockOn::new(reader)),
-        };
-
-        b.content_type = self.content_type;
-
-        b
+        }.with_content_type(self.content_type)
     }
 }
 

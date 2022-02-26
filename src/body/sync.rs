@@ -19,7 +19,7 @@ use std::{
 ///
 /// For asynchronous requests, use [`AsyncBody`] instead.
 pub struct Body {
-    pub(crate) content_type: Option<HeaderValue>,
+    content_type: Option<HeaderValue>,
     repr: Repr,
 }
 
@@ -112,6 +112,11 @@ impl Body {
         }
     }
 
+    pub(crate) fn with_content_type(mut self, content_type: Option<HeaderValue>) -> Self {
+        self.content_type = content_type;
+        self
+    }
+
     /// Report if this body is empty.
     ///
     /// This is not necessarily the same as checking for `self.len() ==
@@ -147,7 +152,7 @@ impl Body {
     }
 
     /// Get the content type of this body, if any.
-    pub fn content_type(&self) -> Option<&HeaderValue> {
+    pub(crate) fn content_type(&self) -> Option<&HeaderValue> {
         self.content_type.as_ref()
     }
 
@@ -176,7 +181,7 @@ impl Body {
     /// copy the bytes from the reader to the writing half of the pipe in a
     /// blocking fashion.
     pub(crate) fn into_async(self) -> (AsyncBody, Option<Writer>) {
-        let mut b = match self.repr {
+        let (body, writer) = match self.repr {
             Repr::Empty => (AsyncBody::empty(), None),
             Repr::Buffer(cursor) => (AsyncBody::from_bytes_static(cursor.into_inner()), None),
             Repr::Reader(reader, len) => {
@@ -196,9 +201,7 @@ impl Body {
             }
         };
 
-        b.0.content_type = self.content_type;
-
-        b
+        (body.with_content_type(self.content_type), writer)
     }
 }
 
