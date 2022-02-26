@@ -1,5 +1,6 @@
 use super::AsyncBody;
 use futures_lite::{future::yield_now, io::AsyncWriteExt};
+use http::HeaderValue;
 use sluice::pipe::{pipe, PipeWriter};
 use std::{
     borrow::Cow,
@@ -17,9 +18,12 @@ use std::{
 /// implements [`Read`], which [`Body`] itself also implements.
 ///
 /// For asynchronous requests, use [`AsyncBody`] instead.
-pub struct Body(Inner);
+pub struct Body {
+    content_type: Option<HeaderValue>,
+    repr: Repr,
+}
 
-enum Inner {
+enum Repr {
     Empty,
     Buffer(Cursor<Cow<'static, [u8]>>),
     Reader(Box<dyn Read + Send + Sync>, Option<u64>),
@@ -31,7 +35,10 @@ impl Body {
     /// An empty body represents the *absence* of a body, which is semantically
     /// different than the presence of a body of zero length.
     pub const fn empty() -> Self {
-        Self(Inner::Empty)
+        Self {
+            content_type: None,
+            repr: Repr::Empty,
+        }
     }
 
     /// Create a new body from a potentially static byte buffer.
@@ -59,7 +66,10 @@ impl Body {
         B: AsRef<[u8]> + 'static,
     {
         castaway::match_type!(bytes, {
-            Cursor<Cow<'static, [u8]>> as bytes => Self(Inner::Buffer(bytes)),
+            Cursor<Cow<'static, [u8]>> as bytes => Self {
+                content_type: None,
+                repr: Repr::Buffer(bytes),
+            },
             Vec<u8> as bytes => Self::from(bytes),
             String as bytes => Self::from(bytes.into_bytes()),
             bytes => Self::from(bytes.as_ref().to_vec()),
@@ -76,7 +86,10 @@ impl Body {
     where
         R: Read + Send + Sync + 'static,
     {
-        Self(Inner::Reader(Box::new(reader), None))
+        Self {
+            content_type: None,
+            repr: Repr::Reader(Box::new(reader), None),
+        }
     }
 
     /// Create a streaming body with a known length.
@@ -92,7 +105,16 @@ impl Body {
     where
         R: Read + Send + Sync + 'static,
     {
-        Self(Inner::Reader(Box::new(reader), Some(length)))
+
+        Self {
+            content_type: None,
+            repr: Repr::Reader(Box::new(reader), Some(length)),
+        }
+    }
+
+    pub(crate) fn with_content_type(mut self, content_type: Option<HeaderValue>) -> Self {
+        self.content_type = content_type;
+        self
     }
 
     /// Report if this body is empty.
@@ -102,8 +124,8 @@ impl Body {
     /// difference between the absence of a body and the presence of a
     /// zero-length body. This method will only return `true` for the former.
     pub fn is_empty(&self) -> bool {
-        match self.0 {
-            Inner::Empty => true,
+        match self.repr {
+            Repr::Empty => true,
             _ => false,
         }
     }
@@ -122,19 +144,24 @@ impl Body {
     /// bytes, even if a value is returned it should not be relied on as always
     /// being accurate, and should be treated as a "hint".
     pub fn len(&self) -> Option<u64> {
-        match &self.0 {
-            Inner::Empty => Some(0),
-            Inner::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
-            Inner::Reader(_, len) => *len,
+        match &self.repr {
+            Repr::Empty => Some(0),
+            Repr::Buffer(bytes) => Some(bytes.get_ref().len() as u64),
+            Repr::Reader(_, len) => *len,
         }
+    }
+
+    /// Get the content type of this body, if any.
+    pub(crate) fn content_type(&self) -> Option<&HeaderValue> {
+        self.content_type.as_ref()
     }
 
     /// If this body is repeatable, reset the body stream back to the start of
     /// the content. Returns `false` if the body cannot be reset.
     pub fn reset(&mut self) -> bool {
-        match &mut self.0 {
-            Inner::Empty => true,
-            Inner::Buffer(cursor) => {
+        match &mut self.repr {
+            Repr::Empty => true,
+            Repr::Buffer(cursor) => {
                 cursor.set_position(0);
                 true
             }
@@ -154,10 +181,10 @@ impl Body {
     /// copy the bytes from the reader to the writing half of the pipe in a
     /// blocking fashion.
     pub(crate) fn into_async(self) -> (AsyncBody, Option<Writer>) {
-        match self.0 {
-            Inner::Empty => (AsyncBody::empty(), None),
-            Inner::Buffer(cursor) => (AsyncBody::from_bytes_static(cursor.into_inner()), None),
-            Inner::Reader(reader, len) => {
+        let (body, writer) = match self.repr {
+            Repr::Empty => (AsyncBody::empty(), None),
+            Repr::Buffer(cursor) => (AsyncBody::from_bytes_static(cursor.into_inner()), None),
+            Repr::Reader(reader, len) => {
                 let (pipe_reader, writer) = pipe();
 
                 (
@@ -172,16 +199,18 @@ impl Body {
                     }),
                 )
             }
-        }
+        };
+
+        (body.with_content_type(self.content_type), writer)
     }
 }
 
 impl Read for Body {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        match &mut self.0 {
-            Inner::Empty => Ok(0),
-            Inner::Buffer(cursor) => cursor.read(buf),
-            Inner::Reader(reader, _) => reader.read(buf),
+        match &mut self.repr {
+            Repr::Empty => Ok(0),
+            Repr::Buffer(cursor) => cursor.read(buf),
+            Repr::Reader(reader, _) => reader.read(buf),
         }
     }
 }
@@ -200,7 +229,10 @@ impl From<()> for Body {
 
 impl From<Vec<u8>> for Body {
     fn from(body: Vec<u8>) -> Self {
-        Self(Inner::Buffer(Cursor::new(Cow::Owned(body))))
+        Self {
+            content_type: None,
+            repr: Repr::Buffer(Cursor::new(Cow::Owned(body))),
+        }
     }
 }
 

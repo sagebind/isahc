@@ -23,6 +23,7 @@ default = ["http2", "static-curl", "text-decoding"]
 cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
+multipart = ["fastrand"]
 nightly = []
 psl = ["httpdate", "parking_lot", "publicsuffix"]
 spnego = ["curl-sys/spnego"]
@@ -51,6 +52,10 @@ waker-fn = "1"
 
 [dependencies.encoding_rs]
 version = "0.8"
+optional = true
+
+[dependencies.fastrand]
+version = "1"
 optional = true
 
 [dependencies.httpdate]
