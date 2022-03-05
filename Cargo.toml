@@ -35,18 +35,18 @@ unstable-rustls-tls = ["rustls-ffi", "curl/rustls"]
 unstable-rustls-tls-native-certs = ["unstable-rustls-tls", "data-encoding", "rustls-native-certs"]
 
 [dependencies]
-async-channel = "1.6"
-castaway = "0.1"
-crossbeam-utils = "0.8"
-event-listener = "2.5"
-futures-lite = "1.11"
+async-channel = "1.4.2"
+castaway = "0.1.1"
+crossbeam-utils = ">=0.7.0, <0.9.0"
+event-listener = "2.3.3"
+futures-lite = "1.10.1"
 http = "0.2.1"
 log = "0.4"
 once_cell = "1"
-polling = "2.0"
+polling = "2"
 slab = "0.4"
 sluice = "0.5.4"
-url = "2.2"
+url = "2.1"
 waker-fn = "1"
 
 [dependencies.curl]
@@ -74,7 +74,7 @@ version = "0.3"
 optional = true
 
 [dependencies.parking_lot]
-version = "0.11"
+version = ">=0.9.0, <0.12.0"
 optional = true
 
 [dependencies.publicsuffix]
@@ -109,13 +109,13 @@ features = ["std", "std-future"]
 
 [dev-dependencies]
 env_logger = "0.9"
-flate2 = "1.0"
+flate2 = "1.0.3"
 indicatif = "0.15"
 rayon = "1"
 static_assertions = "1.1"
 structopt = "0.3"
 tempfile = "3.1"
-test-case = "1.1"
+test-case = "2.0"
 tracing-subscriber = ">=0.2.12, <0.4.0"
 serde_json = "1"
 
