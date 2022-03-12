@@ -68,7 +68,6 @@ fn request_with_body_of_unknown_size_uses_chunked_encoding(method: &str) {
     m.request().expect_body(body);
 }
 
-#[ignore]
 #[test_case("GET")]
 #[test_case("HEAD")]
 #[test_case("POST")]
