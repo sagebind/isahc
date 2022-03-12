@@ -27,12 +27,12 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
-pub(crate) mod ssl;
+pub(crate) mod tls;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
+pub use tls::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.

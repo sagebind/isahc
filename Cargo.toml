@@ -19,25 +19,25 @@ features = ["cookies", "json", "nightly"]
 status = "actively-developed"
 
 [features]
-default = ["http2", "static-curl", "text-decoding"]
+default = ["http2", "native-tls", "static-curl", "text-decoding"]
 cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
+native-tls = ["curl/ssl", "curl-sys/ssl"]
 nightly = []
 psl = ["httpdate", "parking_lot", "publicsuffix"]
+rustls-tls = ["rustls-ffi", "curl/rustls", "curl/static-curl"]
+rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
-unstable-rustls-tls = ["curl/rustls"]
 unstable-interceptors = []
 
 [dependencies]
 async-channel = "1.4.2"
 castaway = "0.1.1"
 crossbeam-utils = ">=0.7.0, <0.9.0"
-curl = "0.4.42"
-curl-sys = "0.4.52"
 event-listener = "2.3.3"
 futures-lite = "1.10.1"
 http = "0.2.1"
@@ -48,6 +48,18 @@ slab = "0.4"
 sluice = "0.5.4"
 url = "2.1"
 waker-fn = "1"
+
+[dependencies.curl]
+version = "0.4.43"
+default-features = false
+
+[dependencies.curl-sys]
+version = "0.4.53"
+default-features = false
+
+[dependencies.data-encoding]
+version = "2"
+optional = true
 
 [dependencies.encoding_rs]
 version = "0.8"
@@ -68,6 +80,14 @@ optional = true
 [dependencies.publicsuffix]
 version = "2.0.6"
 features = ["std"]
+optional = true
+
+[dependencies.rustls-ffi]
+version = "0.8"
+optional = true
+
+[dependencies.rustls-native-certs]
+version = "0.6"
 optional = true
 
 [dependencies.serde]
