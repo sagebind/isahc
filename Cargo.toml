@@ -31,7 +31,7 @@ static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
-unstable-rustls-tls = ["rustls-ffi", "curl/rustls"]
+unstable-rustls-tls = ["rustls-ffi", "curl/rustls", "curl/static-curl"]
 unstable-rustls-tls-native-certs = ["unstable-rustls-tls", "data-encoding", "rustls-native-certs"]
 
 [dependencies]
@@ -50,11 +50,11 @@ url = "2.1"
 waker-fn = "1"
 
 [dependencies.curl]
-version = "0.4.42"
+version = "0.4.43"
 default-features = false
 
 [dependencies.curl-sys]
-version = "0.4.52"
+version = "0.4.53"
 default-features = false
 
 [dependencies.data-encoding]

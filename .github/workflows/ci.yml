@@ -15,6 +15,9 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
+        features:
+          - "http2,text-decoding,cookies,psl,spnego,unstable-interceptors,native-tls,static-curl"
+          - "http2,text-decoding,cookies,psl,spnego,unstable-interceptors,unstable-rustls-tls-native-certs"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -55,7 +58,7 @@ jobs:
             cargo-${{ runner.os }}-
 
       - name: Run tests
-        run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
+        run: cargo test --no-default-features --features ${{ matrix.features }}
 
       - name: Run example program
         run: cargo run --release --example simple
