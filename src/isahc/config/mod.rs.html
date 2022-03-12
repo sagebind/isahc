@@ -1089,12 +1089,12 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proxy</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">redirect</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">request</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">ssl</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">tls</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">dial</span>::{<span class="ident">Dialer</span>, <span class="ident">DialerParseError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">dns</span>::{<span class="ident">DnsCache</span>, <span class="ident">ResolveMap</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">redirect::RedirectPolicy</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ssl</span>::{<span class="ident">CaCertificate</span>, <span class="ident">ClientCertificate</span>, <span class="ident">PrivateKey</span>, <span class="ident">SslOption</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls</span>::{<span class="ident">CaCertificate</span>, <span class="ident">ClientCertificate</span>, <span class="ident">PrivateKey</span>, <span class="ident">SslOption</span>};
 
 <span class="doccomment">/// Provides additional methods when building a request for configuring various</span>
 <span class="doccomment">/// execution-related options on how the request should be sent.</span>
