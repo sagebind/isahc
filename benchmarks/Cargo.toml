@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 criterion = "0.3"
-curl = "0.4.42"
+curl = "0.4"
 rayon = "1"
 rouille = "3"
 
