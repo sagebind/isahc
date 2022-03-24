@@ -6,6 +6,7 @@
 //! isahc = { version = "*", features = ["json"]}
 //! ```
 
+use isahc::Request;
 use isahc::prelude::*;
 
 #[derive(Debug, serde::Serialize)]
