@@ -70,9 +70,7 @@ define_request_config! {
     max_upload_speed: Option<u64>,
     max_download_speed: Option<u64>,
     ssl_client_certificate: Option<ClientCertificate>,
-    ssl_ca_certificate: Option<CaCertificate>,
-    ssl_ciphers: Option<tls::Ciphers>,
-    ssl_options: Option<SslOption>,
+    tls_config: Option<TlsConfig>,
     enable_metrics: Option<bool>,
 
     // Used by interceptors
@@ -91,8 +89,8 @@ impl RequestConfig {
             automatic_decompression: Some(true),
             // Erase curl's default auth method of Basic.
             authentication: Some(Authentication::default()),
-            // Set native root certificates if available.
-            ssl_ca_certificate: CaCertificate::native(),
+            // Use default TLS configuration based on build configuration.
+            tls_config: Some(TlsConfig::default()),
             ..Default::default()
         }
     }
@@ -205,15 +203,7 @@ impl SetOpt for RequestConfig {
             cert.set_opt(easy)?;
         }
 
-        if let Some(cert) = self.ssl_ca_certificate.as_ref() {
-            cert.set_opt(easy)?;
-        }
-
-        if let Some(ciphers) = self.ssl_ciphers.as_ref() {
-            ciphers.set_opt(easy)?;
-        }
-
-        if let Some(options) = self.ssl_options.as_ref() {
+        if let Some(options) = self.tls_config.as_ref() {
             options.set_opt(easy)?;
         }
 

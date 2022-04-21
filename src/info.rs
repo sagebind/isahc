@@ -57,6 +57,27 @@ fn curl_version() -> (u8, u8, u8) {
     ((bits >> 16) as u8, (bits >> 8) as u8, bits as u8)
 }
 
+pub(crate) fn has_tls_engine(engine: TlsEngine) -> bool {
+    if let Some(version) = CURL_VERSION.ssl_version() {
+        match engine {
+            TlsEngine::OpenSsl => version.contains("OpenSSL/"),
+            TlsEngine::Rustls => version.contains("rustls/"),
+            TlsEngine::Schannel => version.contains("Schannel"),
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub(crate) enum TlsEngine {
+    OpenSsl,
+    Rustls,
+    Schannel,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

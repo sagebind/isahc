@@ -27,12 +27,12 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
-pub(crate) mod tls;
+pub mod tls;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use tls::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
+pub use tls::{ClientCertificate, PrivateKey, TlsConfig, TlsConfigBuilder};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -622,59 +622,13 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Set a custom SSL/TLS CA certificate bundle to use for client
-    /// connections.
-    ///
-    /// The default value is none.
-    ///
-    /// # Notes
-    ///
-    /// On Windows it may be necessary to combine this with
-    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
-    /// the contents of your CA bundle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
-        self.with_config(move |config| {
-            config.ssl_ca_certificate = Some(certificate);
-        })
-    }
-
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ciphers<I, T>(self, ciphers: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<String>,
-    {
-        self.with_config(move |config| {
-            config.ssl_ciphers = Some(ciphers.into_iter().map(T::into).collect());
-        })
-    }
-
     /// Set various options for this request that control SSL/TLS behavior.
     ///
     /// Most options are for disabling security checks that introduce security
     /// risks, but may be required as a last resort. Note that the most secure
     /// options are already the default and do not need to be specified.
     ///
-    /// The default value is [`SslOption::NONE`].
+    /// The default value is [`TlsConfig::default`].
     ///
     /// # Warning
     ///
@@ -695,17 +649,20 @@ pub trait Configurable: request::WithRequestConfig {
     /// ```
     ///
     /// ```
-    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    /// use isahc::{config::TlsConfig, prelude::*, HttpClient};
     ///
     /// let client = HttpClient::builder()
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[must_use = "builders have no effect if unused"]
-    fn ssl_options(self, options: SslOption) -> Self {
+    fn tls_config(self, tls_config: TlsConfig) -> Self {
         self.with_config(move |config| {
-            config.ssl_options = Some(options);
+            config.tls_config = Some(tls_config);
         })
     }
 
