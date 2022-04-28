@@ -4,7 +4,6 @@ use crate::{has_tls_engine, TlsEngine};
 
 use super::SetOpt;
 use curl::easy::{Easy2, SslOpt, SslVersion};
-use once_cell::sync::Lazy;
 use std::path::PathBuf;
 
 /// A flag that can be used to alter the behavior of SSL/TLS connections.
@@ -14,14 +13,12 @@ use std::path::PathBuf;
 #[derive(Debug, Default)]
 #[must_use = "builders have no effect if unused"]
 pub struct TlsConfigBuilder {
-    /// Custom root CA certificates.
     root_certs: Vec<Certificate>,
-
-    root_cert_path: Option<PathBuf>,
-    native_roots: bool,
+    root_cert_store: RootCertStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
-    ciphers: Vec<String>,
+    identity: Option<Identity>,
+    ciphers: Option<String>,
     min_version: Option<ProtocolVersion>,
     max_version: Option<ProtocolVersion>,
     danger_accept_invalid_certs: bool,
@@ -54,14 +51,8 @@ impl TlsConfigBuilder {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn root_ca_certificate(mut self, cert: Certificate) -> Self {
-        self.root_certs.push(cert);
-        self
-    }
-
-    pub fn root_ca_native(mut self, b: bool) -> Self {
-        self.native_roots = b;
-        self
+    pub fn root_ca_certificate(self, cert: Certificate) -> Self {
+        self.root_cert_store(RootCertStore::custom([cert]))
     }
 
     /// Get a CA certificate from a path to a certificate bundle file.
@@ -70,8 +61,46 @@ impl TlsConfigBuilder {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn root_ca_certificate_path(mut self, ca_bundle_path: impl Into<PathBuf>) -> Self {
-        self.root_cert_path = Some(ca_bundle_path.into());
+    pub fn root_ca_certificate_path(self, ca_bundle_path: impl Into<PathBuf>) -> Self {
+        self.root_cert_store(RootCertStore::file(ca_bundle_path))
+    }
+
+    /// Set the certificate store containing trusted root certificates to use
+    /// for validating server certificates.
+    ///
+    /// Root certificates are used for validating the authenticity of a server
+    /// before proceeding with a request. If the server presents a certificate
+    /// that matches the server's information, and is signed by a certificate
+    /// authority either in the root certificate store or is itself trusted by
+    /// another certificate in the store, then the server is considered to be
+    /// legitimate.
+    ///
+    /// The default setting varies on how Isahc is compiled:
+    ///
+    /// - When using the native TLS API the default is
+    ///   [`RootCertStore::native`].
+    /// - When using rustls, the default is an empty store, unless the
+    ///   `rustls-tls-native-certs` crate feature is enabled, in which case the
+    ///   default is [`RootCertStore::native`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::tls::{Certificate, RootCertStore, TlsConfig};
+    ///
+    /// let config = TlsConfig::builder()
+    ///     // Use the native certificate store
+    ///     .root_cert_store(RootCertStore::native())
+    ///     // Use a specific certificate bundle file
+    ///     .root_cert_store(RootCertStore::file("/etc/certs/cabundle.pem"))
+    ///     // Use custom certs in memory
+    ///     .root_cert_store(RootCertStore::custom([
+    ///         Certificate::from_pem("(some long PEM string)"),
+    ///     ]))
+    ///     .build();
+    /// ```
+    pub fn root_cert_store(mut self, store: RootCertStore) -> Self {
+        self.root_cert_store = store;
         self
     }
 
@@ -94,16 +123,16 @@ impl TlsConfigBuilder {
     /// Add a custom client certificate to use for client authentication.
     ///
     /// SSL/TLS is often used by the client to verify that the server is
-    /// legitimate, but it can _also_ be used by the server to verify that _you_
-    /// are legitimate. If the server asks the client to present an approved
-    /// certificate before continuing, then this sets the certificate(s) that
-    /// will be supplied in response.
+    /// legitimate (one-way), but it can _also_ be used by the server to verify
+    /// that _you_ are legitimate (two-way). If the server asks the client to
+    /// present an approved certificate before continuing, then this sets the
+    /// certificate chain that will be used to prove authenticity.
     ///
-    /// If a format is not supported by the underlying SSL/TLS engine, an error
-    /// will be returned when attempting to send a request using the offending
-    /// certificate.
+    /// If a certificate or key format given is not supported by the underlying
+    /// SSL/TLS engine, an error will be returned when attempting to send a
+    /// request using the offending certificate or key.
     ///
-    /// The default value is none.
+    /// By default, no client certificate is set.
     ///
     /// # Examples
     ///
@@ -139,7 +168,8 @@ impl TlsConfigBuilder {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
-    pub fn client_certificate(mut self, cert: KeyPair) -> Self {
+    pub fn identity(mut self, identity: Identity) -> Self {
+        self.identity = Some(identity);
         self
     }
 
@@ -176,20 +206,43 @@ impl TlsConfigBuilder {
         self
     }
 
-    /// Set a list of ciphers to use for SSL/TLS connections.
+    /// Set a list of ciphers or cipher suites to allow.
     ///
     /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// backend in use. You can find an up-to-date list of potential cipher names
     /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
     ///
     /// The default is unset and will result in using whatever ciphers the
-    /// configured TLS backend enables by default.
+    /// configured TLS backend chooses to enable by default.
+    ///
+    /// # Warning
+    ///
+    /// Not all cipher suites are created equal, as many have been marked as
+    /// being insecure over time. This method allows you to enable potentially
+    /// insecure cipher suites that are not enabled by default and may introduce
+    /// security vulnerabilities into your application.
     pub fn ciphers<I, T>(mut self, ciphers: I) -> Self
     where
         I: IntoIterator<Item = T>,
-        T: Into<String>,
+        T: AsRef<str>,
     {
-        self.ciphers = ciphers.into_iter().map(T::into).collect();
+        let mut iter = ciphers.into_iter();
+
+        // If an empty list is provided, reset to default. Otherwise build up a
+        // string in curl format containing the cipher names.
+        if let Some(first) = iter.next() {
+            let mut ciphers = first.as_ref().to_owned();
+
+            for cipher in iter {
+                ciphers.push(':');
+                ciphers.push_str(cipher.as_ref());
+            }
+
+            self.ciphers = Some(ciphers);
+        } else {
+            self.ciphers = None;
+        }
+
         self
     }
 
@@ -230,41 +283,21 @@ impl TlsConfigBuilder {
     }
 
     /// Create a new [`TlsConfig`] based on this builder.
-    pub fn build(&self) -> TlsConfig {
+    pub fn build(self) -> TlsConfig {
         TlsConfig {
-            ciphers: if self.ciphers.is_empty() {
-                None
-            } else {
-                Some(self.ciphers.join(":"))
-            },
-            root_certs_pem: if self.root_certs.is_empty() {
-                if self.native_roots && has_tls_engine(TlsEngine::Rustls) {
-                    let mut bundle = String::new();
-
-                    for cert in native_roots() {
-                        bundle.push_str(&cert.pem);
-                    }
-
-                    Some(bundle)
-                } else {
-                    None
-                }
-            } else {
-                let mut bundle = String::new();
-
-                for cert in &self.root_certs {
-                    bundle.push_str(&cert.pem);
-                }
-
-                Some(bundle)
-            },
-            root_cert_path: self.root_cert_path.clone(),
-            issuer_cert: self.issuer_cert.clone(),
-            min_version: self.min_version.clone(),
-            max_version: self.max_version.clone(),
+            ciphers: self.ciphers,
+            root_cert_store: self.root_cert_store,
+            issuer_cert: self.issuer_cert,
+            min_version: self.min_version.as_ref().map(ProtocolVersion::curl_version),
+            max_version: self.max_version.as_ref().map(ProtocolVersion::curl_version),
             danger_accept_invalid_certs: self.danger_accept_invalid_certs,
             danger_accept_invalid_hosts: self.danger_accept_invalid_hosts,
-            danger_accept_revoked_certs: self.danger_accept_revoked_certs,
+            ssl_options: {
+                let mut options = SslOpt::new();
+                options.no_revoke(self.danger_accept_revoked_certs);
+
+                options
+            },
         }
     }
 }
@@ -272,18 +305,19 @@ impl TlsConfigBuilder {
 /// Configuration for making SSL/TLS connections.
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
+    /// List of ciphers to use, in a string format compatible with curl.
     ciphers: Option<String>,
 
-    /// A string containing one or more certificates in PEM format.
-    root_certs_pem: Option<String>,
+    root_cert_store: RootCertStore,
 
-    root_cert_path: Option<PathBuf>,
     issuer_cert: Option<Certificate>,
-    min_version: Option<ProtocolVersion>,
-    max_version: Option<ProtocolVersion>,
+    min_version: Option<SslVersion>,
+    max_version: Option<SslVersion>,
     danger_accept_invalid_certs: bool,
     danger_accept_invalid_hosts: bool,
-    danger_accept_revoked_certs: bool,
+
+    /// SSL flags to pass to curl.
+    ssl_options: SslOpt,
 }
 
 impl TlsConfig {
@@ -312,29 +346,16 @@ impl SetOpt for TlsConfig {
             easy.ssl_cipher_list(ciphers)?;
         }
 
-        let mut opt = SslOpt::new();
-        opt.no_revoke(self.danger_accept_revoked_certs);
-
-        easy.ssl_options(&opt)?;
+        easy.ssl_options(&self.ssl_options)?;
         easy.ssl_verify_peer(!self.danger_accept_invalid_certs)?;
         easy.ssl_verify_host(!self.danger_accept_invalid_hosts)?;
 
         easy.ssl_min_max_version(
-            self.min_version
-                .as_ref()
-                .map(ProtocolVersion::curl_version)
-                .unwrap_or(SslVersion::Default),
-            self.max_version
-                .as_ref()
-                .map(ProtocolVersion::curl_version)
-                .unwrap_or(SslVersion::Default),
+            self.min_version.unwrap_or(SslVersion::Default),
+            self.max_version.unwrap_or(SslVersion::Default),
         )?;
 
-        if let Some(pem) = self.root_certs_pem.as_ref() {
-            easy.ssl_cainfo_blob(pem.as_bytes())?;
-        } else if let Some(path) = self.root_cert_path.as_ref() {
-            easy.cainfo(path)?;
-        }
+        self.root_cert_store.set_opt(easy)?;
 
         if let Some(cert) = self.issuer_cert.as_ref() {
             easy.issuer_cert_blob(cert.pem.as_bytes())?;
@@ -344,8 +365,155 @@ impl SetOpt for TlsConfig {
     }
 }
 
-/// Supported TLS versions that can be used.
+/// A store that provides a collection of trusted root certificates.
 #[derive(Clone, Debug)]
+pub struct RootCertStore(RootCertStoreImpl);
+
+#[derive(Clone, Debug)]
+enum RootCertStoreImpl {
+    Empty,
+    Native,
+    Dir(PathBuf),
+    File(PathBuf),
+
+    /// A custom bundle of certificates stored in PEM format.
+    Bundle(String),
+}
+
+impl RootCertStore {
+    /// Create an empty certificate store.
+    pub const fn empty() -> Self {
+        Self(RootCertStoreImpl::Empty)
+    }
+
+    /// Use the platform's native certificate store, if any.
+    ///
+    /// On Windows, macOS, and iOS this involves using the certificate
+    /// management features provided by the operating system. On Linux and other
+    /// UNIX-like systems this typically will use a shared certificate bundle
+    /// managed by the distribution or system administrator. In most cases, this
+    /// will also respect environment variables that override where to look for
+    /// trusted certificates.
+    ///
+    /// This is typically the default certificate store used for most
+    /// applications.
+    pub fn native() -> Self {
+        Self(RootCertStoreImpl::Native)
+    }
+
+    /// Use a given directory containing multiple certificates as a certificate
+    /// store.
+    ///
+    /// This option only works properly when using OpenSSL or its derivatives,
+    /// GnuTLS, or mbedTLS.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::tls::RootCertStore;
+    ///
+    /// let store = RootCertStore::dir("/etc/cert-dir");
+    /// ```
+    pub fn dir<P: Into<PathBuf>>(path: P) -> Self {
+        Self(RootCertStoreImpl::Dir(path.into()))
+    }
+
+    /// Use a file containing a bundle of certificates in PEM format.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::tls::RootCertStore;
+    ///
+    /// let store = RootCertStore::file("/etc/certs/cabundle.pem");
+    /// ```
+    pub fn file<P: Into<PathBuf>>(path: P) -> Self {
+        Self(RootCertStoreImpl::File(path.into()))
+    }
+
+    /// Create a custom certificate store containing exactly the given
+    /// certificates.
+    ///
+    /// Server certificates will be verified using only certificates given.
+    ///
+    /// This type of store is supported by most TLS backends, including OpenSSL,
+    /// rustls, and Secure Transport.
+    pub fn custom<I>(certificates: I) -> Self
+    where
+        I: IntoIterator<Item = Certificate>,
+    {
+        // Generate a PEM bundle.
+        let mut bundle = String::new();
+
+        for cert in certificates {
+            bundle.push_str(&cert.pem);
+        }
+
+        Self(RootCertStoreImpl::Bundle(bundle))
+    }
+}
+
+impl Default for RootCertStore {
+    fn default() -> Self {
+        if has_tls_engine(TlsEngine::Rustls) && !cfg!(feature = "rustls-native-certs") {
+            Self::empty()
+        } else {
+            Self::native()
+        }
+    }
+}
+
+impl SetOpt for RootCertStore {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        match &self.0 {
+            RootCertStoreImpl::Empty => Ok(()),
+            RootCertStoreImpl::Dir(path) => easy.capath(path),
+            RootCertStoreImpl::File(path) => easy.cainfo(path),
+            RootCertStoreImpl::Bundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()),
+            RootCertStoreImpl::Native => {
+                // When using rustls, we have to load native certs ourselves,
+                // and a couple possible ways are available to us.
+                if has_tls_engine(TlsEngine::Rustls) {
+                    #[cfg(feature = "rustls-native-certs")]
+                    {
+                        static NATIVE_CERTS: once_cell::sync::OnceCell<RootCertStore> =
+                            once_cell::sync::OnceCell::new();
+
+                        fn load_native_certs() -> std::io::Result<RootCertStore> {
+                            Ok(RootCertStore::custom(
+                                rustls_native_certs::load_native_certs()?
+                                    .into_iter()
+                                    .map(|cert| Certificate::from_der(cert.0)),
+                            ))
+                        }
+
+                        match NATIVE_CERTS.get_or_try_init(load_native_certs) {
+                            Ok(certs) => return certs.set_opt(easy),
+                            Err(e) => {
+                                let mut error = curl::Error::new(77);
+                                error.set_extra(e.to_string());
+                                return Err(error);
+                            },
+                        }
+                    }
+
+                    Err(curl::Error::new(77))
+                } else {
+                    // When using true native, the TLS backend will handle certs
+                    // automatically.
+                    Ok(())
+                }
+            }
+        }
+    }
+}
+
+/// Possible SSL/TLS versions that can be used.
+///
+/// Not all versions are supported by all TLS backends, and can vary depending
+/// how a user's system is configured. Requesting or requiring a version that
+/// the TLS backend does not allow or support will result in a runtime error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProtocolVersion {
     /// SSL v2. Support for this version is disabled in the default build
@@ -400,7 +568,7 @@ impl Certificate {
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
     #[cfg(feature = "data-encoding")]
-    pub fn from_der<B: AsRef<[u8]>>(certificate: B) -> Self {
+    pub fn from_der<B: AsRef<[u8]>>(der: B) -> Self {
         let mut base64_spec = data_encoding::BASE64.specification();
         base64_spec.wrap.width = 64;
         base64_spec.wrap.separator.push_str("\r\n");
@@ -409,7 +577,7 @@ impl Certificate {
         let mut pem = String::new();
 
         pem.push_str("-----BEGIN CERTIFICATE-----\r\n");
-        base64.encode_append(certificate.as_ref(), &mut pem);
+        base64.encode_append(der.as_ref(), &mut pem);
         pem.push_str("-----END CERTIFICATE-----\r\n");
 
         Self::from_pem(pem)
@@ -424,27 +592,10 @@ impl Certificate {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn from_pem<B: AsRef<[u8]>>(cert: B) -> Self {
+    pub fn from_pem<B: AsRef<[u8]>>(pem: B) -> Self {
         Self {
-            pem: String::from_utf8(cert.as_ref().to_vec()).unwrap(),
+            pem: String::from_utf8(pem.as_ref().to_vec()).unwrap(),
         }
-    }
-}
-
-pub struct KeyPair {
-    /// The actual certificate containing the public key.
-    certificate: Certificate,
-
-    /// The private key corresponding to the public key.
-    private: Vec<u8>,
-
-    /// Password to decrypt the private key file.
-    password: Option<String>,
-}
-
-impl KeyPair {
-    pub fn from_pkcs12() -> Self {
-        todo!()
     }
 }
 
@@ -454,12 +605,10 @@ enum PathOrBlob {
     Blob(Vec<u8>),
 }
 
-/// A client certificate for SSL/TLS client validation.
-///
-/// Note that this isn't merely an X.509 certificate, but rather a certificate
-/// and private key pair.
+/// Holds a X.509 certificate, potentially other certificates in its chain of
+/// trust, along with a corresponding private key.
 #[derive(Clone, Debug)]
-pub struct ClientCertificate {
+pub struct Identity {
     /// Name of the cert format.
     format: &'static str,
 
@@ -473,7 +622,7 @@ pub struct ClientCertificate {
     password: Option<String>,
 }
 
-impl ClientCertificate {
+impl Identity {
     /// Use a PEM-encoded certificate stored in the given byte buffer.
     ///
     /// The certificate object takes ownership of the byte buffer. If a borrowed
@@ -587,7 +736,7 @@ impl ClientCertificate {
     }
 }
 
-impl SetOpt for ClientCertificate {
+impl SetOpt for Identity {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.ssl_cert_type(self.format)?;
 
@@ -706,29 +855,4 @@ impl SetOpt for PrivateKey {
 
         Ok(())
     }
-}
-
-/// Get native root certificates trusted by the operating system, if any.
-#[allow(unreachable_code)]
-fn native_roots() -> Vec<Certificate> {
-    static NATIVE: Lazy<Vec<Certificate>> = Lazy::new(|| {
-        #[cfg(feature = "rustls-native-certs")]
-        {
-            match rustls_native_certs::load_native_certs() {
-                Ok(certs) => {
-                    return certs
-                        .into_iter()
-                        .map(|cert| Certificate::from_der(cert.0))
-                        .collect();
-                }
-                Err(e) => {
-                    log::warn!("failed to load native certificate chain: {}", e);
-                }
-            }
-        }
-
-        Vec::new()
-    });
-
-    NATIVE.clone()
 }

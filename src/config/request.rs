@@ -67,9 +67,9 @@ define_request_config! {
     proxy_blacklist: Option<proxy::Blacklist>,
     proxy_authentication: Option<Proxy<Authentication>>,
     proxy_credentials: Option<Proxy<Credentials>>,
+    proxy_tls_config: Option<TlsConfig>,
     max_upload_speed: Option<u64>,
     max_download_speed: Option<u64>,
-    ssl_client_certificate: Option<ClientCertificate>,
     tls_config: Option<TlsConfig>,
     enable_metrics: Option<bool>,
 
@@ -197,10 +197,6 @@ impl SetOpt for RequestConfig {
 
         if let Some(max) = self.max_download_speed {
             easy.max_recv_speed(max)?;
-        }
-
-        if let Some(cert) = self.ssl_client_certificate.as_ref() {
-            cert.set_opt(easy)?;
         }
 
         if let Some(options) = self.tls_config.as_ref() {

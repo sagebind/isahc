@@ -32,7 +32,7 @@ pub mod tls;
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use tls::{ClientCertificate, PrivateKey, TlsConfig, TlsConfigBuilder};
+pub use tls::{TlsConfig, TlsConfigBuilder};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -553,6 +553,40 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
+    /// Set various options that control SSL/TLS behavior for a proxy.
+    ///
+    /// Most options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are already the default and do not need to be specified.
+    ///
+    /// The default value is [`TlsConfig::default`].
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{config::TlsConfig, prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    #[must_use = "builders have no effect if unused"]
+    fn proxy_tls_config(self, tls_config: TlsConfig) -> Self {
+        self.with_config(move |config| {
+            config.proxy_tls_config = Some(tls_config);
+        })
+    }
+
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
@@ -570,55 +604,6 @@ pub trait Configurable: request::WithRequestConfig {
     fn max_download_speed(self, max: u64) -> Self {
         self.with_config(move |config| {
             config.max_download_speed = Some(max);
-        })
-    }
-
-    /// Set a custom SSL/TLS client certificate to use for client connections.
-    ///
-    /// If a format is not supported by the underlying SSL/TLS engine, an error
-    /// will be returned when attempting to send a request using the offending
-    /// certificate.
-    ///
-    /// The default value is none.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     Request,
-    /// };
-    ///
-    /// let response = Request::get("localhost:3999")
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .body(())?
-    ///     .send()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    ///
-    /// ```
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     HttpClient,
-    /// };
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
-        self.with_config(move |config| {
-            config.ssl_client_certificate = Some(certificate);
         })
     }
 
