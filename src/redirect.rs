@@ -82,8 +82,11 @@ impl Interceptor for RedirectInterceptor {
 
                     // Set referer header.
                     if auto_referer {
-                        let referer = request_builder.uri_ref().unwrap().to_string();
-                        request_builder = request_builder.header(http::header::REFERER, referer);
+                        if let Some(referer) = request_builder.uri_ref().and_then(create_referer) {
+                            if let Some(headers) = request_builder.headers_mut() {
+                                headers.insert(http::header::REFERER, referer);
+                            }
+                        }
                     }
 
                     // Check if we should change the request method into a GET. HTTP
@@ -221,5 +224,65 @@ fn resolve(base: &Uri, target: &str) -> Result<Uri, Box<dyn std::error::Error>> 
         }
 
         Err(e) => Err(Box::new(e)),
+    }
+}
+
+fn create_referer(uri: &Uri) -> Option<HeaderValue> {
+    let mut referer = String::new();
+
+    if let Some(scheme) = uri.scheme() {
+        referer.push_str(scheme.as_str());
+        referer.push_str("://");
+    }
+
+    if let Some(authority) = uri.authority() {
+        referer.push_str(authority.host());
+
+        if let Some(port) = authority.port() {
+            referer.push_str(":");
+            referer.push_str(port.as_str());
+        }
+    }
+
+    referer.push_str(uri.path());
+
+    if let Some(query) = uri.query() {
+        referer.push_str("?");
+        referer.push_str(query);
+    }
+
+    HeaderValue::try_from(referer).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use http::Response;
+
+    #[test_case::test_case("http://foo.com", "http://foo.com", "http://foo.com/")]
+    #[test_case::test_case("http://foo.com", "/two", "http://foo.com/two")]
+    #[test_case::test_case("http://foo.com", "http://foo.com#foo", "http://foo.com/")]
+    fn resolve_redirect_location(request_uri: &str, location: &str, resolved: &str) {
+        let response = Response::builder()
+            .status(301)
+            .header("Location", location)
+            .body(())
+            .unwrap();
+
+        assert_eq!(
+            super::get_redirect_location(&request_uri.parse().unwrap(), &response)
+                .unwrap()
+                .to_string(),
+            resolved
+        );
+    }
+
+    #[test_case::test_case("http://example.org/Overview.html", "http://example.org/Overview.html")]
+    #[test_case::test_case("http://example.org/#heading", "http://example.org/")]
+    #[test_case::test_case("http://user:pass@example.org", "http://example.org/")]
+    fn create_referer_from_uri(uri: &str, referer: &str) {
+        assert_eq!(
+            super::create_referer(&uri.parse().unwrap()).unwrap(),
+            referer
+        );
     }
 }
