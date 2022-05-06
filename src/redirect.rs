@@ -1,12 +1,13 @@
 use crate::{
+    auth::Authentication,
     body::AsyncBody,
     config::{request::RequestConfig, RedirectPolicy},
     error::{Error, ErrorKind},
     handler::RequestBody,
     interceptor::{Context, Interceptor, InterceptorFuture},
-    request::RequestExt, auth::Authentication,
+    request::RequestExt,
 };
-use http::{header::ToStrError, uri::Scheme, HeaderValue, Request, Response, Uri, HeaderMap};
+use http::{header::ToStrError, uri::Scheme, HeaderMap, HeaderValue, Request, Response, Uri};
 use std::{borrow::Cow, convert::TryFrom, str};
 use url::Url;
 
@@ -290,10 +291,11 @@ fn scrub_sensitive_headers(headers: &mut HeaderMap) {
 #[cfg(test)]
 mod tests {
     use http::Response;
+    use test_case::test_case;
 
-    #[test_case::test_case("http://foo.com", "http://foo.com", "http://foo.com/")]
-    #[test_case::test_case("http://foo.com", "/two", "http://foo.com/two")]
-    #[test_case::test_case("http://foo.com", "http://foo.com#foo", "http://foo.com/")]
+    #[test_case("http://foo.com", "http://foo.com", "http://foo.com/")]
+    #[test_case("http://foo.com", "/two", "http://foo.com/two")]
+    #[test_case("http://foo.com", "http://foo.com#foo", "http://foo.com/")]
     fn resolve_redirect_location(request_uri: &str, location: &str, resolved: &str) {
         let response = Response::builder()
             .status(301)
@@ -309,28 +311,43 @@ mod tests {
         );
     }
 
-    #[test_case::test_case(
+    #[test_case(
         "http://example.org/Overview.html",
         "http://example.org/Overview.html",
         Some("http://example.org/Overview.html")
     )]
-    #[test_case::test_case(
+    #[test_case(
         "http://example.org/#heading",
         "http://example.org/#heading",
         Some("http://example.org/")
     )]
-    #[test_case::test_case(
+    #[test_case(
         "http://user:pass@example.org",
         "http://user:pass@example.org",
         Some("http://example.org/")
     )]
-    #[test_case::test_case("https://example.com", "http://example.org", None)]
+    #[test_case("https://example.com", "http://example.org", None)]
     fn create_referer_from_uri(uri: &str, target_uri: &str, referer: Option<&str>) {
         assert_eq!(
             super::create_referer(&uri.parse().unwrap(), &target_uri.parse().unwrap())
                 .as_ref()
                 .and_then(|value| value.to_str().ok()),
             referer
+        );
+    }
+
+    #[test_case("http://example.com", "http://example.com", true)]
+    #[test_case("http://example.com", "http://example.com/foo", true)]
+    #[test_case("http://example.com", "http://user:pass@example.com", true)]
+    #[test_case("http://example.com", "http://example.com:9000", false)]
+    #[test_case("http://example.com:9000", "http://example.com:9000", true)]
+    #[test_case("http://example.com", "http://example.org", false)]
+    #[test_case("http://example.com", "https://example.com", false)]
+    #[test_case("http://example.com", "http://www.example.com", false)]
+    fn is_same_authority(a: &str, b: &str, expected: bool) {
+        assert_eq!(
+            super::is_same_authority(&a.parse().unwrap(), &b.parse().unwrap()),
+            expected
         );
     }
 }
