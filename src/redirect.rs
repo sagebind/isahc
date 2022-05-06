@@ -8,7 +8,7 @@ use crate::{
     request::RequestExt,
 };
 use http::{header::ToStrError, uri::Scheme, HeaderMap, HeaderValue, Request, Response, Uri};
-use std::{borrow::Cow, convert::TryFrom, str};
+use std::{borrow::Cow, convert::TryFrom, fmt::Write, str};
 use url::Url;
 
 /// How many redirects to follow by default if a limit is not specified. We
@@ -210,7 +210,7 @@ fn parse_location(location: &HeaderValue) -> Result<Cow<'_, str>, ToStrError> {
                     if byte.is_ascii() {
                         s.push(byte as char);
                     } else {
-                        s.push_str(&format!("%{:02x}", byte));
+                        write!(&mut s, "%{:02x}", byte).unwrap();
                     }
                 }
 
