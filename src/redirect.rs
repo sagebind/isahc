@@ -260,7 +260,7 @@ fn create_referer(uri: &Uri, target_uri: &Uri) -> Option<HeaderValue> {
         referer.push_str(authority.host());
 
         if let Some(port) = authority.port() {
-            referer.push_str(":");
+            referer.push(':');
             referer.push_str(port.as_str());
         }
     }
@@ -268,7 +268,7 @@ fn create_referer(uri: &Uri, target_uri: &Uri) -> Option<HeaderValue> {
     referer.push_str(uri.path());
 
     if let Some(query) = uri.query() {
-        referer.push_str("?");
+        referer.push('?');
         referer.push_str(query);
     }
 
