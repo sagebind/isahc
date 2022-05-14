@@ -49,7 +49,7 @@ fn benchmark(c: &mut Criterion) {
         )
     });
 
-    c.bench_function("download 64K: hyper", move |b| {
+    c.bench_function("download 64K: reqwest", move |b| {
         use reqwest::blocking::Client;
 
         let server = TestServer::static_response(&DATA);
