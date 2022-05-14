@@ -9,6 +9,7 @@ criterion = "0.3"
 curl = "0.4.42"
 rayon = "1"
 rouille = "3"
+reqwest = { version = "0.11.10", features = ["blocking"] }
 
 [dependencies.isahc]
 path = ".."

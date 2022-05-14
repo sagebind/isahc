@@ -48,6 +48,22 @@ fn benchmark(c: &mut Criterion) {
             BatchSize::SmallInput,
         )
     });
+
+    c.bench_function("download 64K: hyper", move |b| {
+        use reqwest::blocking::Client;
+
+        let server = TestServer::static_response(&DATA);
+        let endpoint = server.endpoint();
+
+        b.iter_batched(
+            Client::new,
+            |client| {
+                let req = client.get(&endpoint).build().unwrap();
+                let _ = client.execute(req).unwrap().copy_to(&mut sink()).unwrap();
+            },
+            BatchSize::SmallInput,
+        )
+    });
 }
 
 criterion_group!(benches, benchmark);
