@@ -75,8 +75,8 @@ impl CookieBuilder {
     /// Sets the domain the cookie belongs to.
     ///
     /// Note that the domain will be preserved exactly as supplied. If the
-    /// string has a `.` prefix that should be ignored, then you must remove it
-    /// manually first.
+    /// string has a `.` prefix that should be ignored (such as allowed by the
+    /// `Set-Cookie` HTTP header), then you must remove it manually first.
     pub fn domain<S>(mut self, domain: S) -> Self
     where
         S: Into<String>,
