@@ -1,4 +1,5 @@
 use crate::{
+    auth::Authentication,
     body::AsyncBody,
     config::{request::RequestConfig, RedirectPolicy},
     error::{Error, ErrorKind},
@@ -6,8 +7,8 @@ use crate::{
     interceptor::{Context, Interceptor, InterceptorFuture},
     request::RequestExt,
 };
-use http::{header::ToStrError, HeaderValue, Request, Response, Uri};
-use std::{borrow::Cow, convert::TryFrom, str};
+use http::{header::ToStrError, uri::Scheme, HeaderMap, HeaderValue, Request, Response, Uri};
+use std::{borrow::Cow, convert::TryFrom, fmt::Write, str};
 use url::Url;
 
 /// How many redirects to follow by default if a limit is not specified. We
@@ -74,7 +75,7 @@ impl Interceptor for RedirectInterceptor {
                 let mut response = ctx.send(request).await?;
 
                 // Check for a redirect.
-                if let Some(location) = get_redirect_location(&effective_uri, &response) {
+                if let Some(redirect_location) = get_redirect_location(&effective_uri, &response) {
                     // If we've reached the limit, return an error as requested.
                     if redirect_count >= limit {
                         return Err(Error::with_response(ErrorKind::TooManyRedirects, &response));
@@ -82,8 +83,11 @@ impl Interceptor for RedirectInterceptor {
 
                     // Set referer header.
                     if auto_referer {
-                        let referer = request_builder.uri_ref().unwrap().to_string();
-                        request_builder = request_builder.header(http::header::REFERER, referer);
+                        if let Some(referer) = create_referer(&effective_uri, &redirect_location) {
+                            if let Some(headers) = request_builder.headers_mut() {
+                                headers.insert(http::header::REFERER, referer);
+                            }
+                        }
                     }
 
                     // Check if we should change the request method into a GET. HTTP
@@ -95,6 +99,19 @@ impl Interceptor for RedirectInterceptor {
                         || response.status() == 303
                     {
                         request_builder = request_builder.method(http::Method::GET);
+                    }
+
+                    // If we are redirecting to a different authority, scrub
+                    // sensitive headers from subsequent requests.
+                    if !is_same_authority(&effective_uri, &redirect_location) {
+                        if let Some(headers) = request_builder.headers_mut() {
+                            scrub_sensitive_headers(headers);
+                        }
+
+                        // Remove auth configuration.
+                        if let Some(extensions) = request_builder.extensions_mut() {
+                            extensions.remove::<Authentication>();
+                        }
                     }
 
                     // Grab the request body back from the internal handler, as we
@@ -120,9 +137,9 @@ impl Interceptor for RedirectInterceptor {
                     }
 
                     // Update the request to point to the new URI.
-                    effective_uri = location.clone();
+                    effective_uri = redirect_location.clone();
                     request = request_builder
-                        .uri(location)
+                        .uri(redirect_location)
                         .body(request_body)
                         .map_err(|e| Error::new(ErrorKind::InvalidRequest, e))?;
                     redirect_count += 1;
@@ -193,7 +210,7 @@ fn parse_location(location: &HeaderValue) -> Result<Cow<'_, str>, ToStrError> {
                     if byte.is_ascii() {
                         s.push(byte as char);
                     } else {
-                        s.push_str(&format!("%{:02x}", byte));
+                        write!(&mut s, "%{:02x}", byte).unwrap();
                     }
                 }
 
@@ -221,5 +238,116 @@ fn resolve(base: &Uri, target: &str) -> Result<Uri, Box<dyn std::error::Error>> 
         }
 
         Err(e) => Err(Box::new(e)),
+    }
+}
+
+/// Create a `Referer` header value to include in a redirected request, if
+/// possible and appropriate.
+fn create_referer(uri: &Uri, target_uri: &Uri) -> Option<HeaderValue> {
+    // Do not set a Referer header if redirecting to an insecure location from a
+    // secure one.
+    if uri.scheme() == Some(&Scheme::HTTPS) && target_uri.scheme() != Some(&Scheme::HTTPS) {
+        return None;
+    }
+
+    let mut referer = String::new();
+
+    if let Some(scheme) = uri.scheme() {
+        referer.push_str(scheme.as_str());
+        referer.push_str("://");
+    }
+
+    if let Some(authority) = uri.authority() {
+        referer.push_str(authority.host());
+
+        if let Some(port) = authority.port() {
+            referer.push(':');
+            referer.push_str(port.as_str());
+        }
+    }
+
+    referer.push_str(uri.path());
+
+    if let Some(query) = uri.query() {
+        referer.push('?');
+        referer.push_str(query);
+    }
+
+    HeaderValue::try_from(referer).ok()
+}
+
+fn is_same_authority(a: &Uri, b: &Uri) -> bool {
+    a.scheme() == b.scheme() && a.host() == b.host() && a.port() == b.port()
+}
+
+fn scrub_sensitive_headers(headers: &mut HeaderMap) {
+    headers.remove(http::header::AUTHORIZATION);
+    headers.remove(http::header::COOKIE);
+    headers.remove("cookie2");
+    headers.remove(http::header::PROXY_AUTHORIZATION);
+    headers.remove(http::header::WWW_AUTHENTICATE);
+}
+
+#[cfg(test)]
+mod tests {
+    use http::Response;
+    use test_case::test_case;
+
+    #[test_case("http://foo.com", "http://foo.com", "http://foo.com/")]
+    #[test_case("http://foo.com", "/two", "http://foo.com/two")]
+    #[test_case("http://foo.com", "http://foo.com#foo", "http://foo.com/")]
+    fn resolve_redirect_location(request_uri: &str, location: &str, resolved: &str) {
+        let response = Response::builder()
+            .status(301)
+            .header("Location", location)
+            .body(())
+            .unwrap();
+
+        assert_eq!(
+            super::get_redirect_location(&request_uri.parse().unwrap(), &response)
+                .unwrap()
+                .to_string(),
+            resolved
+        );
+    }
+
+    #[test_case(
+        "http://example.org/Overview.html",
+        "http://example.org/Overview.html",
+        Some("http://example.org/Overview.html")
+    )]
+    #[test_case(
+        "http://example.org/#heading",
+        "http://example.org/#heading",
+        Some("http://example.org/")
+    )]
+    #[test_case(
+        "http://user:pass@example.org",
+        "http://user:pass@example.org",
+        Some("http://example.org/")
+    )]
+    #[test_case("https://example.com", "http://example.org", None)]
+    fn create_referer_from_uri(uri: &str, target_uri: &str, referer: Option<&str>) {
+        assert_eq!(
+            super::create_referer(&uri.parse().unwrap(), &target_uri.parse().unwrap())
+                .as_ref()
+                .and_then(|value| value.to_str().ok()),
+            referer
+        );
+    }
+
+    #[test_case("http://example.com", "http://example.com", true)]
+    #[test_case("http://example.com", "http://example.com/foo", true)]
+    #[test_case("http://example.com", "http://user:pass@example.com", true)]
+    #[test_case("http://example.com", "http://example.com:9000", false)]
+    #[test_case("http://example.com:9000", "http://example.com:9000", true)]
+    #[test_case("http://example.com", "http://example.org", false)]
+    #[test_case("http://example.com", "https://example.com", false)]
+    #[test_case("http://example.com", "http://www.example.com", false)]
+    fn is_same_authority(a: &str, b: &str, expected: bool) {
+        assert_eq!(
+            super::is_same_authority(&a.parse().unwrap(), &b.parse().unwrap()),
+            expected
+        );
     }
 }

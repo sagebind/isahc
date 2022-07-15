@@ -115,7 +115,7 @@ Not every library is perfect for every use-case. While Isahc strives to be a ful
 
 Special thanks to sponsors of my open-source work!
 
-<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
+<!-- sponsors --><!-- sponsors -->
 
 ## License
 
