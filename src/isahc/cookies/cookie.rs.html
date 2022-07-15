@@ -532,6 +532,10 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">error::Error</span>,
     <span class="ident">fmt</span>,
@@ -607,6 +611,10 @@
     }
 
     <span class="doccomment">/// Sets the domain the cookie belongs to.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note that the domain will be preserved exactly as supplied. If the</span>
+    <span class="doccomment">/// string has a `.` prefix that should be ignored (such as allowed by the</span>
+    <span class="doccomment">/// `Set-Cookie` HTTP header), then you must remove it manually first.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">domain</span>: <span class="ident">S</span>) -&gt; <span class="self">Self</span>
     <span class="kw">where</span>
         <span class="ident">S</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
