@@ -19,7 +19,10 @@ pub(crate) trait SetOpt {
 
 // Define this struct inside a macro to reduce some boilerplate.
 macro_rules! define_request_config {
-    ($($field:ident: $t:ty,)*) => {
+    ($(
+        $(#[$meta:meta])*
+        $field:ident: $t:ty,
+    )*) => {
         /// Configuration for an HTTP request.
         ///
         /// This struct is not exposed directly, but rather is interacted with
@@ -27,6 +30,7 @@ macro_rules! define_request_config {
         #[derive(Clone, Debug, Default)]
         pub struct RequestConfig {
             $(
+                $(#[$meta])*
                 pub(crate) $field: $t,
             )*
         }
@@ -37,9 +41,12 @@ macro_rules! define_request_config {
             /// config.
             pub(crate) fn merge(&mut self, defaults: &Self) {
                 $(
-                    if self.$field.is_none() {
-                        if let Some(value) = defaults.$field.as_ref() {
-                            self.$field = Some(value.clone());
+                    $(#[$meta])*
+                    {
+                        if self.$field.is_none() {
+                            if let Some(value) = defaults.$field.as_ref() {
+                                self.$field = Some(value.clone());
+                            }
                         }
                     }
                 )*
@@ -67,11 +74,15 @@ define_request_config! {
     proxy_blacklist: Option<proxy::Blacklist>,
     proxy_authentication: Option<Proxy<Authentication>>,
     proxy_credentials: Option<Proxy<Credentials>>,
-    proxy_tls_config: Option<TlsConfig>,
     max_upload_speed: Option<u64>,
     max_download_speed: Option<u64>,
-    tls_config: Option<TlsConfig>,
     enable_metrics: Option<bool>,
+
+    #[cfg(feature = "tls")]
+    tls_config: Option<crate::tls::TlsConfig>,
+
+    #[cfg(feature = "tls")]
+    proxy_tls_config: Option<crate::tls::TlsConfig>,
 
     // Used by interceptors
     redirect_policy: Option<RedirectPolicy>,
@@ -90,7 +101,8 @@ impl RequestConfig {
             // Erase curl's default auth method of Basic.
             authentication: Some(Authentication::default()),
             // Use default TLS configuration based on build configuration.
-            tls_config: Some(TlsConfig::default()),
+            #[cfg(feature = "tls")]
+            tls_config: Some(crate::tls::TlsConfig::default()),
             ..Default::default()
         }
     }
@@ -199,6 +211,7 @@ impl SetOpt for RequestConfig {
             easy.max_recv_speed(max)?;
         }
 
+        #[cfg(feature = "tls")]
         if let Some(options) = self.tls_config.as_ref() {
             options.set_opt(easy)?;
         }

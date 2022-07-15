@@ -193,6 +193,18 @@
 //! Enable support for decoding text-based responses in various charsets into
 //! strings. Enabled by default.
 //!
+//! ## `tls`
+//!
+//! Enable API support for TLS configuration. This feature allows you to use any
+//! TLS-specific features of Isahc without selecting a particular TLS backend,
+//! and is a good choice when writing a library that might require TLS support,
+//! but want to allow the application writer to decide which TLS backend is
+//! used.
+//!
+//! This feature is automatically enabled when enabling a specific TLS backend.
+//! Conversely, if this feature is enabled but no backend feature is enabled, a
+//! compile error will be emitted.
+//!
 //! ## Unstable APIs
 //!
 //! There are also some features that enable new incubating APIs that do not
@@ -247,9 +259,6 @@ use std::convert::TryFrom;
 #[macro_use]
 mod macros;
 
-#[cfg(feature = "cookies")]
-pub mod cookies;
-
 mod agent;
 mod body;
 mod client;
@@ -269,6 +278,12 @@ mod trailer;
 pub mod auth;
 pub mod config;
 pub mod error;
+
+#[cfg(feature = "cookies")]
+pub mod cookies;
+
+#[cfg(feature = "tls")]
+pub mod tls;
 
 #[cfg(feature = "unstable-interceptors")]
 pub mod interceptor;

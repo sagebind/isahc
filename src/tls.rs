@@ -1,15 +1,61 @@
-//! Configuration options related to SSL/TLS.
+//! Configuration options related to SSL/TLS for supporting [HTTPS] requests.
+//!
+//! # Backends
+//!
+//! Isahc does not implement the TLS protocol itself, but instead uses one of
+//! various available *TLS backends* which implement support. With the default
+//! crate configuration, Isahc will use the target platform's "native" TLS
+//! implementation:
+//!
+//! - Windows: [Schannel]
+//! - macOS and iOS: [Secure Transport]
+//! - Linux: [OpenSSL] or one of its API-compatible forks are usually considered
+//!   the "default" TLS engine on most Linux distributions and are treated as
+//!   the native backend here.
+//!
+//! Regardless of platform, support for TLS is gated behind the optional `tls`
+//! crate feature, which while enabled by default can be disabled if you don't
+//! need or want to make HTTPS requests. Enabling the crate feature enables this
+//! API module, but does not select which backend to use. To select which
+//! backend to use, additional crate features are provided:
+//!
+//! - `native-tls`: Use the target platform's native TLS engine, as described
+//!   earlier. This is the default.
+//! - `openssl-tls`: Use OpenSSL, regardless of target platform.
+//! - `rustls-tls`: Use [rustls], a modern TLS library written in Rust.
+//! - `rustls-tls-native-certs`: Use [rustls] along with the
+//!   [rustls-native-certs] library to allow rustls to use the platform's native
+//!   root certificate store.
+//!
+//! There are pros and cons to different backends, and none are best for all use
+//! cases. For a more in-depth look at the available backends see the [wiki
+//! article on TLS
+//! backends](https://github.com/sagebind/isahc/wiki/TLS-Backends).
+//!
+//! [HTTPS]: https://en.wikipedia.org/wiki/HTTPS
+//! [OpenSSL]: https://www.openssl.org
+//! [rustls]: https://github.com/rustls/rustls
+//! [rustls-native-certs]: https://github.com/rustls/rustls-native-certs
+//! [Schannel]: https://docs.microsoft.com/en-us/windows/win32/com/schannel
+//! [Secure Transport]:
+//!     https://developer.apple.com/documentation/security/secure_transport
 
 use crate::{has_tls_engine, TlsEngine};
 
-use super::SetOpt;
+use crate::config::request::SetOpt;
 use curl::easy::{Easy2, SslOpt, SslVersion};
 use std::path::PathBuf;
 
+#[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
+compile_error!("`tls` feature is enabled, but no TLS backend was selected.");
+
+// #[cfg(all(feature = "native-tls", feature = "rustls-tls"))]
+// compile_error!("multiple TLS engines cannot be enabled at the same time");
+
 /// A flag that can be used to alter the behavior of SSL/TLS connections.
 ///
-/// Most options are for disabling security checks that introduce security
-/// risks, but may be required as a last resort.
+/// Most options are for disabling security checks that have the potential to
+/// introduce security risks, but may be required as a last resort.
 #[derive(Debug, Default)]
 #[must_use = "builders have no effect if unused"]
 pub struct TlsConfigBuilder {
@@ -86,7 +132,7 @@ impl TlsConfigBuilder {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::tls::{Certificate, RootCertStore, TlsConfig};
+    /// use isahc::tls::{Certificate, RootCertStore, TlsConfig};
     ///
     /// let config = TlsConfig::builder()
     ///     // Use the native certificate store
@@ -322,12 +368,27 @@ pub struct TlsConfig {
 
 impl TlsConfig {
     /// Create an instance of the default SSL/TLS configuration.
+    ///
+    /// The default configuration varies depending on the runtime environment
+    /// and how Isahc is compiled. By default, Isahc uses the platform's
+    /// "native" TLS implementation, and will use TLS ciphers and versions that
+    /// are enabled by default on the system. Naturally, this will vary from
+    /// machine to machine, so less-secure methods may be used if the user's
+    /// system is configured that way.
+    ///
+    /// If Isahc is built to use an alternative TLS implementation such as
+    /// rustls, then that implementation will be used on all platforms, and the
+    /// default settings will come from the defaults provided by that bundled
+    /// TLS library version.
+    ///
+    /// This is equivalent to the [`Default::default`] method.
     pub fn new() -> Self {
         Self::builder().build()
     }
 
     /// Create a new [`TlsConfigBuilder`] for creating a custom SSL/TLS
-    /// configuration.
+    /// configuration. The initial configuration of the builder will start from
+    /// the default TLS settings as described in [`TlsConfigBuilder::new`].
     #[inline]
     pub fn builder() -> TlsConfigBuilder {
         TlsConfigBuilder::default()
@@ -366,6 +427,15 @@ impl SetOpt for TlsConfig {
 }
 
 /// A store that provides a collection of trusted root certificates.
+///
+/// Root certificates are used for validating the authenticity of a server
+/// before proceeding with a request. If the server presents a certificate that
+/// matches the server's information, and is signed by a certificate authority
+/// either in the root certificate store or is itself trusted by another
+/// certificate in the store, then the server is considered to be legitimate.
+///
+/// Isahc supports multiple kinds of stores, though the default is to use the
+/// store provided by the operating system (if any).
 #[derive(Clone, Debug)]
 pub struct RootCertStore(RootCertStoreImpl);
 
@@ -382,6 +452,9 @@ enum RootCertStoreImpl {
 
 impl RootCertStore {
     /// Create an empty certificate store.
+    ///
+    /// Using this store will result in all server certificates being considered
+    /// untrusted, and is generally useful only for testing.
     pub const fn empty() -> Self {
         Self(RootCertStoreImpl::Empty)
     }
@@ -395,8 +468,20 @@ impl RootCertStore {
     /// will also respect environment variables that override where to look for
     /// trusted certificates.
     ///
-    /// This is typically the default certificate store used for most
+    /// This is normally the default certificate store used for most typical
     /// applications.
+    ///
+    /// # Error handling
+    ///
+    /// The presence or ability to access a system certificate store is not
+    /// checked here. If the system store cannot be accessed due to permissions
+    /// or some other kind of problem, an error will be returned when attempting
+    /// to send a request using the store.
+    ///
+    /// If the system store is simply empty or at least *appears* to be empty,
+    /// the TLS backend will probably not consider this an inherent error,
+    /// though naturally you will likely encounter certificate errors since the
+    /// store will basically behave like [`RootCertStore::empty`].
     pub fn native() -> Self {
         Self(RootCertStoreImpl::Native)
     }
@@ -404,13 +489,14 @@ impl RootCertStore {
     /// Use a given directory containing multiple certificates as a certificate
     /// store.
     ///
-    /// This option only works properly when using OpenSSL or its derivatives,
-    /// GnuTLS, or mbedTLS.
+    /// This option is only known to work properly when using OpenSSL or its
+    /// derivatives, GnuTLS, or mbedTLS. Support for this can be flaky in other
+    /// backends.
     ///
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::tls::RootCertStore;
+    /// use isahc::tls::RootCertStore;
     ///
     /// let store = RootCertStore::dir("/etc/cert-dir");
     /// ```
@@ -423,7 +509,7 @@ impl RootCertStore {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::tls::RootCertStore;
+    /// use isahc::tls::RootCertStore;
     ///
     /// let store = RootCertStore::file("/etc/certs/cabundle.pem");
     /// ```
@@ -436,18 +522,16 @@ impl RootCertStore {
     ///
     /// Server certificates will be verified using only certificates given.
     ///
-    /// This type of store is supported by most TLS backends, including OpenSSL,
-    /// rustls, and Secure Transport.
+    /// This store is supported by most TLS backends, including OpenSSL, rustls,
+    /// and Secure Transport.
     pub fn custom<I>(certificates: I) -> Self
     where
         I: IntoIterator<Item = Certificate>,
     {
         // Generate a PEM bundle.
-        let mut bundle = String::new();
-
-        for cert in certificates {
-            bundle.push_str(&cert.pem);
-        }
+        let bundle = certificates.into_iter()
+            .map(|cert| cert.pem)
+            .collect();
 
         Self(RootCertStoreImpl::Bundle(bundle))
     }
@@ -493,7 +577,7 @@ impl SetOpt for RootCertStore {
                                 let mut error = curl::Error::new(77);
                                 error.set_extra(e.to_string());
                                 return Err(error);
-                            },
+                            }
                         }
                     }
 

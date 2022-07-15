@@ -1,6 +1,11 @@
 //! These tests exercise various SSL/TLS options while making requests to [badssl.com](https://badssl.com).
 
-use isahc::{prelude::*, Request, config::{TlsConfig, tls::ProtocolVersion}, error::ErrorKind};
+use isahc::{
+    error::ErrorKind,
+    prelude::*,
+    tls::{ProtocolVersion, TlsConfig},
+    Request,
+};
 
 #[test]
 #[cfg_attr(not(feature = "online-tests"), ignore)]

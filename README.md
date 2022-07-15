@@ -136,7 +136,6 @@ The Isahc logo and related assets are licensed under a [Creative Commons Attribu
 [multi interface]: https://curl.haxx.se/libcurl/c/libcurl-multi.html
 [rfc4559]: https://tools.ietf.org/html/rfc4559
 [rust]: https://www.rustlang.org
-[rustls]: https://github.com/ctz/rustls
 [serde]: https://serde.rs
 [Surf]: https://github.com/http-rs/surf
 [ureq]: https://github.com/algesten/ureq

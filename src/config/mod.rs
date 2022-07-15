@@ -27,12 +27,10 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
-pub mod tls;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use tls::{TlsConfig, TlsConfigBuilder};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -580,8 +578,9 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[cfg(feature = "tls")]
     #[must_use = "builders have no effect if unused"]
-    fn proxy_tls_config(self, tls_config: TlsConfig) -> Self {
+    fn proxy_tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
             config.proxy_tls_config = Some(tls_config);
         })
@@ -611,7 +610,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// Most options are for disabling security checks that introduce security
     /// risks, but may be required as a last resort. Note that the most secure
-    /// options are already the default and do not need to be specified.
+    /// options are typically the default and do not need to be specified.
     ///
     /// The default value is [`TlsConfig::default`].
     ///
@@ -624,17 +623,20 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::{config::SslOption, prelude::*, Request};
+    /// use isahc::{prelude::*, tls::TlsConfig, Request};
     ///
     /// let response = Request::get("https://badssl.com")
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .body(())?
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
     /// ```
-    /// use isahc::{config::TlsConfig, prelude::*, HttpClient};
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
     /// let client = HttpClient::builder()
     ///     .tls_config(TlsConfig::builder()
@@ -644,8 +646,9 @@ pub trait Configurable: request::WithRequestConfig {
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[cfg(feature = "tls")]
     #[must_use = "builders have no effect if unused"]
-    fn tls_config(self, tls_config: TlsConfig) -> Self {
+    fn tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
             config.tls_config = Some(tls_config);
         })
