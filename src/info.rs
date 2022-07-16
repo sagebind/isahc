@@ -55,7 +55,7 @@ pub(crate) fn curl_info() -> &'static curl::Version {
     // Query for curl version info just once since it is immutable.
     static CURL_VERSION: Lazy<curl::Version> = Lazy::new(curl::Version::get);
 
-    &*CURL_VERSION
+    &CURL_VERSION
 }
 
 fn curl_version() -> (u8, u8, u8) {

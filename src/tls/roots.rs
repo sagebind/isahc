@@ -15,17 +15,19 @@ use std::{env, os::raw::c_char, path::PathBuf, ptr};
 /// certificate in the store, then the server is considered to be legitimate.
 ///
 /// Isahc supports multiple kinds of stores, though the default is to use the
-/// store provided by the operating system (if any).
+/// shared store provided by the operating system (if any).
 #[derive(Clone, Debug)]
-pub struct RootCertStore(RootCertStoreImpl);
+pub struct RootCertStore(StoreImpl);
 
 #[derive(Clone, Debug)]
-enum RootCertStoreImpl {
+enum StoreImpl {
     NoOp,
     Unset,
-    File(PathBuf),
-    Bundle(String),
-    Rustls,
+    FilePath(PathBuf),
+    PemBundle(String),
+
+    #[cfg(feature = "rustls-tls-native-certs")]
+    RustlsNativeTls,
 }
 
 impl RootCertStore {
@@ -34,10 +36,13 @@ impl RootCertStore {
     /// Using this store will result in all server certificates being considered
     /// untrusted, and is generally useful only for testing.
     pub const fn empty() -> Self {
-        Self(RootCertStoreImpl::Bundle(String::new()))
+        Self(StoreImpl::PemBundle(String::new()))
     }
 
     /// Use the platform's native certificate store, if any.
+    ///
+    /// This is normally the default certificate store used for most typical
+    /// applications.
     ///
     /// On Windows, macOS, and iOS this involves using the certificate
     /// management features provided by the operating system. On Linux and other
@@ -45,9 +50,6 @@ impl RootCertStore {
     /// managed by the distribution or system administrator. In most cases, this
     /// will also respect environment variables that override where to look for
     /// trusted certificates.
-    ///
-    /// This is normally the default certificate store used for most typical
-    /// applications.
     ///
     /// # Error handling
     ///
@@ -78,30 +80,39 @@ impl RootCertStore {
             // it even with LibreSSL even though openssl-probe doesn't work with
             // LibreSSL out of the box.
             if let Some(path) = env::var_os("SSL_CERT_FILE") {
-                return RootCertStore::file(path);
+                return RootCertStore::from_file(path);
             }
 
             // These backends will use the store built into the OS as long as we
             // ensure no paths are set. They shouldn't be when curl is statically
             // linked, but they might be if using a system curl.
             if has_tls_engine(TlsEngine::Schannel) || has_tls_engine(TlsEngine::SecureTransport) {
-                return RootCertStore(RootCertStoreImpl::Unset);
+                return RootCertStore(StoreImpl::Unset);
             }
 
-            // When using rustls, we have to load native certs ourselves,
-            // and a couple possible ways are available to us.
-            if has_tls_engine(TlsEngine::Rustls) {
-                return RootCertStore(RootCertStoreImpl::Rustls);
+            // Use the rustls-native-certs crate if enabled. Note this already
+            // implies using a statically-linked curl with rustls.
+            #[cfg(feature = "rustls-tls-native-certs")]
+            {
+                RootCertStore(StoreImpl::RustlsNativeTls)
             }
 
             // If all else fails, use whatever curl wants to fall back to, if any.
-            RootCertStore(RootCertStoreImpl::NoOp)
+            #[cfg(not(feature = "rustls-tls-native-certs"))]
+            {
+                RootCertStore(StoreImpl::NoOp)
+            }
         });
 
         NATIVE_STORE.clone()
     }
 
     /// Use a file containing a bundle of certificates in PEM format.
+    ///
+    /// The certificate bundle is not loaded or validated here. If the file does
+    /// not exist or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending bundle.
     ///
     /// # Examples
     ///
@@ -110,8 +121,8 @@ impl RootCertStore {
     ///
     /// let store = RootCertStore::file("/etc/certs/cabundle.pem");
     /// ```
-    pub fn file<P: Into<PathBuf>>(path: P) -> Self {
-        Self(RootCertStoreImpl::File(path.into()))
+    pub fn from_file<P: Into<PathBuf>>(path: P) -> Self {
+        Self(StoreImpl::FilePath(path.into()))
     }
 
     /// Create a custom certificate store containing exactly the given
@@ -128,29 +139,41 @@ impl RootCertStore {
         // Generate a PEM bundle.
         let bundle = certificates.into_iter().map(|cert| cert.pem).collect();
 
-        Self(RootCertStoreImpl::Bundle(bundle))
+        Self(StoreImpl::PemBundle(bundle))
     }
 }
 
 impl Default for RootCertStore {
     fn default() -> Self {
-        if has_tls_engine(TlsEngine::Rustls) && !cfg!(feature = "rustls-native-certs") {
-            Self::empty()
+        // If we were configured to use rustls without native cert support, use
+        // an empty store as the default.
+        //
+        // Note that if we are dynamically linked to a curl that was built using
+        // rustls, then it is still possible to use the native store if that curl
+        // was built that way.
+        if cfg!(feature = "rustls-tls") && !cfg!(feature = "rustls-tls-native-certs") {
+            Self(StoreImpl::NoOp)
         } else {
             Self::native()
         }
     }
 }
 
+impl From<Certificate> for RootCertStore {
+    fn from(certificate: Certificate) -> Self {
+        Self::custom([certificate])
+    }
+}
+
 impl SetOpt for RootCertStore {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         match &self.0 {
-            RootCertStoreImpl::NoOp => Ok(()),
-            RootCertStoreImpl::File(path) => easy.cainfo(path),
-            RootCertStoreImpl::Bundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()),
+            StoreImpl::NoOp => Ok(()),
+            StoreImpl::FilePath(path) => easy.cainfo(path),
+            StoreImpl::PemBundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()),
 
             #[allow(unsafe_code)]
-            RootCertStoreImpl::Unset => {
+            StoreImpl::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
                     curl_sys::curl_easy_setopt(
@@ -168,10 +191,8 @@ impl SetOpt for RootCertStore {
                 Ok(())
             }
 
-            // If rustls-native-certs is enabled then we use it to access the
-            // native store on-demand.
-            #[cfg(feature = "rustls-native-certs")]
-            RootCertStoreImpl::Rustls => {
+            #[cfg(feature = "rustls-tls-native-certs")]
+            StoreImpl::RustlsNativeTls => {
                 use once_cell::sync::OnceCell;
 
                 static NATIVE_CERTS: OnceCell<RootCertStore> = OnceCell::new();
@@ -193,11 +214,6 @@ impl SetOpt for RootCertStore {
                     }
                 }
             }
-
-            // If rustls-native-certs is not enabled then it is not possible to
-            // use the native store.
-            #[cfg(not(feature = "rustls-native-certs"))]
-            RootCertStoreImpl::Rustls => Err(curl::Error::new(curl_sys::CURLE_SSL_CACERT_BADFILE)),
         }
     }
 }

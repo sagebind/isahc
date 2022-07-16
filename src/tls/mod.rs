@@ -21,10 +21,14 @@
 //!
 //! - `native-tls`: Use the target platform's native TLS engine, as described
 //!   earlier. This is the default.
-//! - `rustls-tls`: Use [rustls], a modern TLS library written in Rust.
+//! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library written in Rust.
 //! - `rustls-tls-native-certs`: Use [rustls] along with the
 //!   [rustls-native-certs] library to allow rustls to use the platform's native
 //!   root certificate store.
+//!
+//! If using rustls without native cert support, your application will need to
+//! provide its own certificates to use for verification, as none are included by
+//! default.
 //!
 //! There are pros and cons to different backends, and none are best for all use
 //! cases. For a more in-depth look at the available backends see the [wiki
@@ -53,14 +57,10 @@ compile_error!("`tls` feature is enabled, but no TLS backend was selected.");
 // #[cfg(all(feature = "native-tls", feature = "rustls-tls"))]
 // compile_error!("multiple TLS engines cannot be enabled at the same time");
 
-/// A flag that can be used to alter the behavior of SSL/TLS connections.
-///
-/// Most options are for disabling security checks that have the potential to
-/// introduce security risks, but may be required as a last resort.
+/// A builder for creating a custom SSL/TLS connector configuration.
 #[derive(Debug, Default)]
 #[must_use = "builders have no effect if unused"]
 pub struct TlsConfigBuilder {
-    root_certs: Vec<Certificate>,
     root_cert_store: RootCertStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
@@ -89,27 +89,6 @@ impl TlsConfigBuilder {
     /// depending on the contents of your CA bundle.
     pub fn root_ca_certificate(self, cert: Certificate) -> Self {
         self.root_cert_store(RootCertStore::custom([cert]))
-    }
-
-    /// Get a CA certificate from a path to a certificate bundle file.
-    ///
-    /// The certificate file is not loaded or validated here. If the file does
-    /// not exist or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::tls::{Certificate, TlsConfig};
-    ///
-    /// let config = TlsConfig::builder()
-    ///     .root_ca_certificate_path("ca.pem")
-    ///     .build();
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn root_ca_certificate_path(self, ca_bundle_path: impl Into<PathBuf>) -> Self {
-        self.root_cert_store(RootCertStore::file(ca_bundle_path))
     }
 
     /// Set the certificate store containing trusted root certificates to use
@@ -143,6 +122,10 @@ impl TlsConfigBuilder {
     ///     // Use custom certs in memory
     ///     .root_cert_store(RootCertStore::custom([
     ///         Certificate::from_pem("(some long PEM string)"),
+    ///     ]))
+    ///     // You could even include a certificate bundle in your binary
+    ///     .root_cert_store(RootCertStore::custom([
+    ///         Certificate::from_pem(include_str!("bundle.pem")),
     ///     ]))
     ///     .build();
     /// ```
