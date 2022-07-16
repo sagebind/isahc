@@ -9,9 +9,9 @@
 //!
 //! - Windows: [Schannel]
 //! - macOS and iOS: [Secure Transport]
-//! - Linux: [OpenSSL] or one of its API-compatible forks are usually considered
-//!   the "default" TLS engine on most Linux distributions and are treated as
-//!   the native backend here.
+//! - Linux and other UNIX-like systems: [OpenSSL] or one of its API-compatible
+//!   forks are usually considered the "default" TLS engine on most Linux
+//!   distributions and are treated as the native backend here.
 //!
 //! Regardless of platform, support for TLS is gated behind the optional `tls`
 //! crate feature, which while enabled by default can be disabled if you don't
@@ -21,7 +21,6 @@
 //!
 //! - `native-tls`: Use the target platform's native TLS engine, as described
 //!   earlier. This is the default.
-//! - `openssl-tls`: Use OpenSSL, regardless of target platform.
 //! - `rustls-tls`: Use [rustls], a modern TLS library written in Rust.
 //! - `rustls-tls-native-certs`: Use [rustls] along with the
 //!   [rustls-native-certs] library to allow rustls to use the platform's native
@@ -40,11 +39,13 @@
 //! [Secure Transport]:
 //!     https://developer.apple.com/documentation/security/secure_transport
 
-use crate::{has_tls_engine, TlsEngine};
-
 use crate::config::request::SetOpt;
 use curl::easy::{Easy2, SslOpt, SslVersion};
 use std::path::PathBuf;
+
+mod roots;
+
+pub use roots::RootCertStore;
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
 compile_error!("`tls` feature is enabled, but no TLS backend was selected.");
@@ -86,17 +87,6 @@ impl TlsConfigBuilder {
     /// On Windows it may be necessary to combine this with
     /// [`TlsConfigBuilder::danger_accept_revoked_certs`] in order to work
     /// depending on the contents of your CA bundle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
     pub fn root_ca_certificate(self, cert: Certificate) -> Self {
         self.root_cert_store(RootCertStore::custom([cert]))
     }
@@ -107,6 +97,17 @@ impl TlsConfigBuilder {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::tls::{Certificate, TlsConfig};
+    ///
+    /// let config = TlsConfig::builder()
+    ///     .root_ca_certificate_path("ca.pem")
+    ///     .build();
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     pub fn root_ca_certificate_path(self, ca_bundle_path: impl Into<PathBuf>) -> Self {
         self.root_cert_store(RootCertStore::file(ca_bundle_path))
     }
@@ -183,35 +184,14 @@ impl TlsConfigBuilder {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     Request,
-    /// };
+    /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
     ///
-    /// let response = Request::get("localhost:3999")
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    /// let config = TlsConfig::builder()
+    ///     .identity(Identity::pem_file(
     ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
+    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
     ///     ))
-    ///     .body(())?
-    ///     .send()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    ///
-    /// ```
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     HttpClient,
-    /// };
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .build()?;
+    ///     .build();
     /// # Ok::<(), isahc::Error>(())
     /// ```
     pub fn identity(mut self, identity: Identity) -> Self {
@@ -423,172 +403,6 @@ impl SetOpt for TlsConfig {
         }
 
         Ok(())
-    }
-}
-
-/// A store that provides a collection of trusted root certificates.
-///
-/// Root certificates are used for validating the authenticity of a server
-/// before proceeding with a request. If the server presents a certificate that
-/// matches the server's information, and is signed by a certificate authority
-/// either in the root certificate store or is itself trusted by another
-/// certificate in the store, then the server is considered to be legitimate.
-///
-/// Isahc supports multiple kinds of stores, though the default is to use the
-/// store provided by the operating system (if any).
-#[derive(Clone, Debug)]
-pub struct RootCertStore(RootCertStoreImpl);
-
-#[derive(Clone, Debug)]
-enum RootCertStoreImpl {
-    Empty,
-    Native,
-    Dir(PathBuf),
-    File(PathBuf),
-
-    /// A custom bundle of certificates stored in PEM format.
-    Bundle(String),
-}
-
-impl RootCertStore {
-    /// Create an empty certificate store.
-    ///
-    /// Using this store will result in all server certificates being considered
-    /// untrusted, and is generally useful only for testing.
-    pub const fn empty() -> Self {
-        Self(RootCertStoreImpl::Empty)
-    }
-
-    /// Use the platform's native certificate store, if any.
-    ///
-    /// On Windows, macOS, and iOS this involves using the certificate
-    /// management features provided by the operating system. On Linux and other
-    /// UNIX-like systems this typically will use a shared certificate bundle
-    /// managed by the distribution or system administrator. In most cases, this
-    /// will also respect environment variables that override where to look for
-    /// trusted certificates.
-    ///
-    /// This is normally the default certificate store used for most typical
-    /// applications.
-    ///
-    /// # Error handling
-    ///
-    /// The presence or ability to access a system certificate store is not
-    /// checked here. If the system store cannot be accessed due to permissions
-    /// or some other kind of problem, an error will be returned when attempting
-    /// to send a request using the store.
-    ///
-    /// If the system store is simply empty or at least *appears* to be empty,
-    /// the TLS backend will probably not consider this an inherent error,
-    /// though naturally you will likely encounter certificate errors since the
-    /// store will basically behave like [`RootCertStore::empty`].
-    pub fn native() -> Self {
-        Self(RootCertStoreImpl::Native)
-    }
-
-    /// Use a given directory containing multiple certificates as a certificate
-    /// store.
-    ///
-    /// This option is only known to work properly when using OpenSSL or its
-    /// derivatives, GnuTLS, or mbedTLS. Support for this can be flaky in other
-    /// backends.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::tls::RootCertStore;
-    ///
-    /// let store = RootCertStore::dir("/etc/cert-dir");
-    /// ```
-    pub fn dir<P: Into<PathBuf>>(path: P) -> Self {
-        Self(RootCertStoreImpl::Dir(path.into()))
-    }
-
-    /// Use a file containing a bundle of certificates in PEM format.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::tls::RootCertStore;
-    ///
-    /// let store = RootCertStore::file("/etc/certs/cabundle.pem");
-    /// ```
-    pub fn file<P: Into<PathBuf>>(path: P) -> Self {
-        Self(RootCertStoreImpl::File(path.into()))
-    }
-
-    /// Create a custom certificate store containing exactly the given
-    /// certificates.
-    ///
-    /// Server certificates will be verified using only certificates given.
-    ///
-    /// This store is supported by most TLS backends, including OpenSSL, rustls,
-    /// and Secure Transport.
-    pub fn custom<I>(certificates: I) -> Self
-    where
-        I: IntoIterator<Item = Certificate>,
-    {
-        // Generate a PEM bundle.
-        let bundle = certificates.into_iter()
-            .map(|cert| cert.pem)
-            .collect();
-
-        Self(RootCertStoreImpl::Bundle(bundle))
-    }
-}
-
-impl Default for RootCertStore {
-    fn default() -> Self {
-        if has_tls_engine(TlsEngine::Rustls) && !cfg!(feature = "rustls-native-certs") {
-            Self::empty()
-        } else {
-            Self::native()
-        }
-    }
-}
-
-impl SetOpt for RootCertStore {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        match &self.0 {
-            RootCertStoreImpl::Empty => Ok(()),
-            RootCertStoreImpl::Dir(path) => easy.capath(path),
-            RootCertStoreImpl::File(path) => easy.cainfo(path),
-            RootCertStoreImpl::Bundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()),
-            RootCertStoreImpl::Native => {
-                // When using rustls, we have to load native certs ourselves,
-                // and a couple possible ways are available to us.
-                if has_tls_engine(TlsEngine::Rustls) {
-                    #[cfg(feature = "rustls-native-certs")]
-                    {
-                        static NATIVE_CERTS: once_cell::sync::OnceCell<RootCertStore> =
-                            once_cell::sync::OnceCell::new();
-
-                        fn load_native_certs() -> std::io::Result<RootCertStore> {
-                            Ok(RootCertStore::custom(
-                                rustls_native_certs::load_native_certs()?
-                                    .into_iter()
-                                    .map(|cert| Certificate::from_der(cert.0)),
-                            ))
-                        }
-
-                        match NATIVE_CERTS.get_or_try_init(load_native_certs) {
-                            Ok(certs) => return certs.set_opt(easy),
-                            Err(e) => {
-                                let mut error = curl::Error::new(77);
-                                error.set_extra(e.to_string());
-                                return Err(error);
-                            }
-                        }
-                    }
-
-                    Err(curl::Error::new(77))
-                } else {
-                    // When using true native, the TLS backend will handle certs
-                    // automatically.
-                    Ok(())
-                }
-            }
-        }
     }
 }
 
@@ -938,5 +752,25 @@ impl SetOpt for PrivateKey {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+enum TlsEngine {
+    Rustls,
+    Schannel,
+    SecureTransport,
+}
+
+fn has_tls_engine(engine: TlsEngine) -> bool {
+    if let Some(version) = crate::curl_info().ssl_version() {
+        match engine {
+            TlsEngine::Rustls => version.contains("rustls/"),
+            TlsEngine::Schannel => version.contains("Schannel"),
+            TlsEngine::SecureTransport => version.contains("SecureTransport"),
+        }
+    } else {
+        false
     }
 }

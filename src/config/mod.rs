@@ -568,7 +568,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Examples
     ///
     /// ```
-    /// use isahc::{config::TlsConfig, prelude::*, HttpClient};
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
     /// let client = HttpClient::builder()
     ///     .proxy_tls_config(TlsConfig::builder()

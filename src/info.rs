@@ -2,9 +2,6 @@
 
 use once_cell::sync::Lazy;
 
-// Query for curl version info just once since it is immutable.
-static CURL_VERSION: Lazy<curl::Version> = Lazy::new(curl::Version::get);
-
 /// Gets a human-readable string with the version number of Isahc and its
 /// dependencies.
 ///
@@ -45,37 +42,26 @@ pub fn is_http_version_supported(version: http::Version) -> bool {
         },
         http::Version::HTTP_10 => true,
         http::Version::HTTP_11 => true,
-        http::Version::HTTP_2 => CURL_VERSION.feature_http2(),
-        http::Version::HTTP_3 => CURL_VERSION.feature_http3(),
+        http::Version::HTTP_2 => curl_info().feature_http2(),
+        http::Version::HTTP_3 => curl_info().feature_http3(),
         _ => false,
     }
 }
 
+/// Get version and runtime information about the instance of curl Isahc is
+/// linked to.
+#[inline]
+pub(crate) fn curl_info() -> &'static curl::Version {
+    // Query for curl version info just once since it is immutable.
+    static CURL_VERSION: Lazy<curl::Version> = Lazy::new(curl::Version::get);
+
+    &*CURL_VERSION
+}
+
 fn curl_version() -> (u8, u8, u8) {
-    let bits = CURL_VERSION.version_num();
+    let bits = curl_info().version_num();
 
     ((bits >> 16) as u8, (bits >> 8) as u8, bits as u8)
-}
-
-pub(crate) fn has_tls_engine(engine: TlsEngine) -> bool {
-    if let Some(version) = CURL_VERSION.ssl_version() {
-        match engine {
-            TlsEngine::OpenSsl => version.contains("OpenSSL/"),
-            TlsEngine::Rustls => version.contains("rustls/"),
-            TlsEngine::Schannel => version.contains("Schannel"),
-            _ => false,
-        }
-    } else {
-        false
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub(crate) enum TlsEngine {
-    OpenSsl,
-    Rustls,
-    Schannel,
 }
 
 #[cfg(test)]
