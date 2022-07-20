@@ -134,3 +134,7 @@ required-features = ["json", "serde/derive"]
 
 [workspace]
 members = ["benchmarks", "testserver"]
+
+[patch.crates-io]
+curl = { path = "../curl-rust" }
+curl-sys = { path = "../curl-rust/curl-sys" }

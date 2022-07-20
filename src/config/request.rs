@@ -1,6 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::{proxy::Proxy, *};
+use super::{proxy::SetOptProxy, *};
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
@@ -72,8 +72,8 @@ define_request_config! {
     dial: Option<Dialer>,
     proxy: Option<Option<http::Uri>>,
     proxy_blacklist: Option<proxy::Blacklist>,
-    proxy_authentication: Option<Proxy<Authentication>>,
-    proxy_credentials: Option<Proxy<Credentials>>,
+    proxy_authentication: Option<Authentication>,
+    proxy_credentials: Option<Credentials>,
     max_upload_speed: Option<u64>,
     max_download_speed: Option<u64>,
     enable_metrics: Option<bool>,
@@ -196,11 +196,11 @@ impl SetOpt for RequestConfig {
         }
 
         if let Some(auth) = self.proxy_authentication.as_ref() {
-            auth.set_opt(easy)?;
+            auth.set_opt_proxy(easy)?;
         }
 
         if let Some(credentials) = self.proxy_credentials.as_ref() {
-            credentials.set_opt(easy)?;
+            credentials.set_opt_proxy(easy)?;
         }
 
         if let Some(max) = self.max_upload_speed {
@@ -212,8 +212,13 @@ impl SetOpt for RequestConfig {
         }
 
         #[cfg(feature = "tls")]
-        if let Some(options) = self.tls_config.as_ref() {
-            options.set_opt(easy)?;
+        if let Some(config) = self.tls_config.as_ref() {
+            config.set_opt_proxy(easy)?;
+        }
+
+        #[cfg(feature = "tls")]
+        if let Some(config) = self.proxy_tls_config.as_ref() {
+            config.set_opt(easy)?;
         }
 
         if let Some(enable) = self.enable_metrics {

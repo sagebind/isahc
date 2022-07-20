@@ -13,7 +13,7 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::{proxy::Proxy, request::SetOpt};
+use self::request::SetOpt;
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
@@ -535,7 +535,7 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
-            config.proxy_authentication = Some(Proxy(authentication));
+            config.proxy_authentication = Some(authentication);
         })
     }
 
@@ -547,17 +547,15 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
-            config.proxy_credentials = Some(Proxy(credentials));
+            config.proxy_credentials = Some(credentials);
         })
     }
 
     /// Set various options that control SSL/TLS behavior for a proxy.
     ///
-    /// Most options are for disabling security checks that introduce security
-    /// risks, but may be required as a last resort. Note that the most secure
-    /// options are already the default and do not need to be specified.
-    ///
-    /// The default value is [`TlsConfig::default`].
+    /// By default, the same TLS configuration is used for validating all
+    /// SSL/TLS connections, but this method allows you to use separate
+    /// configuration specifically for proxy server connections.
     ///
     /// # Warning
     ///

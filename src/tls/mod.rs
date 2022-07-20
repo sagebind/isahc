@@ -43,13 +43,20 @@
 //! [Secure Transport]:
 //!     https://developer.apple.com/documentation/security/secure_transport
 
-use crate::config::request::SetOpt;
+use crate::{
+    config::{proxy::SetOptProxy, request::SetOpt},
+    error::create_curl_error,
+};
 use curl::easy::{Easy2, SslOpt, SslVersion};
 use std::path::PathBuf;
 
+mod mtls;
 mod roots;
 
-pub use roots::RootCertStore;
+pub use self::{
+    mtls::{Identity, PrivateKey},
+    roots::RootCertStore,
+};
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
 compile_error!("`tls` feature is enabled, but no TLS backend was selected.");
@@ -150,19 +157,31 @@ impl TlsConfigBuilder {
         self
     }
 
-    /// Add a custom client certificate to use for client authentication.
+    /// Add a custom client certificate to use for client authentication, also
+    /// known as *mutual TLS*.
     ///
     /// SSL/TLS is often used by the client to verify that the server is
-    /// legitimate (one-way), but it can _also_ be used by the server to verify
-    /// that _you_ are legitimate (two-way). If the server asks the client to
-    /// present an approved certificate before continuing, then this sets the
-    /// certificate chain that will be used to prove authenticity.
+    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
+    /// the server to verify that _you_ are legitimate (two-way). If the server
+    /// asks the client to present an approved certificate before continuing,
+    /// then this sets the certificate chain that will be used to prove
+    /// authenticity.
     ///
     /// If a certificate or key format given is not supported by the underlying
     /// SSL/TLS engine, an error will be returned when attempting to send a
     /// request using the offending certificate or key.
     ///
     /// By default, no client certificate is set.
+    ///
+    /// # Backend support
+    ///
+    /// Support for mutual TLS varies between the available TLS backends. Here
+    /// are some current limitations of note:
+    ///
+    /// - Schannel and Secure Transport require certificates and private keys to
+    ///   be presented together inside a PKCS #12 archive. This can be an actual
+    ///   archive or one in memory.
+    /// - Mutual TLS with Rustls is not supported at all.
     ///
     /// # Examples
     ///
@@ -255,7 +274,9 @@ impl TlsConfigBuilder {
         self
     }
 
-    /// Disables certificate validation.
+    /// Disables all server certificate validation.
+    ///
+    /// By default this is enabled.
     ///
     /// # Warning
     ///
@@ -268,7 +289,9 @@ impl TlsConfigBuilder {
         self
     }
 
-    /// Disables hostname verification on certificates.
+    /// Disables hostname verification on server certificates.
+    ///
+    /// By default this is enabled.
     ///
     /// # Warning
     ///
@@ -284,8 +307,18 @@ impl TlsConfigBuilder {
     /// Disables certificate revocation checks for backends where such behavior
     /// is present.
     ///
+    /// By default this is enabled.
+    ///
     /// This option is only supported when using the Schannel TLS backend (the
-    /// native Windows SSL/TLS implementation).
+    /// native Windows SSL/TLS implementation). On other backends this option
+    /// will likely have no effect regardless of setting.
+    ///
+    /// # Warning
+    ///
+    /// **You should think very carefully before you use this method.** Backends
+    /// implementing revocation checks do so to ensure that a certificate that
+    /// appears valid has not been reported as compromised. Disabling this can
+    /// increase your application's vulnerability to malicious servers.
     pub fn danger_accept_revoked_certs(mut self, accept: bool) -> Self {
         self.danger_accept_revoked_certs = accept;
         self
@@ -297,14 +330,15 @@ impl TlsConfigBuilder {
             ciphers: self.ciphers,
             root_cert_store: self.root_cert_store,
             issuer_cert: self.issuer_cert,
+            issuer_cert_path: self.issuer_cert_path,
+            identity: self.identity,
             min_version: self.min_version.as_ref().map(ProtocolVersion::curl_version),
             max_version: self.max_version.as_ref().map(ProtocolVersion::curl_version),
             danger_accept_invalid_certs: self.danger_accept_invalid_certs,
             danger_accept_invalid_hosts: self.danger_accept_invalid_hosts,
-            ssl_options: {
+            curl_flags: {
                 let mut options = SslOpt::new();
                 options.no_revoke(self.danger_accept_revoked_certs);
-
                 options
             },
         }
@@ -314,19 +348,18 @@ impl TlsConfigBuilder {
 /// Configuration for making SSL/TLS connections.
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
+    root_cert_store: RootCertStore,
+    issuer_cert: Option<Certificate>,
+    issuer_cert_path: Option<PathBuf>,
+    identity: Option<Identity>,
+
     /// List of ciphers to use, in a string format compatible with curl.
     ciphers: Option<String>,
-
-    root_cert_store: RootCertStore,
-
-    issuer_cert: Option<Certificate>,
     min_version: Option<SslVersion>,
     max_version: Option<SslVersion>,
     danger_accept_invalid_certs: bool,
     danger_accept_invalid_hosts: bool,
-
-    /// SSL flags to pass to curl.
-    ssl_options: SslOpt,
+    curl_flags: SslOpt,
 }
 
 impl TlsConfig {
@@ -370,9 +403,27 @@ impl SetOpt for TlsConfig {
             easy.ssl_cipher_list(ciphers)?;
         }
 
-        easy.ssl_options(&self.ssl_options)?;
+        easy.ssl_options(&self.curl_flags)?;
         easy.ssl_verify_peer(!self.danger_accept_invalid_certs)?;
         easy.ssl_verify_host(!self.danger_accept_invalid_hosts)?;
+
+        // Rustls only supports TLS 1.2+. Currently the backend in curl just
+        // ignores this option entirely, so give a more helpful message if the
+        // user tries to explicitly use something older.
+        if has_tls_engine(TlsEngine::Rustls)
+            && !matches!(
+                self.max_version,
+                Some(SslVersion::Tlsv12)
+                    | Some(SslVersion::Tlsv13)
+                    | Some(SslVersion::Default)
+                    | None
+            )
+        {
+            return Err(create_curl_error(
+                curl_sys::CURLE_SSL_ENGINE_INITFAILED,
+                "rustls only supports TLS 1.2+",
+            ));
+        }
 
         easy.ssl_min_max_version(
             self.min_version.unwrap_or(SslVersion::Default),
@@ -383,6 +434,47 @@ impl SetOpt for TlsConfig {
 
         if let Some(cert) = self.issuer_cert.as_ref() {
             easy.issuer_cert_blob(cert.pem.as_bytes())?;
+        }
+
+        if let Some(path) = self.issuer_cert_path.as_ref() {
+            easy.issuer_cert(path)?;
+        }
+
+        if let Some(identity) = self.identity.as_ref() {
+            identity.set_opt(easy)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl SetOptProxy for TlsConfig {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        if let Some(ciphers) = self.ciphers.as_ref() {
+            easy.proxy_ssl_cipher_list(ciphers)?;
+        }
+
+        easy.proxy_ssl_options(&self.curl_flags)?;
+        easy.proxy_ssl_verify_peer(self.danger_accept_invalid_certs)?;
+        easy.proxy_ssl_verify_host(self.danger_accept_invalid_hosts)?;
+
+        easy.proxy_ssl_min_max_version(
+            self.min_version.unwrap_or(SslVersion::Default),
+            self.max_version.unwrap_or(SslVersion::Default),
+        )?;
+
+        self.root_cert_store.set_opt_proxy(easy)?;
+
+        if let Some(cert) = self.issuer_cert.as_ref() {
+            easy.proxy_issuer_cert_blob(cert.pem.as_bytes())?;
+        }
+
+        if let Some(path) = self.issuer_cert_path.as_ref() {
+            easy.proxy_issuer_cert(path)?;
+        }
+
+        if let Some(identity) = self.identity.as_ref() {
+            identity.set_opt_proxy(easy)?;
         }
 
         Ok(())
@@ -429,7 +521,6 @@ impl ProtocolVersion {
             Self::Tlsv11 => SslVersion::Tlsv11,
             Self::Tlsv12 => SslVersion::Tlsv12,
             Self::Tlsv13 => SslVersion::Tlsv13,
-            _ => SslVersion::Default,
         }
     }
 }
@@ -477,264 +568,6 @@ impl Certificate {
         Self {
             pem: String::from_utf8(pem.as_ref().to_vec()).unwrap(),
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-enum PathOrBlob {
-    Path(PathBuf),
-    Blob(Vec<u8>),
-}
-
-/// Holds a X.509 certificate, potentially other certificates in its chain of
-/// trust, along with a corresponding private key.
-#[derive(Clone, Debug)]
-pub struct Identity {
-    /// Name of the cert format.
-    format: &'static str,
-
-    /// The certificate data, either a path or a blob.
-    data: PathOrBlob,
-
-    /// Private key corresponding to the SSL/TLS certificate.
-    private_key: Option<PrivateKey>,
-
-    /// Password to decrypt the certificate file.
-    password: Option<String>,
-}
-
-impl Identity {
-    /// Use a PEM-encoded certificate stored in the given byte buffer.
-    ///
-    /// The certificate object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The certificate is not parsed or validated here. If the certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn pem<B, P>(bytes: B, private_key: P) -> Self
-    where
-        B: Into<Vec<u8>>,
-        P: Into<Option<PrivateKey>>,
-    {
-        Self {
-            format: "PEM",
-            data: PathOrBlob::Blob(bytes.into()),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Use a DER-encoded certificate stored in the given byte buffer.
-    ///
-    /// The certificate object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The certificate is not parsed or validated here. If the certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn der<B, P>(bytes: B, private_key: P) -> Self
-    where
-        B: Into<Vec<u8>>,
-        P: Into<Option<PrivateKey>>,
-    {
-        Self {
-            format: "DER",
-            data: PathOrBlob::Blob(bytes.into()),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Use a certificate and private key from a PKCS #12 archive stored in the
-    /// given byte buffer.
-    ///
-    /// The certificate object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The certificate is not parsed or validated here. If the certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn pkcs12<B, P>(bytes: B, password: P) -> Self
-    where
-        B: Into<Vec<u8>>,
-        P: Into<Option<String>>,
-    {
-        Self {
-            format: "P12",
-            data: PathOrBlob::Blob(bytes.into()),
-            private_key: None,
-            password: password.into(),
-        }
-    }
-
-    /// Get a certificate from a PEM-encoded file.
-    ///
-    /// The certificate file is not loaded or validated here. If the file does
-    /// not exist or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
-        Self {
-            format: "PEM",
-            data: PathOrBlob::Path(path.into()),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Get a certificate from a DER-encoded file.
-    ///
-    /// The certificate file is not loaded or validated here. If the file does
-    /// not exist or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
-        Self {
-            format: "DER",
-            data: PathOrBlob::Path(path.into()),
-            private_key: private_key.into(),
-            password: None,
-        }
-    }
-
-    /// Get a certificate and private key from a PKCS #12-encoded file.
-    ///
-    /// The certificate file is not loaded or validated here. If the file does
-    /// not exist or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "P12",
-            data: PathOrBlob::Path(path.into()),
-            private_key: None,
-            password: password.into(),
-        }
-    }
-}
-
-impl SetOpt for Identity {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_cert_type(self.format)?;
-
-        match &self.data {
-            PathOrBlob::Path(path) => easy.ssl_cert(path.as_path()),
-            PathOrBlob::Blob(bytes) => easy.ssl_cert_blob(bytes.as_slice()),
-        }?;
-
-        if let Some(key) = self.private_key.as_ref() {
-            key.set_opt(easy)?;
-        }
-
-        if let Some(password) = self.password.as_ref() {
-            easy.key_password(password)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// A private key file.
-#[derive(Clone, Debug)]
-pub struct PrivateKey {
-    /// Key format name.
-    format: &'static str,
-
-    /// The certificate data, either a path or a blob.
-    data: PathOrBlob,
-
-    /// Password to decrypt the key file.
-    password: Option<String>,
-}
-
-impl PrivateKey {
-    /// Use a PEM-encoded private key stored in the given byte buffer.
-    ///
-    /// The private key object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The key is not parsed or validated here. If the key is malformed or the
-    /// format is not supported by the underlying SSL/TLS engine, an error will
-    /// be returned when attempting to send a request using the offending key.
-    pub fn pem<B, P>(bytes: B, password: P) -> Self
-    where
-        B: Into<Vec<u8>>,
-        P: Into<Option<String>>,
-    {
-        Self {
-            format: "PEM",
-            data: PathOrBlob::Blob(bytes.into()),
-            password: password.into(),
-        }
-    }
-
-    /// Use a DER-encoded private key stored in the given byte buffer.
-    ///
-    /// The private key object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The key is not parsed or validated here. If the key is malformed or the
-    /// format is not supported by the underlying SSL/TLS engine, an error will
-    /// be returned when attempting to send a request using the offending key.
-    pub fn der<B, P>(bytes: B, password: P) -> Self
-    where
-        B: Into<Vec<u8>>,
-        P: Into<Option<String>>,
-    {
-        Self {
-            format: "DER",
-            data: PathOrBlob::Blob(bytes.into()),
-            password: password.into(),
-        }
-    }
-
-    /// Get a PEM-encoded private key file.
-    ///
-    /// The key file is not loaded or validated here. If the file does not exist
-    /// or the format is not supported by the underlying SSL/TLS engine, an
-    /// error will be returned when attempting to send a request using the
-    /// offending key.
-    pub fn pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "PEM",
-            data: PathOrBlob::Path(path.into()),
-            password: password.into(),
-        }
-    }
-
-    /// Get a DER-encoded private key file.
-    ///
-    /// The key file is not loaded or validated here. If the file does not exist
-    /// or the format is not supported by the underlying SSL/TLS engine, an
-    /// error will be returned when attempting to send a request using the
-    /// offending key.
-    pub fn der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self {
-            format: "DER",
-            data: PathOrBlob::Path(path.into()),
-            password: password.into(),
-        }
-    }
-}
-
-impl SetOpt for PrivateKey {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_key_type(self.format)?;
-
-        match &self.data {
-            PathOrBlob::Path(path) => easy.ssl_key(path.as_path()),
-            PathOrBlob::Blob(bytes) => easy.ssl_key_blob(bytes.as_slice()),
-        }?;
-
-        if let Some(password) = self.password.as_ref() {
-            easy.key_password(password)?;
-        }
-
-        Ok(())
     }
 }
 

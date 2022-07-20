@@ -1,7 +1,10 @@
 //! Trusted root certificate discovery and handling.
 
 use super::{has_tls_engine, Certificate, TlsEngine};
-use crate::config::request::SetOpt;
+use crate::{
+    config::{proxy::SetOptProxy, request::SetOpt},
+    error::create_curl_error,
+};
 use curl::easy::Easy2;
 use once_cell::sync::Lazy;
 use std::{env, os::raw::c_char, path::PathBuf, ptr};
@@ -119,7 +122,7 @@ impl RootCertStore {
     /// ```
     /// use isahc::tls::RootCertStore;
     ///
-    /// let store = RootCertStore::file("/etc/certs/cabundle.pem");
+    /// let store = RootCertStore::from_file("/etc/certs/cabundle.pem");
     /// ```
     pub fn from_file<P: Into<PathBuf>>(path: P) -> Self {
         Self(StoreImpl::FilePath(path.into()))
@@ -207,11 +210,65 @@ impl SetOpt for RootCertStore {
 
                 match NATIVE_CERTS.get_or_try_init(load_native_certs) {
                     Ok(certs) => certs.set_opt(easy),
-                    Err(e) => {
-                        let mut error = curl::Error::new(curl_sys::CURLE_SSL_CACERT_BADFILE);
-                        error.set_extra(e.to_string());
-                        Err(error)
-                    }
+                    Err(e) => Err(create_curl_error(curl_sys::CURLE_SSL_CACERT_BADFILE, e)),
+                }
+            }
+        }
+    }
+}
+
+impl SetOptProxy for RootCertStore {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        match &self.0 {
+            StoreImpl::NoOp => Ok(()),
+            StoreImpl::FilePath(path) => {
+                if let Some(path) = path.to_str() {
+                    easy.proxy_cainfo(path)
+                } else {
+                    Err(create_curl_error(
+                        curl_sys::CURLE_SSL_CACERT_BADFILE,
+                        "path is not valid UTF-8",
+                    ))
+                }
+            }
+            StoreImpl::PemBundle(bundle) => easy.proxy_ssl_cainfo_blob(bundle.as_bytes()),
+
+            #[allow(unsafe_code)]
+            StoreImpl::Unset => {
+                // safe wrapper does not allow setting to null
+                unsafe {
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        curl_sys::CURLOPT_PROXY_CAINFO,
+                        ptr::null_mut::<c_char>(),
+                    );
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        curl_sys::CURLOPT_PROXY_CAPATH,
+                        ptr::null_mut::<c_char>(),
+                    );
+                }
+
+                Ok(())
+            }
+
+            #[cfg(feature = "rustls-tls-native-certs")]
+            StoreImpl::RustlsNativeTls => {
+                use once_cell::sync::OnceCell;
+
+                static NATIVE_CERTS: OnceCell<RootCertStore> = OnceCell::new();
+
+                fn load_native_certs() -> std::io::Result<RootCertStore> {
+                    Ok(RootCertStore::custom(
+                        rustls_native_certs::load_native_certs()?
+                            .into_iter()
+                            .map(|cert| Certificate::from_der(cert.0)),
+                    ))
+                }
+
+                match NATIVE_CERTS.get_or_try_init(load_native_certs) {
+                    Ok(certs) => certs.set_opt(easy),
+                    Err(e) => Err(create_curl_error(curl_sys::CURLE_SSL_CACERT_BADFILE, e)),
                 }
             }
         }
