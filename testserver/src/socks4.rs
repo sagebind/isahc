@@ -31,19 +31,12 @@ impl Socks4Server {
     }
 
     pub fn run(&self) {
-        for stream in self.listener.incoming() {
-            match stream {
-                Ok(connection) => {
-                    let s = self.clone();
+        for connection in self.listener.incoming().flatten() {
+            let s = self.clone();
 
-                    pool().execute(move || {
-                        s.handle(connection).unwrap();
-                    });
-                }
-                Err(_) => {
-                    // ignore
-                }
-            }
+            pool().execute(move || {
+                s.handle(connection).unwrap();
+            });
         }
     }
 

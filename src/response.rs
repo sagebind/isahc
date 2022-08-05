@@ -520,7 +520,8 @@ fn allocate_buffer<T>(response: &Response<T>) -> Vec<u8> {
 }
 
 fn get_content_length<T>(response: &Response<T>) -> Option<u64> {
-    response.headers()
+    response
+        .headers()
         .get(http::header::CONTENT_LENGTH)?
         .to_str()
         .ok()?

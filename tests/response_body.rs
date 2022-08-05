@@ -153,7 +153,7 @@ fn consume_unread_response_body() {
     let body = "wow so large ".repeat(1000);
 
     let m = {
-        let body = body.clone();
+        let body = body;
         mock! {
             _ => {
                 body: body.clone(),
@@ -173,7 +173,7 @@ fn consume_unread_response_body_async() {
     let body = "wow so large ".repeat(1000);
 
     let m = {
-        let body = body.clone();
+        let body = body;
         mock! {
             _ => {
                 body: body.clone(),

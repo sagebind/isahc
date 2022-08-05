@@ -314,7 +314,7 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = AsyncBody::from_reader(futures_lite::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 
     #[test]

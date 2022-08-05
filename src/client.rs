@@ -1064,16 +1064,14 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        let request_config = request
-            .extensions()
-            .get::<RequestConfig>()
-            .unwrap();
+        let request_config = request.extensions().get::<RequestConfig>().unwrap();
 
         request_config.set_opt(&mut easy)?;
         self.inner.client_config.set_opt(&mut easy)?;
 
         // Check if we need to disable the Expect header.
-        let disable_expect_header = request_config.expect_continue
+        let disable_expect_header = request_config
+            .expect_continue
             .as_ref()
             .map(|x| x.is_disabled())
             .unwrap_or_default();
@@ -1324,13 +1322,10 @@ mod tests {
 
     #[test]
     fn test_default_header() {
-        let client = HttpClientBuilder::new()
+        HttpClientBuilder::new()
             .default_header("some-key", "some-value")
-            .build();
-        match client {
-            Ok(_) => assert!(true),
-            Err(_) => assert!(false),
-        }
+            .build()
+            .expect("build client succeed");
     }
 
     #[test]

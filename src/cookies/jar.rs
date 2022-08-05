@@ -347,24 +347,23 @@ mod tests {
     fn cookie_domain_not_allowed() {
         let jar = CookieJar::default();
 
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar; domain=baz.com").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
+        jar.set(
+            Cookie::parse("foo=bar").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
+
+        jar.set(
+            Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
+
+        jar.set(
+            Cookie::parse("foo=bar; domain=baz.com").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
 
         assert!(
             jar.set(

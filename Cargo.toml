@@ -9,7 +9,7 @@ categories = ["web-programming::http-client"]
 repository = "https://github.com/sagebind/isahc"
 documentation = "https://docs.rs/isahc/"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 exclude = [".*", "benchmarks", "media", "src/cookies/psl/list/*/"]
 
 [package.metadata.docs.rs]

@@ -19,7 +19,9 @@ pub(crate) struct CookieInterceptor {
 
 impl CookieInterceptor {
     pub(crate) fn new(cookie_jar: Option<CookieJar>) -> Self {
-        Self { cookie_jar }
+        Self {
+            cookie_jar,
+        }
     }
 }
 

@@ -442,7 +442,7 @@ mod tests {
     #[test_case("bad_value_comma=bar,")]
     #[test_case("bad_value_space= bar")]
     fn parse_invalid(s: &str) {
-        assert!(Cookie::parse(s).is_err());
+        Cookie::parse(s).unwrap_err();
     }
 
     #[test_case("foo=bar")]
