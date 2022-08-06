@@ -334,6 +334,6 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = Body::from_reader(std::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 }

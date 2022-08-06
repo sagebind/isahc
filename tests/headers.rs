@@ -221,7 +221,6 @@ fn trailer_headers() {
     let mut body = None;
     let response = isahc::get(url).unwrap().map(|b| {
         body = Some(b);
-        ()
     });
 
     thread::spawn(move || {
@@ -264,7 +263,6 @@ fn trailer_headers_async() {
         let mut body = None;
         let response = isahc::get_async(url).await.unwrap().map(|b| {
             body = Some(b);
-            ()
         });
 
         thread::spawn(move || {

@@ -1,7 +1,7 @@
-edition = "2018"
+edition = "2021"
 imports_layout = "HorizontalVertical"
-merge_imports = true
 overflow_delimited_expr = true
 struct_lit_single_line = false
 use_field_init_shorthand = true
+imports_granularity="Crate"
 version = "Two"

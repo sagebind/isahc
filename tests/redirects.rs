@@ -282,8 +282,14 @@ fn auto_referer_sets_expected_header() {
         .unwrap();
 
     assert_eq!(m1.request().get_header("Referer").count(), 0);
-    assert_eq!(m2.request().get_header("Referer").collect::<Vec<_>>(), vec![m1.url()]);
-    assert_eq!(m3.request().get_header("Referer").collect::<Vec<_>>(), vec![m2.url()]);
+    assert_eq!(
+        m2.request().get_header("Referer").collect::<Vec<_>>(),
+        vec![m1.url()]
+    );
+    assert_eq!(
+        m3.request().get_header("Referer").collect::<Vec<_>>(),
+        vec![m2.url()]
+    );
 }
 
 #[test]

@@ -538,7 +538,8 @@ impl curl::easy::Handler for RequestHandler {
                         if !self.disable_connection_reuse_log
                             && self.response_version < Some(http::Version::HTTP_2)
                         {
-                            tracing::info!("\
+                            tracing::info!(
+                                "\
                                 response dropped without fully consuming the response body, connection won't be reused\n\
                                 Aborting a response without fully consuming the response body can result in sub-optimal \
                                 performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early."
