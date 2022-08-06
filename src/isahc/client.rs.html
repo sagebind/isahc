@@ -1454,7 +1454,7 @@
                 <span class="comment">// and thus the outermost, interceptor. Also note that this does</span>
                 <span class="comment">// not enable redirect following, it just implements support for</span>
                 <span class="comment">// it, if a request asks for it.</span>
-                <span class="ident">InterceptorObj::new</span>(<span class="ident"><span class="kw">crate</span>::redirect::RedirectInterceptor</span>),
+                <span class="ident"><span class="kw">crate</span>::redirect::RedirectInterceptor</span>.<span class="ident">into</span>(),
             ],
             <span class="ident">default_headers</span>: <span class="ident">HeaderMap::new</span>(),
             <span class="ident">error</span>: <span class="prelude-val">None</span>,
@@ -1517,7 +1517,7 @@
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">interceptor_impl</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">interceptor</span>: <span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">push</span>(<span class="ident">InterceptorObj::new</span>(<span class="ident">interceptor</span>));
+        <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">push</span>(<span class="ident">interceptor</span>.<span class="ident">into</span>());
         <span class="self">self</span>
     }
 

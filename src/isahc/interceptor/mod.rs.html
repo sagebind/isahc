@@ -171,15 +171,6 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
 </pre><pre class="rust"><code><span class="doccomment">//! HTTP client interceptor API.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module provides the core types and functions for defining and working</span>
@@ -193,15 +184,6 @@
 <span class="doccomment">//!   generic over a lifetime, there&#39;s no way to give the return type the</span>
 <span class="doccomment">//!   correct name using current Rust syntax.</span>
 <span class="doccomment">//! - [`InterceptorObj`] wraps the returned future in an extra box.</span>
-<span class="doccomment">//! - If an interceptor returns a custom error, it is stringified and wrapped in</span>
-<span class="doccomment">//!   `Error::Curl`. We should introduce a new error variant that boxes the</span>
-<span class="doccomment">//!   error and also records the type of the interceptor that created the error</span>
-<span class="doccomment">//!   for visibility. But we can&#39;t add a new variant right now without a BC</span>
-<span class="doccomment">//!   break. See [#182](https://github.com/sagebind/isahc/issues/182).</span>
-<span class="doccomment">//! - Automatic redirect following currently bypasses interceptors for</span>
-<span class="doccomment">//!   subsequent requests. This will be fixed when redirect handling is</span>
-<span class="doccomment">//!   rewritten as an interceptor itself. See</span>
-<span class="doccomment">//!   [#232](https://github.com/sagebind/isahc/issues/232).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Availability</span>
 <span class="doccomment">///</span>
