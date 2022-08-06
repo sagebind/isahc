@@ -104,7 +104,7 @@ impl HttpClientBuilder {
                 // and thus the outermost, interceptor. Also note that this does
                 // not enable redirect following, it just implements support for
                 // it, if a request asks for it.
-                InterceptorObj::new(crate::redirect::RedirectInterceptor),
+                crate::redirect::RedirectInterceptor.into(),
             ],
             default_headers: HeaderMap::new(),
             error: None,
@@ -167,7 +167,7 @@ impl HttpClientBuilder {
 
     #[allow(unused)]
     pub(crate) fn interceptor_impl(mut self, interceptor: impl Interceptor + 'static) -> Self {
-        self.interceptors.push(InterceptorObj::new(interceptor));
+        self.interceptors.push(interceptor.into());
         self
     }
 
