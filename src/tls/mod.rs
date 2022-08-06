@@ -50,11 +50,11 @@ use crate::{
 use curl::easy::{Easy2, SslOpt, SslVersion};
 use std::path::PathBuf;
 
-mod mtls;
+mod identity;
 mod roots;
 
 pub use self::{
-    mtls::{Identity, PrivateKey},
+    identity::{Identity, PrivateKey},
     roots::RootCertStore,
 };
 
@@ -81,23 +81,6 @@ pub struct TlsConfigBuilder {
 }
 
 impl TlsConfigBuilder {
-    /// Add a certificate to the trusted roots. This is used to verify the
-    /// authenticity of the server.
-    ///
-    /// This takes precedence over
-    /// [`TlsConfigBuilder::root_ca_certificate_path`].
-    ///
-    /// The default value is none.
-    ///
-    /// # Notes
-    ///
-    /// On Windows it may be necessary to combine this with
-    /// [`TlsConfigBuilder::danger_accept_revoked_certs`] in order to work
-    /// depending on the contents of your CA bundle.
-    pub fn root_ca_certificate(self, cert: Certificate) -> Self {
-        self.root_cert_store(RootCertStore::custom([cert]))
-    }
-
     /// Set the certificate store containing trusted root certificates to use
     /// for validating server certificates.
     ///
@@ -125,14 +108,14 @@ impl TlsConfigBuilder {
     ///     // Use the native certificate store
     ///     .root_cert_store(RootCertStore::native())
     ///     // Use a specific certificate bundle file
-    ///     .root_cert_store(RootCertStore::file("/etc/certs/cabundle.pem"))
+    ///     .root_cert_store(RootCertStore::from_file("/etc/certs/cabundle.pem"))
     ///     // Use custom certs in memory
     ///     .root_cert_store(RootCertStore::custom([
     ///         Certificate::from_pem("(some long PEM string)"),
     ///     ]))
     ///     // You could even include a certificate bundle in your binary
     ///     .root_cert_store(RootCertStore::custom([
-    ///         Certificate::from_pem(include_str!("bundle.pem")),
+    ///         Certificate::from_pem(include_str!("../../tests/certs/isrgrootx1.pem")),
     ///     ]))
     ///     .build();
     /// ```
@@ -189,7 +172,7 @@ impl TlsConfigBuilder {
     /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
     ///
     /// let config = TlsConfig::builder()
-    ///     .identity(Identity::pem_file(
+    ///     .identity(Identity::from_pem_file(
     ///         "client.pem",
     ///         PrivateKey::pem_file("key.pem", String::from("secret"))
     ///     ))

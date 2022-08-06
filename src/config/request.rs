@@ -82,6 +82,9 @@ define_request_config! {
     tls_config: Option<crate::tls::TlsConfig>,
 
     #[cfg(feature = "tls")]
+    identity: Option<crate::tls::Identity>,
+
+    #[cfg(feature = "tls")]
     proxy_tls_config: Option<crate::tls::TlsConfig>,
 
     // Used by interceptors

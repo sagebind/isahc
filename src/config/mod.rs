@@ -551,39 +551,6 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Set various options that control SSL/TLS behavior for a proxy.
-    ///
-    /// By default, the same TLS configuration is used for validating all
-    /// SSL/TLS connections, but this method allows you to use separate
-    /// configuration specifically for proxy server connections.
-    ///
-    /// # Warning
-    ///
-    /// You should think very carefully before using this method. Using *any*
-    /// options that alter how certificates are validated can introduce
-    /// significant security vulnerabilities.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .proxy_tls_config(TlsConfig::builder()
-    ///         .danger_accept_invalid_certs(true)
-    ///         .danger_accept_revoked_certs(true)
-    ///         .build())
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[cfg(feature = "tls")]
-    #[must_use = "builders have no effect if unused"]
-    fn proxy_tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
-        self.with_config(move |config| {
-            config.proxy_tls_config = Some(tls_config);
-        })
-    }
-
     /// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
@@ -649,6 +616,86 @@ pub trait Configurable: request::WithRequestConfig {
     fn tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
             config.tls_config = Some(tls_config);
+        })
+    }
+
+    /// Add a custom client certificate to use for client authentication, also
+    /// known as *mutual TLS*.
+    ///
+    /// SSL/TLS is often used by the client to verify that the server is
+    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
+    /// the server to verify that _you_ are legitimate (two-way). If the server
+    /// asks the client to present an approved certificate before continuing,
+    /// then this sets the certificate chain that will be used to prove
+    /// authenticity.
+    ///
+    /// If a certificate or key format given is not supported by the underlying
+    /// SSL/TLS engine, an error will be returned when attempting to send a
+    /// request using the offending certificate or key.
+    ///
+    /// By default, no client certificate is set.
+    ///
+    /// # Backend support
+    ///
+    /// Support for mutual TLS varies between the available TLS backends. Here
+    /// are some current limitations of note:
+    ///
+    /// - Schannel and Secure Transport require certificates and private keys to
+    ///   be presented together inside a PKCS #12 archive. This can be an actual
+    ///   archive or one in memory.
+    /// - Mutual TLS with Rustls is not supported at all.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
+    ///
+    /// let config = TlsConfig::builder()
+    ///     .identity(Identity::from_pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
+    ///     ))
+    ///     .build();
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    #[cfg(feature = "tls")]
+    #[must_use = "builders have no effect if unused"]
+    fn tls_identity(self, identity: crate::tls::Identity) -> Self {
+        self.with_config(move |config| {
+            config.identity = Some(identity);
+        })
+    }
+
+    /// Set various options that control SSL/TLS behavior for a proxy.
+    ///
+    /// By default, the same TLS configuration is used for validating all
+    /// SSL/TLS connections, but this method allows you to use separate
+    /// configuration specifically for proxy server connections.
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    #[cfg(feature = "tls")]
+    #[must_use = "builders have no effect if unused"]
+    fn proxy_tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
+        self.with_config(move |config| {
+            config.proxy_tls_config = Some(tls_config);
         })
     }
 

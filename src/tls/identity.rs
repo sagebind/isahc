@@ -8,8 +8,8 @@ enum PathOrBlob {
     Blob(Vec<u8>),
 }
 
-/// Holds a X.509 certificate, potentially other certificates in its chain of
-/// trust, along with a corresponding private key.
+/// Holds a X.509 certificate along with potentially other certificates in its
+/// chain of trust and a corresponding private key.
 #[derive(Clone, Debug)]
 pub struct Identity {
     /// Name of the cert format.
@@ -35,7 +35,7 @@ impl Identity {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pem<B, P>(bytes: B, private_key: P) -> Self
+    pub fn from_pem<B, P>(bytes: B, private_key: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<PrivateKey>>,
@@ -57,7 +57,7 @@ impl Identity {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn der<B, P>(bytes: B, private_key: P) -> Self
+    pub fn from_der<B, P>(bytes: B, private_key: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<PrivateKey>>,
@@ -80,7 +80,7 @@ impl Identity {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pkcs12<B, P>(bytes: B, password: P) -> Self
+    pub fn from_pkcs12<B, P>(bytes: B, password: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<String>>,
@@ -99,7 +99,7 @@ impl Identity {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+    pub fn from_pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
         Self {
             format: "PEM",
             data: PathOrBlob::Path(path.into()),
@@ -114,7 +114,7 @@ impl Identity {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+    pub fn from_der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
         Self {
             format: "DER",
             data: PathOrBlob::Path(path.into()),
@@ -129,7 +129,7 @@ impl Identity {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+    pub fn from_pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
             format: "P12",
             data: PathOrBlob::Path(path.into()),
