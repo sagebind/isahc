@@ -19,7 +19,9 @@ pub(crate) struct CookieInterceptor {
 
 impl CookieInterceptor {
     pub(crate) fn new(cookie_jar: Option<CookieJar>) -> Self {
-        Self { cookie_jar }
+        Self {
+            cookie_jar,
+        }
     }
 }
 
@@ -30,7 +32,9 @@ impl Interceptor for CookieInterceptor {
         &self,
         mut request: Request<AsyncBody>,
         ctx: Context,
-    ) -> InterceptorFuture<'_, Self::Err> {
+    ) -> InterceptorFuture<Self::Err> {
+        let cookie_jar = self.cookie_jar.clone();
+
         Box::pin(async move {
             // Determine the cookie jar to use for this request. If one is
             // attached to this specific request, use it, otherwise use the
@@ -39,7 +43,7 @@ impl Interceptor for CookieInterceptor {
                 .extensions()
                 .get::<CookieJar>()
                 .cloned()
-                .or_else(|| self.cookie_jar.clone());
+                .or(cookie_jar);
 
             if let Some(jar) = jar.as_ref() {
                 // Get the outgoing cookie header.

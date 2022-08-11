@@ -60,15 +60,12 @@ pub trait Interceptor: Send + Sync {
     ///
     /// The returned future is allowed to borrow the interceptor for the
     /// duration of its execution.
-    fn intercept(
-        &self,
-        request: Request<AsyncBody>,
-        ctx: Context,
-    ) -> InterceptorFuture<'_, Self::Err>;
+    fn intercept(&self, request: Request<AsyncBody>, ctx: Context) -> InterceptorFuture<Self::Err>;
 }
 
 /// The type of future returned by an interceptor.
-pub type InterceptorFuture<'a, E> = Pin<Box<dyn Future<Output = InterceptorResult<E>> + Send + 'a>>;
+pub type InterceptorFuture<E> =
+    Pin<Box<dyn Future<Output = InterceptorResult<E>> + Send + 'static>>;
 
 /// Creates an interceptor from an arbitrary closure or function.
 pub fn from_fn<F, E>(f: F) -> InterceptorFn<F>
@@ -96,11 +93,7 @@ where
 {
     type Err = E;
 
-    fn intercept(
-        &self,
-        request: Request<AsyncBody>,
-        ctx: Context,
-    ) -> InterceptorFuture<'_, Self::Err> {
+    fn intercept(&self, request: Request<AsyncBody>, ctx: Context) -> InterceptorFuture<Self::Err> {
         Box::pin(self.0.call(request, ctx))
     }
 }

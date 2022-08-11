@@ -30,7 +30,7 @@ impl Interceptor for RedirectInterceptor {
         &self,
         mut request: Request<AsyncBody>,
         ctx: Context,
-    ) -> InterceptorFuture<'_, Self::Err> {
+    ) -> InterceptorFuture<Self::Err> {
         Box::pin(async move {
             // Store the effective URI to include in the response.
             let mut effective_uri = request.uri().clone();

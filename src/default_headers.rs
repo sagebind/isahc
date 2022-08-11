@@ -13,7 +13,9 @@ pub(crate) struct DefaultHeadersInterceptor {
 
 impl From<HeaderMap<HeaderValue>> for DefaultHeadersInterceptor {
     fn from(headers: HeaderMap<HeaderValue>) -> Self {
-        Self { headers }
+        Self {
+            headers,
+        }
     }
 }
 
@@ -24,14 +26,16 @@ impl Interceptor for DefaultHeadersInterceptor {
         &self,
         mut request: Request<AsyncBody>,
         ctx: Context,
-    ) -> InterceptorFuture<'_, Self::Err> {
+    ) -> InterceptorFuture<Self::Err> {
+        let headers = self.headers.clone();
+
         Box::pin(async move {
             // We are checking here if header already contains the key, simply
             // ignore it. In case the key wasn't present in parts.headers ensure
             // that we have all the headers from default headers.
-            for name in self.headers.keys() {
+            for name in headers.keys() {
                 if !request.headers().contains_key(name) {
-                    for v in self.headers.get_all(name).iter() {
+                    for v in headers.get_all(name).iter() {
                         request.headers_mut().append(name, v.clone());
                     }
                 }
