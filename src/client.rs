@@ -1160,11 +1160,8 @@ impl HttpClient {
     }
 }
 
-impl crate::interceptor::Invoke for HttpClient {
-    fn invoke(
-        &self,
-        mut request: Request<AsyncBody>,
-    ) -> crate::interceptor::InterceptorFuture<Error> {
+impl interceptor::Invoke for HttpClient {
+    fn invoke(&self, mut request: Request<AsyncBody>) -> InterceptorFuture<Error> {
         let client = self.clone();
 
         Box::pin(async move {
