@@ -21,8 +21,7 @@ use futures_lite::{
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request,
-    Response,
+    Request, Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -1012,10 +1011,8 @@ impl HttpClient {
             uri = ?request.uri(),
         );
 
-        let client = self.clone();
         ResponseFuture::new(
-            client
-                .send_async_inner(request.map(Into::into))
+            self.send_async_inner(request.map(Into::into))
                 .instrument(span),
         )
     }
