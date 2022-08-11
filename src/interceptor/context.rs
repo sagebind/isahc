@@ -1,32 +1,32 @@
-use super::{Interceptor, InterceptorFuture, InterceptorObj};
-use crate::{body::AsyncBody, error::Error};
+use super::{Interceptor, InterceptorFuture};
+use crate::{body::AsyncBody, error::Error, HttpClient};
 use http::{Request, Response};
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 /// Execution context for an interceptor.
-pub struct Context<'a> {
-    pub(crate) invoker: Arc<dyn Invoke + Send + Sync + 'a>,
-    pub(crate) interceptors: &'a [InterceptorObj],
+pub struct Context {
+    pub(crate) client: HttpClient,
+    pub(crate) interceptor_offset: usize,
 }
 
-impl<'a> Context<'a> {
+impl Context {
     /// Send a request asynchronously, executing the next interceptor in the
     /// chain, if any.
     pub async fn send(&self, request: Request<AsyncBody>) -> Result<Response<AsyncBody>, Error> {
-        if let Some(interceptor) = self.interceptors.first() {
+        if let Some(interceptor) = self.client.interceptors().get(self.interceptor_offset) {
             let inner_context = Self {
-                invoker: self.invoker.clone(),
-                interceptors: &self.interceptors[1..],
+                client: self.client.clone(),
+                interceptor_offset: self.interceptor_offset + 1,
             };
 
             interceptor.intercept(request, inner_context).await
         } else {
-            self.invoker.invoke(request).await
+            self.client.invoke(request).await
         }
     }
 }
 
-impl fmt::Debug for Context<'_> {
+impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context").finish()
     }

@@ -19,20 +19,18 @@ pub(crate) struct CookieInterceptor {
 
 impl CookieInterceptor {
     pub(crate) fn new(cookie_jar: Option<CookieJar>) -> Self {
-        Self {
-            cookie_jar,
-        }
+        Self { cookie_jar }
     }
 }
 
 impl Interceptor for CookieInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(
-        &'a self,
+    fn intercept(
+        &self,
         mut request: Request<AsyncBody>,
-        ctx: Context<'a>,
-    ) -> InterceptorFuture<'a, Self::Err> {
+        ctx: Context,
+    ) -> InterceptorFuture<'_, Self::Err> {
         Box::pin(async move {
             // Determine the cookie jar to use for this request. If one is
             // attached to this specific request, use it, otherwise use the

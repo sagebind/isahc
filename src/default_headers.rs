@@ -13,20 +13,18 @@ pub(crate) struct DefaultHeadersInterceptor {
 
 impl From<HeaderMap<HeaderValue>> for DefaultHeadersInterceptor {
     fn from(headers: HeaderMap<HeaderValue>) -> Self {
-        Self {
-            headers,
-        }
+        Self { headers }
     }
 }
 
 impl Interceptor for DefaultHeadersInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(
-        &'a self,
+    fn intercept(
+        &self,
         mut request: Request<AsyncBody>,
-        ctx: Context<'a>,
-    ) -> InterceptorFuture<'a, Self::Err> {
+        ctx: Context,
+    ) -> InterceptorFuture<'_, Self::Err> {
         Box::pin(async move {
             // We are checking here if header already contains the key, simply
             // ignore it. In case the key wasn't present in parts.headers ensure

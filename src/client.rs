@@ -21,8 +21,7 @@ use futures_lite::{
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request,
-    Response,
+    Request, Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -651,6 +650,11 @@ impl HttpClient {
         self.inner.cookie_jar.as_ref()
     }
 
+    /// Get the configured interceptors for this HTTP client.
+    pub(crate) fn interceptors(&self) -> &[InterceptorObj] {
+        &self.inner.interceptors
+    }
+
     /// Send a GET request to the given URI.
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
@@ -1029,8 +1033,8 @@ impl HttpClient {
         }
 
         let ctx = interceptor::Context {
-            invoker: Arc::new(self),
-            interceptors: &self.inner.interceptors,
+            client: self.clone(),
+            interceptor_offset: 0,
         };
 
         ctx.send(request).await
@@ -1159,7 +1163,7 @@ impl HttpClient {
     }
 }
 
-impl crate::interceptor::Invoke for &HttpClient {
+impl crate::interceptor::Invoke for HttpClient {
     fn invoke(
         &self,
         mut request: Request<AsyncBody>,
@@ -1260,7 +1264,7 @@ impl<'c> ResponseFuture<'c> {
 impl Future for ResponseFuture<'_> {
     type Output = Result<Response<AsyncBody>, Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         self.0.as_mut().poll(cx)
     }
 }
@@ -1281,7 +1285,7 @@ struct ResponseBody {
 impl AsyncRead for ResponseBody {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut Context,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = Pin::new(&mut self.inner);

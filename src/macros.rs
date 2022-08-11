@@ -31,7 +31,7 @@ macro_rules! decl_future {
             impl<$($($T: Unpin),*)*> ::std::future::Future for $ident<'_, $($($T),*)*> {
                 type Output = $output;
 
-                fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
+                fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context) -> ::std::task::Poll<Self::Output> {
                     self.as_mut().inner.as_mut().poll(cx)
                 }
             }

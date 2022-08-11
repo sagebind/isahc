@@ -20,8 +20,7 @@ use std::{
     ffi::CStr,
     fmt,
     future::Future,
-    io,
-    mem,
+    io, mem,
     net::SocketAddr,
     os::raw::{c_char, c_long},
     pin::Pin,
@@ -680,7 +679,7 @@ pub(crate) struct ResponseBodyReader {
 impl AsyncRead for ResponseBodyReader {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut Context,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = Pin::new(&mut self.inner);

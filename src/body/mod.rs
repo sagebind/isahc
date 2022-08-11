@@ -188,7 +188,7 @@ impl AsyncBody {
 impl AsyncRead for AsyncBody {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        cx: &mut Context,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         match &mut self.0 {
