@@ -27,21 +27,17 @@ impl Interceptor for DefaultHeadersInterceptor {
         mut request: Request<AsyncBody>,
         ctx: Context,
     ) -> InterceptorFuture<Self::Err> {
-        let headers = self.headers.clone();
-
-        Box::pin(async move {
-            // We are checking here if header already contains the key, simply
-            // ignore it. In case the key wasn't present in parts.headers ensure
-            // that we have all the headers from default headers.
-            for name in headers.keys() {
-                if !request.headers().contains_key(name) {
-                    for v in headers.get_all(name).iter() {
-                        request.headers_mut().append(name, v.clone());
-                    }
+        // We are checking here if header already contains the key, simply
+        // ignore it. In case the key wasn't present in parts.headers ensure
+        // that we have all the headers from default headers.
+        for name in self.headers.keys() {
+            if !request.headers().contains_key(name) {
+                for v in self.headers.get_all(name).iter() {
+                    request.headers_mut().append(name, v.clone());
                 }
             }
+        }
 
-            ctx.send(request).await
-        })
+        ctx.send(request)
     }
 }
