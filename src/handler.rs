@@ -680,7 +680,7 @@ pub(crate) struct ResponseBodyReader {
 impl AsyncRead for ResponseBodyReader {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context,
+        cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = Pin::new(&mut self.inner);

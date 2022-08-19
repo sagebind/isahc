@@ -236,6 +236,7 @@
     missing_docs,
     unreachable_pub,
     unused,
+    elided_lifetimes_in_paths,
     clippy::all
 )]
 // These lints suggest to use features not available in our MSRV.

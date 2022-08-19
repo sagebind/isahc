@@ -1261,7 +1261,7 @@ impl ResponseFuture {
 impl Future for ResponseFuture {
     type Output = Result<Response<AsyncBody>, Error>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.0.as_mut().poll(cx)
     }
 }
@@ -1282,7 +1282,7 @@ struct ResponseBody {
 impl AsyncRead for ResponseBody {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context,
+        cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         let inner = Pin::new(&mut self.inner);
