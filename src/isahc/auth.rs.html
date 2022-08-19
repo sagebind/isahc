@@ -224,229 +224,229 @@
 <span id="222">222</span>
 <span id="223">223</span>
 <span id="224">224</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Types for working with HTTP authentication methods.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Types for working with HTTP authentication methods.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">proxy::Proxy</span>, <span class="ident">request::SetOpt</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fmt</span>,
-    <span class="ident">ops</span>::{<span class="ident">BitOr</span>, <span class="ident">BitOrAssign</span>},
+</span><span class="kw">use </span><span class="kw">crate</span>::config::{proxy::Proxy, request::SetOpt};
+<span class="kw">use </span>std::{
+    fmt,
+    ops::{BitOr, BitOrAssign},
 };
 
-<span class="doccomment">/// Credentials consisting of a username and a secret (password) that can be</span>
-<span class="doccomment">/// used to establish user identity.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Credentials</span> {
-    <span class="ident">username</span>: <span class="ident">String</span>,
-    <span class="ident">password</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Credentials consisting of a username and a secret (password) that can be
+/// used to establish user identity.
+</span><span class="attribute">#[derive(Clone)]</span>
+<span class="kw">pub struct </span>Credentials {
+    username: String,
+    password: String,
 }
 
-<span class="kw">impl</span> <span class="ident">Credentials</span> {
-    <span class="doccomment">/// Create credentials from a username and password.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">username</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">username</span>: <span class="ident">username</span>.<span class="ident">into</span>(),
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>Credentials {
+    <span class="doccomment">/// Create credentials from a username and password.
+    </span><span class="kw">pub fn </span>new(username: <span class="kw">impl </span>Into&lt;String&gt;, password: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            username: username.into(),
+            password: password.into(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Credentials</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">username</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">username</span>)<span class="question-mark">?</span>;
-        <span class="ident">easy</span>.<span class="ident">password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">password</span>)
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Credentials {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>curl::easy::Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.username(<span class="kw-2">&amp;</span><span class="self">self</span>.username)<span class="question-mark">?</span>;
+        easy.password(<span class="kw-2">&amp;</span><span class="self">self</span>.password)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">proxy_username</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">username</span>)<span class="question-mark">?</span>;
-        <span class="ident">easy</span>.<span class="ident">proxy_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">password</span>)
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Proxy&lt;Credentials&gt; {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>curl::easy::Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.proxy_username(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.username)<span class="question-mark">?</span>;
+        easy.proxy_password(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.password)
     }
 }
 
-<span class="comment">// Implement our own debug since we don&#39;t want to print passwords even on</span>
-<span class="comment">// accident.</span>
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Credentials</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Credentials&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;username&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">username</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;password&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;*****&quot;</span>)
-            .<span class="ident">finish</span>()
+<span class="comment">// Implement our own debug since we don&#39;t want to print passwords even on
+// accident.
+</span><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Credentials {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;Credentials&quot;</span>)
+            .field(<span class="string">&quot;username&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.username)
+            .field(<span class="string">&quot;password&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;*****&quot;</span>)
+            .finish()
     }
 }
 
-<span class="doccomment">/// Specifies one or more HTTP authentication schemes to use.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Authentication</span>(<span class="ident">u8</span>);
+<span class="doccomment">/// Specifies one or more HTTP authentication schemes to use.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>Authentication(u8);
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::none</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>Authentication {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::none()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Authentication</span> {
-    <span class="doccomment">/// Disable all authentication schemes. This is the default.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">none</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">Authentication</span>(<span class="number">0</span>)
+<span class="kw">impl </span>Authentication {
+    <span class="doccomment">/// Disable all authentication schemes. This is the default.
+    </span><span class="kw">pub const fn </span>none() -&gt; <span class="self">Self </span>{
+        Authentication(<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// Enable all available authentication schemes.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">all</span>() -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::basic</span>().<span class="number">0</span> <span class="op">|</span> <span class="ident"><span class="self">Self</span>::digest</span>().<span class="number">0</span>;
+    <span class="doccomment">/// Enable all available authentication schemes.
+    </span><span class="kw">pub const fn </span>all() -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[allow(unused_mut)]</span>
+        <span class="kw">let </span><span class="kw-2">mut </span>all = <span class="self">Self</span>::basic().<span class="number">0 </span>| <span class="self">Self</span>::digest().<span class="number">0</span>;
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="ident">all</span> <span class="op">|</span><span class="op">=</span> <span class="ident"><span class="self">Self</span>::negotiate</span>().<span class="number">0</span>;
+            all |= <span class="self">Self</span>::negotiate().<span class="number">0</span>;
         }
 
-        <span class="ident">Authentication</span>(<span class="ident">all</span>)
+        Authentication(all)
     }
 
-    <span class="doccomment">/// HTTP Basic authentication.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This authentication scheme sends the user name and password over the</span>
-    <span class="doccomment">/// network in plain text. Avoid using this scheme without TLS as the</span>
-    <span class="doccomment">/// credentials can be easily captured otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">basic</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">Authentication</span>(<span class="number">0b0001</span>)
+    <span class="doccomment">/// HTTP Basic authentication.
+    ///
+    /// This authentication scheme sends the user name and password over the
+    /// network in plain text. Avoid using this scheme without TLS as the
+    /// credentials can be easily captured otherwise.
+    </span><span class="kw">pub const fn </span>basic() -&gt; <span class="self">Self </span>{
+        Authentication(<span class="number">0b0001</span>)
     }
 
-    <span class="doccomment">/// HTTP Digest authentication.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Digest authentication is defined in RFC 2617 and is a more secure way to</span>
-    <span class="doccomment">/// do authentication over public networks than the regular old-fashioned</span>
-    <span class="doccomment">/// Basic method.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">digest</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">Authentication</span>(<span class="number">0b0010</span>)
+    <span class="doccomment">/// HTTP Digest authentication.
+    ///
+    /// Digest authentication is defined in RFC 2617 and is a more secure way to
+    /// do authentication over public networks than the regular old-fashioned
+    /// Basic method.
+    </span><span class="kw">pub const fn </span>digest() -&gt; <span class="self">Self </span>{
+        Authentication(<span class="number">0b0010</span>)
     }
 
-    <span class="doccomment">/// HTTP Negotiate (SPNEGO) authentication.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Negotiate authentication is defined in RFC 4559 and is the most secure</span>
-    <span class="doccomment">/// way to perform authentication over HTTP. Specifying [`Credentials`] is</span>
-    <span class="doccomment">/// not necessary as credentials are provided by platform authentication</span>
-    <span class="doccomment">/// means.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You need to build libcurl with a suitable GSS-API library or SSPI on</span>
-    <span class="doccomment">/// Windows for this to work. This is automatic when binding to curl</span>
-    <span class="doccomment">/// statically, otherwise it depends on how your system curl is configured.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the [`spnego`](../index.html#spnego)</span>
-    <span class="doccomment">/// feature is enabled.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">negotiate</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">Authentication</span>(<span class="number">0b0100</span>)
+    <span class="doccomment">/// HTTP Negotiate (SPNEGO) authentication.
+    ///
+    /// Negotiate authentication is defined in RFC 4559 and is the most secure
+    /// way to perform authentication over HTTP. Specifying [`Credentials`] is
+    /// not necessary as credentials are provided by platform authentication
+    /// means.
+    ///
+    /// You need to build libcurl with a suitable GSS-API library or SSPI on
+    /// Windows for this to work. This is automatic when binding to curl
+    /// statically, otherwise it depends on how your system curl is configured.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`spnego`](../index.html#spnego)
+    /// feature is enabled.
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;spnego&quot;</span>)]</span>
+    <span class="kw">pub const fn </span>negotiate() -&gt; <span class="self">Self </span>{
+        Authentication(<span class="number">0b0100</span>)
     }
 
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        (<span class="self">self</span>.<span class="number">0</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="number">0</span>) <span class="op">==</span> <span class="ident">other</span>.<span class="number">0</span>
-    }
+    <span class="kw">const fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="self">Self</span>) -&gt; bool {
+        (<span class="self">self</span>.<span class="number">0 </span>&amp; other.<span class="number">0</span>) == other.<span class="number">0
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">curl::easy::Auth</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">curl::easy::Auth::new</span>();
+    <span class="kw">fn </span>as_auth(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; curl::easy::Auth {
+        <span class="kw">let </span><span class="kw-2">mut </span>auth = curl::easy::Auth::new();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()) {
-            <span class="ident">auth</span>.<span class="ident">basic</span>(<span class="bool-val">true</span>);
+        <span class="kw">if </span><span class="self">self</span>.contains(Authentication::basic()) {
+            auth.basic(<span class="bool-val">true</span>);
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()) {
-            <span class="ident">auth</span>.<span class="ident">digest</span>(<span class="bool-val">true</span>);
+        <span class="kw">if </span><span class="self">self</span>.contains(Authentication::digest()) {
+            auth.digest(<span class="bool-val">true</span>);
         }
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
-                <span class="ident">auth</span>.<span class="ident">gssnegotiate</span>(<span class="bool-val">true</span>);
+            <span class="kw">if </span><span class="self">self</span>.contains(Authentication::negotiate()) {
+                auth.gssnegotiate(<span class="bool-val">true</span>);
             }
         }
 
-        <span class="ident">auth</span>
+        auth
     }
 }
 
-<span class="kw">impl</span> <span class="ident">BitOr</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="self">Self</span>;
+<span class="kw">impl </span>BitOr <span class="kw">for </span>Authentication {
+    <span class="kw">type </span>Output = <span class="self">Self</span>;
 
-    <span class="kw">fn</span> <span class="ident">bitor</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span> <span class="op">|</span><span class="op">=</span> <span class="ident">other</span>;
-        <span class="self">self</span>
+    <span class="kw">fn </span>bitor(<span class="kw-2">mut </span><span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self </span>|= other;
+        <span class="self">self
+    </span>}
+}
+
+<span class="kw">impl </span>BitOrAssign <span class="kw">for </span>Authentication {
+    <span class="kw">fn </span>bitor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
+        <span class="self">self</span>.<span class="number">0 </span>|= rhs.<span class="number">0</span>;
     }
 }
 
-<span class="kw">impl</span> <span class="ident">BitOrAssign</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
-    <span class="kw">fn</span> <span class="ident">bitor_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">rhs</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="number">0</span> <span class="op">|</span><span class="op">=</span> <span class="ident">rhs</span>.<span class="number">0</span>;
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Authentication</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Authentication {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>curl::easy::Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
-                <span class="comment">// Ensure auth engine is enabled, even though credentials do not</span>
-                <span class="comment">// need to be specified.</span>
-                <span class="ident">easy</span>.<span class="ident">username</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
-                <span class="ident">easy</span>.<span class="ident">password</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span><span class="self">self</span>.contains(Authentication::negotiate()) {
+                <span class="comment">// Ensure auth engine is enabled, even though credentials do not
+                // need to be specified.
+                </span>easy.username(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
+                easy.password(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
             }
         }
 
-        <span class="ident">easy</span>.<span class="ident">http_auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">as_auth</span>())
+        easy.http_auth(<span class="kw-2">&amp;</span><span class="self">self</span>.as_auth())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;spnego&quot;</span>)]</span>
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Proxy&lt;Authentication&gt; {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>curl::easy::Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;spnego&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">contains</span>(<span class="ident">Authentication::negotiate</span>()) {
-                <span class="comment">// Ensure auth engine is enabled, even though credentials do not</span>
-                <span class="comment">// need to be specified.</span>
-                <span class="ident">easy</span>.<span class="ident">proxy_username</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
-                <span class="ident">easy</span>.<span class="ident">proxy_password</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span><span class="self">self</span>.<span class="number">0</span>.contains(Authentication::negotiate()) {
+                <span class="comment">// Ensure auth engine is enabled, even though credentials do not
+                // need to be specified.
+                </span>easy.proxy_username(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
+                easy.proxy_password(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
             }
         }
 
-        <span class="ident">easy</span>.<span class="ident">proxy_auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_auth</span>())
+        easy.proxy_auth(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.as_auth())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::Authentication</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">super</span>::Authentication;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">auth_default</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::default</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>auth_default() {
+        <span class="kw">let </span>auth = Authentication::default();
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
+        <span class="macro">assert!</span>(!auth.contains(Authentication::basic()));
+        <span class="macro">assert!</span>(!auth.contains(Authentication::digest()));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">auth_all</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::all</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>auth_all() {
+        <span class="kw">let </span>auth = Authentication::all();
 
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
+        <span class="macro">assert!</span>(auth.contains(Authentication::basic()));
+        <span class="macro">assert!</span>(auth.contains(Authentication::digest()));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">auth_single</span>() {
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::basic</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>auth_single() {
+        <span class="kw">let </span>auth = Authentication::basic();
 
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
+        <span class="macro">assert!</span>(auth.contains(Authentication::basic()));
+        <span class="macro">assert!</span>(!auth.contains(Authentication::digest()));
 
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">Authentication::digest</span>();
+        <span class="kw">let </span>auth = Authentication::digest();
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::basic</span>()));
-        <span class="macro">assert!</span>(<span class="ident">auth</span>.<span class="ident">contains</span>(<span class="ident">Authentication::digest</span>()));
+        <span class="macro">assert!</span>(!auth.contains(Authentication::basic()));
+        <span class="macro">assert!</span>(auth.contains(Authentication::digest()));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

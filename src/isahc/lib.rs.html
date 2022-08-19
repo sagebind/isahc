@@ -474,479 +474,479 @@
 <span id="472">472</span>
 <span id="473">473</span>
 <span id="474">474</span>
-</pre><pre class="rust"><code><span class="doccomment">//! The practical HTTP client that is fun to use.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Here are some of Isahc&#39;s key features:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! - Full support for HTTP/1.1 and HTTP/2.</span>
-<span class="doccomment">//! - Configurable request timeouts, redirect policies, Unix sockets, and many</span>
-<span class="doccomment">//!   more settings.</span>
-<span class="doccomment">//! - Offers an ergonomic synchronous API as well as a runtime-agnostic</span>
-<span class="doccomment">//!   asynchronous API with support for async/await.</span>
-<span class="doccomment">//! - Fully asynchronous core, with incremental reading and writing of request</span>
-<span class="doccomment">//!   and response bodies and connection multiplexing.</span>
-<span class="doccomment">//! - Sessions and cookie persistence.</span>
-<span class="doccomment">//! - Automatic request cancellation on drop.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Getting started</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Sending requests is as easy as calling a single function. Let&#39;s make a</span>
-<span class="doccomment">//! simple GET request to an example website:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! use isahc::prelude::*;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let mut response = isahc::get(&quot;https://example.org&quot;)?;</span>
-<span class="doccomment">//! println!(&quot;{}&quot;, response.text()?);</span>
-<span class="doccomment">//! # Ok::&lt;(), isahc::Error&gt;(())</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! By default, sending a request will wait for the response, up until the</span>
-<span class="doccomment">//! response headers are received. The returned response struct includes the</span>
-<span class="doccomment">//! response body as an open stream implementing [`Read`](std::io::Read).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Sending a POST request is also easy, and takes an additional argument for</span>
-<span class="doccomment">//! the request body:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! let response = isahc::post(&quot;https://httpbin.org/post&quot;, &quot;make me a salad&quot;)?;</span>
-<span class="doccomment">//! # Ok::&lt;(), isahc::Error&gt;(())</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Isahc provides several other simple functions for common HTTP request types:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! isahc::put(&quot;https://httpbin.org/put&quot;, &quot;have a salad&quot;)?;</span>
-<span class="doccomment">//! isahc::head(&quot;https://httpbin.org/get&quot;)?;</span>
-<span class="doccomment">//! isahc::delete(&quot;https://httpbin.org/delete&quot;)?;</span>
-<span class="doccomment">//! # Ok::&lt;(), isahc::Error&gt;(())</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! If you want to customize the request by adding headers, setting timeouts,</span>
-<span class="doccomment">//! etc, then you can create a [`Request`][Request] using a builder-style fluent</span>
-<span class="doccomment">//! interface, then finishing it off with a [`send`][RequestExt::send]:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! use isahc::{prelude::*, Request};</span>
-<span class="doccomment">//! use std::time::Duration;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let response = Request::post(&quot;https://httpbin.org/post&quot;)</span>
-<span class="doccomment">//!     .header(&quot;Content-Type&quot;, &quot;application/json&quot;)</span>
-<span class="doccomment">//!     .timeout(Duration::from_secs(5))</span>
-<span class="doccomment">//!     .body(r#&quot;{</span>
-<span class="doccomment">//!         &quot;speed&quot;: &quot;fast&quot;,</span>
-<span class="doccomment">//!         &quot;cool_name&quot;: true</span>
-<span class="doccomment">//!     }&quot;#)?</span>
-<span class="doccomment">//!     .send()?;</span>
-<span class="doccomment">//! # Ok::&lt;(), isahc::Error&gt;(())</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For even more examples used in complete programs, please check out the</span>
-<span class="doccomment">//! [examples](https://github.com/sagebind/isahc/tree/master/examples) directory</span>
-<span class="doccomment">//! in the project repo.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Feature tour</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Below is a brief overview of some notable features of Isahc. Check out the</span>
-<span class="doccomment">//! rest of the documentation for even more guides and examples.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Easy request functions</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! You can start sending requests without any configuration by using the global</span>
-<span class="doccomment">//! functions in this module, including [`get`], [`post`], and [`send`]. These</span>
-<span class="doccomment">//! use a shared HTTP client instance with sane defaults, so it is easy to get</span>
-<span class="doccomment">//! up and running. They should work perfectly fine for many use-cases, so don&#39;t</span>
-<span class="doccomment">//! worry about graduating to more complex APIs if you don&#39;t need them.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Request and response traits</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Isahc includes a number of traits in the [`prelude`] module that extend the</span>
-<span class="doccomment">//! [`Request`] and [`Response`] types with a plethora of extra methods that</span>
-<span class="doccomment">//! make common tasks convenient and allow you to configure more advanced</span>
-<span class="doccomment">//! connection and protocol details.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Here are some of the key traits to read about:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! - [`Configurable`](config::Configurable): Configure request parameters.</span>
-<span class="doccomment">//! - [`RequestExt`]: Manipulate and send requests.</span>
-<span class="doccomment">//! - [`ResponseExt`]: Get information about the corresponding request or</span>
-<span class="doccomment">//!   response statistics.</span>
-<span class="doccomment">//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.</span>
-<span class="doccomment">//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a</span>
-<span class="doccomment">//!   variety of ways.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Custom clients</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The free-standing functions for sending requests use a shared [`HttpClient`]</span>
-<span class="doccomment">//! instance, but you can also create your own client instances, which allows</span>
-<span class="doccomment">//! you to customize the default behavior for requests that use it.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more</span>
-<span class="doccomment">//! information on creating custom clients.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Asynchronous requests</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Requests are always executed asynchronously under the hood. This allows a</span>
-<span class="doccomment">//! single client to execute a large number of requests concurrently with</span>
-<span class="doccomment">//! minimal overhead. Even synchronous applications can benefit!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! If you are writing an asynchronous application, you can reap additional</span>
-<span class="doccomment">//! benefits from the async nature of the client by using the asynchronous</span>
-<span class="doccomment">//! methods available to prevent blocking threads in your code. All request</span>
-<span class="doccomment">//! methods have an asynchronous variant that ends with `_async` in the name.</span>
-<span class="doccomment">//! Here is our first example rewritten to use async/await syntax:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```no_run</span>
-<span class="doccomment">//! # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-<span class="doccomment">//! use isahc::prelude::*;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let mut response = isahc::get_async(&quot;https://httpbin.org/get&quot;).await?;</span>
-<span class="doccomment">//! println!(&quot;{}&quot;, response.text().await?);</span>
-<span class="doccomment">//! # Ok(()) }</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Since we sent our request using [`get_async`], no blocking will occur, and</span>
-<span class="doccomment">//! the asynchronous versions of all response methods (such as</span>
-<span class="doccomment">//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by</span>
-<span class="doccomment">//! the compiler.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Feature flags</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Isahc is designed to be as &quot;pay-as-you-need&quot; as possible using Cargo feature</span>
-<span class="doccomment">//! flags and optional dependencies. Unstable features are also initially</span>
-<span class="doccomment">//! released behind feature flags until they are stabilized. You can add the</span>
-<span class="doccomment">//! feature names below to your `Cargo.toml` file to enable them:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```toml</span>
-<span class="doccomment">//! [dependencies.isahc]</span>
-<span class="doccomment">//! version = &quot;1.7&quot;</span>
-<span class="doccomment">//! features = [&quot;psl&quot;]</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Below is a list of all available feature flags and their meanings.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `cookies`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable persistent HTTP cookie support. Disabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `http2`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does</span>
-<span class="doccomment">//! not actually affect whether HTTP/2 is used for a given request, but simply</span>
-<span class="doccomment">//! makes it available. To configure which HTTP versions to use in a request,</span>
-<span class="doccomment">//! see [`VersionNegotiation`](config::VersionNegotiation).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! To check which HTTP versions are supported at runtime, you can use</span>
-<span class="doccomment">//! [`is_http_version_supported`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `json`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Additional serialization and deserialization of JSON bodies via</span>
-<span class="doccomment">//! [serde](https://serde.rs). Disabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `psl`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable use of the Public Suffix List to filter out potentially malicious</span>
-<span class="doccomment">//! cross-domain cookies. Implies `cookies`, disabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `spnego`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable support for [SPNEGO-based HTTP</span>
-<span class="doccomment">//! authentication](https://tools.ietf.org/html/rfc4559) (`negotiate` auth</span>
-<span class="doccomment">//! scheme). This makes the `negotiate` scheme available in the API and, if</span>
-<span class="doccomment">//! `static-curl` is enabled, compiles libcurl with GSS-API APIs. The [MIT</span>
-<span class="doccomment">//! Kerberos](https://web.mit.edu/kerberos/) headers must be pre-installed at</span>
-<span class="doccomment">//! compile time.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `static-curl`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Use a bundled libcurl version and statically link to it. Enabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## `text-decoding`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable support for decoding text-based responses in various charsets into</span>
-<span class="doccomment">//! strings. Enabled by default.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Unstable APIs</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! There are also some features that enable new incubating APIs that do not</span>
-<span class="doccomment">//! have stability guarantees:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### `unstable-interceptors`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Enable the new interceptors API (replaces the old unstable middleware API).</span>
-<span class="doccomment">//! Unstable until the API is finalized. This an unstable feature whose</span>
-<span class="doccomment">//! interface may change between patch releases.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### `unstable-rustls-tls`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Use [rustls](https://github.com/rustls/rustls) as the TLS backend for HTTPS</span>
-<span class="doccomment">//! requests. Currently unstable as the rustls backend in libcurl currently has</span>
-<span class="doccomment">//! some known issues and is not yet recommended for production use.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Logging and tracing</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Isahc logs quite a bit of useful information at various levels compatible</span>
-<span class="doccomment">//! with the [log](https://docs.rs/log) crate. For even more in-depth</span>
-<span class="doccomment">//! diagnostics, you can use a [tracing](https://docs.rs/tracing) subscriber to</span>
-<span class="doccomment">//! track log events grouped by individual requests. This can be especially</span>
-<span class="doccomment">//! useful if you are sending multiple requests concurrently.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will</span>
-<span class="doccomment">//! also log all incoming and outgoing data while in flight. This may come in</span>
-<span class="doccomment">//! handy if you are debugging code and need to see the exact data being sent to</span>
-<span class="doccomment">//! the server and being received.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! The practical HTTP client that is fun to use.
+//!
+//! Here are some of Isahc&#39;s key features:
+//!
+//! - Full support for HTTP/1.1 and HTTP/2.
+//! - Configurable request timeouts, redirect policies, Unix sockets, and many
+//!   more settings.
+//! - Offers an ergonomic synchronous API as well as a runtime-agnostic
+//!   asynchronous API with support for async/await.
+//! - Fully asynchronous core, with incremental reading and writing of request
+//!   and response bodies and connection multiplexing.
+//! - Sessions and cookie persistence.
+//! - Automatic request cancellation on drop.
+//!
+//! # Getting started
+//!
+//! Sending requests is as easy as calling a single function. Let&#39;s make a
+//! simple GET request to an example website:
+//!
+//! ```no_run
+//! use isahc::prelude::*;
+//!
+//! let mut response = isahc::get(&quot;https://example.org&quot;)?;
+//! println!(&quot;{}&quot;, response.text()?);
+//! # Ok::&lt;(), isahc::Error&gt;(())
+//! ```
+//!
+//! By default, sending a request will wait for the response, up until the
+//! response headers are received. The returned response struct includes the
+//! response body as an open stream implementing [`Read`](std::io::Read).
+//!
+//! Sending a POST request is also easy, and takes an additional argument for
+//! the request body:
+//!
+//! ```no_run
+//! let response = isahc::post(&quot;https://httpbin.org/post&quot;, &quot;make me a salad&quot;)?;
+//! # Ok::&lt;(), isahc::Error&gt;(())
+//! ```
+//!
+//! Isahc provides several other simple functions for common HTTP request types:
+//!
+//! ```no_run
+//! isahc::put(&quot;https://httpbin.org/put&quot;, &quot;have a salad&quot;)?;
+//! isahc::head(&quot;https://httpbin.org/get&quot;)?;
+//! isahc::delete(&quot;https://httpbin.org/delete&quot;)?;
+//! # Ok::&lt;(), isahc::Error&gt;(())
+//! ```
+//!
+//! If you want to customize the request by adding headers, setting timeouts,
+//! etc, then you can create a [`Request`][Request] using a builder-style fluent
+//! interface, then finishing it off with a [`send`][RequestExt::send]:
+//!
+//! ```no_run
+//! use isahc::{prelude::*, Request};
+//! use std::time::Duration;
+//!
+//! let response = Request::post(&quot;https://httpbin.org/post&quot;)
+//!     .header(&quot;Content-Type&quot;, &quot;application/json&quot;)
+//!     .timeout(Duration::from_secs(5))
+//!     .body(r#&quot;{
+//!         &quot;speed&quot;: &quot;fast&quot;,
+//!         &quot;cool_name&quot;: true
+//!     }&quot;#)?
+//!     .send()?;
+//! # Ok::&lt;(), isahc::Error&gt;(())
+//! ```
+//!
+//! For even more examples used in complete programs, please check out the
+//! [examples](https://github.com/sagebind/isahc/tree/master/examples) directory
+//! in the project repo.
+//!
+//! # Feature tour
+//!
+//! Below is a brief overview of some notable features of Isahc. Check out the
+//! rest of the documentation for even more guides and examples.
+//!
+//! ## Easy request functions
+//!
+//! You can start sending requests without any configuration by using the global
+//! functions in this module, including [`get`], [`post`], and [`send`]. These
+//! use a shared HTTP client instance with sane defaults, so it is easy to get
+//! up and running. They should work perfectly fine for many use-cases, so don&#39;t
+//! worry about graduating to more complex APIs if you don&#39;t need them.
+//!
+//! ## Request and response traits
+//!
+//! Isahc includes a number of traits in the [`prelude`] module that extend the
+//! [`Request`] and [`Response`] types with a plethora of extra methods that
+//! make common tasks convenient and allow you to configure more advanced
+//! connection and protocol details.
+//!
+//! Here are some of the key traits to read about:
+//!
+//! - [`Configurable`](config::Configurable): Configure request parameters.
+//! - [`RequestExt`]: Manipulate and send requests.
+//! - [`ResponseExt`]: Get information about the corresponding request or
+//!   response statistics.
+//! - [`ReadResponseExt`]: Consume a response body in a variety of ways.
+//! - [`AsyncReadResponseExt`]: Consume an asynchronous response body in a
+//!   variety of ways.
+//!
+//! ## Custom clients
+//!
+//! The free-standing functions for sending requests use a shared [`HttpClient`]
+//! instance, but you can also create your own client instances, which allows
+//! you to customize the default behavior for requests that use it.
+//!
+//! See the documentation for [`HttpClient`] and [`HttpClientBuilder`] for more
+//! information on creating custom clients.
+//!
+//! ## Asynchronous requests
+//!
+//! Requests are always executed asynchronously under the hood. This allows a
+//! single client to execute a large number of requests concurrently with
+//! minimal overhead. Even synchronous applications can benefit!
+//!
+//! If you are writing an asynchronous application, you can reap additional
+//! benefits from the async nature of the client by using the asynchronous
+//! methods available to prevent blocking threads in your code. All request
+//! methods have an asynchronous variant that ends with `_async` in the name.
+//! Here is our first example rewritten to use async/await syntax:
+//!
+//! ```no_run
+//! # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {
+//! use isahc::prelude::*;
+//!
+//! let mut response = isahc::get_async(&quot;https://httpbin.org/get&quot;).await?;
+//! println!(&quot;{}&quot;, response.text().await?);
+//! # Ok(()) }
+//! ```
+//!
+//! Since we sent our request using [`get_async`], no blocking will occur, and
+//! the asynchronous versions of all response methods (such as
+//! [`text`](AsyncReadResponseExt::text)) will also automatically be selected by
+//! the compiler.
+//!
+//! # Feature flags
+//!
+//! Isahc is designed to be as &quot;pay-as-you-need&quot; as possible using Cargo feature
+//! flags and optional dependencies. Unstable features are also initially
+//! released behind feature flags until they are stabilized. You can add the
+//! feature names below to your `Cargo.toml` file to enable them:
+//!
+//! ```toml
+//! [dependencies.isahc]
+//! version = &quot;1.7&quot;
+//! features = [&quot;psl&quot;]
+//! ```
+//!
+//! Below is a list of all available feature flags and their meanings.
+//!
+//! ## `cookies`
+//!
+//! Enable persistent HTTP cookie support. Disabled by default.
+//!
+//! ## `http2`
+//!
+//! Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does
+//! not actually affect whether HTTP/2 is used for a given request, but simply
+//! makes it available. To configure which HTTP versions to use in a request,
+//! see [`VersionNegotiation`](config::VersionNegotiation).
+//!
+//! To check which HTTP versions are supported at runtime, you can use
+//! [`is_http_version_supported`].
+//!
+//! Enabled by default.
+//!
+//! ## `json`
+//!
+//! Additional serialization and deserialization of JSON bodies via
+//! [serde](https://serde.rs). Disabled by default.
+//!
+//! ## `psl`
+//!
+//! Enable use of the Public Suffix List to filter out potentially malicious
+//! cross-domain cookies. Implies `cookies`, disabled by default.
+//!
+//! ## `spnego`
+//!
+//! Enable support for [SPNEGO-based HTTP
+//! authentication](https://tools.ietf.org/html/rfc4559) (`negotiate` auth
+//! scheme). This makes the `negotiate` scheme available in the API and, if
+//! `static-curl` is enabled, compiles libcurl with GSS-API APIs. The [MIT
+//! Kerberos](https://web.mit.edu/kerberos/) headers must be pre-installed at
+//! compile time.
+//!
+//! ## `static-curl`
+//!
+//! Use a bundled libcurl version and statically link to it. Enabled by default.
+//!
+//! ## `text-decoding`
+//!
+//! Enable support for decoding text-based responses in various charsets into
+//! strings. Enabled by default.
+//!
+//! ## Unstable APIs
+//!
+//! There are also some features that enable new incubating APIs that do not
+//! have stability guarantees:
+//!
+//! ### `unstable-interceptors`
+//!
+//! Enable the new interceptors API (replaces the old unstable middleware API).
+//! Unstable until the API is finalized. This an unstable feature whose
+//! interface may change between patch releases.
+//!
+//! ### `unstable-rustls-tls`
+//!
+//! Use [rustls](https://github.com/rustls/rustls) as the TLS backend for HTTPS
+//! requests. Currently unstable as the rustls backend in libcurl currently has
+//! some known issues and is not yet recommended for production use.
+//!
+//! # Logging and tracing
+//!
+//! Isahc logs quite a bit of useful information at various levels compatible
+//! with the [log](https://docs.rs/log) crate. For even more in-depth
+//! diagnostics, you can use a [tracing](https://docs.rs/tracing) subscriber to
+//! track log events grouped by individual requests. This can be especially
+//! useful if you are sending multiple requests concurrently.
+//!
+//! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
+//! also log all incoming and outgoing data while in flight. This may come in
+//! handy if you are debugging code and need to see the exact data being sent to
+//! the server and being received.
 
-<span class="attribute">#![<span class="ident">doc</span>(
-    <span class="ident">html_logo_url</span> <span class="op">=</span> <span class="string">&quot;https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png&quot;</span>,
-    <span class="ident">html_favicon_url</span> <span class="op">=</span> <span class="string">&quot;https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png&quot;</span>
+</span><span class="attribute">#![doc(
+    html_logo_url = <span class="string">&quot;https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png&quot;</span>,
+    html_favicon_url = <span class="string">&quot;https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png&quot;
+</span>)]</span>
+<span class="attribute">#![deny(unsafe_code)]</span>
+<span class="attribute">#![cfg_attr(feature = <span class="string">&quot;nightly&quot;</span>, feature(doc_cfg))]</span>
+<span class="attribute">#![cfg_attr(feature = <span class="string">&quot;nightly&quot;</span>, feature(doc_auto_cfg))]</span>
+<span class="attribute">#![warn(
+    future_incompatible,
+    missing_debug_implementations,
+    missing_docs,
+    unreachable_pub,
+    unused,
+    clippy::all
 )]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>, <span class="ident">feature</span>(<span class="ident">doc_cfg</span>))]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>, <span class="ident">feature</span>(<span class="ident">doc_auto_cfg</span>))]</span>
-<span class="attribute">#![<span class="ident">warn</span>(
-    <span class="ident">future_incompatible</span>,
-    <span class="ident">missing_debug_implementations</span>,
-    <span class="ident">missing_docs</span>,
-    <span class="ident">unreachable_pub</span>,
-    <span class="ident">unused</span>,
-    <span class="ident">clippy::all</span>
-)]</span>
-<span class="comment">// These lints suggest to use features not available in our MSRV.</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::manual_strip</span>, <span class="ident">clippy::match_like_matches_macro</span>)]</span>
+<span class="comment">// These lints suggest to use features not available in our MSRV.
+</span><span class="attribute">#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]</span>
 
-<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="kw">use </span>std::convert::TryFrom;
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">mod</span> <span class="ident">macros</span>;
+<span class="attribute">#[macro_use]</span>
+<span class="kw">mod </span>macros;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cookies</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
+<span class="kw">pub mod </span>cookies;
 
-<span class="kw">mod</span> <span class="ident">agent</span>;
-<span class="kw">mod</span> <span class="ident">body</span>;
-<span class="kw">mod</span> <span class="ident">client</span>;
-<span class="kw">mod</span> <span class="ident">default_headers</span>;
-<span class="kw">mod</span> <span class="ident">handler</span>;
-<span class="kw">mod</span> <span class="ident">headers</span>;
-<span class="kw">mod</span> <span class="ident">info</span>;
-<span class="kw">mod</span> <span class="ident">metrics</span>;
-<span class="kw">mod</span> <span class="ident">parsing</span>;
-<span class="kw">mod</span> <span class="ident">redirect</span>;
-<span class="kw">mod</span> <span class="ident">request</span>;
-<span class="kw">mod</span> <span class="ident">response</span>;
-<span class="kw">mod</span> <span class="ident">task</span>;
-<span class="kw">mod</span> <span class="ident">text</span>;
-<span class="kw">mod</span> <span class="ident">trailer</span>;
+<span class="kw">mod </span>agent;
+<span class="kw">mod </span>body;
+<span class="kw">mod </span>client;
+<span class="kw">mod </span>default_headers;
+<span class="kw">mod </span>handler;
+<span class="kw">mod </span>headers;
+<span class="kw">mod </span>info;
+<span class="kw">mod </span>metrics;
+<span class="kw">mod </span>parsing;
+<span class="kw">mod </span>redirect;
+<span class="kw">mod </span>request;
+<span class="kw">mod </span>response;
+<span class="kw">mod </span>task;
+<span class="kw">mod </span>text;
+<span class="kw">mod </span>trailer;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">auth</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">pub mod </span>auth;
+<span class="kw">pub mod </span>config;
+<span class="kw">pub mod </span>error;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">interceptor</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>))]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unreachable_pub</span>, <span class="ident">unused</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">interceptor</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
+<span class="kw">pub mod </span>interceptor;
+<span class="attribute">#[cfg(not(feature = <span class="string">&quot;unstable-interceptors&quot;</span>))]</span>
+<span class="attribute">#[allow(unreachable_pub, unused)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>interceptor;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
-    <span class="ident">client</span>::{<span class="ident">HttpClient</span>, <span class="ident">HttpClientBuilder</span>, <span class="ident">ResponseFuture</span>},
-    <span class="ident">error::Error</span>,
-    <span class="ident">http</span>::{<span class="ident">request::Request</span>, <span class="ident">response::Response</span>},
-    <span class="ident">info</span>::<span class="kw-2">*</span>,
-    <span class="ident">metrics::Metrics</span>,
-    <span class="ident">request::RequestExt</span>,
-    <span class="ident">response</span>::{<span class="ident">AsyncReadResponseExt</span>, <span class="ident">ReadResponseExt</span>, <span class="ident">ResponseExt</span>},
-    <span class="ident">trailer::Trailer</span>,
+<span class="kw">pub use crate</span>::{
+    body::{AsyncBody, Body},
+    client::{HttpClient, HttpClientBuilder, ResponseFuture},
+    error::Error,
+    http::{request::Request, response::Response},
+    info::<span class="kw-2">*</span>,
+    metrics::Metrics,
+    request::RequestExt,
+    response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
+    trailer::Trailer,
 };
 
-<span class="doccomment">/// Re-export of HTTP types.</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">http</span>;
+<span class="doccomment">/// Re-export of HTTP types.
+</span><span class="kw">pub use </span>http;
 
-<span class="doccomment">/// A &quot;prelude&quot; for importing commonly used Isahc types and traits.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The prelude re-exports most commonly used traits and macros from this crate.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Example</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Import the prelude with:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use isahc::prelude::*;</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span> {
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">no_inline</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">config::Configurable</span>,
-        <span class="ident">AsyncReadResponseExt</span>,
-        <span class="ident">ReadResponseExt</span>,
-        <span class="ident">RequestExt</span>,
-        <span class="ident">ResponseExt</span>,
+<span class="doccomment">/// A &quot;prelude&quot; for importing commonly used Isahc types and traits.
+///
+/// The prelude re-exports most commonly used traits and macros from this crate.
+///
+/// # Example
+///
+/// Import the prelude with:
+///
+/// ```
+/// use isahc::prelude::*;
+/// ```
+</span><span class="kw">pub mod </span>prelude {
+    <span class="attribute">#[doc(no_inline)]</span>
+    <span class="kw">pub use crate</span>::{
+        config::Configurable,
+        AsyncReadResponseExt,
+        ReadResponseExt,
+        RequestExt,
+        ResponseExt,
     };
 }
 
-<span class="doccomment">/// Send a GET request to the given URI.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::get`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a GET request to the given URI.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::get`] for details.
+</span><span class="kw">pub fn </span>get&lt;U&gt;(uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">get</span>(<span class="ident">uri</span>)
+    HttpClient::shared().get(uri)
 }
 
-<span class="doccomment">/// Send a GET request to the given URI asynchronously.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::get_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a GET request to the given URI asynchronously.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::get_async`] for details.
+</span><span class="kw">pub fn </span>get_async&lt;U&gt;(uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">get_async</span>(<span class="ident">uri</span>)
+    HttpClient::shared().get_async(uri)
 }
 
-<span class="doccomment">/// Send a HEAD request to the given URI.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::head`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a HEAD request to the given URI.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::head`] for details.
+</span><span class="kw">pub fn </span>head&lt;U&gt;(uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">head</span>(<span class="ident">uri</span>)
+    HttpClient::shared().head(uri)
 }
 
-<span class="doccomment">/// Send a HEAD request to the given URI asynchronously.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::head_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">head_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a HEAD request to the given URI asynchronously.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::head_async`] for details.
+</span><span class="kw">pub fn </span>head_async&lt;U&gt;(uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">head_async</span>(<span class="ident">uri</span>)
+    HttpClient::shared().head_async(uri)
 }
 
-<span class="doccomment">/// Send a POST request to the given URI with a given request body.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::post`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
-    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a POST request to the given URI with a given request body.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::post`] for details.
+</span><span class="kw">pub fn </span>post&lt;U, B&gt;(uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
+    B: Into&lt;Body&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">post</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    HttpClient::shared().post(uri, body)
 }
 
-<span class="doccomment">/// Send a POST request to the given URI asynchronously with a given request</span>
-<span class="doccomment">/// body.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::post_async`] for details.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```no_run</span>
-<span class="doccomment">/// # async fn run() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {</span>
-<span class="doccomment">/// use isahc::prelude::*;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut response = isahc::post_async(&quot;https://httpbin.org/post&quot;, r#&quot;{</span>
-<span class="doccomment">///     &quot;speed&quot;: &quot;fast&quot;,</span>
-<span class="doccomment">///     &quot;cool_name&quot;: true</span>
-<span class="doccomment">/// }&quot;#).await?;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut body: Vec&lt;u8&gt; = vec![];</span>
-<span class="doccomment">/// response.copy_to(&amp;mut body).await?;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let msg: serde_json::Value = serde_json::from_slice(&amp;body)?;</span>
-<span class="doccomment">/// println!(&quot;{}&quot;, msg);</span>
-<span class="doccomment">/// # Ok(()) }</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
-    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a POST request to the given URI asynchronously with a given request
+/// body.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::post_async`] for details.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn run() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+/// use isahc::prelude::*;
+///
+/// let mut response = isahc::post_async(&quot;https://httpbin.org/post&quot;, r#&quot;{
+///     &quot;speed&quot;: &quot;fast&quot;,
+///     &quot;cool_name&quot;: true
+/// }&quot;#).await?;
+///
+/// let mut body: Vec&lt;u8&gt; = vec![];
+/// response.copy_to(&amp;mut body).await?;
+///
+/// let msg: serde_json::Value = serde_json::from_slice(&amp;body)?;
+/// println!(&quot;{}&quot;, msg);
+/// # Ok(()) }
+/// ```
+</span><span class="kw">pub fn </span>post_async&lt;U, B&gt;(uri: U, body: B) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
+    B: Into&lt;AsyncBody&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">post_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    HttpClient::shared().post_async(uri, body)
 }
 
-<span class="doccomment">/// Send a PUT request to the given URI with a given request body.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::put`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
-    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a PUT request to the given URI with a given request body.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::put`] for details.
+</span><span class="kw">pub fn </span>put&lt;U, B&gt;(uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
+    B: Into&lt;Body&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">put</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    HttpClient::shared().put(uri, body)
 }
 
-<span class="doccomment">/// Send a PUT request to the given URI asynchronously with a given request</span>
-<span class="doccomment">/// body.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::put_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_async</span><span class="op">&lt;</span><span class="ident">U</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>, <span class="ident">body</span>: <span class="ident">B</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
-    <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a PUT request to the given URI asynchronously with a given request
+/// body.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::put_async`] for details.
+</span><span class="kw">pub fn </span>put_async&lt;U, B&gt;(uri: U, body: B) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
+    B: Into&lt;AsyncBody&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">put_async</span>(<span class="ident">uri</span>, <span class="ident">body</span>)
+    HttpClient::shared().put_async(uri, body)
 }
 
-<span class="doccomment">/// Send a DELETE request to the given URI.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::delete`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a DELETE request to the given URI.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::delete`] for details.
+</span><span class="kw">pub fn </span>delete&lt;U&gt;(uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">delete</span>(<span class="ident">uri</span>)
+    HttpClient::shared().delete(uri)
 }
 
-<span class="doccomment">/// Send a DELETE request to the given URI asynchronously.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::delete_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_async</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>(<span class="ident">uri</span>: <span class="ident">U</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">http::Uri</span>: <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
-    <span class="op">&lt;</span><span class="ident">http::Uri</span> <span class="kw">as</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Send a DELETE request to the given URI asynchronously.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::delete_async`] for details.
+</span><span class="kw">pub fn </span>delete_async&lt;U&gt;(uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+<span class="kw">where
+    </span>http::Uri: TryFrom&lt;U&gt;,
+    &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
 {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">delete_async</span>(<span class="ident">uri</span>)
+    HttpClient::shared().delete_async(uri)
 }
 
-<span class="doccomment">/// Send an HTTP request and return the HTTP response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::send`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">send</span>(<span class="ident">request</span>)
+<span class="doccomment">/// Send an HTTP request and return the HTTP response.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::send`] for details.
+</span><span class="kw">pub fn </span>send&lt;B: Into&lt;Body&gt;&gt;(request: Request&lt;B&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt; {
+    HttpClient::shared().send(request)
 }
 
-<span class="doccomment">/// Send an HTTP request and return the HTTP response asynchronously.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The request is executed using a shared [`HttpClient`] instance. See</span>
-<span class="doccomment">/// [`HttpClient::send_async`] for details.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_async</span><span class="op">&lt;</span><span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-    <span class="ident">HttpClient::shared</span>().<span class="ident">send_async</span>(<span class="ident">request</span>)
+<span class="doccomment">/// Send an HTTP request and return the HTTP response asynchronously.
+///
+/// The request is executed using a shared [`HttpClient`] instance. See
+/// [`HttpClient::send_async`] for details.
+</span><span class="kw">pub fn </span>send_async&lt;B: Into&lt;AsyncBody&gt;&gt;(request: Request&lt;B&gt;) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt; {
+    HttpClient::shared().send_async(request)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

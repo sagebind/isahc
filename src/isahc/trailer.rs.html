@@ -209,214 +209,214 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">event_listener::Event</span>;
-<span class="kw">use</span> <span class="ident">http::HeaderMap</span>;
-<span class="kw">use</span> <span class="ident">once_cell::sync::OnceCell</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>event_listener::Event;
+<span class="kw">use </span>http::HeaderMap;
+<span class="kw">use </span>once_cell::sync::OnceCell;
+<span class="kw">use </span>std::{sync::Arc, time::Duration};
 
-<span class="doccomment">/// Holds the current state of a trailer for a response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This object acts as a shared handle that can be cloned and polled from</span>
-<span class="doccomment">/// multiple threads to wait for and act on the response trailer.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// There are two typical workflows for accessing trailer headers:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - If you are consuming the response body and then accessing the headers</span>
-<span class="doccomment">///   afterward, then all trailers are guaranteed to have arrived (if any).</span>
-<span class="doccomment">///   [`Trailer::try_get`] will allow you to access them without extra overhead.</span>
-<span class="doccomment">/// - If you are handling trailers in a separate task, callback, or thread, then</span>
-<span class="doccomment">///   either [`Trailer::wait`] or [`Trailer::wait_async`] will allow you to wait</span>
-<span class="doccomment">///   for the trailer headers to arrive and then handle them.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that in either approach, trailer headers are delivered to your</span>
-<span class="doccomment">/// application as a single [`HeaderMap`]; it is not possible to handle</span>
-<span class="doccomment">/// individual headers as they arrive.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Trailer</span> {
-    <span class="ident">shared</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Shared</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Holds the current state of a trailer for a response.
+///
+/// This object acts as a shared handle that can be cloned and polled from
+/// multiple threads to wait for and act on the response trailer.
+///
+/// There are two typical workflows for accessing trailer headers:
+///
+/// - If you are consuming the response body and then accessing the headers
+///   afterward, then all trailers are guaranteed to have arrived (if any).
+///   [`Trailer::try_get`] will allow you to access them without extra overhead.
+/// - If you are handling trailers in a separate task, callback, or thread, then
+///   either [`Trailer::wait`] or [`Trailer::wait_async`] will allow you to wait
+///   for the trailer headers to arrive and then handle them.
+///
+/// Note that in either approach, trailer headers are delivered to your
+/// application as a single [`HeaderMap`]; it is not possible to handle
+/// individual headers as they arrive.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>Trailer {
+    shared: Arc&lt;Shared&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Shared</span> {
-    <span class="ident">headers</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">HeaderMap</span><span class="op">&gt;</span>,
-    <span class="ident">ready</span>: <span class="ident">Event</span>,
+<span class="attribute">#[derive(Debug)]</span>
+<span class="kw">struct </span>Shared {
+    headers: OnceCell&lt;HeaderMap&gt;,
+    ready: Event,
 }
 
-<span class="kw">impl</span> <span class="ident">Trailer</span> {
-    <span class="doccomment">/// Get a populated trailer handle containing no headers.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">empty</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
-        <span class="kw">static</span> <span class="ident">EMPTY</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">Trailer</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OnceCell::new</span>();
+<span class="kw">impl </span>Trailer {
+    <span class="doccomment">/// Get a populated trailer handle containing no headers.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>empty() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self </span>{
+        <span class="kw">static </span>EMPTY: OnceCell&lt;Trailer&gt; = OnceCell::new();
 
-        <span class="ident">EMPTY</span>.<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="self">Self</span> {
-            <span class="ident">shared</span>: <span class="ident">Arc::new</span>(<span class="ident">Shared</span> {
-                <span class="ident">headers</span>: <span class="ident">OnceCell::from</span>(<span class="ident">HeaderMap::new</span>()),
-                <span class="ident">ready</span>: <span class="ident">Event::new</span>(),
+        EMPTY.get_or_init(|| <span class="self">Self </span>{
+            shared: Arc::new(Shared {
+                headers: OnceCell::from(HeaderMap::new()),
+                ready: Event::new(),
             }),
         })
     }
 
-    <span class="doccomment">/// Returns true if the trailer has been received (if any).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The trailer will not be received until the body stream associated with</span>
-    <span class="doccomment">/// this response has been fully consumed.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_ready</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">try_get</span>().<span class="ident">is_some</span>()
+    <span class="doccomment">/// Returns true if the trailer has been received (if any).
+    ///
+    /// The trailer will not be received until the body stream associated with
+    /// this response has been fully consumed.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>is_ready(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.try_get().is_some()
     }
 
-    <span class="doccomment">/// Attempt to get the trailer headers without blocking. Returns `None` if</span>
-    <span class="doccomment">/// the trailer has not been received yet.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HeaderMap</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">headers</span>.<span class="ident">get</span>()
+    <span class="doccomment">/// Attempt to get the trailer headers without blocking. Returns `None` if
+    /// the trailer has not been received yet.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>try_get(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HeaderMap&gt; {
+        <span class="self">self</span>.shared.headers.get()
     }
 
-    <span class="doccomment">/// Block the current thread until the trailer headers arrive, and then</span>
-    <span class="doccomment">/// return them.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is a blocking operation! If you are writing an asynchronous</span>
-    <span class="doccomment">/// application, then you probably want to use [`Trailer::wait_async`]</span>
-    <span class="doccomment">/// instead.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wait</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HeaderMap</span> {
-        <span class="kw">loop</span> {
-            <span class="comment">// Fast path: If the headers are already set, return them.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+    <span class="doccomment">/// Block the current thread until the trailer headers arrive, and then
+    /// return them.
+    ///
+    /// This is a blocking operation! If you are writing an asynchronous
+    /// application, then you probably want to use [`Trailer::wait_async`]
+    /// instead.
+    </span><span class="kw">pub fn </span>wait(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HeaderMap {
+        <span class="kw">loop </span>{
+            <span class="comment">// Fast path: If the headers are already set, return them.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
 
-            <span class="comment">// Headers not set, jump into the slow path by creating a new</span>
-            <span class="comment">// listener for the ready event.</span>
-            <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">ready</span>.<span class="ident">listen</span>();
+            <span class="comment">// Headers not set, jump into the slow path by creating a new
+            // listener for the ready event.
+            </span><span class="kw">let </span>listener = <span class="self">self</span>.shared.ready.listen();
 
-            <span class="comment">// Double-check that the headers are not set.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+            <span class="comment">// Double-check that the headers are not set.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
 
-            <span class="comment">// Otherwise, block until they are set.</span>
-            <span class="ident">listener</span>.<span class="ident">wait</span>();
+            <span class="comment">// Otherwise, block until they are set.
+            </span>listener.wait();
 
-            <span class="comment">// If we got the notification, then the headers are likely to be</span>
-            <span class="comment">// set.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+            <span class="comment">// If we got the notification, then the headers are likely to be
+            // set.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
         }
     }
 
-    <span class="doccomment">/// Block the current thread until the trailer headers arrive or a timeout</span>
-    <span class="doccomment">/// expires.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the given timeout expired before the trailer arrived then `None` is</span>
-    <span class="doccomment">/// returned.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is a blocking operation! If you are writing an asynchronous</span>
-    <span class="doccomment">/// application, then you probably want to use [`Trailer::wait_async`]</span>
-    <span class="doccomment">/// instead.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wait_timeout</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HeaderMap</span><span class="op">&gt;</span> {
-        <span class="comment">// Fast path: If the headers are already set, return them.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>);
+    <span class="doccomment">/// Block the current thread until the trailer headers arrive or a timeout
+    /// expires.
+    ///
+    /// If the given timeout expired before the trailer arrived then `None` is
+    /// returned.
+    ///
+    /// This is a blocking operation! If you are writing an asynchronous
+    /// application, then you probably want to use [`Trailer::wait_async`]
+    /// instead.
+    </span><span class="kw">pub fn </span>wait_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>, timeout: Duration) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HeaderMap&gt; {
+        <span class="comment">// Fast path: If the headers are already set, return them.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+            <span class="kw">return </span><span class="prelude-val">Some</span>(headers);
         }
 
-        <span class="comment">// Headers not set, jump into the slow path by creating a new listener</span>
-        <span class="comment">// for the ready event.</span>
-        <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">ready</span>.<span class="ident">listen</span>();
+        <span class="comment">// Headers not set, jump into the slow path by creating a new listener
+        // for the ready event.
+        </span><span class="kw">let </span>listener = <span class="self">self</span>.shared.ready.listen();
 
-        <span class="comment">// Double-check that the headers are not set.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>);
+        <span class="comment">// Double-check that the headers are not set.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+            <span class="kw">return </span><span class="prelude-val">Some</span>(headers);
         }
 
-        <span class="comment">// Otherwise, block with a timeout.</span>
-        <span class="kw">if</span> <span class="ident">listener</span>.<span class="ident">wait_timeout</span>(<span class="ident">timeout</span>) {
-            <span class="self">self</span>.<span class="ident">try_get</span>()
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+        <span class="comment">// Otherwise, block with a timeout.
+        </span><span class="kw">if </span>listener.wait_timeout(timeout) {
+            <span class="self">self</span>.try_get()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="doccomment">/// Wait asynchronously until the trailer headers arrive, and then return</span>
-    <span class="doccomment">/// them.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HeaderMap</span> {
-        <span class="kw">loop</span> {
-            <span class="comment">// Fast path: If the headers are already set, return them.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+    <span class="doccomment">/// Wait asynchronously until the trailer headers arrive, and then return
+    /// them.
+    </span><span class="kw">pub async fn </span>wait_async(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HeaderMap {
+        <span class="kw">loop </span>{
+            <span class="comment">// Fast path: If the headers are already set, return them.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
 
-            <span class="comment">// Headers not set, jump into the slow path by creating a new</span>
-            <span class="comment">// listener for the ready event.</span>
-            <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">ready</span>.<span class="ident">listen</span>();
+            <span class="comment">// Headers not set, jump into the slow path by creating a new
+            // listener for the ready event.
+            </span><span class="kw">let </span>listener = <span class="self">self</span>.shared.ready.listen();
 
-            <span class="comment">// Double-check that the headers are not set.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+            <span class="comment">// Double-check that the headers are not set.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
 
-            <span class="comment">// Otherwise, wait asynchronously until they are.</span>
-            <span class="ident">listener</span>.<span class="kw">await</span>;
+            <span class="comment">// Otherwise, wait asynchronously until they are.
+            </span>listener.<span class="kw">await</span>;
 
-            <span class="comment">// If we got the notification, then the headers are likely to be</span>
-            <span class="comment">// set.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">try_get</span>() {
-                <span class="kw">return</span> <span class="ident">headers</span>;
+            <span class="comment">// If we got the notification, then the headers are likely to be
+            // set.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.try_get() {
+                <span class="kw">return </span>headers;
             }
         }
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TrailerWriter</span> {
-    <span class="ident">shared</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Shared</span><span class="op">&gt;</span>,
-    <span class="ident">headers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HeaderMap</span><span class="op">&gt;</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TrailerWriter {
+    shared: Arc&lt;Shared&gt;,
+    headers: <span class="prelude-ty">Option</span>&lt;HeaderMap&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">TrailerWriter</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">shared</span>: <span class="ident">Arc::new</span>(<span class="ident">Shared</span> {
-                <span class="ident">headers</span>: <span class="ident">Default::default</span>(),
-                <span class="ident">ready</span>: <span class="ident">Event::new</span>(),
+<span class="kw">impl </span>TrailerWriter {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            shared: Arc::new(Shared {
+                headers: Default::default(),
+                ready: Event::new(),
             }),
-            <span class="ident">headers</span>: <span class="prelude-val">Some</span>(<span class="ident">HeaderMap::new</span>()),
+            headers: <span class="prelude-val">Some</span>(HeaderMap::new()),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">trailer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Trailer</span> {
-        <span class="ident">Trailer</span> {
-            <span class="ident">shared</span>: <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">clone</span>(),
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>trailer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Trailer {
+        Trailer {
+            shared: <span class="self">self</span>.shared.clone(),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">HeaderMap</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">headers</span>.<span class="ident">as_mut</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>HeaderMap&gt; {
+        <span class="self">self</span>.headers.as_mut()
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">flush_impl</span>() {
+    <span class="attribute">#[inline]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>flush(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.flush_impl() {
             <span class="macro">tracing::warn!</span>(<span class="string">&quot;tried to flush trailer multiple times&quot;</span>);
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">flush_impl</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">headers</span>.<span class="ident">take</span>() {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">headers</span>.<span class="ident">set</span>(<span class="ident">headers</span>);
+    <span class="kw">fn </span>flush_impl(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = <span class="self">self</span>.headers.take() {
+            <span class="kw">let _ </span>= <span class="self">self</span>.shared.headers.set(headers);
 
-            <span class="comment">// Wake up any calls waiting for the headers.</span>
-            <span class="self">self</span>.<span class="ident">shared</span>.<span class="ident">ready</span>.<span class="ident">notify</span>(<span class="ident">usize::max_value</span>());
+            <span class="comment">// Wake up any calls waiting for the headers.
+            </span><span class="self">self</span>.shared.ready.notify(usize::max_value());
 
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
+            <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">TrailerWriter</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">flush_impl</span>();
+<span class="kw">impl </span>Drop <span class="kw">for </span>TrailerWriter {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.flush_impl();
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

@@ -503,508 +503,508 @@
 <span id="501">501</span>
 <span id="502">502</span>
 <span id="503">503</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Configuration options related to SSL/TLS.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Configuration options related to SSL/TLS.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SetOpt</span>;
-<span class="kw">use</span> <span class="ident">curl::easy</span>::{<span class="ident">Easy2</span>, <span class="ident">SslOpt</span>};
-<span class="kw">use</span> <span class="ident">once_cell::sync::Lazy</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">iter::FromIterator</span>,
-    <span class="ident">ops</span>::{<span class="ident">BitOr</span>, <span class="ident">BitOrAssign</span>},
-    <span class="ident">path::PathBuf</span>,
+</span><span class="kw">use </span><span class="kw">super</span>::SetOpt;
+<span class="kw">use </span>curl::easy::{Easy2, SslOpt};
+<span class="kw">use </span>once_cell::sync::Lazy;
+<span class="kw">use </span>std::{
+    iter::FromIterator,
+    ops::{BitOr, BitOrAssign},
+    path::PathBuf,
 };
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">PathOrBlob</span> {
-    <span class="ident">Path</span>(<span class="ident">PathBuf</span>),
-    <span class="ident">Blob</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
+<span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">enum </span>PathOrBlob {
+    Path(PathBuf),
+    Blob(Vec&lt;u8&gt;),
 }
 
-<span class="doccomment">/// A client certificate for SSL/TLS client validation.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that this isn&#39;t merely an X.509 certificate, but rather a certificate</span>
-<span class="doccomment">/// and private key pair.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ClientCertificate</span> {
-    <span class="doccomment">/// Name of the cert format.</span>
-    <span class="ident">format</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
+<span class="doccomment">/// A client certificate for SSL/TLS client validation.
+///
+/// Note that this isn&#39;t merely an X.509 certificate, but rather a certificate
+/// and private key pair.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>ClientCertificate {
+    <span class="doccomment">/// Name of the cert format.
+    </span>format: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 
-    <span class="doccomment">/// The certificate data, either a path or a blob.</span>
-    <span class="ident">data</span>: <span class="ident">PathOrBlob</span>,
+    <span class="doccomment">/// The certificate data, either a path or a blob.
+    </span>data: PathOrBlob,
 
-    <span class="doccomment">/// Private key corresponding to the SSL/TLS certificate.</span>
-    <span class="ident">private_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Private key corresponding to the SSL/TLS certificate.
+    </span>private_key: <span class="prelude-ty">Option</span>&lt;PrivateKey&gt;,
 
-    <span class="doccomment">/// Password to decrypt the certificate file.</span>
-    <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Password to decrypt the certificate file.
+    </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ClientCertificate</span> {
-    <span class="doccomment">/// Use a PEM-encoded certificate stored in the given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate is not parsed or validated here. If the certificate is</span>
-    <span class="doccomment">/// malformed or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pem</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>, <span class="ident">private_key</span>: <span class="ident">P</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">P</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>ClientCertificate {
+    <span class="doccomment">/// Use a PEM-encoded certificate stored in the given byte buffer.
+    ///
+    /// The certificate object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The certificate is not parsed or validated here. If the certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>pem&lt;B, P&gt;(bytes: B, private_key: P) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
+        P: Into&lt;<span class="prelude-ty">Option</span>&lt;PrivateKey&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;PEM&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="ident">private_key</span>.<span class="ident">into</span>(),
-            <span class="ident">password</span>: <span class="prelude-val">None</span>,
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;PEM&quot;</span>,
+            data: PathOrBlob::Blob(bytes.into()),
+            private_key: private_key.into(),
+            password: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Use a DER-encoded certificate stored in the given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate is not parsed or validated here. If the certificate is</span>
-    <span class="doccomment">/// malformed or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">der</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>, <span class="ident">private_key</span>: <span class="ident">P</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">P</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Use a DER-encoded certificate stored in the given byte buffer.
+    ///
+    /// The certificate object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The certificate is not parsed or validated here. If the certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>der&lt;B, P&gt;(bytes: B, private_key: P) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
+        P: Into&lt;<span class="prelude-ty">Option</span>&lt;PrivateKey&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;DER&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="ident">private_key</span>.<span class="ident">into</span>(),
-            <span class="ident">password</span>: <span class="prelude-val">None</span>,
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;DER&quot;</span>,
+            data: PathOrBlob::Blob(bytes.into()),
+            private_key: private_key.into(),
+            password: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Use a certificate and private key from a PKCS #12 archive stored in the</span>
-    <span class="doccomment">/// given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate is not parsed or validated here. If the certificate is</span>
-    <span class="doccomment">/// malformed or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pkcs12</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>, <span class="ident">password</span>: <span class="ident">P</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">P</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Use a certificate and private key from a PKCS #12 archive stored in the
+    /// given byte buffer.
+    ///
+    /// The certificate object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The certificate is not parsed or validated here. If the certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>pkcs12&lt;B, P&gt;(bytes: B, password: P) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
+        P: Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;P12&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="prelude-val">None</span>,
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;P12&quot;</span>,
+            data: PathOrBlob::Blob(bytes.into()),
+            private_key: <span class="prelude-val">None</span>,
+            password: password.into(),
         }
     }
 
-    <span class="doccomment">/// Get a certificate from a PEM-encoded file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate file is not loaded or validated here. If the file does</span>
-    <span class="doccomment">/// not exist or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pem_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">private_key</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;PEM&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="ident">private_key</span>.<span class="ident">into</span>(),
-            <span class="ident">password</span>: <span class="prelude-val">None</span>,
+    <span class="doccomment">/// Get a certificate from a PEM-encoded file.
+    ///
+    /// The certificate file is not loaded or validated here. If the file does
+    /// not exist or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>pem_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, private_key: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PrivateKey&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;PEM&quot;</span>,
+            data: PathOrBlob::Path(path.into()),
+            private_key: private_key.into(),
+            password: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Get a certificate from a DER-encoded file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate file is not loaded or validated here. If the file does</span>
-    <span class="doccomment">/// not exist or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">der_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">private_key</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;DER&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="ident">private_key</span>.<span class="ident">into</span>(),
-            <span class="ident">password</span>: <span class="prelude-val">None</span>,
+    <span class="doccomment">/// Get a certificate from a DER-encoded file.
+    ///
+    /// The certificate file is not loaded or validated here. If the file does
+    /// not exist or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>der_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, private_key: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PrivateKey&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;DER&quot;</span>,
+            data: PathOrBlob::Path(path.into()),
+            private_key: private_key.into(),
+            password: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Get a certificate and private key from a PKCS #12-encoded file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate file is not loaded or validated here. If the file does</span>
-    <span class="doccomment">/// not exist or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pkcs12_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;P12&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>.<span class="ident">into</span>()),
-            <span class="ident">private_key</span>: <span class="prelude-val">None</span>,
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// Get a certificate and private key from a PKCS #12-encoded file.
+    ///
+    /// The certificate file is not loaded or validated here. If the file does
+    /// not exist or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>pkcs12_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, password: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;P12&quot;</span>,
+            data: PathOrBlob::Path(path.into()),
+            private_key: <span class="prelude-val">None</span>,
+            password: password.into(),
         }
     }
 
-    <span class="doccomment">/// Get a certificate and private key from a PKCS #12-encoded file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Use [`pkcs12_file`][ClientCertificate::pkcs12_file] instead.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="attribute">#[<span class="ident">deprecated</span>(
-        <span class="ident">since</span> <span class="op">=</span> <span class="string">&quot;1.4.0&quot;</span>,
-        <span class="ident">note</span> <span class="op">=</span> <span class="string">&quot;please use the more clearly-named `pkcs12_file` instead&quot;</span>
-    )]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">p12_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::pkcs12_file</span>(<span class="ident">path</span>, <span class="ident">password</span>)
+    <span class="doccomment">/// Get a certificate and private key from a PKCS #12-encoded file.
+    ///
+    /// Use [`pkcs12_file`][ClientCertificate::pkcs12_file] instead.
+    </span><span class="attribute">#[inline]</span>
+    <span class="attribute">#[doc(hidden)]</span>
+    <span class="attribute">#[deprecated(
+        since = <span class="string">&quot;1.4.0&quot;</span>,
+        note = <span class="string">&quot;please use the more clearly-named `pkcs12_file` instead&quot;
+    </span>)]</span>
+    <span class="kw">pub fn </span>p12_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, password: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::pkcs12_file(path, password)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">ClientCertificate</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">ssl_cert_type</span>(<span class="self">self</span>.<span class="ident">format</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>ClientCertificate {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.ssl_cert_type(<span class="self">self</span>.format)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-            <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>) =&gt; <span class="ident">easy</span>.<span class="ident">ssl_cert</span>(<span class="ident">path</span>.<span class="ident">as_path</span>()),
-            <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>) =&gt; <span class="ident">easy</span>.<span class="ident">ssl_cert_blob</span>(<span class="ident">bytes</span>.<span class="ident">as_slice</span>()),
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.data {
+            PathOrBlob::Path(path) =&gt; easy.ssl_cert(path.as_path()),
+            PathOrBlob::Blob(bytes) =&gt; easy.ssl_cert_blob(bytes.as_slice()),
         }<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">key</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.private_key.as_ref() {
+            key.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">password</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">password</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">easy</span>.<span class="ident">key_password</span>(<span class="ident">password</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(password) = <span class="self">self</span>.password.as_ref() {
+            easy.key_password(password)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// A private key file.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// Key format name.</span>
-    <span class="ident">format</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
+<span class="doccomment">/// A private key file.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>PrivateKey {
+    <span class="doccomment">/// Key format name.
+    </span>format: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 
-    <span class="doccomment">/// The certificate data, either a path or a blob.</span>
-    <span class="ident">data</span>: <span class="ident">PathOrBlob</span>,
+    <span class="doccomment">/// The certificate data, either a path or a blob.
+    </span>data: PathOrBlob,
 
-    <span class="doccomment">/// Password to decrypt the key file.</span>
-    <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Password to decrypt the key file.
+    </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// Use a PEM-encoded private key stored in the given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The private key object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The key is not parsed or validated here. If the key is malformed or the</span>
-    <span class="doccomment">/// format is not supported by the underlying SSL/TLS engine, an error will</span>
-    <span class="doccomment">/// be returned when attempting to send a request using the offending key.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pem</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>, <span class="ident">password</span>: <span class="ident">P</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">P</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>PrivateKey {
+    <span class="doccomment">/// Use a PEM-encoded private key stored in the given byte buffer.
+    ///
+    /// The private key object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The key is not parsed or validated here. If the key is malformed or the
+    /// format is not supported by the underlying SSL/TLS engine, an error will
+    /// be returned when attempting to send a request using the offending key.
+    </span><span class="kw">pub fn </span>pem&lt;B, P&gt;(bytes: B, password: P) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
+        P: Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;PEM&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;PEM&quot;</span>,
+            data: PathOrBlob::Blob(bytes.into()),
+            password: password.into(),
         }
     }
 
-    <span class="doccomment">/// Use a DER-encoded private key stored in the given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The private key object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The key is not parsed or validated here. If the key is malformed or the</span>
-    <span class="doccomment">/// format is not supported by the underlying SSL/TLS engine, an error will</span>
-    <span class="doccomment">/// be returned when attempting to send a request using the offending key.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">der</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>, <span class="ident">password</span>: <span class="ident">P</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">P</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Use a DER-encoded private key stored in the given byte buffer.
+    ///
+    /// The private key object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The key is not parsed or validated here. If the key is malformed or the
+    /// format is not supported by the underlying SSL/TLS engine, an error will
+    /// be returned when attempting to send a request using the offending key.
+    </span><span class="kw">pub fn </span>der&lt;B, P&gt;(bytes: B, password: P) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
+        P: Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;DER&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;DER&quot;</span>,
+            data: PathOrBlob::Blob(bytes.into()),
+            password: password.into(),
         }
     }
 
-    <span class="doccomment">/// Get a PEM-encoded private key file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The key file is not loaded or validated here. If the file does not exist</span>
-    <span class="doccomment">/// or the format is not supported by the underlying SSL/TLS engine, an</span>
-    <span class="doccomment">/// error will be returned when attempting to send a request using the</span>
-    <span class="doccomment">/// offending key.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pem_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;PEM&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>.<span class="ident">into</span>()),
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// Get a PEM-encoded private key file.
+    ///
+    /// The key file is not loaded or validated here. If the file does not exist
+    /// or the format is not supported by the underlying SSL/TLS engine, an
+    /// error will be returned when attempting to send a request using the
+    /// offending key.
+    </span><span class="kw">pub fn </span>pem_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, password: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;PEM&quot;</span>,
+            data: PathOrBlob::Path(path.into()),
+            password: password.into(),
         }
     }
 
-    <span class="doccomment">/// Get a DER-encoded private key file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The key file is not loaded or validated here. If the file does not exist</span>
-    <span class="doccomment">/// or the format is not supported by the underlying SSL/TLS engine, an</span>
-    <span class="doccomment">/// error will be returned when attempting to send a request using the</span>
-    <span class="doccomment">/// offending key.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">der_file</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">format</span>: <span class="string">&quot;DER&quot;</span>,
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>.<span class="ident">into</span>()),
-            <span class="ident">password</span>: <span class="ident">password</span>.<span class="ident">into</span>(),
+    <span class="doccomment">/// Get a DER-encoded private key file.
+    ///
+    /// The key file is not loaded or validated here. If the file does not exist
+    /// or the format is not supported by the underlying SSL/TLS engine, an
+    /// error will be returned when attempting to send a request using the
+    /// offending key.
+    </span><span class="kw">pub fn </span>der_file(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;, password: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            format: <span class="string">&quot;DER&quot;</span>,
+            data: PathOrBlob::Path(path.into()),
+            password: password.into(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">ssl_key_type</span>(<span class="self">self</span>.<span class="ident">format</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>PrivateKey {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.ssl_key_type(<span class="self">self</span>.format)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-            <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>) =&gt; <span class="ident">easy</span>.<span class="ident">ssl_key</span>(<span class="ident">path</span>.<span class="ident">as_path</span>()),
-            <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>) =&gt; <span class="ident">easy</span>.<span class="ident">ssl_key_blob</span>(<span class="ident">bytes</span>.<span class="ident">as_slice</span>()),
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.data {
+            PathOrBlob::Path(path) =&gt; easy.ssl_key(path.as_path()),
+            PathOrBlob::Blob(bytes) =&gt; easy.ssl_key_blob(bytes.as_slice()),
         }<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">password</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">password</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">easy</span>.<span class="ident">key_password</span>(<span class="ident">password</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(password) = <span class="self">self</span>.password.as_ref() {
+            easy.key_password(password)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// A public CA certificate bundle file.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CaCertificate</span> {
-    <span class="doccomment">/// The certificate data, either a path or a blob.</span>
-    <span class="ident">data</span>: <span class="ident">PathOrBlob</span>,
+<span class="doccomment">/// A public CA certificate bundle file.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>CaCertificate {
+    <span class="doccomment">/// The certificate data, either a path or a blob.
+    </span>data: PathOrBlob,
 }
 
-<span class="kw">impl</span> <span class="ident">CaCertificate</span> {
-    <span class="doccomment">/// Use one or more PEM-encoded certificates in the given byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate object takes ownership of the byte buffer. If a borrowed</span>
-    <span class="doccomment">/// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificates are not parsed or validated here. If a certificate is</span>
-    <span class="doccomment">/// malformed or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pem</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>CaCertificate {
+    <span class="doccomment">/// Use one or more PEM-encoded certificates in the given byte buffer.
+    ///
+    /// The certificate object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&amp;[u8]`, then the bytes will be copied.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>pem&lt;B&gt;(bytes: B) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: Into&lt;Vec&lt;u8&gt;&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>.<span class="ident">into</span>()),
+        <span class="self">Self </span>{
+            data: PathOrBlob::Blob(bytes.into()),
         }
     }
 
-    <span class="doccomment">/// Use one or more DER-encoded certificates stored in memory.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificates are not parsed or validated here. If a certificate is</span>
-    <span class="doccomment">/// malformed or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;data-encoding&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">der_multiple</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">certificates</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">B</span><span class="op">&gt;</span>,
-        <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>,
+    <span class="doccomment">/// Use one or more DER-encoded certificates stored in memory.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;data-encoding&quot;</span>)]</span>
+    <span class="attribute">#[allow(dead_code)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>der_multiple&lt;I, B&gt;(certificates: I) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>I: IntoIterator&lt;Item = B&gt;,
+        B: AsRef&lt;[u8]&gt;,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">base64_spec</span> <span class="op">=</span> <span class="ident">data_encoding::BASE64</span>.<span class="ident">specification</span>();
-        <span class="ident">base64_spec</span>.<span class="ident">wrap</span>.<span class="ident">width</span> <span class="op">=</span> <span class="number">64</span>;
-        <span class="ident">base64_spec</span>.<span class="ident">wrap</span>.<span class="ident">separator</span>.<span class="ident">push_str</span>(<span class="string">&quot;\r\n&quot;</span>);
-        <span class="kw">let</span> <span class="ident">base64</span> <span class="op">=</span> <span class="ident">base64_spec</span>.<span class="ident">encoding</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>base64_spec = data_encoding::BASE64.specification();
+        base64_spec.wrap.width = <span class="number">64</span>;
+        base64_spec.wrap.separator.push_str(<span class="string">&quot;\r\n&quot;</span>);
+        <span class="kw">let </span>base64 = base64_spec.encoding().unwrap();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pem</span> <span class="op">=</span> <span class="ident">String::new</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>pem = String::new();
 
-        <span class="kw">for</span> <span class="ident">certificate</span> <span class="kw">in</span> <span class="ident">certificates</span> {
-            <span class="ident">pem</span>.<span class="ident">push_str</span>(<span class="string">&quot;-----BEGIN CERTIFICATE-----\r\n&quot;</span>);
-            <span class="ident">base64</span>.<span class="ident">encode_append</span>(<span class="ident">certificate</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">pem</span>);
-            <span class="ident">pem</span>.<span class="ident">push_str</span>(<span class="string">&quot;-----END CERTIFICATE-----\r\n&quot;</span>);
+        <span class="kw">for </span>certificate <span class="kw">in </span>certificates {
+            pem.push_str(<span class="string">&quot;-----BEGIN CERTIFICATE-----\r\n&quot;</span>);
+            base64.encode_append(certificate.as_ref(), <span class="kw-2">&amp;mut </span>pem);
+            pem.push_str(<span class="string">&quot;-----END CERTIFICATE-----\r\n&quot;</span>);
         }
 
-        <span class="ident"><span class="self">Self</span>::pem</span>(<span class="ident">pem</span>)
+        <span class="self">Self</span>::pem(pem)
     }
 
-    <span class="doccomment">/// Get a CA certificate from a path to a certificate bundle file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The certificate file is not loaded or validated here. If the file does</span>
-    <span class="doccomment">/// not exist or the format is not supported by the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine, an error will be returned when attempting to send a request</span>
-    <span class="doccomment">/// using the offending certificate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">file</span>(<span class="ident">ca_bundle_path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">data</span>: <span class="ident">PathOrBlob::Path</span>(<span class="ident">ca_bundle_path</span>.<span class="ident">into</span>()),
+    <span class="doccomment">/// Get a CA certificate from a path to a certificate bundle file.
+    ///
+    /// The certificate file is not loaded or validated here. If the file does
+    /// not exist or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    </span><span class="kw">pub fn </span>file(ca_bundle_path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            data: PathOrBlob::Path(ca_bundle_path.into()),
         }
     }
 
-    <span class="doccomment">/// Get native root certificates trusted by the operating system, if any.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unreachable_code</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">native</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">static</span> <span class="ident">NATIVE</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CaCertificate</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy::new</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;rustls-native-certs&quot;</span>)]</span>
+    <span class="doccomment">/// Get native root certificates trusted by the operating system, if any.
+    </span><span class="attribute">#[allow(unreachable_code)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>native() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">static </span>NATIVE: Lazy&lt;<span class="prelude-ty">Option</span>&lt;CaCertificate&gt;&gt; = Lazy::new(|| {
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;rustls-native-certs&quot;</span>)]</span>
             {
-                <span class="kw">match</span> <span class="ident">rustls_native_certs::load_native_certs</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">certs</span>) =&gt; {
-                        <span class="kw">if</span> <span class="op">!</span><span class="ident">certs</span>.<span class="ident">is_empty</span>() {
-                            <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">CaCertificate::der_multiple</span>(
-                                <span class="ident">certs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cert</span><span class="op">|</span> <span class="ident">cert</span>.<span class="number">0</span>),
+                <span class="kw">match </span>rustls_native_certs::load_native_certs() {
+                    <span class="prelude-val">Ok</span>(certs) =&gt; {
+                        <span class="kw">if </span>!certs.is_empty() {
+                            <span class="kw">return </span><span class="prelude-val">Some</span>(CaCertificate::der_multiple(
+                                certs.into_iter().map(|cert| cert.<span class="number">0</span>),
                             ));
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">log::warn!</span>(<span class="string">&quot;failed to load native certificate chain: {}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">log::warn!</span>(<span class="string">&quot;failed to load native certificate chain: {}&quot;</span>, e);
                     }
                 }
             }
 
-            <span class="prelude-val">None</span>
-        });
+            <span class="prelude-val">None
+        </span>});
 
-        <span class="ident">NATIVE</span>.<span class="ident">clone</span>()
+        NATIVE.clone()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">CaCertificate</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-            <span class="ident">PathOrBlob::Path</span>(<span class="ident">path</span>) =&gt; <span class="ident">easy</span>.<span class="ident">cainfo</span>(<span class="ident">path</span>.<span class="ident">as_path</span>()),
-            <span class="ident">PathOrBlob::Blob</span>(<span class="ident">bytes</span>) =&gt; <span class="ident">easy</span>.<span class="ident">ssl_cainfo_blob</span>(<span class="ident">bytes</span>.<span class="ident">as_slice</span>()),
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>CaCertificate {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.data {
+            PathOrBlob::Path(path) =&gt; easy.cainfo(path.as_path()),
+            PathOrBlob::Blob(bytes) =&gt; easy.ssl_cainfo_blob(bytes.as_slice()),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Ciphers</span>(<span class="ident">String</span>);
+<span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Ciphers(String);
 
-<span class="kw">impl</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Ciphers</span> {
-    <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Ciphers</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>().<span class="ident">join</span>(<span class="string">&quot;:&quot;</span>))
+<span class="kw">impl </span>FromIterator&lt;String&gt; <span class="kw">for </span>Ciphers {
+    <span class="kw">fn </span>from_iter&lt;I: IntoIterator&lt;Item = String&gt;&gt;(iter: I) -&gt; <span class="self">Self </span>{
+        Ciphers(iter.into_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;:&quot;</span>))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Ciphers</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">ssl_cipher_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Ciphers {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.ssl_cipher_list(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)
     }
 }
 
-<span class="doccomment">/// A flag that can be used to alter the behavior of SSL/TLS connections.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Most options are for disabling security checks that introduce security</span>
-<span class="doccomment">/// risks, but may be required as a last resort.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SslOption</span>(<span class="ident">usize</span>);
+<span class="doccomment">/// A flag that can be used to alter the behavior of SSL/TLS connections.
+///
+/// Most options are for disabling security checks that introduce security
+/// risks, but may be required as a last resort.
+</span><span class="attribute">#[derive(Clone, Copy, Debug)]</span>
+<span class="kw">pub struct </span>SslOption(usize);
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SslOption</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::NONE</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>SslOption {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::NONE
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SslOption</span> {
-    <span class="doccomment">/// An empty set of options. This is the default.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NONE</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">SslOption</span>(<span class="number">0</span>);
+<span class="kw">impl </span>SslOption {
+    <span class="doccomment">/// An empty set of options. This is the default.
+    </span><span class="kw">pub const </span>NONE: <span class="self">Self </span>= SslOption(<span class="number">0</span>);
 
-    <span class="doccomment">/// Disables certificate validation.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You should think very carefully before using this method. If invalid</span>
-    <span class="doccomment">/// certificates are trusted, *any* certificate for any site will be trusted</span>
-    <span class="doccomment">/// for use. This includes expired certificates. This introduces significant</span>
-    <span class="doccomment">/// vulnerabilities, and should only be used as a last resort.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DANGER_ACCEPT_INVALID_CERTS</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">SslOption</span>(<span class="number">0b0001</span>);
+    <span class="doccomment">/// Disables certificate validation.
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. If invalid
+    /// certificates are trusted, *any* certificate for any site will be trusted
+    /// for use. This includes expired certificates. This introduces significant
+    /// vulnerabilities, and should only be used as a last resort.
+    </span><span class="kw">pub const </span>DANGER_ACCEPT_INVALID_CERTS: <span class="self">Self </span>= SslOption(<span class="number">0b0001</span>);
 
-    <span class="doccomment">/// Disables hostname verification on certificates.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You should think very carefully before you use this method. If hostname</span>
-    <span class="doccomment">/// verification is not used, any valid certificate for any site will be</span>
-    <span class="doccomment">/// trusted for use from any other. This introduces a significant</span>
-    <span class="doccomment">/// vulnerability to man-in-the-middle attacks.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DANGER_ACCEPT_INVALID_HOSTS</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">SslOption</span>(<span class="number">0b0010</span>);
+    <span class="doccomment">/// Disables hostname verification on certificates.
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before you use this method. If hostname
+    /// verification is not used, any valid certificate for any site will be
+    /// trusted for use from any other. This introduces a significant
+    /// vulnerability to man-in-the-middle attacks.
+    </span><span class="kw">pub const </span>DANGER_ACCEPT_INVALID_HOSTS: <span class="self">Self </span>= SslOption(<span class="number">0b0010</span>);
 
-    <span class="doccomment">/// Disables certificate revocation checks for backends where such behavior</span>
-    <span class="doccomment">/// is present.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This option is only supported for Schannel (the native Windows SSL</span>
-    <span class="doccomment">/// library).</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DANGER_ACCEPT_REVOKED_CERTS</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">SslOption</span>(<span class="number">0b0100</span>);
+    <span class="doccomment">/// Disables certificate revocation checks for backends where such behavior
+    /// is present.
+    ///
+    /// This option is only supported for Schannel (the native Windows SSL
+    /// library).
+    </span><span class="kw">pub const </span>DANGER_ACCEPT_REVOKED_CERTS: <span class="self">Self </span>= SslOption(<span class="number">0b0100</span>);
 
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        (<span class="self">self</span>.<span class="number">0</span> <span class="op">&amp;</span> <span class="ident">other</span>.<span class="number">0</span>) <span class="op">==</span> <span class="ident">other</span>.<span class="number">0</span>
+    <span class="kw">const fn </span>contains(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; bool {
+        (<span class="self">self</span>.<span class="number">0 </span>&amp; other.<span class="number">0</span>) == other.<span class="number">0
+    </span>}
+}
+
+<span class="kw">impl </span>BitOr <span class="kw">for </span>SslOption {
+    <span class="kw">type </span>Output = <span class="self">Self</span>;
+
+    <span class="kw">fn </span>bitor(<span class="kw-2">mut </span><span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self </span>|= other;
+        <span class="self">self
+    </span>}
+}
+
+<span class="kw">impl </span>BitOrAssign <span class="kw">for </span>SslOption {
+    <span class="kw">fn </span>bitor_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rhs: <span class="self">Self</span>) {
+        <span class="self">self</span>.<span class="number">0 </span>|= rhs.<span class="number">0</span>;
     }
 }
 
-<span class="kw">impl</span> <span class="ident">BitOr</span> <span class="kw">for</span> <span class="ident">SslOption</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="self">Self</span>;
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>SslOption {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>opt = SslOpt::new();
+        opt.no_revoke(<span class="self">self</span>.contains(<span class="self">Self</span>::DANGER_ACCEPT_REVOKED_CERTS));
 
-    <span class="kw">fn</span> <span class="ident">bitor</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span> <span class="op">|</span><span class="op">=</span> <span class="ident">other</span>;
-        <span class="self">self</span>
+        easy.ssl_options(<span class="kw-2">&amp;</span>opt)<span class="question-mark">?</span>;
+        easy.ssl_verify_peer(!<span class="self">self</span>.contains(<span class="self">Self</span>::DANGER_ACCEPT_INVALID_CERTS))<span class="question-mark">?</span>;
+        easy.ssl_verify_host(!<span class="self">self</span>.contains(<span class="self">Self</span>::DANGER_ACCEPT_INVALID_HOSTS))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">BitOrAssign</span> <span class="kw">for</span> <span class="ident">SslOption</span> {
-    <span class="kw">fn</span> <span class="ident">bitor_assign</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">rhs</span>: <span class="self">Self</span>) {
-        <span class="self">self</span>.<span class="number">0</span> <span class="op">|</span><span class="op">=</span> <span class="ident">rhs</span>.<span class="number">0</span>;
-    }
-}
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">super</span>::SslOption;
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">SslOption</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">SslOpt::new</span>();
-        <span class="ident">opt</span>.<span class="ident">no_revoke</span>(<span class="self">self</span>.<span class="ident">contains</span>(<span class="ident"><span class="self">Self</span>::DANGER_ACCEPT_REVOKED_CERTS</span>));
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>default_ssl_options() {
+        <span class="kw">let </span>options = SslOption::default();
 
-        <span class="ident">easy</span>.<span class="ident">ssl_options</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>)<span class="question-mark">?</span>;
-        <span class="ident">easy</span>.<span class="ident">ssl_verify_peer</span>(<span class="op">!</span><span class="self">self</span>.<span class="ident">contains</span>(<span class="ident"><span class="self">Self</span>::DANGER_ACCEPT_INVALID_CERTS</span>))<span class="question-mark">?</span>;
-        <span class="ident">easy</span>.<span class="ident">ssl_verify_host</span>(<span class="op">!</span><span class="self">self</span>.<span class="ident">contains</span>(<span class="ident"><span class="self">Self</span>::DANGER_ACCEPT_INVALID_HOSTS</span>))
-    }
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SslOption</span>;
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">default_ssl_options</span>() {
-        <span class="kw">let</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">SslOption::default</span>();
-
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span>));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_HOSTS</span>));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_REVOKED_CERTS</span>));
+        <span class="macro">assert!</span>(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        <span class="macro">assert!</span>(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
+        <span class="macro">assert!</span>(!options.contains(SslOption::DANGER_ACCEPT_REVOKED_CERTS));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ssl_option_invalid_certs</span>() {
-        <span class="kw">let</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span>;
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>ssl_option_invalid_certs() {
+        <span class="kw">let </span>options = SslOption::DANGER_ACCEPT_INVALID_CERTS;
 
-        <span class="macro">assert!</span>(<span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span>));
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_HOSTS</span>));
+        <span class="macro">assert!</span>(options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        <span class="macro">assert!</span>(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
 
-        <span class="kw">let</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">SslOption::DANGER_ACCEPT_INVALID_HOSTS</span>;
+        <span class="kw">let </span>options = SslOption::DANGER_ACCEPT_INVALID_HOSTS;
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span>));
-        <span class="macro">assert!</span>(<span class="ident">options</span>.<span class="ident">contains</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_HOSTS</span>));
+        <span class="macro">assert!</span>(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
+        <span class="macro">assert!</span>(options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

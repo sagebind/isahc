@@ -37,42 +37,42 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Types for cookie state management.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Cookie jars</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! By default HTTP is a mostly stateless protocol, but using cookies allow a</span>
-<span class="doccomment">//! server to request a client to persist specific state between requests. Isahc</span>
-<span class="doccomment">//! does not do this by default, but provides support for cookie state using a</span>
-<span class="doccomment">//! _cookie jar_, which can store a list of cookies in memory between requests</span>
-<span class="doccomment">//! and is responsible for keeping track of which cookies belong to which</span>
-<span class="doccomment">//! domains.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A cookie jar can be used on a per-request basis or for all requests sent via</span>
-<span class="doccomment">//! a particular HTTP client. You can assign a cookie jar to a request or to a</span>
-<span class="doccomment">//! client via the</span>
-<span class="doccomment">//! [`Configurable::cookie_jar`](crate::config::Configurable::cookie_jar)</span>
-<span class="doccomment">//! extension method. If different cookie jars are assigned on both a request</span>
-<span class="doccomment">//! and the client sending the request, the one assigned to the individual</span>
-<span class="doccomment">//! request will take precedence.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The global default client instance does not have an assigned cookie jar.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Availability</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module is only available when the [`cookies`](index.html#cookies)</span>
-<span class="doccomment">//! feature is enabled.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Types for cookie state management.
+//!
+//! # Cookie jars
+//!
+//! By default HTTP is a mostly stateless protocol, but using cookies allow a
+//! server to request a client to persist specific state between requests. Isahc
+//! does not do this by default, but provides support for cookie state using a
+//! _cookie jar_, which can store a list of cookies in memory between requests
+//! and is responsible for keeping track of which cookies belong to which
+//! domains.
+//!
+//! A cookie jar can be used on a per-request basis or for all requests sent via
+//! a particular HTTP client. You can assign a cookie jar to a request or to a
+//! client via the
+//! [`Configurable::cookie_jar`](crate::config::Configurable::cookie_jar)
+//! extension method. If different cookie jars are assigned on both a request
+//! and the client sending the request, the one assigned to the individual
+//! request will take precedence.
+//!
+//! The global default client instance does not have an assigned cookie jar.
+//!
+//! # Availability
+//!
+//! This module is only available when the [`cookies`](index.html#cookies)
+//! feature is enabled.
 
-<span class="kw">mod</span> <span class="ident">cookie</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">interceptor</span>;
-<span class="kw">mod</span> <span class="ident">jar</span>;
+</span><span class="kw">mod </span>cookie;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>interceptor;
+<span class="kw">mod </span>jar;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;psl&quot;</span>)]</span>
-<span class="kw">mod</span> <span class="ident">psl</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;psl&quot;</span>)]</span>
+<span class="kw">mod </span>psl;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::{
-    <span class="ident">cookie</span>::{<span class="ident">Cookie</span>, <span class="ident">CookieBuilder</span>, <span class="ident">ParseError</span>},
-    <span class="ident">jar</span>::{<span class="ident">CookieJar</span>, <span class="ident">CookieRejectedError</span>, <span class="ident">CookieRejectedErrorKind</span>},
+<span class="kw">pub use </span><span class="self">self</span>::{
+    cookie::{Cookie, CookieBuilder, ParseError},
+    jar::{CookieJar, CookieRejectedError, CookieRejectedErrorKind},
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

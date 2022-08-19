@@ -46,51 +46,51 @@
 <span id="44">44</span>
 <span id="45">45</span>
 <span id="46">46</span>
-</pre><pre class="rust"><code><span class="macro">macro_rules!</span> <span class="ident">decl_future</span> {
+</pre><pre class="rust"><code><span class="macro">macro_rules!</span> decl_future {
     (
         $(
-            $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">meta</span>:<span class="ident">meta</span>]</span>)<span class="op">*</span>
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vis</span>:<span class="ident">vis</span> <span class="kw">type</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span>:<span class="ident">ident</span>$(<span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>:<span class="ident">ident</span>),<span class="kw-2">*</span><span class="op">&gt;</span>)<span class="question-mark">?</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">output</span>:<span class="ident">ty</span><span class="op">&gt;</span> $(<span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">S</span>:<span class="ident">ident</span>),<span class="op">+</span><span class="op">&gt;</span>)<span class="question-mark">?</span>;
-        )<span class="op">*</span>
+            $(<span class="attribute">#[<span class="macro-nonterminal">$meta</span>:meta]</span>)*
+            <span class="macro-nonterminal">$vis</span>:vis <span class="kw">type </span><span class="macro-nonterminal">$ident</span>:ident$(&lt;$(<span class="macro-nonterminal">$T</span>:ident),<span class="kw-2">*</span>&gt;)<span class="question-mark">? </span>= <span class="kw">impl </span>Future&lt;Output = <span class="macro-nonterminal">$output</span>:ty&gt; $(+ SendIf&lt;$(<span class="macro-nonterminal">$S</span>:ident),+&gt;)<span class="question-mark">?</span>;
+        )*
     ) =&gt; {
         $(
-            $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">meta</span>]</span>)<span class="op">*</span>
-            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_debug_implementations</span>, <span class="ident">non_snake_case</span>)]</span>
-            <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vis</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                <span class="ident">inner</span>: <span class="ident">::std::pin::Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">::std::future::Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-                $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>: <span class="ident">::std::marker::PhantomData</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span><span class="op">&gt;</span>,)<span class="kw-2">*</span>)<span class="op">*</span>
+            $(<span class="attribute">#[<span class="macro-nonterminal">$meta</span>]</span>)*
+            <span class="attribute">#[allow(missing_debug_implementations, non_snake_case)]</span>
+            <span class="attribute">#[must_use = <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
+            <span class="macro-nonterminal">$vis </span><span class="kw">struct </span><span class="macro-nonterminal">$ident</span>&lt;<span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span>&gt; {
+                inner: ::std::pin::Pin&lt;Box&lt;<span class="kw">dyn </span>::std::future::Future&lt;Output = <span class="macro-nonterminal">$output</span>&gt; + <span class="lifetime">&#39;a</span>&gt;&gt;,
+                $($(<span class="macro-nonterminal">$T</span>: ::std::marker::PhantomData&lt;<span class="macro-nonterminal">$T</span>&gt;,)<span class="kw-2">*</span>)*
             }
 
-            $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">meta</span>]</span>)<span class="op">*</span>
-            <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">future</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span>
-                <span class="kw">where</span>
-                <span class="ident">F</span>: <span class="ident">::std::future::Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+            $(<span class="attribute">#[<span class="macro-nonterminal">$meta</span>]</span>)*
+            <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span>&gt; <span class="macro-nonterminal">$ident</span>&lt;<span class="lifetime">&#39;a</span>, $($(<span class="macro-nonterminal">$T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span>&gt; {
+                <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new&lt;F&gt;(future: F) -&gt; <span class="self">Self
+                </span><span class="kw">where
+                </span>F: ::std::future::Future&lt;Output = <span class="macro-nonterminal">$output</span>&gt; + <span class="lifetime">&#39;a</span>,
                 {
-                    <span class="self">Self</span> {
-                        <span class="ident">inner</span>: <span class="ident">Box::pin</span>(<span class="ident">future</span>),
-                        $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>: <span class="ident">::std::marker::PhantomData</span>,)<span class="kw-2">*</span>)<span class="op">*</span>
+                    <span class="self">Self </span>{
+                        inner: Box::pin(future),
+                        $($(<span class="macro-nonterminal">$T</span>: ::std::marker::PhantomData,)<span class="kw-2">*</span>)*
                     }
                 }
             }
 
-            $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">meta</span>]</span>)<span class="op">*</span>
-            <span class="kw">impl</span><span class="op">&lt;</span>$($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>: <span class="ident">Unpin</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span><span class="op">&gt;</span> <span class="ident">::std::future::Future</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, $($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">output</span>;
+            $(<span class="attribute">#[<span class="macro-nonterminal">$meta</span>]</span>)*
+            <span class="kw">impl</span>&lt;$($(<span class="macro-nonterminal">$T</span>: Unpin),<span class="kw-2">*</span>)<span class="kw-2">*</span>&gt; ::std::future::Future <span class="kw">for </span><span class="macro-nonterminal">$ident</span>&lt;<span class="lifetime">&#39;_</span>, $($(<span class="macro-nonterminal">$T</span>),<span class="kw-2">*</span>)<span class="kw-2">*</span>&gt; {
+                <span class="kw">type </span>Output = <span class="macro-nonterminal">$output</span>;
 
-                <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">mut</span> <span class="self">self</span>: <span class="ident">::std::pin::Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;mut</span> <span class="ident">::std::task::Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">::std::task::Poll</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span> {
-                    <span class="self">self</span>.<span class="ident">as_mut</span>().<span class="ident">inner</span>.<span class="ident">as_mut</span>().<span class="ident">poll</span>(<span class="ident">cx</span>)
+                <span class="kw">fn </span>poll(<span class="kw-2">mut </span><span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>::std::task::Context&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; ::std::task::Poll&lt;<span class="self">Self</span>::Output&gt; {
+                    <span class="self">self</span>.as_mut().inner.as_mut().poll(cx)
                 }
             }
 
-            $(<span class="attribute">#[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">meta</span>]</span>)<span class="op">*</span>
+            $(<span class="attribute">#[<span class="macro-nonterminal">$meta</span>]</span>)*
             $(
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-                <span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">S</span>: <span class="ident">Send</span>),<span class="kw-2">*</span><span class="op">&gt;</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">S</span>),<span class="kw-2">*</span><span class="op">&gt;</span> {}
-            )<span class="op">*</span>
-        )<span class="op">*</span>
+                <span class="attribute">#[allow(unsafe_code)]</span>
+                <span class="kw">unsafe impl</span>&lt;$(<span class="macro-nonterminal">$S</span>: Send),<span class="kw-2">*</span>&gt; Send <span class="kw">for </span><span class="macro-nonterminal">$ident</span>&lt;<span class="lifetime">&#39;_</span>, $(<span class="macro-nonterminal">$S</span>),<span class="kw-2">*</span>&gt; {}
+            )*
+        )*
     };
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

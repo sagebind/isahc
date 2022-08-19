@@ -353,358 +353,358 @@
 <span id="351">351</span>
 <span id="352">352</span>
 <span id="353">353</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">auth::Authentication</span>,
-    <span class="ident">body::AsyncBody</span>,
-    <span class="ident">config</span>::{<span class="ident">request::RequestConfig</span>, <span class="ident">RedirectPolicy</span>},
-    <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">ErrorKind</span>},
-    <span class="ident">handler::RequestBody</span>,
-    <span class="ident">interceptor</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>},
-    <span class="ident">request::RequestExt</span>,
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    auth::Authentication,
+    body::AsyncBody,
+    config::{request::RequestConfig, RedirectPolicy},
+    error::{Error, ErrorKind},
+    handler::RequestBody,
+    interceptor::{Context, Interceptor, InterceptorFuture},
+    request::RequestExt,
 };
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">header::ToStrError</span>, <span class="ident">uri::Scheme</span>, <span class="ident">HeaderMap</span>, <span class="ident">HeaderValue</span>, <span class="ident">Request</span>, <span class="ident">Response</span>, <span class="ident">Uri</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">borrow::Cow</span>, <span class="ident">convert::TryFrom</span>, <span class="ident">fmt::Write</span>, <span class="ident">str</span>};
-<span class="kw">use</span> <span class="ident">url::Url</span>;
+<span class="kw">use </span>http::{header::ToStrError, uri::Scheme, HeaderMap, HeaderValue, Request, Response, Uri};
+<span class="kw">use </span>std::{borrow::Cow, convert::TryFrom, fmt::Write, str};
+<span class="kw">use </span>url::Url;
 
-<span class="doccomment">/// How many redirects to follow by default if a limit is not specified. We</span>
-<span class="doccomment">/// don&#39;t actually allow infinite redirects as that could result in a dangerous</span>
-<span class="doccomment">/// infinite loop, so by default we actually limit redirects to a large amount.</span>
-<span class="kw">const</span> <span class="ident">DEFAULT_REDIRECT_LIMIT</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
+<span class="doccomment">/// How many redirects to follow by default if a limit is not specified. We
+/// don&#39;t actually allow infinite redirects as that could result in a dangerous
+/// infinite loop, so by default we actually limit redirects to a large amount.
+</span><span class="kw">const </span>DEFAULT_REDIRECT_LIMIT: u32 = <span class="number">1024</span>;
 
-<span class="doccomment">/// Extension containing the final &quot;effective&quot; URI that was visited, after</span>
-<span class="doccomment">/// following any redirects.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EffectiveUri</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Uri</span>);
+<span class="doccomment">/// Extension containing the final &quot;effective&quot; URI that was visited, after
+/// following any redirects.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EffectiveUri(<span class="kw">pub</span>(<span class="kw">crate</span>) Uri);
 
-<span class="doccomment">/// Interceptor that implements automatic following of HTTP redirects.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RedirectInterceptor</span>;
+<span class="doccomment">/// Interceptor that implements automatic following of HTTP redirects.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RedirectInterceptor;
 
-<span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="kw">for</span> <span class="ident">RedirectInterceptor</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">Error</span>;
+<span class="kw">impl </span>Interceptor <span class="kw">for </span>RedirectInterceptor {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= Error;
 
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="comment">// Store the effective URI to include in the response.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">effective_uri</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">uri</span>().<span class="ident">clone</span>();
+    <span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;,
+        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
+    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt; {
+        Box::pin(<span class="kw">async move </span>{
+            <span class="comment">// Store the effective URI to include in the response.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>effective_uri = request.uri().clone();
 
-            <span class="comment">// Get the redirect policy for this request.</span>
-            <span class="kw">let</span> <span class="ident">policy</span> <span class="op">=</span> <span class="ident">request</span>
-                .<span class="ident">extensions</span>()
-                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">config</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">redirect_policy</span>.<span class="ident">as_ref</span>())
-                .<span class="ident">cloned</span>()
-                .<span class="ident">unwrap_or_default</span>();
+            <span class="comment">// Get the redirect policy for this request.
+            </span><span class="kw">let </span>policy = request
+                .extensions()
+                .get::&lt;RequestConfig&gt;()
+                .and_then(|config| config.redirect_policy.as_ref())
+                .cloned()
+                .unwrap_or_default();
 
-            <span class="comment">// No redirect handling, just proceed normally.</span>
-            <span class="kw">if</span> <span class="ident">policy</span> <span class="op">==</span> <span class="ident">RedirectPolicy::None</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="ident">response</span>
-                    .<span class="ident">extensions_mut</span>()
-                    .<span class="ident">insert</span>(<span class="ident">EffectiveUri</span>(<span class="ident">effective_uri</span>));
+            <span class="comment">// No redirect handling, just proceed normally.
+            </span><span class="kw">if </span>policy == RedirectPolicy::None {
+                <span class="kw">let </span><span class="kw-2">mut </span>response = ctx.send(request).<span class="kw">await</span><span class="question-mark">?</span>;
+                response
+                    .extensions_mut()
+                    .insert(EffectiveUri(effective_uri));
 
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">response</span>);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(response);
             }
 
-            <span class="kw">let</span> <span class="ident">auto_referer</span> <span class="op">=</span> <span class="ident">request</span>
-                .<span class="ident">extensions</span>()
-                .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>()
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">config</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">auto_referer</span>)
-                .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+            <span class="kw">let </span>auto_referer = request
+                .extensions()
+                .get::&lt;RequestConfig&gt;()
+                .and_then(|config| config.auto_referer)
+                .unwrap_or(<span class="bool-val">false</span>);
 
-            <span class="kw">let</span> <span class="ident">limit</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">policy</span> {
-                <span class="ident">RedirectPolicy::Limit</span>(<span class="ident">limit</span>) =&gt; <span class="ident">limit</span>,
-                <span class="kw">_</span> =&gt; <span class="ident">DEFAULT_REDIRECT_LIMIT</span>,
+            <span class="kw">let </span>limit = <span class="kw">match </span>policy {
+                RedirectPolicy::Limit(limit) =&gt; limit,
+                <span class="kw">_ </span>=&gt; DEFAULT_REDIRECT_LIMIT,
             };
 
-            <span class="comment">// Keep track of how many redirects we&#39;ve done.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">redirect_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
+            <span class="comment">// Keep track of how many redirects we&#39;ve done.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>redirect_count: u32 = <span class="number">0</span>;
 
-            <span class="kw">loop</span> {
-                <span class="comment">// Preserve a clone of the request before sending it.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_builder</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">to_builder</span>();
+            <span class="kw">loop </span>{
+                <span class="comment">// Preserve a clone of the request before sending it.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>request_builder = request.to_builder();
 
-                <span class="comment">// Send the request to get the ball rolling.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="comment">// Send the request to get the ball rolling.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>response = ctx.send(request).<span class="kw">await</span><span class="question-mark">?</span>;
 
-                <span class="comment">// Check for a redirect.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">redirect_location</span>) <span class="op">=</span> <span class="ident">get_redirect_location</span>(<span class="kw-2">&amp;</span><span class="ident">effective_uri</span>, <span class="kw-2">&amp;</span><span class="ident">response</span>) {
-                    <span class="comment">// If we&#39;ve reached the limit, return an error as requested.</span>
-                    <span class="kw">if</span> <span class="ident">redirect_count</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">limit</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::with_response</span>(<span class="ident">ErrorKind::TooManyRedirects</span>, <span class="kw-2">&amp;</span><span class="ident">response</span>));
+                <span class="comment">// Check for a redirect.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(redirect_location) = get_redirect_location(<span class="kw-2">&amp;</span>effective_uri, <span class="kw-2">&amp;</span>response) {
+                    <span class="comment">// If we&#39;ve reached the limit, return an error as requested.
+                    </span><span class="kw">if </span>redirect_count &gt;= limit {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::with_response(ErrorKind::TooManyRedirects, <span class="kw-2">&amp;</span>response));
                     }
 
-                    <span class="comment">// Set referer header.</span>
-                    <span class="kw">if</span> <span class="ident">auto_referer</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">referer</span>) <span class="op">=</span> <span class="ident">create_referer</span>(<span class="kw-2">&amp;</span><span class="ident">effective_uri</span>, <span class="kw-2">&amp;</span><span class="ident">redirect_location</span>) {
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">headers_mut</span>() {
-                                <span class="ident">headers</span>.<span class="ident">insert</span>(<span class="ident">http::header::REFERER</span>, <span class="ident">referer</span>);
+                    <span class="comment">// Set referer header.
+                    </span><span class="kw">if </span>auto_referer {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(referer) = create_referer(<span class="kw-2">&amp;</span>effective_uri, <span class="kw-2">&amp;</span>redirect_location) {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = request_builder.headers_mut() {
+                                headers.insert(http::header::REFERER, referer);
                             }
                         }
                     }
 
-                    <span class="comment">// Check if we should change the request method into a GET. HTTP</span>
-                    <span class="comment">// specs don&#39;t really say one way or another when this should</span>
-                    <span class="comment">// happen for most status codes, so we just mimic curl&#39;s</span>
-                    <span class="comment">// behavior here since it is so common.</span>
-                    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">301</span>
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">302</span>
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">response</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">303</span>
-                    {
-                        <span class="ident">request_builder</span> <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">method</span>(<span class="ident">http::Method::GET</span>);
+                    <span class="comment">// Check if we should change the request method into a GET. HTTP
+                    // specs don&#39;t really say one way or another when this should
+                    // happen for most status codes, so we just mimic curl&#39;s
+                    // behavior here since it is so common.
+                    </span><span class="kw">if </span>response.status() == <span class="number">301
+                        </span>|| response.status() == <span class="number">302
+                        </span>|| response.status() == <span class="number">303
+                    </span>{
+                        request_builder = request_builder.method(http::Method::GET);
                     }
 
-                    <span class="comment">// If we are redirecting to a different authority, scrub</span>
-                    <span class="comment">// sensitive headers from subsequent requests.</span>
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">is_same_authority</span>(<span class="kw-2">&amp;</span><span class="ident">effective_uri</span>, <span class="kw-2">&amp;</span><span class="ident">redirect_location</span>) {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">headers</span>) <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">headers_mut</span>() {
-                            <span class="ident">scrub_sensitive_headers</span>(<span class="ident">headers</span>);
+                    <span class="comment">// If we are redirecting to a different authority, scrub
+                    // sensitive headers from subsequent requests.
+                    </span><span class="kw">if </span>!is_same_authority(<span class="kw-2">&amp;</span>effective_uri, <span class="kw-2">&amp;</span>redirect_location) {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = request_builder.headers_mut() {
+                            scrub_sensitive_headers(headers);
                         }
 
-                        <span class="comment">// Remove auth configuration.</span>
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">extensions</span>) <span class="op">=</span> <span class="ident">request_builder</span>.<span class="ident">extensions_mut</span>() {
-                            <span class="ident">extensions</span>.<span class="ident">remove</span>::<span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span>();
+                        <span class="comment">// Remove auth configuration.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(extensions) = request_builder.extensions_mut() {
+                            extensions.remove::&lt;Authentication&gt;();
                         }
                     }
 
-                    <span class="comment">// Grab the request body back from the internal handler, as we</span>
-                    <span class="comment">// might need to send it again (if possible...)</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_body</span> <span class="op">=</span> <span class="ident">response</span>
-                        .<span class="ident">extensions_mut</span>()
-                        .<span class="ident">remove</span>::<span class="op">&lt;</span><span class="ident">RequestBody</span><span class="op">&gt;</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
-                        .<span class="ident">unwrap_or_default</span>();
+                    <span class="comment">// Grab the request body back from the internal handler, as we
+                    // might need to send it again (if possible...)
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>request_body = response
+                        .extensions_mut()
+                        .remove::&lt;RequestBody&gt;()
+                        .map(|v| v.<span class="number">0</span>)
+                        .unwrap_or_default();
 
-                    <span class="comment">// Redirect handling is tricky when we are uploading something.</span>
-                    <span class="comment">// If we can, reset the body stream to the beginning. This might</span>
-                    <span class="comment">// work if the body to upload is an in-memory byte buffer, but</span>
-                    <span class="comment">// for arbitrary streams we can&#39;t do this.</span>
-                    <span class="comment">//</span>
-                    <span class="comment">// There&#39;s not really a good way of handling this gracefully, so</span>
-                    <span class="comment">// we just return an error so that the user knows about it.</span>
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">request_body</span>.<span class="ident">reset</span>() {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::with_response</span>(
-                            <span class="ident">ErrorKind::RequestBodyNotRewindable</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">response</span>,
+                    <span class="comment">// Redirect handling is tricky when we are uploading something.
+                    // If we can, reset the body stream to the beginning. This might
+                    // work if the body to upload is an in-memory byte buffer, but
+                    // for arbitrary streams we can&#39;t do this.
+                    //
+                    // There&#39;s not really a good way of handling this gracefully, so
+                    // we just return an error so that the user knows about it.
+                    </span><span class="kw">if </span>!request_body.reset() {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::with_response(
+                            ErrorKind::RequestBodyNotRewindable,
+                            <span class="kw-2">&amp;</span>response,
                         ));
                     }
 
-                    <span class="comment">// Update the request to point to the new URI.</span>
-                    <span class="ident">effective_uri</span> <span class="op">=</span> <span class="ident">redirect_location</span>.<span class="ident">clone</span>();
-                    <span class="ident">request</span> <span class="op">=</span> <span class="ident">request_builder</span>
-                        .<span class="ident">uri</span>(<span class="ident">redirect_location</span>)
-                        .<span class="ident">body</span>(<span class="ident">request_body</span>)
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Error::new</span>(<span class="ident">ErrorKind::InvalidRequest</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
-                    <span class="ident">redirect_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    <span class="comment">// Update the request to point to the new URI.
+                    </span>effective_uri = redirect_location.clone();
+                    request = request_builder
+                        .uri(redirect_location)
+                        .body(request_body)
+                        .map_err(|e| Error::new(ErrorKind::InvalidRequest, e))<span class="question-mark">?</span>;
+                    redirect_count += <span class="number">1</span>;
                 }
-                <span class="comment">// No more redirects; set the effective URI we finally settled on and return.</span>
-                <span class="kw">else</span> {
-                    <span class="ident">response</span>
-                        .<span class="ident">extensions_mut</span>()
-                        .<span class="ident">insert</span>(<span class="ident">EffectiveUri</span>(<span class="ident">effective_uri</span>));
+                <span class="comment">// No more redirects; set the effective URI we finally settled on and return.
+                </span><span class="kw">else </span>{
+                    response
+                        .extensions_mut()
+                        .insert(EffectiveUri(effective_uri));
 
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">response</span>);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(response);
                 }
             }
         })
     }
 }
 
-<span class="kw">fn</span> <span class="ident">get_redirect_location</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">request_uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_redirection</span>() {
-        <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">headers</span>().<span class="ident">get</span>(<span class="ident">http::header::LOCATION</span>)<span class="question-mark">?</span>;
+<span class="kw">fn </span>get_redirect_location&lt;T&gt;(request_uri: <span class="kw-2">&amp;</span>Uri, response: <span class="kw-2">&amp;</span>Response&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Uri&gt; {
+    <span class="kw">if </span>response.status().is_redirection() {
+        <span class="kw">let </span>location = response.headers().get(http::header::LOCATION)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">parse_location</span>(<span class="ident">location</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">location</span>) =&gt; <span class="kw">match</span> <span class="ident">resolve</span>(<span class="ident">request_uri</span>, <span class="ident">location</span>.<span class="ident">as_ref</span>()) {
-                <span class="prelude-val">Ok</span>(<span class="ident">uri</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">match </span>parse_location(location) {
+            <span class="prelude-val">Ok</span>(location) =&gt; <span class="kw">match </span>resolve(request_uri, location.as_ref()) {
+                <span class="prelude-val">Ok</span>(uri) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(uri),
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, e);
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, <span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">tracing::debug!</span>(<span class="string">&quot;invalid redirect location: {}&quot;</span>, e);
             }
         }
     }
 
-    <span class="prelude-val">None</span>
-}
+    <span class="prelude-val">None
+</span>}
 
-<span class="doccomment">/// Parse the given `Location` header value into a string.</span>
-<span class="kw">fn</span> <span class="ident">parse_location</span>(<span class="ident">location</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderValue</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">ToStrError</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">to_str</span>() {
-        <span class="comment">// This will return a `str` if the header value contained only legal</span>
-        <span class="comment">// US-ASCII characters.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Cow::Borrowed</span>(<span class="ident">s</span>)),
+<span class="doccomment">/// Parse the given `Location` header value into a string.
+</span><span class="kw">fn </span>parse_location(location: <span class="kw-2">&amp;</span>HeaderValue) -&gt; <span class="prelude-ty">Result</span>&lt;Cow&lt;<span class="lifetime">&#39;_</span>, str&gt;, ToStrError&gt; {
+    <span class="kw">match </span>location.to_str() {
+        <span class="comment">// This will return a `str` if the header value contained only legal
+        // US-ASCII characters.
+        </span><span class="prelude-val">Ok</span>(s) =&gt; <span class="prelude-val">Ok</span>(Cow::Borrowed(s)),
 
-        <span class="comment">// Try to parse the location as UTF-8 bytes instead of US-ASCII. This is</span>
-        <span class="comment">// technically against the URI spec which requires all literal</span>
-        <span class="comment">// characters in the URI to be US-ASCII (see [RFC 3986, Section</span>
-        <span class="comment">// 4.1](https://tools.ietf.org/html/rfc3986#section-4.1)).</span>
-        <span class="comment">//</span>
-        <span class="comment">// This is also more or less against the HTTP spec, which historically</span>
-        <span class="comment">// allowed for ISO-8859-1 text in header values but since was restricted</span>
-        <span class="comment">// to US-ASCII plus opaque bytes. Never has UTF-8 been encouraged or</span>
-        <span class="comment">// allowed as-such. See [RFC 7230, Section</span>
-        <span class="comment">// 3.2.4](https://tools.ietf.org/html/rfc7230#section-3.2.4) for more</span>
-        <span class="comment">// info.</span>
-        <span class="comment">//</span>
-        <span class="comment">// However, some bad or misconfigured web servers will do this anyway,</span>
-        <span class="comment">// and most web browsers recover from this by allowing and interpreting</span>
-        <span class="comment">// UTF-8 characters as themselves even though they _should_ have been</span>
-        <span class="comment">// percent-encoded. The third-party URI parsers that we use have no such</span>
-        <span class="comment">// leniency, so we percent-encode such bytes (if legal UTF-8) ahead of</span>
-        <span class="comment">// time before handing them off to the URI parser.</span>
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="kw">if</span> <span class="ident">str::from_utf8</span>(<span class="ident">location</span>.<span class="ident">as_bytes</span>()).<span class="ident">is_ok</span>() {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String::with_capacity</span>(<span class="ident">location</span>.<span class="ident">len</span>());
+        <span class="comment">// Try to parse the location as UTF-8 bytes instead of US-ASCII. This is
+        // technically against the URI spec which requires all literal
+        // characters in the URI to be US-ASCII (see [RFC 3986, Section
+        // 4.1](https://tools.ietf.org/html/rfc3986#section-4.1)).
+        //
+        // This is also more or less against the HTTP spec, which historically
+        // allowed for ISO-8859-1 text in header values but since was restricted
+        // to US-ASCII plus opaque bytes. Never has UTF-8 been encouraged or
+        // allowed as-such. See [RFC 7230, Section
+        // 3.2.4](https://tools.ietf.org/html/rfc7230#section-3.2.4) for more
+        // info.
+        //
+        // However, some bad or misconfigured web servers will do this anyway,
+        // and most web browsers recover from this by allowing and interpreting
+        // UTF-8 characters as themselves even though they _should_ have been
+        // percent-encoded. The third-party URI parsers that we use have no such
+        // leniency, so we percent-encode such bytes (if legal UTF-8) ahead of
+        // time before handing them off to the URI parser.
+        </span><span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="kw">if </span>str::from_utf8(location.as_bytes()).is_ok() {
+                <span class="kw">let </span><span class="kw-2">mut </span>s = String::with_capacity(location.len());
 
-                <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">byte</span> <span class="kw">in</span> <span class="ident">location</span>.<span class="ident">as_bytes</span>() {
-                    <span class="kw">if</span> <span class="ident">byte</span>.<span class="ident">is_ascii</span>() {
-                        <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">byte</span> <span class="kw">as</span> <span class="ident">char</span>);
-                    } <span class="kw">else</span> {
-                        <span class="macro">write!</span>(<span class="kw-2">&amp;mut</span> <span class="ident">s</span>, <span class="string">&quot;%{:02x}&quot;</span>, <span class="ident">byte</span>).<span class="ident">unwrap</span>();
+                <span class="kw">for </span><span class="kw-2">&amp;</span>byte <span class="kw">in </span>location.as_bytes() {
+                    <span class="kw">if </span>byte.is_ascii() {
+                        s.push(byte <span class="kw">as </span>char);
+                    } <span class="kw">else </span>{
+                        <span class="macro">write!</span>(<span class="kw-2">&amp;mut </span>s, <span class="string">&quot;%{:02x}&quot;</span>, byte).unwrap();
                     }
                 }
 
-                <span class="prelude-val">Ok</span>(<span class="ident">Cow::Owned</span>(<span class="ident">s</span>))
-            } <span class="kw">else</span> {
-                <span class="comment">// Header value isn&#39;t legal UTF-8 either, not much we can</span>
-                <span class="comment">// reasonably do.</span>
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>)
+                <span class="prelude-val">Ok</span>(Cow::Owned(s))
+            } <span class="kw">else </span>{
+                <span class="comment">// Header value isn&#39;t legal UTF-8 either, not much we can
+                // reasonably do.
+                </span><span class="prelude-val">Err</span>(e)
             }
         }
     }
 }
 
-<span class="doccomment">/// Resolve one URI in terms of another.</span>
-<span class="kw">fn</span> <span class="ident">resolve</span>(<span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uri</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">std::error::Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="comment">// Optimistically check if this is an absolute URI.</span>
-    <span class="kw">match</span> <span class="ident">Url::parse</span>(<span class="ident">target</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">url</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Uri::try_from</span>(<span class="ident">url</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>),
+<span class="doccomment">/// Resolve one URI in terms of another.
+</span><span class="kw">fn </span>resolve(base: <span class="kw-2">&amp;</span>Uri, target: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Uri, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+    <span class="comment">// Optimistically check if this is an absolute URI.
+    </span><span class="kw">match </span>Url::parse(target) {
+        <span class="prelude-val">Ok</span>(url) =&gt; <span class="prelude-val">Ok</span>(Uri::try_from(url.as_str())<span class="question-mark">?</span>),
 
-        <span class="comment">// Relative URI, resolve against the base.</span>
-        <span class="prelude-val">Err</span>(<span class="ident">url::ParseError::RelativeUrlWithoutBase</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="ident">base</span>.<span class="ident">to_string</span>().<span class="ident">as_str</span>())<span class="question-mark">?</span>;
+        <span class="comment">// Relative URI, resolve against the base.
+        </span><span class="prelude-val">Err</span>(url::ParseError::RelativeUrlWithoutBase) =&gt; {
+            <span class="kw">let </span>base = Url::parse(base.to_string().as_str())<span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(<span class="ident">Uri::try_from</span>(<span class="ident">base</span>.<span class="ident">join</span>(<span class="ident">target</span>)<span class="question-mark">?</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>)
+            <span class="prelude-val">Ok</span>(Uri::try_from(base.join(target)<span class="question-mark">?</span>.as_str())<span class="question-mark">?</span>)
         }
 
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">e</span>)),
+        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(Box::new(e)),
     }
 }
 
-<span class="doccomment">/// Create a `Referer` header value to include in a redirected request, if</span>
-<span class="doccomment">/// possible and appropriate.</span>
-<span class="kw">fn</span> <span class="ident">create_referer</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">target_uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span> {
-    <span class="comment">// Do not set a Referer header if redirecting to an insecure location from a</span>
-    <span class="comment">// secure one.</span>
-    <span class="kw">if</span> <span class="ident">uri</span>.<span class="ident">scheme</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">Scheme::HTTPS</span>) <span class="op">&amp;&amp;</span> <span class="ident">target_uri</span>.<span class="ident">scheme</span>() <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">Scheme::HTTPS</span>) {
-        <span class="kw">return</span> <span class="prelude-val">None</span>;
+<span class="doccomment">/// Create a `Referer` header value to include in a redirected request, if
+/// possible and appropriate.
+</span><span class="kw">fn </span>create_referer(uri: <span class="kw-2">&amp;</span>Uri, target_uri: <span class="kw-2">&amp;</span>Uri) -&gt; <span class="prelude-ty">Option</span>&lt;HeaderValue&gt; {
+    <span class="comment">// Do not set a Referer header if redirecting to an insecure location from a
+    // secure one.
+    </span><span class="kw">if </span>uri.scheme() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Scheme::HTTPS) &amp;&amp; target_uri.scheme() != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Scheme::HTTPS) {
+        <span class="kw">return </span><span class="prelude-val">None</span>;
     }
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">referer</span> <span class="op">=</span> <span class="ident">String::new</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>referer = String::new();
 
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">scheme</span>) <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">scheme</span>() {
-        <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="ident">scheme</span>.<span class="ident">as_str</span>());
-        <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="string">&quot;://&quot;</span>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(scheme) = uri.scheme() {
+        referer.push_str(scheme.as_str());
+        referer.push_str(<span class="string">&quot;://&quot;</span>);
     }
 
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">authority</span>) <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">authority</span>() {
-        <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="ident">authority</span>.<span class="ident">host</span>());
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(authority) = uri.authority() {
+        referer.push_str(authority.host());
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">port</span>) <span class="op">=</span> <span class="ident">authority</span>.<span class="ident">port</span>() {
-            <span class="ident">referer</span>.<span class="ident">push</span>(<span class="string">&#39;:&#39;</span>);
-            <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="ident">port</span>.<span class="ident">as_str</span>());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(port) = authority.port() {
+            referer.push(<span class="string">&#39;:&#39;</span>);
+            referer.push_str(port.as_str());
         }
     }
 
-    <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="ident">uri</span>.<span class="ident">path</span>());
+    referer.push_str(uri.path());
 
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">query</span>) <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">query</span>() {
-        <span class="ident">referer</span>.<span class="ident">push</span>(<span class="string">&#39;?&#39;</span>);
-        <span class="ident">referer</span>.<span class="ident">push_str</span>(<span class="ident">query</span>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(query) = uri.query() {
+        referer.push(<span class="string">&#39;?&#39;</span>);
+        referer.push_str(query);
     }
 
-    <span class="ident">HeaderValue::try_from</span>(<span class="ident">referer</span>).<span class="ident">ok</span>()
+    HeaderValue::try_from(referer).ok()
 }
 
-<span class="kw">fn</span> <span class="ident">is_same_authority</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>) -&gt; <span class="ident">bool</span> {
-    <span class="ident">a</span>.<span class="ident">scheme</span>() <span class="op">==</span> <span class="ident">b</span>.<span class="ident">scheme</span>() <span class="op">&amp;&amp;</span> <span class="ident">a</span>.<span class="ident">host</span>() <span class="op">==</span> <span class="ident">b</span>.<span class="ident">host</span>() <span class="op">&amp;&amp;</span> <span class="ident">a</span>.<span class="ident">port</span>() <span class="op">==</span> <span class="ident">b</span>.<span class="ident">port</span>()
+<span class="kw">fn </span>is_same_authority(a: <span class="kw-2">&amp;</span>Uri, b: <span class="kw-2">&amp;</span>Uri) -&gt; bool {
+    a.scheme() == b.scheme() &amp;&amp; a.host() == b.host() &amp;&amp; a.port() == b.port()
 }
 
-<span class="kw">fn</span> <span class="ident">scrub_sensitive_headers</span>(<span class="ident">headers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">HeaderMap</span>) {
-    <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="ident">http::header::AUTHORIZATION</span>);
-    <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="ident">http::header::COOKIE</span>);
-    <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="string">&quot;cookie2&quot;</span>);
-    <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="ident">http::header::PROXY_AUTHORIZATION</span>);
-    <span class="ident">headers</span>.<span class="ident">remove</span>(<span class="ident">http::header::WWW_AUTHENTICATE</span>);
+<span class="kw">fn </span>scrub_sensitive_headers(headers: <span class="kw-2">&amp;mut </span>HeaderMap) {
+    headers.remove(http::header::AUTHORIZATION);
+    headers.remove(http::header::COOKIE);
+    headers.remove(<span class="string">&quot;cookie2&quot;</span>);
+    headers.remove(http::header::PROXY_AUTHORIZATION);
+    headers.remove(http::header::WWW_AUTHENTICATE);
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">http::Response</span>;
-    <span class="kw">use</span> <span class="ident">test_case::test_case</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use </span>http::Response;
+    <span class="kw">use </span>test_case::test_case;
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com/&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;/two&quot;</span>, <span class="string">&quot;http://foo.com/two&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com#foo&quot;</span>, <span class="string">&quot;http://foo.com/&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">resolve_redirect_location</span>(<span class="ident">request_uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">location</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">resolved</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Response::builder</span>()
-            .<span class="ident">status</span>(<span class="number">301</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;Location&quot;</span>, <span class="ident">location</span>)
-            .<span class="ident">body</span>(())
-            .<span class="ident">unwrap</span>();
+    <span class="attribute">#[test_case(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com/&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;/two&quot;</span>, <span class="string">&quot;http://foo.com/two&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://foo.com&quot;</span>, <span class="string">&quot;http://foo.com#foo&quot;</span>, <span class="string">&quot;http://foo.com/&quot;</span>)]</span>
+    <span class="kw">fn </span>resolve_redirect_location(request_uri: <span class="kw-2">&amp;</span>str, location: <span class="kw-2">&amp;</span>str, resolved: <span class="kw-2">&amp;</span>str) {
+        <span class="kw">let </span>response = Response::builder()
+            .status(<span class="number">301</span>)
+            .header(<span class="string">&quot;Location&quot;</span>, location)
+            .body(())
+            .unwrap();
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident"><span class="kw">super</span>::get_redirect_location</span>(<span class="kw-2">&amp;</span><span class="ident">request_uri</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">response</span>)
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">to_string</span>(),
-            <span class="ident">resolved</span>
+            <span class="kw">super</span>::get_redirect_location(<span class="kw-2">&amp;</span>request_uri.parse().unwrap(), <span class="kw-2">&amp;</span>response)
+                .unwrap()
+                .to_string(),
+            resolved
         );
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(
+    <span class="attribute">#[test_case(
         <span class="string">&quot;http://example.org/Overview.html&quot;</span>,
         <span class="string">&quot;http://example.org/Overview.html&quot;</span>,
         <span class="prelude-val">Some</span>(<span class="string">&quot;http://example.org/Overview.html&quot;</span>)
     )]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(
+    <span class="attribute">#[test_case(
         <span class="string">&quot;http://example.org/#heading&quot;</span>,
         <span class="string">&quot;http://example.org/#heading&quot;</span>,
         <span class="prelude-val">Some</span>(<span class="string">&quot;http://example.org/&quot;</span>)
     )]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(
+    <span class="attribute">#[test_case(
         <span class="string">&quot;http://user:pass@example.org&quot;</span>,
         <span class="string">&quot;http://user:pass@example.org&quot;</span>,
         <span class="prelude-val">Some</span>(<span class="string">&quot;http://example.org/&quot;</span>)
     )]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;https://example.com&quot;</span>, <span class="string">&quot;http://example.org&quot;</span>, <span class="prelude-val">None</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">create_referer_from_uri</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">target_uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">referer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) {
+    <span class="attribute">#[test_case(<span class="string">&quot;https://example.com&quot;</span>, <span class="string">&quot;http://example.org&quot;</span>, <span class="prelude-val">None</span>)]</span>
+    <span class="kw">fn </span>create_referer_from_uri(uri: <span class="kw-2">&amp;</span>str, target_uri: <span class="kw-2">&amp;</span>str, referer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) {
         <span class="macro">assert_eq!</span>(
-            <span class="ident"><span class="kw">super</span>::create_referer</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">target_uri</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>())
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">value</span><span class="op">|</span> <span class="ident">value</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>()),
-            <span class="ident">referer</span>
+            <span class="kw">super</span>::create_referer(<span class="kw-2">&amp;</span>uri.parse().unwrap(), <span class="kw-2">&amp;</span>target_uri.parse().unwrap())
+                .as_ref()
+                .and_then(|value| value.to_str().ok()),
+            referer
         );
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://user:pass@example.com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com:9000&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com:9000&quot;</span>, <span class="string">&quot;http://example.com:9000&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.org&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;https://example.com&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://www.example.com&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">is_same_authority</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">expected</span>: <span class="ident">bool</span>) {
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://user:pass@example.com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.com:9000&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com:9000&quot;</span>, <span class="string">&quot;http://example.com:9000&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://example.org&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;https://example.com&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;http://example.com&quot;</span>, <span class="string">&quot;http://www.example.com&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="kw">fn </span>is_same_authority(a: <span class="kw-2">&amp;</span>str, b: <span class="kw-2">&amp;</span>str, expected: bool) {
         <span class="macro">assert_eq!</span>(
-            <span class="ident"><span class="kw">super</span>::is_same_authority</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>()),
-            <span class="ident">expected</span>
+            <span class="kw">super</span>::is_same_authority(<span class="kw-2">&amp;</span>a.parse().unwrap(), <span class="kw-2">&amp;</span>b.parse().unwrap()),
+            expected
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

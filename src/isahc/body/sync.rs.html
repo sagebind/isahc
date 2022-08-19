@@ -339,177 +339,177 @@
 <span id="337">337</span>
 <span id="338">338</span>
 <span id="339">339</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::AsyncBody</span>;
-<span class="kw">use</span> <span class="ident">futures_lite</span>::{<span class="ident">future::yield_now</span>, <span class="ident">io::AsyncWriteExt</span>};
-<span class="kw">use</span> <span class="ident">sluice::pipe</span>::{<span class="ident">pipe</span>, <span class="ident">PipeWriter</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">borrow::Cow</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">fs::File</span>,
-    <span class="ident">io</span>::{<span class="ident">Cursor</span>, <span class="ident">ErrorKind</span>, <span class="ident">Read</span>, <span class="prelude-ty">Result</span>},
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::AsyncBody;
+<span class="kw">use </span>futures_lite::{future::yield_now, io::AsyncWriteExt};
+<span class="kw">use </span>sluice::pipe::{pipe, PipeWriter};
+<span class="kw">use </span>std::{
+    borrow::Cow,
+    fmt,
+    fs::File,
+    io::{Cursor, ErrorKind, Read, <span class="prelude-ty">Result</span>},
 };
 
-<span class="doccomment">/// Contains the body of a synchronous HTTP request or response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This type is used to encapsulate the underlying stream or region of memory</span>
-<span class="doccomment">/// where the contents of the body are stored. A [`Body`] can be created from</span>
-<span class="doccomment">/// many types of sources using the [`Into`](std::convert::Into) trait or one of</span>
-<span class="doccomment">/// its constructor functions. It can also be created from anything that</span>
-<span class="doccomment">/// implements [`Read`], which [`Body`] itself also implements.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// For asynchronous requests, use [`AsyncBody`] instead.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Body</span>(<span class="ident">Inner</span>);
+<span class="doccomment">/// Contains the body of a synchronous HTTP request or response.
+///
+/// This type is used to encapsulate the underlying stream or region of memory
+/// where the contents of the body are stored. A [`Body`] can be created from
+/// many types of sources using the [`Into`](std::convert::Into) trait or one of
+/// its constructor functions. It can also be created from anything that
+/// implements [`Read`], which [`Body`] itself also implements.
+///
+/// For asynchronous requests, use [`AsyncBody`] instead.
+</span><span class="kw">pub struct </span>Body(Inner);
 
-<span class="kw">enum</span> <span class="ident">Inner</span> {
-    <span class="ident">Empty</span>,
-    <span class="ident">Buffer</span>(<span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">Reader</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
+<span class="kw">enum </span>Inner {
+    Empty,
+    Buffer(Cursor&lt;Cow&lt;<span class="lifetime">&#39;static</span>, [u8]&gt;&gt;),
+    Reader(Box&lt;<span class="kw">dyn </span>Read + Send + Sync&gt;, <span class="prelude-ty">Option</span>&lt;u64&gt;),
 }
 
-<span class="kw">impl</span> <span class="ident">Body</span> {
-    <span class="doccomment">/// Create a new empty body.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// An empty body represents the *absence* of a body, which is semantically</span>
-    <span class="doccomment">/// different than the presence of a body of zero length.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">empty</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner::Empty</span>)
+<span class="kw">impl </span>Body {
+    <span class="doccomment">/// Create a new empty body.
+    ///
+    /// An empty body represents the *absence* of a body, which is semantically
+    /// different than the presence of a body of zero length.
+    </span><span class="kw">pub const fn </span>empty() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(Inner::Empty)
     }
 
-    <span class="doccomment">/// Create a new body from a potentially static byte buffer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The body will have a known length equal to the number of bytes given.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This will try to prevent a copy if the type passed in can be re-used,</span>
-    <span class="doccomment">/// otherwise the buffer will be copied first. This method guarantees to not</span>
-    <span class="doccomment">/// require a copy for the following types:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - `&amp;&#39;static [u8]`</span>
-    <span class="doccomment">/// - `&amp;&#39;static str`</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::Body;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Create a body from a static string.</span>
-    <span class="doccomment">/// let body = Body::from_bytes_static(&quot;hello world&quot;);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bytes_static</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="ident">B</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">B</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a new body from a potentially static byte buffer.
+    ///
+    /// The body will have a known length equal to the number of bytes given.
+    ///
+    /// This will try to prevent a copy if the type passed in can be re-used,
+    /// otherwise the buffer will be copied first. This method guarantees to not
+    /// require a copy for the following types:
+    ///
+    /// - `&amp;&#39;static [u8]`
+    /// - `&amp;&#39;static str`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::Body;
+    ///
+    /// // Create a body from a static string.
+    /// let body = Body::from_bytes_static(&quot;hello world&quot;);
+    /// ```
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>from_bytes_static&lt;B&gt;(bytes: B) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>B: AsRef&lt;[u8]&gt; + <span class="lifetime">&#39;static</span>,
     {
-        <span class="macro">castaway::match_type!</span>(<span class="ident">bytes</span>, {
-            <span class="ident">Cursor</span><span class="op">&lt;</span><span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">bytes</span> =&gt; <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>)),
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">bytes</span> =&gt; <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>),
-            <span class="ident">String</span> <span class="kw">as</span> <span class="ident">bytes</span> =&gt; <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>.<span class="ident">into_bytes</span>()),
-            <span class="ident">bytes</span> =&gt; <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">bytes</span>.<span class="ident">as_ref</span>().<span class="ident">to_vec</span>()),
+        <span class="macro">castaway::match_type!</span>(bytes, {
+            Cursor&lt;Cow&lt;<span class="lifetime">&#39;static</span>, [u8]&gt;&gt; <span class="kw">as </span>bytes =&gt; <span class="self">Self</span>(Inner::Buffer(bytes)),
+            Vec&lt;u8&gt; <span class="kw">as </span>bytes =&gt; <span class="self">Self</span>::from(bytes),
+            String <span class="kw">as </span>bytes =&gt; <span class="self">Self</span>::from(bytes.into_bytes()),
+            bytes =&gt; <span class="self">Self</span>::from(bytes.as_ref().to_vec()),
         })
     }
 
-    <span class="doccomment">/// Create a streaming body that reads from the given reader.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The body will have an unknown length. When used as a request body,</span>
-    <span class="doccomment">/// [chunked transfer</span>
-    <span class="doccomment">/// encoding](https://tools.ietf.org/html/rfc7230#section-4.1) might be used</span>
-    <span class="doccomment">/// to send the request.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a streaming body that reads from the given reader.
+    ///
+    /// The body will have an unknown length. When used as a request body,
+    /// [chunked transfer
+    /// encoding](https://tools.ietf.org/html/rfc7230#section-4.1) might be used
+    /// to send the request.
+    </span><span class="kw">pub fn </span>from_reader&lt;R&gt;(reader: R) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>R: Read + Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">Self</span>(<span class="ident">Inner::Reader</span>(<span class="ident">Box::new</span>(<span class="ident">reader</span>), <span class="prelude-val">None</span>))
+        <span class="self">Self</span>(Inner::Reader(Box::new(reader), <span class="prelude-val">None</span>))
     }
 
-    <span class="doccomment">/// Create a streaming body with a known length.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the size of the body is known in advance, such as with a file, then</span>
-    <span class="doccomment">/// this function can be used to create a body that can determine its</span>
-    <span class="doccomment">/// `Content-Length` while still reading the bytes asynchronously.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Giving a value for `length` that doesn&#39;t actually match how much data</span>
-    <span class="doccomment">/// the reader will produce may result in errors when sending the body in a</span>
-    <span class="doccomment">/// request.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_reader_sized</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>, <span class="ident">length</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a streaming body with a known length.
+    ///
+    /// If the size of the body is known in advance, such as with a file, then
+    /// this function can be used to create a body that can determine its
+    /// `Content-Length` while still reading the bytes asynchronously.
+    ///
+    /// Giving a value for `length` that doesn&#39;t actually match how much data
+    /// the reader will produce may result in errors when sending the body in a
+    /// request.
+    </span><span class="kw">pub fn </span>from_reader_sized&lt;R&gt;(reader: R, length: u64) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>R: Read + Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">Self</span>(<span class="ident">Inner::Reader</span>(<span class="ident">Box::new</span>(<span class="ident">reader</span>), <span class="prelude-val">Some</span>(<span class="ident">length</span>)))
+        <span class="self">Self</span>(Inner::Reader(Box::new(reader), <span class="prelude-val">Some</span>(length)))
     }
 
-    <span class="doccomment">/// Report if this body is empty.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is not necessarily the same as checking for `self.len() ==</span>
-    <span class="doccomment">/// Some(0)`. Since HTTP message bodies are optional, there is a semantic</span>
-    <span class="doccomment">/// difference between the absence of a body and the presence of a</span>
-    <span class="doccomment">/// zero-length body. This method will only return `true` for the former.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::Empty</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Report if this body is empty.
+    ///
+    /// This is not necessarily the same as checking for `self.len() ==
+    /// Some(0)`. Since HTTP message bodies are optional, there is a semantic
+    /// difference between the absence of a body and the presence of a
+    /// zero-length body. This method will only return `true` for the former.
+    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::Empty =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Get the size of the body, if known.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The value reported by this method is used to set the `Content-Length`</span>
-    <span class="doccomment">/// for outgoing requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When coming from a response, this method will report the value of the</span>
-    <span class="doccomment">/// `Content-Length` response header if present. If this method returns</span>
-    <span class="doccomment">/// `None` then there&#39;s a good chance that the server used something like</span>
-    <span class="doccomment">/// chunked transfer encoding to send the response body.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Since the length may be determined totally separately from the actual</span>
-    <span class="doccomment">/// bytes, even if a value is returned it should not be relied on as always</span>
-    <span class="doccomment">/// being accurate, and should be treated as a &quot;hint&quot;.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::Empty</span> =&gt; <span class="prelude-val">Some</span>(<span class="number">0</span>),
-            <span class="ident">Inner::Buffer</span>(<span class="ident">bytes</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">bytes</span>.<span class="ident">get_ref</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>),
-            <span class="ident">Inner::Reader</span>(<span class="kw">_</span>, <span class="ident">len</span>) =&gt; <span class="kw-2">*</span><span class="ident">len</span>,
+    <span class="doccomment">/// Get the size of the body, if known.
+    ///
+    /// The value reported by this method is used to set the `Content-Length`
+    /// for outgoing requests.
+    ///
+    /// When coming from a response, this method will report the value of the
+    /// `Content-Length` response header if present. If this method returns
+    /// `None` then there&#39;s a good chance that the server used something like
+    /// chunked transfer encoding to send the response body.
+    ///
+    /// Since the length may be determined totally separately from the actual
+    /// bytes, even if a value is returned it should not be relied on as always
+    /// being accurate, and should be treated as a &quot;hint&quot;.
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::Empty =&gt; <span class="prelude-val">Some</span>(<span class="number">0</span>),
+            Inner::Buffer(bytes) =&gt; <span class="prelude-val">Some</span>(bytes.get_ref().len() <span class="kw">as </span>u64),
+            Inner::Reader(<span class="kw">_</span>, len) =&gt; <span class="kw-2">*</span>len,
         }
     }
 
-    <span class="doccomment">/// If this body is repeatable, reset the body stream back to the start of</span>
-    <span class="doccomment">/// the content. Returns `false` if the body cannot be reset.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::Empty</span> =&gt; <span class="bool-val">true</span>,
-            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) =&gt; {
-                <span class="ident">cursor</span>.<span class="ident">set_position</span>(<span class="number">0</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// If this body is repeatable, reset the body stream back to the start of
+    /// the content. Returns `false` if the body cannot be reset.
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::Empty =&gt; <span class="bool-val">true</span>,
+            Inner::Buffer(cursor) =&gt; {
+                cursor.set_position(<span class="number">0</span>);
+                <span class="bool-val">true
+            </span>}
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Convert this body into an asynchronous one.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Turning a synchronous operation into an asynchronous one can be quite</span>
-    <span class="doccomment">/// the challenge, so this method is used internally only for limited</span>
-    <span class="doccomment">/// scenarios in which this can work. If this body is an in-memory buffer,</span>
-    <span class="doccomment">/// then the translation is trivial.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If this body was created from an underlying synchronous reader, then we</span>
-    <span class="doccomment">/// create a temporary asynchronous pipe and return a [`Writer`] which will</span>
-    <span class="doccomment">/// copy the bytes from the reader to the writing half of the pipe in a</span>
-    <span class="doccomment">/// blocking fashion.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_async</span>(<span class="self">self</span>) -&gt; (<span class="ident">AsyncBody</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Writer</span><span class="op">&gt;</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::Empty</span> =&gt; (<span class="ident">AsyncBody::empty</span>(), <span class="prelude-val">None</span>),
-            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) =&gt; (<span class="ident">AsyncBody::from_bytes_static</span>(<span class="ident">cursor</span>.<span class="ident">into_inner</span>()), <span class="prelude-val">None</span>),
-            <span class="ident">Inner::Reader</span>(<span class="ident">reader</span>, <span class="ident">len</span>) =&gt; {
-                <span class="kw">let</span> (<span class="ident">pipe_reader</span>, <span class="ident">writer</span>) <span class="op">=</span> <span class="ident">pipe</span>();
+    <span class="doccomment">/// Convert this body into an asynchronous one.
+    ///
+    /// Turning a synchronous operation into an asynchronous one can be quite
+    /// the challenge, so this method is used internally only for limited
+    /// scenarios in which this can work. If this body is an in-memory buffer,
+    /// then the translation is trivial.
+    ///
+    /// If this body was created from an underlying synchronous reader, then we
+    /// create a temporary asynchronous pipe and return a [`Writer`] which will
+    /// copy the bytes from the reader to the writing half of the pipe in a
+    /// blocking fashion.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_async(<span class="self">self</span>) -&gt; (AsyncBody, <span class="prelude-ty">Option</span>&lt;Writer&gt;) {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::Empty =&gt; (AsyncBody::empty(), <span class="prelude-val">None</span>),
+            Inner::Buffer(cursor) =&gt; (AsyncBody::from_bytes_static(cursor.into_inner()), <span class="prelude-val">None</span>),
+            Inner::Reader(reader, len) =&gt; {
+                <span class="kw">let </span>(pipe_reader, writer) = pipe();
 
                 (
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">len</span> {
-                        <span class="ident">AsyncBody::from_reader_sized</span>(<span class="ident">pipe_reader</span>, <span class="ident">len</span>)
-                    } <span class="kw">else</span> {
-                        <span class="ident">AsyncBody::from_reader</span>(<span class="ident">pipe_reader</span>)
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(len) = len {
+                        AsyncBody::from_reader_sized(pipe_reader, len)
+                    } <span class="kw">else </span>{
+                        AsyncBody::from_reader(pipe_reader)
                     },
-                    <span class="prelude-val">Some</span>(<span class="ident">Writer</span> {
-                        <span class="ident">reader</span>,
-                        <span class="ident">writer</span>,
+                    <span class="prelude-val">Some</span>(Writer {
+                        reader,
+                        writer,
                     }),
                 )
             }
@@ -517,166 +517,166 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Read</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::Empty</span> =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-            <span class="ident">Inner::Buffer</span>(<span class="ident">cursor</span>) =&gt; <span class="ident">cursor</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
-            <span class="ident">Inner::Reader</span>(<span class="ident">reader</span>, <span class="kw">_</span>) =&gt; <span class="ident">reader</span>.<span class="ident">read</span>(<span class="ident">buf</span>),
+<span class="kw">impl </span>Read <span class="kw">for </span>Body {
+    <span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::Empty =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
+            Inner::Buffer(cursor) =&gt; cursor.read(buf),
+            Inner::Reader(reader, <span class="kw">_</span>) =&gt; reader.read(buf),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::empty</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>Body {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::empty()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span>()<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="kw">_</span>: ()) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::empty</span>()
+<span class="kw">impl </span>From&lt;()&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(<span class="kw">_</span>: ()) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::empty()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner::Buffer</span>(<span class="ident">Cursor::new</span>(<span class="ident">Cow::Owned</span>(<span class="ident">body</span>))))
+<span class="kw">impl </span>From&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(body: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(Inner::Buffer(Cursor::new(Cow::Owned(body))))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
-        <span class="ident">body</span>.<span class="ident">to_vec</span>().<span class="ident">into</span>()
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>[u8]&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(body: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+        body.to_vec().into()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">body</span>.<span class="ident">into_bytes</span>().<span class="ident">into</span>()
+<span class="kw">impl </span>From&lt;String&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(body: String) -&gt; <span class="self">Self </span>{
+        body.into_bytes().into()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">body</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">body</span>.<span class="ident">as_bytes</span>().<span class="ident">into</span>()
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>str&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(body: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        body.as_bytes().into()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">file</span>: <span class="ident">File</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">metadata</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">metadata</span>() {
-            <span class="ident"><span class="self">Self</span>::from_reader_sized</span>(<span class="ident">file</span>, <span class="ident">metadata</span>.<span class="ident">len</span>())
-        } <span class="kw">else</span> {
-            <span class="ident"><span class="self">Self</span>::from_reader</span>(<span class="ident">file</span>)
+<span class="kw">impl </span>From&lt;File&gt; <span class="kw">for </span>Body {
+    <span class="kw">fn </span>from(file: File) -&gt; <span class="self">Self </span>{
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(metadata) = file.metadata() {
+            <span class="self">Self</span>::from_reader_sized(file, metadata.len())
+        } <span class="kw">else </span>{
+            <span class="self">Self</span>::from_reader(file)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Body</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">len</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">len</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Body({})&quot;</span>, <span class="ident">len</span>),
-            <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Body(?)&quot;</span>),
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Body {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self</span>.len() {
+            <span class="prelude-val">Some</span>(len) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Body({})&quot;</span>, len),
+            <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Body(?)&quot;</span>),
         }
     }
 }
 
-<span class="doccomment">/// Helper struct for writing a synchronous reader into an asynchronous pipe.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Writer</span> {
-    <span class="ident">reader</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Read</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>,
-    <span class="ident">writer</span>: <span class="ident">PipeWriter</span>,
+<span class="doccomment">/// Helper struct for writing a synchronous reader into an asynchronous pipe.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Writer {
+    reader: Box&lt;<span class="kw">dyn </span>Read + Send + Sync&gt;,
+    writer: PipeWriter,
 }
 
-<span class="kw">impl</span> <span class="ident">Writer</span> {
-    <span class="doccomment">/// The size of the temporary buffer to use for writing. Larger buffers can</span>
-    <span class="doccomment">/// improve performance, but at the cost of more memory.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Curl&#39;s internal buffer size just happens to default to 16 KiB as well,</span>
-    <span class="doccomment">/// so this is a natural choice.</span>
-    <span class="kw">const</span> <span class="ident">BUF_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">16384</span>;
+<span class="kw">impl </span>Writer {
+    <span class="doccomment">/// The size of the temporary buffer to use for writing. Larger buffers can
+    /// improve performance, but at the cost of more memory.
+    ///
+    /// Curl&#39;s internal buffer size just happens to default to 16 KiB as well,
+    /// so this is a natural choice.
+    </span><span class="kw">const </span>BUF_SIZE: usize = <span class="number">16384</span>;
 
-    <span class="doccomment">/// Write the response body from the synchronous reader.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// While this function is async, it isn&#39;t a well-behaved one as it blocks</span>
-    <span class="doccomment">/// frequently while reading from the request body reader. As long as this</span>
-    <span class="doccomment">/// method is invoked in a controlled environment within a thread dedicated</span>
-    <span class="doccomment">/// to blocking operations, this is OK.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident"><span class="self">Self</span>::BUF_SIZE</span>];
+    <span class="doccomment">/// Write the response body from the synchronous reader.
+    ///
+    /// While this function is async, it isn&#39;t a well-behaved one as it blocks
+    /// frequently while reading from the request body reader. As long as this
+    /// method is invoked in a controlled environment within a thread dedicated
+    /// to blocking operations, this is OK.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>; <span class="self">Self</span>::BUF_SIZE];
 
-        <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>) {
-                <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">Ok</span>(<span class="ident">len</span>) =&gt; <span class="ident">len</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">ErrorKind::Interrupted</span> =&gt; {
-                    <span class="ident">yield_now</span>().<span class="kw">await</span>;
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>len = <span class="kw">match </span><span class="self">self</span>.reader.read(<span class="kw-2">&amp;mut </span>buf) {
+                <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+                <span class="prelude-val">Ok</span>(len) =&gt; len,
+                <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == ErrorKind::Interrupted =&gt; {
+                    yield_now().<span class="kw">await</span>;
                     <span class="kw">continue</span>;
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
             };
 
-            <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">len</span>]).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.writer.write_all(<span class="kw-2">&amp;</span>buf[..len]).<span class="kw">await</span><span class="question-mark">?</span>;
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">Body</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(Body: Send, Sync);
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">empty_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::empty</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>empty_body() {
+        <span class="kw">let </span>body = Body::empty();
 
-        <span class="macro">assert!</span>(<span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(body.is_empty());
+        <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">zero_length_body</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from</span>(<span class="macro">vec!</span>[]);
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>zero_length_body() {
+        <span class="kw">let </span>body = Body::from(<span class="macro">vec!</span>[]);
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(!body.is_empty());
+        <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">reader_with_unknown_length</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader</span>(<span class="ident">std::io::empty</span>());
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>reader_with_unknown_length() {
+        <span class="kw">let </span>body = Body::from_reader(std::io::empty());
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">None</span>);
+        <span class="macro">assert!</span>(!body.is_empty());
+        <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">None</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">reader_with_known_length</span>() {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader_sized</span>(<span class="ident">std::io::empty</span>(), <span class="number">0</span>);
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>reader_with_known_length() {
+        <span class="kw">let </span>body = Body::from_reader_sized(std::io::empty(), <span class="number">0</span>);
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">is_empty</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">len</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert!</span>(!body.is_empty());
+        <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">reset_memory_body</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from</span>(<span class="string">&quot;hello world&quot;</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String::new</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>reset_memory_body() {
+        <span class="kw">let </span><span class="kw-2">mut </span>body = Body::from(<span class="string">&quot;hello world&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = String::new();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="ident">unwrap</span>(), <span class="number">11</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello world&quot;</span>);
-        <span class="macro">assert!</span>(<span class="ident">body</span>.<span class="ident">reset</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">body</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="ident">unwrap</span>(), <span class="number">11</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">buf</span>, <span class="string">&quot;hello worldhello world&quot;</span>);
+        <span class="macro">assert_eq!</span>(body.read_to_string(<span class="kw-2">&amp;mut </span>buf).unwrap(), <span class="number">11</span>);
+        <span class="macro">assert_eq!</span>(buf, <span class="string">&quot;hello world&quot;</span>);
+        <span class="macro">assert!</span>(body.reset());
+        <span class="macro">assert_eq!</span>(body.read_to_string(<span class="kw-2">&amp;mut </span>buf).unwrap(), <span class="number">11</span>);
+        <span class="macro">assert_eq!</span>(buf, <span class="string">&quot;hello worldhello world&quot;</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">cannot_reset_reader</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">Body::from_reader</span>(<span class="ident">std::io::empty</span>());
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>cannot_reset_reader() {
+        <span class="kw">let </span><span class="kw-2">mut </span>body = Body::from_reader(std::io::empty());
 
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">body</span>.<span class="ident">reset</span>());
+        <span class="macro">assert!</span>(!body.reset());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

@@ -23,28 +23,28 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
-</pre><pre class="rust"><code><span class="doccomment">/// Describes a policy for handling server redirects.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The default is to not follow redirects.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RedirectPolicy</span> {
-    <span class="doccomment">/// Do not apply any special treatment to redirect responses. The response</span>
-    <span class="doccomment">/// will be returned as-is and redirects will not be followed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is the default policy.</span>
-    <span class="prelude-val">None</span>,
+</pre><pre class="rust"><code><span class="doccomment">/// Describes a policy for handling server redirects.
+///
+/// The default is to not follow redirects.
+</span><span class="attribute">#[derive(Clone, Copy, Debug, Eq, PartialEq)]</span>
+<span class="kw">pub enum </span>RedirectPolicy {
+    <span class="doccomment">/// Do not apply any special treatment to redirect responses. The response
+    /// will be returned as-is and redirects will not be followed.
+    ///
+    /// This is the default policy.
+    </span><span class="prelude-val">None</span>,
 
-    <span class="doccomment">/// Follow all redirects automatically.</span>
-    <span class="ident">Follow</span>,
+    <span class="doccomment">/// Follow all redirects automatically.
+    </span>Follow,
 
-    <span class="doccomment">/// Follow redirects automatically up to a maximum number of redirects.</span>
-    <span class="ident">Limit</span>(<span class="ident">u32</span>),
+    <span class="doccomment">/// Follow redirects automatically up to a maximum number of redirects.
+    </span>Limit(u32),
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RedirectPolicy</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">RedirectPolicy::None</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>RedirectPolicy {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        RedirectPolicy::None
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

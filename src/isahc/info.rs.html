@@ -89,94 +89,94 @@
 <span id="87">87</span>
 <span id="88">88</span>
 <span id="89">89</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Runtime support for checking versions and feature availability.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Runtime support for checking versions and feature availability.
 
-<span class="kw">use</span> <span class="ident">once_cell::sync::Lazy</span>;
+</span><span class="kw">use </span>once_cell::sync::Lazy;
 
-<span class="comment">// Query for curl version info just once since it is immutable.</span>
-<span class="kw">static</span> <span class="ident">CURL_VERSION</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">curl::Version</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy::new</span>(<span class="ident">curl::Version::get</span>);
+<span class="comment">// Query for curl version info just once since it is immutable.
+</span><span class="kw">static </span>CURL_VERSION: Lazy&lt;curl::Version&gt; = Lazy::new(curl::Version::get);
 
-<span class="doccomment">/// Gets a human-readable string with the version number of Isahc and its</span>
-<span class="doccomment">/// dependencies.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This function can be helpful when troubleshooting issues in Isahc or one of</span>
-<span class="doccomment">/// its dependencies.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">version</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-    <span class="kw">static</span> <span class="ident">VERSION_STRING</span>: <span class="ident">Lazy</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Lazy::new</span>(<span class="op">|</span><span class="op">|</span> {
+<span class="doccomment">/// Gets a human-readable string with the version number of Isahc and its
+/// dependencies.
+///
+/// This function can be helpful when troubleshooting issues in Isahc or one of
+/// its dependencies.
+</span><span class="kw">pub fn </span>version() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+    <span class="kw">static </span>VERSION_STRING: Lazy&lt;String&gt; = Lazy::new(|| {
         <span class="macro">format!</span>(
             <span class="string">&quot;isahc/{} (features:{}) {}&quot;</span>,
             <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>),
             <span class="macro">env!</span>(<span class="string">&quot;ISAHC_FEATURES&quot;</span>),
-            <span class="ident">curl::Version::num</span>(),
+            curl::Version::num(),
         )
     });
 
-    <span class="kw-2">&amp;</span><span class="ident">VERSION_STRING</span>
+    <span class="kw-2">&amp;</span>VERSION_STRING
 }
 
-<span class="doccomment">/// Check if runtime support is available for the given HTTP version.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This only indicates whether support for communicating with this HTTP version</span>
-<span class="doccomment">/// is available, which is usually determined by which features were enabled</span>
-<span class="doccomment">/// during compilation, but can also be affected by what is available in system</span>
-<span class="doccomment">/// libraries when using dynamic linking.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This does not indicate which versions Isahc will attempt to use by default.</span>
-<span class="doccomment">/// To customize which versions to use within a particular client or request</span>
-<span class="doccomment">/// instance, see [`VersionNegotiation`][crate::config::VersionNegotiation].</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_http_version_supported</span>(<span class="ident">version</span>: <span class="ident">http::Version</span>) -&gt; <span class="ident">bool</span> {
-    <span class="kw">match</span> <span class="ident">version</span> {
-        <span class="comment">// HTTP/0.9 was disabled by default as of 7.66.0. See also</span>
-        <span class="comment">// https://github.com/sagebind/isahc/issues/310 if we ever decide to</span>
-        <span class="comment">// allow enabling it again.</span>
-        <span class="ident">http::Version::HTTP_09</span> =&gt; <span class="kw">match</span> <span class="ident">curl_version</span>() {
-            (<span class="number">7</span>, <span class="ident">minor</span>, <span class="kw">_</span>) <span class="kw">if</span> <span class="ident">minor</span> <span class="op">&lt;</span> <span class="number">66</span> =&gt; <span class="bool-val">true</span>,
-            (<span class="ident">major</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="kw">if</span> <span class="ident">major</span> <span class="op">&lt;</span> <span class="number">7</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+<span class="doccomment">/// Check if runtime support is available for the given HTTP version.
+///
+/// This only indicates whether support for communicating with this HTTP version
+/// is available, which is usually determined by which features were enabled
+/// during compilation, but can also be affected by what is available in system
+/// libraries when using dynamic linking.
+///
+/// This does not indicate which versions Isahc will attempt to use by default.
+/// To customize which versions to use within a particular client or request
+/// instance, see [`VersionNegotiation`][crate::config::VersionNegotiation].
+</span><span class="kw">pub fn </span>is_http_version_supported(version: http::Version) -&gt; bool {
+    <span class="kw">match </span>version {
+        <span class="comment">// HTTP/0.9 was disabled by default as of 7.66.0. See also
+        // https://github.com/sagebind/isahc/issues/310 if we ever decide to
+        // allow enabling it again.
+        </span>http::Version::HTTP_09 =&gt; <span class="kw">match </span>curl_version() {
+            (<span class="number">7</span>, minor, <span class="kw">_</span>) <span class="kw">if </span>minor &lt; <span class="number">66 </span>=&gt; <span class="bool-val">true</span>,
+            (major, <span class="kw">_</span>, <span class="kw">_</span>) <span class="kw">if </span>major &lt; <span class="number">7 </span>=&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         },
-        <span class="ident">http::Version::HTTP_10</span> =&gt; <span class="bool-val">true</span>,
-        <span class="ident">http::Version::HTTP_11</span> =&gt; <span class="bool-val">true</span>,
-        <span class="ident">http::Version::HTTP_2</span> =&gt; <span class="ident">CURL_VERSION</span>.<span class="ident">feature_http2</span>(),
-        <span class="ident">http::Version::HTTP_3</span> =&gt; <span class="ident">CURL_VERSION</span>.<span class="ident">feature_http3</span>(),
-        <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+        http::Version::HTTP_10 =&gt; <span class="bool-val">true</span>,
+        http::Version::HTTP_11 =&gt; <span class="bool-val">true</span>,
+        http::Version::HTTP_2 =&gt; CURL_VERSION.feature_http2(),
+        http::Version::HTTP_3 =&gt; CURL_VERSION.feature_http3(),
+        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
     }
 }
 
-<span class="kw">fn</span> <span class="ident">curl_version</span>() -&gt; (<span class="ident">u8</span>, <span class="ident">u8</span>, <span class="ident">u8</span>) {
-    <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="ident">CURL_VERSION</span>.<span class="ident">version_num</span>();
+<span class="kw">fn </span>curl_version() -&gt; (u8, u8, u8) {
+    <span class="kw">let </span>bits = CURL_VERSION.version_num();
 
-    ((<span class="ident">bits</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">16</span>) <span class="kw">as</span> <span class="ident">u8</span>, (<span class="ident">bits</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">8</span>) <span class="kw">as</span> <span class="ident">u8</span>, <span class="ident">bits</span> <span class="kw">as</span> <span class="ident">u8</span>)
+    ((bits &gt;&gt; <span class="number">16</span>) <span class="kw">as </span>u8, (bits &gt;&gt; <span class="number">8</span>) <span class="kw">as </span>u8, bits <span class="kw">as </span>u8)
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">version_expected</span>() {
-        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">version</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>version_expected() {
+        <span class="kw">let </span>version = version();
 
-        <span class="macro">assert!</span>(<span class="ident">version</span>.<span class="ident">starts_with</span>(<span class="string">&quot;isahc/1.&quot;</span>));
-        <span class="macro">assert!</span>(<span class="ident">version</span>.<span class="ident">contains</span>(<span class="string">&quot;curl/7.&quot;</span>));
+        <span class="macro">assert!</span>(version.starts_with(<span class="string">&quot;isahc/1.&quot;</span>));
+        <span class="macro">assert!</span>(version.contains(<span class="string">&quot;curl/7.&quot;</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">curl_version_expected</span>() {
-        <span class="kw">let</span> (<span class="ident">major</span>, <span class="ident">minor</span>, <span class="ident">_patch</span>) <span class="op">=</span> <span class="ident">curl_version</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>curl_version_expected() {
+        <span class="kw">let </span>(major, minor, _patch) = curl_version();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">major</span>, <span class="number">7</span>);
-        <span class="macro">assert!</span>(<span class="ident">minor</span> <span class="op">&gt;</span> <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(major, <span class="number">7</span>);
+        <span class="macro">assert!</span>(minor &gt; <span class="number">0</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">http1_always_supported</span>() {
-        <span class="macro">assert!</span>(<span class="ident">is_http_version_supported</span>(<span class="ident">http::Version::HTTP_10</span>));
-        <span class="macro">assert!</span>(<span class="ident">is_http_version_supported</span>(<span class="ident">http::Version::HTTP_11</span>));
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>http1_always_supported() {
+        <span class="macro">assert!</span>(is_http_version_supported(http::Version::HTTP_10));
+        <span class="macro">assert!</span>(is_http_version_supported(http::Version::HTTP_11));
 
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;http2&quot;</span>) {
-            <span class="macro">assert!</span>(<span class="ident">is_http_version_supported</span>(<span class="ident">http::Version::HTTP_2</span>));
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;http2&quot;</span>) {
+            <span class="macro">assert!</span>(is_http_version_supported(http::Version::HTTP_2));
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

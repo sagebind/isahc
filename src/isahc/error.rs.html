@@ -529,534 +529,534 @@
 <span id="527">527</span>
 <span id="528">528</span>
 <span id="529">529</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Types for error handling.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Types for error handling.
 
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">error::Error</span> <span class="kw">as</span> <span class="ident">StdError</span>, <span class="ident">fmt</span>, <span class="ident">io</span>, <span class="ident">net::SocketAddr</span>, <span class="ident">sync::Arc</span>};
+</span><span class="kw">use </span>std::{error::Error <span class="kw">as </span>StdError, fmt, io, net::SocketAddr, sync::Arc};
 
-<span class="kw">use</span> <span class="ident">http::Response</span>;
-<span class="kw">use</span> <span class="ident">once_cell::sync::OnceCell</span>;
+<span class="kw">use </span>http::Response;
+<span class="kw">use </span>once_cell::sync::OnceCell;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ResponseExt</span>;
+<span class="kw">use </span><span class="kw">crate</span>::ResponseExt;
 
-<span class="doccomment">/// A non-exhaustive list of error types that can occur while sending an HTTP</span>
-<span class="doccomment">/// request or receiving an HTTP response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// These are meant to be treated as general error codes that allow you to</span>
-<span class="doccomment">/// handle different sorts of errors in different ways, but are not always</span>
-<span class="doccomment">/// specific. The list is also non-exhaustive, and more variants may be added in</span>
-<span class="doccomment">/// the future.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorKind</span> {
-    <span class="doccomment">/// A problem occurred with the local certificate.</span>
-    <span class="ident">BadClientCertificate</span>,
+<span class="doccomment">/// A non-exhaustive list of error types that can occur while sending an HTTP
+/// request or receiving an HTTP response.
+///
+/// These are meant to be treated as general error codes that allow you to
+/// handle different sorts of errors in different ways, but are not always
+/// specific. The list is also non-exhaustive, and more variants may be added in
+/// the future.
+</span><span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]</span>
+<span class="attribute">#[non_exhaustive]</span>
+<span class="kw">pub enum </span>ErrorKind {
+    <span class="doccomment">/// A problem occurred with the local certificate.
+    </span>BadClientCertificate,
 
-    <span class="doccomment">/// The server certificate could not be validated.</span>
-    <span class="ident">BadServerCertificate</span>,
+    <span class="doccomment">/// The server certificate could not be validated.
+    </span>BadServerCertificate,
 
-    <span class="doccomment">/// The HTTP client failed to initialize.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This error can occur when trying to create a client with invalid</span>
-    <span class="doccomment">/// configuration, if there were insufficient resources to create the</span>
-    <span class="doccomment">/// client, or if a system error occurred when trying to initialize an I/O</span>
-    <span class="doccomment">/// driver.</span>
-    <span class="ident">ClientInitialization</span>,
+    <span class="doccomment">/// The HTTP client failed to initialize.
+    ///
+    /// This error can occur when trying to create a client with invalid
+    /// configuration, if there were insufficient resources to create the
+    /// client, or if a system error occurred when trying to initialize an I/O
+    /// driver.
+    </span>ClientInitialization,
 
-    <span class="doccomment">/// Failed to connect to the server. This can occur if the server rejects</span>
-    <span class="doccomment">/// the request on the specified port.</span>
-    <span class="ident">ConnectionFailed</span>,
+    <span class="doccomment">/// Failed to connect to the server. This can occur if the server rejects
+    /// the request on the specified port.
+    </span>ConnectionFailed,
 
-    <span class="doccomment">/// The server either returned a response using an unknown or unsupported</span>
-    <span class="doccomment">/// encoding format, or the response encoding was malformed.</span>
-    <span class="ident">InvalidContentEncoding</span>,
+    <span class="doccomment">/// The server either returned a response using an unknown or unsupported
+    /// encoding format, or the response encoding was malformed.
+    </span>InvalidContentEncoding,
 
-    <span class="doccomment">/// Provided authentication credentials were rejected by the server.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This error is only returned when using Isahc&#39;s built-in authentication</span>
-    <span class="doccomment">/// methods. If using authentication headers manually, the server&#39;s response</span>
-    <span class="doccomment">/// will be returned as a success unaltered.</span>
-    <span class="ident">InvalidCredentials</span>,
+    <span class="doccomment">/// Provided authentication credentials were rejected by the server.
+    ///
+    /// This error is only returned when using Isahc&#39;s built-in authentication
+    /// methods. If using authentication headers manually, the server&#39;s response
+    /// will be returned as a success unaltered.
+    </span>InvalidCredentials,
 
-    <span class="doccomment">/// The request to be sent was invalid and could not be sent.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that this is only returned for requests that the client deemed</span>
-    <span class="doccomment">/// invalid. If the request appears to be valid but is rejected by the</span>
-    <span class="doccomment">/// server, then the server&#39;s response will likely indicate as such.</span>
-    <span class="ident">InvalidRequest</span>,
+    <span class="doccomment">/// The request to be sent was invalid and could not be sent.
+    ///
+    /// Note that this is only returned for requests that the client deemed
+    /// invalid. If the request appears to be valid but is rejected by the
+    /// server, then the server&#39;s response will likely indicate as such.
+    </span>InvalidRequest,
 
-    <span class="doccomment">/// An I/O error either sending the request or reading the response. This</span>
-    <span class="doccomment">/// could be caused by a problem on the client machine, a problem on the</span>
-    <span class="doccomment">/// server machine, or a problem with the network between the two.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You can get more details about the underlying I/O error with</span>
-    <span class="doccomment">/// [`Error::source`][std::error::Error::source].</span>
-    <span class="ident">Io</span>,
+    <span class="doccomment">/// An I/O error either sending the request or reading the response. This
+    /// could be caused by a problem on the client machine, a problem on the
+    /// server machine, or a problem with the network between the two.
+    ///
+    /// You can get more details about the underlying I/O error with
+    /// [`Error::source`][std::error::Error::source].
+    </span>Io,
 
-    <span class="doccomment">/// Failed to resolve a host name.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This could be caused by any number of problems, including failure to</span>
-    <span class="doccomment">/// reach a DNS server, misconfigured resolver configuration, or the</span>
-    <span class="doccomment">/// hostname simply does not exist.</span>
-    <span class="ident">NameResolution</span>,
+    <span class="doccomment">/// Failed to resolve a host name.
+    ///
+    /// This could be caused by any number of problems, including failure to
+    /// reach a DNS server, misconfigured resolver configuration, or the
+    /// hostname simply does not exist.
+    </span>NameResolution,
 
-    <span class="doccomment">/// The server made an unrecoverable HTTP protocol violation. This indicates</span>
-    <span class="doccomment">/// a bug in the server. Retrying a request that returns this error is</span>
-    <span class="doccomment">/// likely to produce the same error.</span>
-    <span class="ident">ProtocolViolation</span>,
+    <span class="doccomment">/// The server made an unrecoverable HTTP protocol violation. This indicates
+    /// a bug in the server. Retrying a request that returns this error is
+    /// likely to produce the same error.
+    </span>ProtocolViolation,
 
-    <span class="doccomment">/// Request processing could not continue because the client needed to</span>
-    <span class="doccomment">/// re-send the request body, but was unable to rewind the body stream to</span>
-    <span class="doccomment">/// the beginning in order to do so.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If you need Isahc to be able to re-send the request body during a retry</span>
-    <span class="doccomment">/// or redirect then you must load the body into a contiguous memory buffer</span>
-    <span class="doccomment">/// first. Then you can create a rewindable body using</span>
-    <span class="doccomment">/// [`Body::from_bytes_static`][crate::Body::from_bytes_static] or</span>
-    <span class="doccomment">/// [`AsyncBody::from_bytes_static`][crate::AsyncBody::from_bytes_static].</span>
-    <span class="ident">RequestBodyNotRewindable</span>,
+    <span class="doccomment">/// Request processing could not continue because the client needed to
+    /// re-send the request body, but was unable to rewind the body stream to
+    /// the beginning in order to do so.
+    ///
+    /// If you need Isahc to be able to re-send the request body during a retry
+    /// or redirect then you must load the body into a contiguous memory buffer
+    /// first. Then you can create a rewindable body using
+    /// [`Body::from_bytes_static`][crate::Body::from_bytes_static] or
+    /// [`AsyncBody::from_bytes_static`][crate::AsyncBody::from_bytes_static].
+    </span>RequestBodyNotRewindable,
 
-    <span class="doccomment">/// A request or operation took longer than the configured timeout time.</span>
-    <span class="ident">Timeout</span>,
+    <span class="doccomment">/// A request or operation took longer than the configured timeout time.
+    </span>Timeout,
 
-    <span class="doccomment">/// An error ocurred in the secure socket engine.</span>
-    <span class="ident">TlsEngine</span>,
+    <span class="doccomment">/// An error ocurred in the secure socket engine.
+    </span>TlsEngine,
 
-    <span class="doccomment">/// Number of redirects hit the maximum configured amount.</span>
-    <span class="ident">TooManyRedirects</span>,
+    <span class="doccomment">/// Number of redirects hit the maximum configured amount.
+    </span>TooManyRedirects,
 
-    <span class="doccomment">/// An unknown error occurred. This likely indicates a problem in the HTTP</span>
-    <span class="doccomment">/// client or in a dependency, but the client was able to recover instead of</span>
-    <span class="doccomment">/// panicking. Subsequent requests will likely succeed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Only used internally.</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="ident">Unknown</span>,
+    <span class="doccomment">/// An unknown error occurred. This likely indicates a problem in the HTTP
+    /// client or in a dependency, but the client was able to recover instead of
+    /// panicking. Subsequent requests will likely succeed.
+    ///
+    /// Only used internally.
+    </span><span class="attribute">#[doc(hidden)]</span>
+    Unknown,
 }
 
-<span class="kw">impl</span> <span class="ident">ErrorKind</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::BadClientCertificate</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;a problem occurred with the local certificate&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::BadServerCertificate</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;the server certificate could not be validated&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ClientInitialization</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to initialize client&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ConnectionFailed</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to connect to the server&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::InvalidContentEncoding</span> =&gt; <span class="prelude-val">Some</span>(
+<span class="kw">impl </span>ErrorKind {
+    <span class="attribute">#[inline]</span>
+    <span class="kw">fn </span>description(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::BadClientCertificate =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;a problem occurred with the local certificate&quot;</span>),
+            <span class="self">Self</span>::BadServerCertificate =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;the server certificate could not be validated&quot;</span>),
+            <span class="self">Self</span>::ClientInitialization =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to initialize client&quot;</span>),
+            <span class="self">Self</span>::ConnectionFailed =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to connect to the server&quot;</span>),
+            <span class="self">Self</span>::InvalidContentEncoding =&gt; <span class="prelude-val">Some</span>(
                 <span class="string">&quot;the server either returned a response using an unknown or unsupported encoding format, or the response encoding was malformed&quot;</span>,
             ),
-            <span class="ident"><span class="self">Self</span>::InvalidCredentials</span> =&gt; {
+            <span class="self">Self</span>::InvalidCredentials =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;provided authentication credentials were rejected by the server&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::InvalidRequest</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;invalid HTTP request&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::NameResolution</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to resolve host name&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::ProtocolViolation</span> =&gt; {
+            <span class="self">Self</span>::InvalidRequest =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;invalid HTTP request&quot;</span>),
+            <span class="self">Self</span>::NameResolution =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;failed to resolve host name&quot;</span>),
+            <span class="self">Self</span>::ProtocolViolation =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;the server made an unrecoverable HTTP protocol violation&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::RequestBodyNotRewindable</span> =&gt; {
+            <span class="self">Self</span>::RequestBodyNotRewindable =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;request body could not be re-sent because it is not rewindable&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::Timeout</span> =&gt; {
+            <span class="self">Self</span>::Timeout =&gt; {
                 <span class="prelude-val">Some</span>(<span class="string">&quot;request or operation took longer than the configured timeout time&quot;</span>)
             }
-            <span class="ident"><span class="self">Self</span>::TlsEngine</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;error ocurred in the secure socket engine&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::TooManyRedirects</span> =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;number of redirects hit the maximum amount&quot;</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+            <span class="self">Self</span>::TlsEngine =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;error ocurred in the secure socket engine&quot;</span>),
+            <span class="self">Self</span>::TooManyRedirects =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;number of redirects hit the maximum amount&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ErrorKind</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="self">self</span>.<span class="ident">description</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;unknown error&quot;</span>))
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>ErrorKind {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.write_str(<span class="self">self</span>.description().unwrap_or(<span class="string">&quot;unknown error&quot;</span>))
     }
 }
 
-<span class="comment">// Improve equality ergonomics for references.</span>
-<span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> <span class="ident">ErrorKind</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">other</span>
+<span class="comment">// Improve equality ergonomics for references.
+</span><span class="kw">impl </span>PartialEq&lt;ErrorKind&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>ErrorKind {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ErrorKind) -&gt; bool {
+        <span class="kw-2">*</span><span class="self">self </span>== other
     }
 }
 
-<span class="doccomment">/// An error encountered while sending an HTTP request or receiving an HTTP</span>
-<span class="doccomment">/// response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that errors are typically caused by failed I/O or protocol errors. 4xx</span>
-<span class="doccomment">/// or 5xx responses successfully received from the server are generally _not_</span>
-<span class="doccomment">/// considered an error case.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This type is intentionally opaque, as sending an HTTP request involves many</span>
-<span class="doccomment">/// different moving parts, some of which can be platform or device-dependent.</span>
-<span class="doccomment">/// It is recommended that you use the [`kind`][Error::kind] method to get a</span>
-<span class="doccomment">/// more generalized classification of error types that this error could be if</span>
-<span class="doccomment">/// you need to handle different sorts of errors in different ways.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If you need to get more specific details about the reason for the error, you</span>
-<span class="doccomment">/// can use the [`source`][std::error::Error::source] method. We do not provide</span>
-<span class="doccomment">/// any stability guarantees about what error sources are returned.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Error</span>(<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span>);
+<span class="doccomment">/// An error encountered while sending an HTTP request or receiving an HTTP
+/// response.
+///
+/// Note that errors are typically caused by failed I/O or protocol errors. 4xx
+/// or 5xx responses successfully received from the server are generally _not_
+/// considered an error case.
+///
+/// This type is intentionally opaque, as sending an HTTP request involves many
+/// different moving parts, some of which can be platform or device-dependent.
+/// It is recommended that you use the [`kind`][Error::kind] method to get a
+/// more generalized classification of error types that this error could be if
+/// you need to handle different sorts of errors in different ways.
+///
+/// If you need to get more specific details about the reason for the error, you
+/// can use the [`source`][std::error::Error::source] method. We do not provide
+/// any stability guarantees about what error sources are returned.
+</span><span class="attribute">#[derive(Clone)]</span>
+<span class="kw">pub struct </span>Error(Arc&lt;Inner&gt;);
 
-<span class="kw">struct</span> <span class="ident">Inner</span> {
-    <span class="ident">kind</span>: <span class="ident">ErrorKind</span>,
-    <span class="ident">context</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">source</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">SourceError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">local_addr</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
-    <span class="ident">remote_addr</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>Inner {
+    kind: ErrorKind,
+    context: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    source: <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>SourceError&gt;&gt;,
+    local_addr: OnceCell&lt;SocketAddr&gt;,
+    remote_addr: OnceCell&lt;SocketAddr&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Error</span> {
-    <span class="doccomment">/// Create a new error from a given error kind and source error.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">source</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl </span>Error {
+    <span class="doccomment">/// Create a new error from a given error kind and source error.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new&lt;E&gt;(kind: ErrorKind, source: E) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>E: StdError + Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="ident"><span class="self">Self</span>::with_context</span>(<span class="ident">kind</span>, <span class="prelude-val">None</span>, <span class="ident">source</span>)
+        <span class="self">Self</span>::with_context(kind, <span class="prelude-val">None</span>, source)
     }
 
-    <span class="doccomment">/// Create a new error from a given error kind, source error, and context</span>
-    <span class="doccomment">/// string.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_context</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">context</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">source</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Create a new error from a given error kind, source error, and context
+    /// string.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_context&lt;E&gt;(kind: ErrorKind, context: <span class="prelude-ty">Option</span>&lt;String&gt;, source: E) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>E: StdError + Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="self">Self</span>(<span class="ident">Arc::new</span>(<span class="ident">Inner</span> {
-            <span class="ident">kind</span>,
-            <span class="ident">context</span>,
-            <span class="ident">source</span>: <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">source</span>)),
-            <span class="ident">local_addr</span>: <span class="ident">OnceCell::new</span>(),
-            <span class="ident">remote_addr</span>: <span class="ident">OnceCell::new</span>(),
+        <span class="self">Self</span>(Arc::new(Inner {
+            kind,
+            context,
+            source: <span class="prelude-val">Some</span>(Box::new(source)),
+            local_addr: OnceCell::new(),
+            remote_addr: OnceCell::new(),
         }))
     }
 
-    <span class="doccomment">/// Create a new error from a given error kind and response.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>, <span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::from</span>(<span class="ident">kind</span>);
+    <span class="doccomment">/// Create a new error from a given error kind and response.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_response&lt;B&gt;(kind: ErrorKind, response: <span class="kw-2">&amp;</span>Response&lt;B&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>error = <span class="self">Self</span>::from(kind);
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">local_addr</span>() {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">error</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = response.local_addr() {
+            <span class="kw">let _ </span>= error.<span class="number">0</span>.local_addr.set(addr);
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">remote_addr</span>() {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">error</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = response.remote_addr() {
+            <span class="kw">let _ </span>= error.<span class="number">0</span>.remote_addr.set(addr);
         }
 
-        <span class="ident">error</span>
+        error
     }
 
-    <span class="doccomment">/// Statically cast a given error into an Isahc error, converting if</span>
-    <span class="doccomment">/// necessary.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is useful for converting or creating errors from external types</span>
-    <span class="doccomment">/// without publicly implementing `From` over them and leaking them into our</span>
-    <span class="doccomment">/// API.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_any</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">error</span>: <span class="ident">E</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">E</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+    <span class="doccomment">/// Statically cast a given error into an Isahc error, converting if
+    /// necessary.
+    ///
+    /// This is useful for converting or creating errors from external types
+    /// without publicly implementing `From` over them and leaking them into our
+    /// API.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_any&lt;E&gt;(error: E) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>E: StdError + Send + Sync + <span class="lifetime">&#39;static</span>,
     {
-        <span class="macro">castaway::match_type!</span>(<span class="ident">error</span>, {
-            <span class="ident">Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; <span class="ident">error</span>,
-            <span class="ident">std::io::Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; <span class="ident">error</span>.<span class="ident">into</span>(),
-            <span class="ident">curl::Error</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; {
-                <span class="ident"><span class="self">Self</span>::with_context</span>(
-                    <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_certproblem</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert_badfile</span>() {
-                        <span class="ident">ErrorKind::BadClientCertificate</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_peer_failed_verification</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cacert</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_cipher</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_issuer_error</span>()
+        <span class="macro">castaway::match_type!</span>(error, {
+            Error <span class="kw">as </span>error =&gt; error,
+            std::io::Error <span class="kw">as </span>error =&gt; error.into(),
+            curl::Error <span class="kw">as </span>error =&gt; {
+                <span class="self">Self</span>::with_context(
+                    <span class="kw">if </span>error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
+                        ErrorKind::BadClientCertificate
+                    } <span class="kw">else if </span>error.is_peer_failed_verification()
+                        || error.is_ssl_cacert()
+                        || error.is_ssl_cipher()
+                        || error.is_ssl_issuer_error()
                     {
-                        <span class="ident">ErrorKind::BadServerCertificate</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_interface_failed</span>() {
-                        <span class="ident">ErrorKind::ClientInitialization</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_connect</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_connect_error</span>() {
-                        <span class="ident">ErrorKind::ConnectionFailed</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_content_encoding</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_conv_failed</span>() {
-                        <span class="ident">ErrorKind::InvalidContentEncoding</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_login_denied</span>() {
-                        <span class="ident">ErrorKind::InvalidCredentials</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_url_malformed</span>() {
-                        <span class="ident">ErrorKind::InvalidRequest</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_host</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_couldnt_resolve_proxy</span>() {
-                        <span class="ident">ErrorKind::NameResolution</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_got_nothing</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_http2_stream_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_unsupported_protocol</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">code</span>() <span class="op">==</span> <span class="ident">curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY</span>
+                        ErrorKind::BadServerCertificate
+                    } <span class="kw">else if </span>error.is_interface_failed() {
+                        ErrorKind::ClientInitialization
+                    } <span class="kw">else if </span>error.is_couldnt_connect() || error.is_ssl_connect_error() {
+                        ErrorKind::ConnectionFailed
+                    } <span class="kw">else if </span>error.is_bad_content_encoding() || error.is_conv_failed() {
+                        ErrorKind::InvalidContentEncoding
+                    } <span class="kw">else if </span>error.is_login_denied() {
+                        ErrorKind::InvalidCredentials
+                    } <span class="kw">else if </span>error.is_url_malformed() {
+                        ErrorKind::InvalidRequest
+                    } <span class="kw">else if </span>error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
+                        ErrorKind::NameResolution
+                    } <span class="kw">else if </span>error.is_got_nothing()
+                        || error.is_http2_error()
+                        || error.is_http2_stream_error()
+                        || error.is_unsupported_protocol()
+                        || error.code() == curl_sys::CURLE_FTP_WEIRD_SERVER_REPLY
                     {
-                        <span class="ident">ErrorKind::ProtocolViolation</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_send_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_recv_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_read_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_write_error</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_upload_failed</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_send_fail_rewind</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_aborted_by_callback</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_partial_file</span>()
+                        ErrorKind::ProtocolViolation
+                    } <span class="kw">else if </span>error.is_send_error()
+                        || error.is_recv_error()
+                        || error.is_read_error()
+                        || error.is_write_error()
+                        || error.is_upload_failed()
+                        || error.is_send_fail_rewind()
+                        || error.is_aborted_by_callback()
+                        || error.is_partial_file()
                     {
-                        <span class="ident">ErrorKind::Io</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_initfailed</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_notfound</span>()
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is_ssl_engine_setfailed</span>()
+                        ErrorKind::Io
+                    } <span class="kw">else if </span>error.is_ssl_engine_initfailed()
+                        || error.is_ssl_engine_notfound()
+                        || error.is_ssl_engine_setfailed()
                     {
-                        <span class="ident">ErrorKind::TlsEngine</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_operation_timedout</span>() {
-                        <span class="ident">ErrorKind::Timeout</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_too_many_redirects</span>() {
-                        <span class="ident">ErrorKind::TooManyRedirects</span>
-                    } <span class="kw">else</span> {
-                        <span class="ident">ErrorKind::Unknown</span>
+                        ErrorKind::TlsEngine
+                    } <span class="kw">else if </span>error.is_operation_timedout() {
+                        ErrorKind::Timeout
+                    } <span class="kw">else if </span>error.is_too_many_redirects() {
+                        ErrorKind::TooManyRedirects
+                    } <span class="kw">else </span>{
+                        ErrorKind::Unknown
                     },
-                    <span class="ident">error</span>.<span class="ident">extra_description</span>().<span class="ident">map</span>(<span class="ident">String::from</span>),
-                    <span class="ident">error</span>,
+                    error.extra_description().map(String::from),
+                    error,
                 )
             },
-            <span class="ident">curl::MultiError</span> <span class="kw">as</span> <span class="ident">error</span> =&gt; {
-                <span class="ident"><span class="self">Self</span>::new</span>(
-                    <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is_bad_socket</span>() {
-                        <span class="ident">ErrorKind::Io</span>
-                    } <span class="kw">else</span> {
-                        <span class="ident">ErrorKind::Unknown</span>
+            curl::MultiError <span class="kw">as </span>error =&gt; {
+                <span class="self">Self</span>::new(
+                    <span class="kw">if </span>error.is_bad_socket() {
+                        ErrorKind::Io
+                    } <span class="kw">else </span>{
+                        ErrorKind::Unknown
                     },
-                    <span class="ident">error</span>,
+                    error,
                 )
             },
-            <span class="ident">error</span> =&gt; <span class="ident">Error::new</span>(<span class="ident">ErrorKind::Unknown</span>, <span class="ident">error</span>),
+            error =&gt; Error::new(ErrorKind::Unknown, error),
         })
     }
 
-    <span class="doccomment">/// Get the kind of error this represents.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The kind returned may not be matchable against any documented variants</span>
-    <span class="doccomment">/// if the reason for the error is unknown. Unknown errors may be an</span>
-    <span class="doccomment">/// indication of a bug, or an error condition that we do not recognize</span>
-    <span class="doccomment">/// appropriately. Either way, please report such occurrences to us!</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">kind</span>
+    <span class="doccomment">/// Get the kind of error this represents.
+    ///
+    /// The kind returned may not be matchable against any documented variants
+    /// if the reason for the error is unknown. Unknown errors may be an
+    /// indication of a bug, or an error condition that we do not recognize
+    /// appropriately. Either way, please report such occurrences to us!
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>kind(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ErrorKind {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.kind
     }
 
-    <span class="doccomment">/// Returns true if this error was likely caused by the client.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Usually indicates that the client was misconfigured or used to send</span>
-    <span class="doccomment">/// invalid data to the server. Requests that return these sorts of errors</span>
-    <span class="doccomment">/// probably should not be retried without first fixing the request</span>
-    <span class="doccomment">/// parameters.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::BadClientCertificate</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::ClientInitialization</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::InvalidCredentials</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::InvalidRequest</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::RequestBodyNotRewindable</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Returns true if this error was likely caused by the client.
+    ///
+    /// Usually indicates that the client was misconfigured or used to send
+    /// invalid data to the server. Requests that return these sorts of errors
+    /// probably should not be retried without first fixing the request
+    /// parameters.
+    </span><span class="kw">pub fn </span>is_client(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.kind() {
+            ErrorKind::BadClientCertificate
+            | ErrorKind::ClientInitialization
+            | ErrorKind::InvalidCredentials
+            | ErrorKind::InvalidRequest
+            | ErrorKind::RequestBodyNotRewindable
+            | ErrorKind::TlsEngine =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Returns true if this is an error likely related to network failures.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Network operations are inherently unreliable. Sometimes retrying the</span>
-    <span class="doccomment">/// request once or twice is enough to resolve the error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_network</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::ConnectionFailed</span> <span class="op">|</span> <span class="ident">ErrorKind::Io</span> <span class="op">|</span> <span class="ident">ErrorKind::NameResolution</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Returns true if this is an error likely related to network failures.
+    ///
+    /// Network operations are inherently unreliable. Sometimes retrying the
+    /// request once or twice is enough to resolve the error.
+    </span><span class="kw">pub fn </span>is_network(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.kind() {
+            ErrorKind::ConnectionFailed | ErrorKind::Io | ErrorKind::NameResolution =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Returns true if this error was likely the fault of the server.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_server</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::BadServerCertificate</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::ProtocolViolation</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TooManyRedirects</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Returns true if this error was likely the fault of the server.
+    </span><span class="kw">pub fn </span>is_server(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.kind() {
+            ErrorKind::BadServerCertificate
+            | ErrorKind::ProtocolViolation
+            | ErrorKind::TooManyRedirects =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Returns true if this error is caused from exceeding a configured</span>
-    <span class="doccomment">/// timeout.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A request could time out for any number of reasons, for example:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - Slow or broken network preventing the server from receiving the</span>
-    <span class="doccomment">///   request or replying in a timely manner.</span>
-    <span class="doccomment">/// - The server received the request but is taking a long time to fulfill</span>
-    <span class="doccomment">///   the request.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Sometimes retrying the request once or twice is enough to resolve the</span>
-    <span class="doccomment">/// error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_timeout</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">ErrorKind::Timeout</span>
+    <span class="doccomment">/// Returns true if this error is caused from exceeding a configured
+    /// timeout.
+    ///
+    /// A request could time out for any number of reasons, for example:
+    ///
+    /// - Slow or broken network preventing the server from receiving the
+    ///   request or replying in a timely manner.
+    /// - The server received the request but is taking a long time to fulfill
+    ///   the request.
+    ///
+    /// Sometimes retrying the request once or twice is enough to resolve the
+    /// error.
+    </span><span class="kw">pub fn </span>is_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.kind() == ErrorKind::Timeout
     }
 
-    <span class="doccomment">/// Returns true if this error is related to SSL/TLS.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_tls</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::BadClientCertificate</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::BadServerCertificate</span>
-            <span class="op">|</span> <span class="ident">ErrorKind::TlsEngine</span> =&gt; <span class="bool-val">true</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="doccomment">/// Returns true if this error is related to SSL/TLS.
+    </span><span class="kw">pub fn </span>is_tls(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.kind() {
+            ErrorKind::BadClientCertificate
+            | ErrorKind::BadServerCertificate
+            | ErrorKind::TlsEngine =&gt; <span class="bool-val">true</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="doccomment">/// Get the local socket address of the last-used connection involved in</span>
-    <span class="doccomment">/// this error, if known.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the request that caused this error failed to create a local socket</span>
-    <span class="doccomment">/// for connecting then this will return `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
+    <span class="doccomment">/// Get the local socket address of the last-used connection involved in
+    /// this error, if known.
+    ///
+    /// If the request that caused this error failed to create a local socket
+    /// for connecting then this will return `None`.
+    </span><span class="kw">pub fn </span>local_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.local_addr.get().cloned()
     }
 
-    <span class="doccomment">/// Get the remote socket address of the last-used connection involved in</span>
-    <span class="doccomment">/// this error, if known.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the request that caused this error failed to connect to any server,</span>
-    <span class="doccomment">/// then this will return `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">get</span>().<span class="ident">cloned</span>()
+    <span class="doccomment">/// Get the remote socket address of the last-used connection involved in
+    /// this error, if known.
+    ///
+    /// If the request that caused this error failed to connect to any server,
+    /// then this will return `None`.
+    </span><span class="kw">pub fn </span>remote_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.remote_addr.get().cloned()
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_local_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
-        <span class="self">self</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_local_addr(<span class="self">self</span>, addr: SocketAddr) -&gt; <span class="self">Self </span>{
+        <span class="kw">let _ </span>= <span class="self">self</span>.<span class="number">0</span>.local_addr.set(addr);
+        <span class="self">self
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_remote_addr</span>(<span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">set</span>(<span class="ident">addr</span>);
-        <span class="self">self</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_remote_addr(<span class="self">self</span>, addr: SocketAddr) -&gt; <span class="self">Self </span>{
+        <span class="kw">let _ </span>= <span class="self">self</span>.<span class="number">0</span>.remote_addr.set(addr);
+        <span class="self">self
+    </span>}
+}
+
+<span class="kw">impl </span>StdError <span class="kw">for </span>Error {
+    <span class="kw">fn </span>source(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(<span class="kw">dyn </span>StdError + <span class="lifetime">&#39;static</span>)&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.source.as_ref().map(|source| source.as_dyn_error())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">StdError</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">source</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">source</span><span class="op">|</span> <span class="ident">source</span>.<span class="ident">as_dyn_error</span>())
+<span class="kw">impl </span>PartialEq&lt;ErrorKind&gt; <span class="kw">for </span>Error {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, kind: <span class="kw-2">&amp;</span>ErrorKind) -&gt; bool {
+        <span class="self">self</span>.kind().eq(kind)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">kind</span>: <span class="kw-2">&amp;</span><span class="ident">ErrorKind</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">kind</span>().<span class="ident">eq</span>(<span class="ident">kind</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Error&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;kind&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kind</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;context&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">context</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;source&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">source</span>())
-            .<span class="ident">field</span>(
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;Error&quot;</span>)
+            .field(<span class="string">&quot;kind&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.kind())
+            .field(<span class="string">&quot;context&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.context)
+            .field(<span class="string">&quot;source&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.source())
+            .field(
                 <span class="string">&quot;source_type&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">source</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">type_name</span>()),
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.source.as_ref().map(|e| e.type_name()),
             )
-            .<span class="ident">field</span>(<span class="string">&quot;local_addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">local_addr</span>.<span class="ident">get</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;remote_addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">remote_addr</span>.<span class="ident">get</span>())
-            .<span class="ident">finish</span>()
+            .field(<span class="string">&quot;local_addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.local_addr.get())
+            .field(<span class="string">&quot;remote_addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>.remote_addr.get())
+            .finish()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">context</span>.<span class="ident">as_ref</span>() {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}: {}&quot;</span>, <span class="self">self</span>.<span class="ident">kind</span>(), <span class="ident">s</span>)
-        } <span class="kw">else</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">kind</span>())
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(s) = <span class="self">self</span>.<span class="number">0</span>.context.as_ref() {
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}: {}&quot;</span>, <span class="self">self</span>.kind(), s)
+        } <span class="kw">else </span>{
+            <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.kind())
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ErrorKind</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kind</span>: <span class="ident">ErrorKind</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Arc::new</span>(<span class="ident">Inner</span> {
-            <span class="ident">kind</span>,
-            <span class="ident">context</span>: <span class="prelude-val">None</span>,
-            <span class="ident">source</span>: <span class="prelude-val">None</span>,
-            <span class="ident">local_addr</span>: <span class="ident">OnceCell::new</span>(),
-            <span class="ident">remote_addr</span>: <span class="ident">OnceCell::new</span>(),
+<span class="kw">impl </span>From&lt;ErrorKind&gt; <span class="kw">for </span>Error {
+    <span class="kw">fn </span>from(kind: ErrorKind) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(Arc::new(Inner {
+            kind,
+            context: <span class="prelude-val">None</span>,
+            source: <span class="prelude-val">None</span>,
+            local_addr: OnceCell::new(),
+            remote_addr: OnceCell::new(),
         }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">io::Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">io::Error</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// If this I/O error is just a wrapped Isahc error, then unwrap it.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inner</span>) <span class="op">=</span> <span class="ident">error</span>.<span class="ident">get_ref</span>() {
-            <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>() {
-                <span class="kw">return</span> <span class="kw-2">*</span><span class="ident">error</span>.<span class="ident">into_inner</span>().<span class="ident">unwrap</span>().<span class="ident">downcast</span>().<span class="ident">unwrap</span>();
+<span class="kw">impl </span>From&lt;io::Error&gt; <span class="kw">for </span>Error {
+    <span class="kw">fn </span>from(error: io::Error) -&gt; <span class="self">Self </span>{
+        <span class="comment">// If this I/O error is just a wrapped Isahc error, then unwrap it.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(inner) = error.get_ref() {
+            <span class="kw">if </span>inner.is::&lt;<span class="self">Self</span>&gt;() {
+                <span class="kw">return </span><span class="kw-2">*</span>error.into_inner().unwrap().downcast().unwrap();
             }
         }
 
-        <span class="ident"><span class="self">Self</span>::new</span>(
-            <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">kind</span>() {
-                <span class="ident">io::ErrorKind::ConnectionRefused</span> =&gt; <span class="ident">ErrorKind::ConnectionFailed</span>,
-                <span class="ident">io::ErrorKind::TimedOut</span> =&gt; <span class="ident">ErrorKind::Timeout</span>,
-                <span class="kw">_</span> =&gt; <span class="ident">ErrorKind::Io</span>,
+        <span class="self">Self</span>::new(
+            <span class="kw">match </span>error.kind() {
+                io::ErrorKind::ConnectionRefused =&gt; ErrorKind::ConnectionFailed,
+                io::ErrorKind::TimedOut =&gt; ErrorKind::Timeout,
+                <span class="kw">_ </span>=&gt; ErrorKind::Io,
             },
-            <span class="ident">error</span>,
+            error,
         )
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">io::Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">Error</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">kind</span>() {
-            <span class="ident">ErrorKind::ConnectionFailed</span> =&gt; <span class="ident">io::ErrorKind::ConnectionRefused</span>,
-            <span class="ident">ErrorKind::Timeout</span> =&gt; <span class="ident">io::ErrorKind::TimedOut</span>,
-            <span class="kw">_</span> =&gt; <span class="ident">io::ErrorKind::Other</span>,
+<span class="kw">impl </span>From&lt;Error&gt; <span class="kw">for </span>io::Error {
+    <span class="kw">fn </span>from(error: Error) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>kind = <span class="kw">match </span>error.kind() {
+            ErrorKind::ConnectionFailed =&gt; io::ErrorKind::ConnectionRefused,
+            ErrorKind::Timeout =&gt; io::ErrorKind::TimedOut,
+            <span class="kw">_ </span>=&gt; io::ErrorKind::Other,
         };
 
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">kind</span>, <span class="ident">error</span>)
+        <span class="self">Self</span>::new(kind, error)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">http::Error</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">error</span>: <span class="ident">http::Error</span>) -&gt; <span class="ident">Error</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(
-            <span class="kw">if</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::header::InvalidHeaderName</span><span class="op">&gt;</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::header::InvalidHeaderValue</span><span class="op">&gt;</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::method::InvalidMethod</span><span class="op">&gt;</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::uri::InvalidUri</span><span class="op">&gt;</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">error</span>.<span class="ident">is</span>::<span class="op">&lt;</span><span class="ident">http::uri::InvalidUriParts</span><span class="op">&gt;</span>()
+<span class="kw">impl </span>From&lt;http::Error&gt; <span class="kw">for </span>Error {
+    <span class="kw">fn </span>from(error: http::Error) -&gt; Error {
+        <span class="self">Self</span>::new(
+            <span class="kw">if </span>error.is::&lt;http::header::InvalidHeaderName&gt;()
+                || error.is::&lt;http::header::InvalidHeaderValue&gt;()
+                || error.is::&lt;http::method::InvalidMethod&gt;()
+                || error.is::&lt;http::uri::InvalidUri&gt;()
+                || error.is::&lt;http::uri::InvalidUriParts&gt;()
             {
-                <span class="ident">ErrorKind::InvalidRequest</span>
-            } <span class="kw">else</span> {
-                <span class="ident">ErrorKind::Unknown</span>
+                ErrorKind::InvalidRequest
+            } <span class="kw">else </span>{
+                ErrorKind::Unknown
             },
-            <span class="ident">error</span>,
+            error,
         )
     }
 }
 
-<span class="doccomment">/// Internal trait object for source errors. This is used to capture additional</span>
-<span class="doccomment">/// methods about the source error value in the vtable.</span>
-<span class="kw">trait</span> <span class="ident">SourceError</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> {
-    <span class="doccomment">/// Get the type name of the concrete error type when the parent error was</span>
-    <span class="doccomment">/// created. Used for enriching the debug formatting.</span>
-    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
+<span class="doccomment">/// Internal trait object for source errors. This is used to capture additional
+/// methods about the source error value in the vtable.
+</span><span class="kw">trait </span>SourceError: StdError + Send + Sync + <span class="lifetime">&#39;static </span>{
+    <span class="doccomment">/// Get the type name of the concrete error type when the parent error was
+    /// created. Used for enriching the debug formatting.
+    </span><span class="kw">fn </span>type_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
-    <span class="doccomment">/// Cast this error as a stdlib error trait object.</span>
-    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>);
+    <span class="doccomment">/// Cast this error as a stdlib error trait object.
+    </span><span class="kw">fn </span>as_dyn_error(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn </span>StdError + <span class="lifetime">&#39;static</span>);
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">StdError</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span> <span class="ident">SourceError</span> <span class="kw">for</span> <span class="ident">T</span> {
-    <span class="kw">fn</span> <span class="ident">type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="ident">std::any::type_name</span>::<span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>()
+<span class="kw">impl</span>&lt;T: StdError + Send + Sync + <span class="lifetime">&#39;static</span>&gt; SourceError <span class="kw">for </span>T {
+    <span class="kw">fn </span>type_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        std::any::type_name::&lt;<span class="self">Self</span>&gt;()
     }
 
-    <span class="kw">fn</span> <span class="ident">as_dyn_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn</span> <span class="ident">StdError</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>) {
-        <span class="self">self</span>
-    }
+    <span class="kw">fn </span>as_dyn_error(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>(<span class="kw">dyn </span>StdError + <span class="lifetime">&#39;static</span>) {
+        <span class="self">self
+    </span>}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">Error</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(Error: Send, Sync);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

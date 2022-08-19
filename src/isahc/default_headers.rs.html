@@ -45,50 +45,50 @@
 <span id="43">43</span>
 <span id="44">44</span>
 <span id="45">45</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">body::AsyncBody</span>,
-    <span class="ident">error::Error</span>,
-    <span class="ident">interceptor</span>::{<span class="ident">Context</span>, <span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>},
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    body::AsyncBody,
+    error::Error,
+    interceptor::{Context, Interceptor, InterceptorFuture},
 };
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">HeaderMap</span>, <span class="ident">HeaderValue</span>, <span class="ident">Request</span>};
+<span class="kw">use </span>http::{HeaderMap, HeaderValue, Request};
 
-<span class="doccomment">/// Interceptor that adds a set of default headers on every outgoing request, if</span>
-<span class="doccomment">/// not explicitly set on the request.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">DefaultHeadersInterceptor</span> {
-    <span class="ident">headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Interceptor that adds a set of default headers on every outgoing request, if
+/// not explicitly set on the request.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DefaultHeadersInterceptor {
+    headers: HeaderMap&lt;HeaderValue&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DefaultHeadersInterceptor</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">headers</span>: <span class="ident">HeaderMap</span><span class="op">&lt;</span><span class="ident">HeaderValue</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">headers</span>,
+<span class="kw">impl </span>From&lt;HeaderMap&lt;HeaderValue&gt;&gt; <span class="kw">for </span>DefaultHeadersInterceptor {
+    <span class="kw">fn </span>from(headers: HeaderMap&lt;HeaderValue&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            headers,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Interceptor</span> <span class="kw">for</span> <span class="ident">DefaultHeadersInterceptor</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">Error</span>;
+<span class="kw">impl </span>Interceptor <span class="kw">for </span>DefaultHeadersInterceptor {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= Error;
 
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="ident">Box::pin</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="comment">// We are checking here if header already contains the key, simply</span>
-            <span class="comment">// ignore it. In case the key wasn&#39;t present in parts.headers ensure</span>
-            <span class="comment">// that we have all the headers from default headers.</span>
-            <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">headers</span>.<span class="ident">keys</span>() {
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">request</span>.<span class="ident">headers</span>().<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                    <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">headers</span>.<span class="ident">get_all</span>(<span class="ident">name</span>).<span class="ident">iter</span>() {
-                        <span class="ident">request</span>.<span class="ident">headers_mut</span>().<span class="ident">append</span>(<span class="ident">name</span>, <span class="ident">v</span>.<span class="ident">clone</span>());
+    <span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;,
+        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
+    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt; {
+        Box::pin(<span class="kw">async move </span>{
+            <span class="comment">// We are checking here if header already contains the key, simply
+            // ignore it. In case the key wasn&#39;t present in parts.headers ensure
+            // that we have all the headers from default headers.
+            </span><span class="kw">for </span>name <span class="kw">in </span><span class="self">self</span>.headers.keys() {
+                <span class="kw">if </span>!request.headers().contains_key(name) {
+                    <span class="kw">for </span>v <span class="kw">in </span><span class="self">self</span>.headers.get_all(name).iter() {
+                        request.headers_mut().append(name, v.clone());
                     }
                 }
             }
 
-            <span class="ident">ctx</span>.<span class="ident">send</span>(<span class="ident">request</span>).<span class="kw">await</span>
-        })
+            ctx.send(request).<span class="kw">await
+        </span>})
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

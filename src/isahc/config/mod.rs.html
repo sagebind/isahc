@@ -1055,1060 +1055,1060 @@
 <span id="1053">1053</span>
 <span id="1054">1054</span>
 <span id="1055">1055</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Definition of all client and request configuration options.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Individual options are separated out into multiple types. Each type acts</span>
-<span class="doccomment">//! both as a &quot;field name&quot; and the value of that option.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Definition of all client and request configuration options.
+//!
+//! Individual options are separated out into multiple types. Each type acts
+//! both as a &quot;field name&quot; and the value of that option.
 
-<span class="comment">// Options are implemented as structs of various kinds that can be &quot;applied&quot; to</span>
-<span class="comment">// a curl easy handle. This helps to reduce code duplication as there are many</span>
-<span class="comment">// supported options, and also helps avoid having a massive function that does</span>
-<span class="comment">// all the configuring.</span>
-<span class="comment">//</span>
-<span class="comment">// When adding new config options, remember to add methods for setting the</span>
-<span class="comment">// option both in HttpClientBuilder and RequestBuilderExt. In addition, be sure</span>
-<span class="comment">// to update the client code to apply the option when configuring an easy</span>
-<span class="comment">// handle.</span>
+</span><span class="comment">// Options are implemented as structs of various kinds that can be &quot;applied&quot; to
+// a curl easy handle. This helps to reduce code duplication as there are many
+// supported options, and also helps avoid having a massive function that does
+// all the configuring.
+//
+// When adding new config options, remember to add methods for setting the
+// option both in HttpClientBuilder and RequestBuilderExt. In addition, be sure
+// to update the client code to apply the option when configuring an easy
+// handle.
 
-<span class="kw">use</span> <span class="self">self</span>::{<span class="ident">proxy::Proxy</span>, <span class="ident">request::SetOpt</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
-    <span class="ident">is_http_version_supported</span>,
+</span><span class="kw">use </span><span class="self">self</span>::{proxy::Proxy, request::SetOpt};
+<span class="kw">use crate</span>::{
+    auth::{Authentication, Credentials},
+    is_http_version_supported,
 };
-<span class="kw">use</span> <span class="ident">curl::easy::Easy2</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::IpAddr</span>, <span class="ident">time::Duration</span>};
+<span class="kw">use </span>curl::easy::Easy2;
+<span class="kw">use </span>std::{net::IpAddr, time::Duration};
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">client</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">dial</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">dns</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proxy</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">redirect</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">request</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">tls</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>client;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>dial;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>dns;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>proxy;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>redirect;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>request;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tls;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">dial</span>::{<span class="ident">Dialer</span>, <span class="ident">DialerParseError</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">dns</span>::{<span class="ident">DnsCache</span>, <span class="ident">ResolveMap</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">redirect::RedirectPolicy</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls</span>::{<span class="ident">CaCertificate</span>, <span class="ident">ClientCertificate</span>, <span class="ident">PrivateKey</span>, <span class="ident">SslOption</span>};
+<span class="kw">pub use </span>dial::{Dialer, DialerParseError};
+<span class="kw">pub use </span>dns::{DnsCache, ResolveMap};
+<span class="kw">pub use </span>redirect::RedirectPolicy;
+<span class="kw">pub use </span>tls::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
-<span class="doccomment">/// Provides additional methods when building a request for configuring various</span>
-<span class="doccomment">/// execution-related options on how the request should be sent.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This trait can be used to either configure requests individually by invoking</span>
-<span class="doccomment">/// them on an [`http::request::Builder`], or to configure the default settings</span>
-<span class="doccomment">/// for an [`HttpClient`](crate::HttpClient) by invoking them on an</span>
-<span class="doccomment">/// [`HttpClientBuilder`](crate::HttpClientBuilder).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This trait is sealed and cannot be implemented for types outside of Isahc.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Configurable</span>: <span class="ident">request::WithRequestConfig</span> {
-    <span class="doccomment">/// Specify a maximum amount of time that a complete request/response cycle</span>
-    <span class="doccomment">/// is allowed to take before being aborted. This includes DNS resolution,</span>
-    <span class="doccomment">/// connecting to the server, writing the request, and reading the response.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Since response bodies are streamed, you will likely receive a</span>
-    <span class="doccomment">/// [`Response`](crate::http::Response) before the response body stream has</span>
-    <span class="doccomment">/// been fully consumed. This means that the configured timeout will still</span>
-    <span class="doccomment">/// be active for that request, and if it expires, further attempts to read</span>
-    <span class="doccomment">/// from the stream will return a [`TimedOut`](std::io::ErrorKind::TimedOut)</span>
-    <span class="doccomment">/// I/O error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This also means that if you receive a response with a body but do not</span>
-    <span class="doccomment">/// immediately start reading from it, then the timeout timer will still be</span>
-    <span class="doccomment">/// active and may expire before you even attempt to read the body. Keep</span>
-    <span class="doccomment">/// this in mind when consuming responses and consider handling the response</span>
-    <span class="doccomment">/// body right after you receive it if you are using this option.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If not set, no timeout will be enforced.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::{prelude::*, Request};</span>
-    <span class="doccomment">/// use std::time::Duration;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // This page is too slow and won&#39;t respond in time.</span>
-    <span class="doccomment">/// let response = Request::get(&quot;https://httpbin.org/delay/10&quot;)</span>
-    <span class="doccomment">///     .timeout(Duration::from_secs(5))</span>
-    <span class="doccomment">///     .body(())?</span>
-    <span class="doccomment">///     .send()</span>
-    <span class="doccomment">///     .expect_err(&quot;page should time out&quot;);</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>);
+<span class="doccomment">/// Provides additional methods when building a request for configuring various
+/// execution-related options on how the request should be sent.
+///
+/// This trait can be used to either configure requests individually by invoking
+/// them on an [`http::request::Builder`], or to configure the default settings
+/// for an [`HttpClient`](crate::HttpClient) by invoking them on an
+/// [`HttpClientBuilder`](crate::HttpClientBuilder).
+///
+/// This trait is sealed and cannot be implemented for types outside of Isahc.
+</span><span class="kw">pub trait </span>Configurable: request::WithRequestConfig {
+    <span class="doccomment">/// Specify a maximum amount of time that a complete request/response cycle
+    /// is allowed to take before being aborted. This includes DNS resolution,
+    /// connecting to the server, writing the request, and reading the response.
+    ///
+    /// Since response bodies are streamed, you will likely receive a
+    /// [`Response`](crate::http::Response) before the response body stream has
+    /// been fully consumed. This means that the configured timeout will still
+    /// be active for that request, and if it expires, further attempts to read
+    /// from the stream will return a [`TimedOut`](std::io::ErrorKind::TimedOut)
+    /// I/O error.
+    ///
+    /// This also means that if you receive a response with a body but do not
+    /// immediately start reading from it, then the timeout timer will still be
+    /// active and may expire before you even attempt to read the body. Keep
+    /// this in mind when consuming responses and consider handling the response
+    /// body right after you receive it if you are using this option.
+    ///
+    /// If not set, no timeout will be enforced.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{prelude::*, Request};
+    /// use std::time::Duration;
+    ///
+    /// // This page is too slow and won&#39;t respond in time.
+    /// let response = Request::get(&quot;https://httpbin.org/delay/10&quot;)
+    ///     .timeout(Duration::from_secs(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err(&quot;page should time out&quot;);
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.timeout = <span class="prelude-val">Some</span>(timeout);
         })
     }
 
-    <span class="doccomment">/// Set a timeout for establishing connections to a host.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If not set, a default connect timeout of 300 seconds will be used.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">connect_timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>);
+    <span class="doccomment">/// Set a timeout for establishing connections to a host.
+    ///
+    /// If not set, a default connect timeout of 300 seconds will be used.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>connect_timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.connect_timeout = <span class="prelude-val">Some</span>(timeout);
         })
     }
 
-    <span class="doccomment">/// Specify a maximum amount of time where transfer rate can go below</span>
-    <span class="doccomment">/// a minimum speed limit. `low_speed` is that limit in bytes/s.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If not set, no low speed limits are imposed.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">low_speed_timeout</span>(<span class="self">self</span>, <span class="ident">low_speed</span>: <span class="ident">u32</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">low_speed_timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">low_speed</span>, <span class="ident">timeout</span>));
+    <span class="doccomment">/// Specify a maximum amount of time where transfer rate can go below
+    /// a minimum speed limit. `low_speed` is that limit in bytes/s.
+    ///
+    /// If not set, no low speed limits are imposed.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>low_speed_timeout(<span class="self">self</span>, low_speed: u32, timeout: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.low_speed_timeout = <span class="prelude-val">Some</span>((low_speed, timeout));
         })
     }
 
-    <span class="doccomment">/// Configure how the use of HTTP versions should be negotiated with the</span>
-    <span class="doccomment">/// server.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is [`VersionNegotiation::latest_compatible`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::VersionNegotiation,</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Never use anything newer than HTTP/1.x for this client.</span>
-    <span class="doccomment">/// let http11_client = HttpClient::builder()</span>
-    <span class="doccomment">///     .version_negotiation(VersionNegotiation::http11())</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // HTTP/2 with prior knowledge.</span>
-    <span class="doccomment">/// let http2_client = HttpClient::builder()</span>
-    <span class="doccomment">///     .version_negotiation(VersionNegotiation::http2())</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">version_negotiation</span>(<span class="self">self</span>, <span class="ident">negotiation</span>: <span class="ident">VersionNegotiation</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">version_negotiation</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">negotiation</span>);
+    <span class="doccomment">/// Configure how the use of HTTP versions should be negotiated with the
+    /// server.
+    ///
+    /// The default is [`VersionNegotiation::latest_compatible`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::VersionNegotiation,
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// // Never use anything newer than HTTP/1.x for this client.
+    /// let http11_client = HttpClient::builder()
+    ///     .version_negotiation(VersionNegotiation::http11())
+    ///     .build()?;
+    ///
+    /// // HTTP/2 with prior knowledge.
+    /// let http2_client = HttpClient::builder()
+    ///     .version_negotiation(VersionNegotiation::http2())
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>version_negotiation(<span class="self">self</span>, negotiation: VersionNegotiation) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.version_negotiation = <span class="prelude-val">Some</span>(negotiation);
         })
     }
 
-    <span class="doccomment">/// Set a policy for automatically following server redirects.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is to not follow redirects.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::{config::RedirectPolicy, prelude::*, Request};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // This URL redirects us to where we want to go.</span>
-    <span class="doccomment">/// let response = Request::get(&quot;https://httpbin.org/redirect/1&quot;)</span>
-    <span class="doccomment">///     .redirect_policy(RedirectPolicy::Follow)</span>
-    <span class="doccomment">///     .body(())?</span>
-    <span class="doccomment">///     .send()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // This URL redirects too much!</span>
-    <span class="doccomment">/// let error = Request::get(&quot;https://httpbin.org/redirect/10&quot;)</span>
-    <span class="doccomment">///     .redirect_policy(RedirectPolicy::Limit(5))</span>
-    <span class="doccomment">///     .body(())?</span>
-    <span class="doccomment">///     .send()</span>
-    <span class="doccomment">///     .expect_err(&quot;too many redirects&quot;);</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">redirect_policy</span>(<span class="self">self</span>, <span class="ident">policy</span>: <span class="ident">RedirectPolicy</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">redirect_policy</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>);
+    <span class="doccomment">/// Set a policy for automatically following server redirects.
+    ///
+    /// The default is to not follow redirects.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{config::RedirectPolicy, prelude::*, Request};
+    ///
+    /// // This URL redirects us to where we want to go.
+    /// let response = Request::get(&quot;https://httpbin.org/redirect/1&quot;)
+    ///     .redirect_policy(RedirectPolicy::Follow)
+    ///     .body(())?
+    ///     .send()?;
+    ///
+    /// // This URL redirects too much!
+    /// let error = Request::get(&quot;https://httpbin.org/redirect/10&quot;)
+    ///     .redirect_policy(RedirectPolicy::Limit(5))
+    ///     .body(())?
+    ///     .send()
+    ///     .expect_err(&quot;too many redirects&quot;);
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>redirect_policy(<span class="self">self</span>, policy: RedirectPolicy) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.redirect_policy = <span class="prelude-val">Some</span>(policy);
         })
     }
 
-    <span class="doccomment">/// Update the `Referer` header automatically when following redirects.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">auto_referer</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">auto_referer</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
+    <span class="doccomment">/// Update the `Referer` header automatically when following redirects.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>auto_referer(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.auto_referer = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
         })
     }
 
-    <span class="doccomment">/// Set a cookie jar to use to accept, store, and supply cookies for</span>
-    <span class="doccomment">/// incoming responses and outgoing requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A cookie jar can be shared across multiple requests or with an entire</span>
-    <span class="doccomment">/// client, allowing cookies to be persisted across multiple requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
-    <span class="doccomment">/// feature is enabled.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span>) -&gt; <span class="self">Self</span>;
+    <span class="doccomment">/// Set a cookie jar to use to accept, store, and supply cookies for
+    /// incoming responses and outgoing requests.
+    ///
+    /// A cookie jar can be shared across multiple requests or with an entire
+    /// client, allowing cookies to be persisted across multiple requests.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>cookie_jar(<span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self</span>;
 
-    <span class="doccomment">/// Enable or disable automatic decompression of the response body for</span>
-    <span class="doccomment">/// various compression algorithms as returned by the server in the</span>
-    <span class="doccomment">/// [`Content-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding)</span>
-    <span class="doccomment">/// response header.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If set to true (the default), Isahc will automatically and transparently</span>
-    <span class="doccomment">/// decode the HTTP response body for known and available compression</span>
-    <span class="doccomment">/// algorithms. If the server returns a response with an unknown or</span>
-    <span class="doccomment">/// unavailable encoding, Isahc will return an</span>
-    <span class="doccomment">/// [`InvalidContentEncoding`](crate::error::ErrorKind::InvalidContentEncoding)</span>
-    <span class="doccomment">/// error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If you do not specify a specific value for the</span>
-    <span class="doccomment">/// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)</span>
-    <span class="doccomment">/// header, Isahc will set one for you automatically based on this option.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">automatic_decompression</span>(<span class="self">self</span>, <span class="ident">decompress</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">automatic_decompression</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">decompress</span>);
+    <span class="doccomment">/// Enable or disable automatic decompression of the response body for
+    /// various compression algorithms as returned by the server in the
+    /// [`Content-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding)
+    /// response header.
+    ///
+    /// If set to true (the default), Isahc will automatically and transparently
+    /// decode the HTTP response body for known and available compression
+    /// algorithms. If the server returns a response with an unknown or
+    /// unavailable encoding, Isahc will return an
+    /// [`InvalidContentEncoding`](crate::error::ErrorKind::InvalidContentEncoding)
+    /// error.
+    ///
+    /// If you do not specify a specific value for the
+    /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
+    /// header, Isahc will set one for you automatically based on this option.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>automatic_decompression(<span class="self">self</span>, decompress: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.automatic_decompression = <span class="prelude-val">Some</span>(decompress);
         })
     }
 
-    <span class="doccomment">/// Configure the use of the `Expect` request header when sending request</span>
-    <span class="doccomment">/// bodies with HTTP/1.1.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default, when sending requests containing a body of large or unknown</span>
-    <span class="doccomment">/// length over HTTP/1.1, Isahc will send the request headers first without</span>
-    <span class="doccomment">/// the body and wait for the server to respond with a 100 (Continue) status</span>
-    <span class="doccomment">/// code, as defined by [RFC 7231, Section</span>
-    <span class="doccomment">/// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1).</span>
-    <span class="doccomment">/// This gives the opportunity for the server to reject the response without</span>
-    <span class="doccomment">/// needing to first transmit the request body over the network, if the body</span>
-    <span class="doccomment">/// contents are not necessary for the server to determine an appropriate</span>
-    <span class="doccomment">/// response.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// For servers that do not support this behavior and instead simply wait</span>
-    <span class="doccomment">/// for the request body without responding with a 100 (Continue), there is</span>
-    <span class="doccomment">/// a limited timeout before the response body is sent anyway without</span>
-    <span class="doccomment">/// confirmation. The default timeout is 1 second, but this can be</span>
-    <span class="doccomment">/// configured.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The `Expect` behavior can also be disabled entirely.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This configuration only takes effect when using HTTP/1.1.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use std::time::Duration;</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::ExpectContinue,</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Use the default behavior (enabled).</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .expect_continue(ExpectContinue::enabled())</span>
-    <span class="doccomment">///     // or equivalently...</span>
-    <span class="doccomment">///     .expect_continue(ExpectContinue::default())</span>
-    <span class="doccomment">///     // or equivalently...</span>
-    <span class="doccomment">///     .expect_continue(true)</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Customize the timeout if the server doesn&#39;t respond with a 100</span>
-    <span class="doccomment">/// // (Continue) status.</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .expect_continue(ExpectContinue::timeout(Duration::from_millis(200)))</span>
-    <span class="doccomment">///     // or equivalently...</span>
-    <span class="doccomment">///     .expect_continue(Duration::from_millis(200))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Disable the Expect header entirely.</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .expect_continue(ExpectContinue::disabled())</span>
-    <span class="doccomment">///     // or equivalently...</span>
-    <span class="doccomment">///     .expect_continue(false)</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">expect_continue</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">expect</span>: <span class="ident">T</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ExpectContinue</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Configure the use of the `Expect` request header when sending request
+    /// bodies with HTTP/1.1.
+    ///
+    /// By default, when sending requests containing a body of large or unknown
+    /// length over HTTP/1.1, Isahc will send the request headers first without
+    /// the body and wait for the server to respond with a 100 (Continue) status
+    /// code, as defined by [RFC 7231, Section
+    /// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1).
+    /// This gives the opportunity for the server to reject the response without
+    /// needing to first transmit the request body over the network, if the body
+    /// contents are not necessary for the server to determine an appropriate
+    /// response.
+    ///
+    /// For servers that do not support this behavior and instead simply wait
+    /// for the request body without responding with a 100 (Continue), there is
+    /// a limited timeout before the response body is sent anyway without
+    /// confirmation. The default timeout is 1 second, but this can be
+    /// configured.
+    ///
+    /// The `Expect` behavior can also be disabled entirely.
+    ///
+    /// This configuration only takes effect when using HTTP/1.1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use isahc::{
+    ///     config::ExpectContinue,
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// // Use the default behavior (enabled).
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::enabled())
+    ///     // or equivalently...
+    ///     .expect_continue(ExpectContinue::default())
+    ///     // or equivalently...
+    ///     .expect_continue(true)
+    ///     .build()?;
+    ///
+    /// // Customize the timeout if the server doesn&#39;t respond with a 100
+    /// // (Continue) status.
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::timeout(Duration::from_millis(200)))
+    ///     // or equivalently...
+    ///     .expect_continue(Duration::from_millis(200))
+    ///     .build()?;
+    ///
+    /// // Disable the Expect header entirely.
+    /// let client = HttpClient::builder()
+    ///     .expect_continue(ExpectContinue::disabled())
+    ///     // or equivalently...
+    ///     .expect_continue(false)
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>expect_continue&lt;T&gt;(<span class="self">self</span>, expect: T) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>T: Into&lt;ExpectContinue&gt;,
     {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">expect_continue</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">expect</span>.<span class="ident">into</span>());
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.expect_continue = <span class="prelude-val">Some</span>(expect.into());
         })
     }
 
-    <span class="doccomment">/// Set one or more default HTTP authentication methods to attempt to use</span>
-    <span class="doccomment">/// when authenticating with the server.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Depending on the authentication schemes enabled, you will also need to</span>
-    <span class="doccomment">/// set credentials to use for authentication using</span>
-    <span class="doccomment">/// [`Configurable::credentials`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     auth::{Authentication, Credentials},</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .authentication(Authentication::basic() | Authentication::digest())</span>
-    <span class="doccomment">///     .credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">authentication</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">authentication</span>);
+    <span class="doccomment">/// Set one or more default HTTP authentication methods to attempt to use
+    /// when authenticating with the server.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`Configurable::credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// let client = HttpClient::builder()
+    ///     .authentication(Authentication::basic() | Authentication::digest())
+    ///     .credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.authentication = <span class="prelude-val">Some</span>(authentication);
         })
     }
 
-    <span class="doccomment">/// Set the credentials to use for HTTP authentication.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This setting will do nothing unless you also set one or more</span>
-    <span class="doccomment">/// authentication methods using [`Configurable::authentication`].</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">credentials</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">credentials</span>);
+    <span class="doccomment">/// Set the credentials to use for HTTP authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more
+    /// authentication methods using [`Configurable::authentication`].
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.credentials = <span class="prelude-val">Some</span>(credentials);
         })
     }
 
-    <span class="doccomment">/// Enable TCP keepalive with a given probe interval.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tcp_keepalive</span>(<span class="self">self</span>, <span class="ident">interval</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">tcp_keepalive</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">interval</span>);
+    <span class="doccomment">/// Enable TCP keepalive with a given probe interval.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>tcp_keepalive(<span class="self">self</span>, interval: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.tcp_keepalive = <span class="prelude-val">Some</span>(interval);
         })
     }
 
-    <span class="doccomment">/// Enables the `TCP_NODELAY` option on connect.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tcp_nodelay</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">tcp_nodelay</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
+    <span class="doccomment">/// Enables the `TCP_NODELAY` option on connect.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>tcp_nodelay(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.tcp_nodelay = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
         })
     }
 
-    <span class="doccomment">/// Bind local socket connections to a particular network interface.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Bind to an IP address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     config::NetworkInterface,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">///     Request,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// use std::net::IpAddr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Bind to an IP address.</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .interface(IpAddr::from([192, 168, 1, 2]))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Bind to an interface by name (not supported on Windows).</span>
-    <span class="doccomment">/// # #[cfg(unix)]</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .interface(NetworkInterface::name(&quot;eth0&quot;))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Reset to using whatever interface the TCP stack finds suitable (the</span>
-    <span class="doccomment">/// // default).</span>
-    <span class="doccomment">/// let request = Request::get(&quot;https://example.org&quot;)</span>
-    <span class="doccomment">///     .interface(NetworkInterface::any())</span>
-    <span class="doccomment">///     .body(())?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">interface</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">interface</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Bind local socket connections to a particular network interface.
+    ///
+    /// # Examples
+    ///
+    /// Bind to an IP address.
+    ///
+    /// ```
+    /// use isahc::{
+    ///     prelude::*,
+    ///     config::NetworkInterface,
+    ///     HttpClient,
+    ///     Request,
+    /// };
+    /// use std::net::IpAddr;
+    ///
+    /// // Bind to an IP address.
+    /// let client = HttpClient::builder()
+    ///     .interface(IpAddr::from([192, 168, 1, 2]))
+    ///     .build()?;
+    ///
+    /// // Bind to an interface by name (not supported on Windows).
+    /// # #[cfg(unix)]
+    /// let client = HttpClient::builder()
+    ///     .interface(NetworkInterface::name(&quot;eth0&quot;))
+    ///     .build()?;
+    ///
+    /// // Reset to using whatever interface the TCP stack finds suitable (the
+    /// // default).
+    /// let request = Request::get(&quot;https://example.org&quot;)
+    ///     .interface(NetworkInterface::any())
+    ///     .body(())?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>interface&lt;I&gt;(<span class="self">self</span>, interface: I) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>I: Into&lt;NetworkInterface&gt;,
     {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">interface</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">interface</span>.<span class="ident">into</span>());
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.interface = <span class="prelude-val">Some</span>(interface.into());
         })
     }
 
-    <span class="doccomment">/// Select a specific IP version when resolving hostnames. If a given</span>
-    <span class="doccomment">/// hostname does not resolve to an IP address of the desired version, then</span>
-    <span class="doccomment">/// the request will fail with a connection error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This does not affect requests with an explicit IP address as the host.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is [`IpVersion::Any`].</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ip_version</span>(<span class="self">self</span>, <span class="ident">version</span>: <span class="ident">IpVersion</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">ip_version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
+    <span class="doccomment">/// Select a specific IP version when resolving hostnames. If a given
+    /// hostname does not resolve to an IP address of the desired version, then
+    /// the request will fail with a connection error.
+    ///
+    /// This does not affect requests with an explicit IP address as the host.
+    ///
+    /// The default is [`IpVersion::Any`].
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>ip_version(<span class="self">self</span>, version: IpVersion) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.ip_version = <span class="prelude-val">Some</span>(version);
         })
     }
 
-    <span class="doccomment">/// Specify a socket to connect to instead of the using the host and port</span>
-    <span class="doccomment">/// defined in the request URI.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Connecting to a Unix socket:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::Dialer,</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     Request,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # #[cfg(unix)]</span>
-    <span class="doccomment">/// let request = Request::get(&quot;http://localhost/containers&quot;)</span>
-    <span class="doccomment">///     .dial(Dialer::unix_socket(&quot;/path/to/my.sock&quot;))</span>
-    <span class="doccomment">///     .body(())?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Connecting to a specific Internet socket address:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::Dialer,</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     Request,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// use std::net::Ipv4Addr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let request = Request::get(&quot;http://exmaple.org&quot;)</span>
-    <span class="doccomment">///     // Actually issue the request to localhost on port 8080. The host</span>
-    <span class="doccomment">///     // header will remain unchanged.</span>
-    <span class="doccomment">///     .dial(Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080)))</span>
-    <span class="doccomment">///     .body(())?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">dial</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">dialer</span>: <span class="ident">D</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Specify a socket to connect to instead of the using the host and port
+    /// defined in the request URI.
+    ///
+    /// # Examples
+    ///
+    /// Connecting to a Unix socket:
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::Dialer,
+    ///     prelude::*,
+    ///     Request,
+    /// };
+    ///
+    /// # #[cfg(unix)]
+    /// let request = Request::get(&quot;http://localhost/containers&quot;)
+    ///     .dial(Dialer::unix_socket(&quot;/path/to/my.sock&quot;))
+    ///     .body(())?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    ///
+    /// Connecting to a specific Internet socket address:
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::Dialer,
+    ///     prelude::*,
+    ///     Request,
+    /// };
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let request = Request::get(&quot;http://exmaple.org&quot;)
+    ///     // Actually issue the request to localhost on port 8080. The host
+    ///     // header will remain unchanged.
+    ///     .dial(Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080)))
+    ///     .body(())?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>dial&lt;D&gt;(<span class="self">self</span>, dialer: D) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>D: Into&lt;Dialer&gt;,
     {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">dial</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">dialer</span>.<span class="ident">into</span>());
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.dial = <span class="prelude-val">Some</span>(dialer.into());
         })
     }
 
-    <span class="doccomment">/// Set a proxy to use for requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The proxy protocol is specified by the URI scheme.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// - **`http`**: Proxy. Default when no scheme is specified.</span>
-    <span class="doccomment">/// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and</span>
-    <span class="doccomment">///   NSS)</span>
-    <span class="doccomment">/// - **`socks4`**: SOCKS4 Proxy.</span>
-    <span class="doccomment">/// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.</span>
-    <span class="doccomment">/// - **`socks5`**: SOCKS5 Proxy.</span>
-    <span class="doccomment">/// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default no proxy will be used, unless one is specified in either the</span>
-    <span class="doccomment">/// `http_proxy` or `https_proxy` environment variables.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Setting to `None` explicitly disables the use of a proxy.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Using `http://proxy:80` as a proxy:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .proxy(Some(&quot;http://proxy:80&quot;.parse()?))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Explicitly disable the use of a proxy:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .proxy(None)</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">proxy</span>(<span class="self">self</span>, <span class="ident">proxy</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">proxy</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">proxy</span>.<span class="ident">into</span>());
+    <span class="doccomment">/// Set a proxy to use for requests.
+    ///
+    /// The proxy protocol is specified by the URI scheme.
+    ///
+    /// - **`http`**: Proxy. Default when no scheme is specified.
+    /// - **`https`**: HTTPS Proxy. (Added in 7.52.0 for OpenSSL, GnuTLS and
+    ///   NSS)
+    /// - **`socks4`**: SOCKS4 Proxy.
+    /// - **`socks4a`**: SOCKS4a Proxy. Proxy resolves URL hostname.
+    /// - **`socks5`**: SOCKS5 Proxy.
+    /// - **`socks5h`**: SOCKS5 Proxy. Proxy resolves URL hostname.
+    ///
+    /// By default no proxy will be used, unless one is specified in either the
+    /// `http_proxy` or `https_proxy` environment variables.
+    ///
+    /// Setting to `None` explicitly disables the use of a proxy.
+    ///
+    /// # Examples
+    ///
+    /// Using `http://proxy:80` as a proxy:
+    ///
+    /// ```
+    /// use isahc::{prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .proxy(Some(&quot;http://proxy:80&quot;.parse()?))
+    ///     .build()?;
+    /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+    /// ```
+    ///
+    /// Explicitly disable the use of a proxy:
+    ///
+    /// ```
+    /// use isahc::{prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .proxy(None)
+    ///     .build()?;
+    /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>proxy(<span class="self">self</span>, proxy: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;http::Uri&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.proxy = <span class="prelude-val">Some</span>(proxy.into());
         })
     }
 
-    <span class="doccomment">/// Disable proxy usage for the provided list of hosts.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{prelude::*, HttpClient};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     // Disable proxy for specified hosts.</span>
-    <span class="doccomment">///     .proxy_blacklist(vec![&quot;a.com&quot;, &quot;b.org&quot;])</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">proxy_blacklist</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">hosts</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Disable proxy usage for the provided list of hosts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     // Disable proxy for specified hosts.
+    ///     .proxy_blacklist(vec![&quot;a.com&quot;, &quot;b.org&quot;])
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>proxy_blacklist&lt;I, T&gt;(<span class="self">self</span>, hosts: I) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>I: IntoIterator&lt;Item = T&gt;,
+        T: Into&lt;String&gt;,
     {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">proxy_blacklist</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">hosts</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T::into</span>).<span class="ident">collect</span>());
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.proxy_blacklist = <span class="prelude-val">Some</span>(hosts.into_iter().map(T::into).collect());
         })
     }
 
-    <span class="doccomment">/// Set one or more HTTP authentication methods to attempt to use when</span>
-    <span class="doccomment">/// authenticating with a proxy.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Depending on the authentication schemes enabled, you will also need to</span>
-    <span class="doccomment">/// set credentials to use for authentication using</span>
-    <span class="doccomment">/// [`Configurable::proxy_credentials`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     auth::{Authentication, Credentials},</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .proxy(&quot;http://proxy:80&quot;.parse::&lt;http::Uri&gt;()?)</span>
-    <span class="doccomment">///     .proxy_authentication(Authentication::basic())</span>
-    <span class="doccomment">///     .proxy_credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">proxy_authentication</span>(<span class="self">self</span>, <span class="ident">authentication</span>: <span class="ident">Authentication</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">proxy_authentication</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Proxy</span>(<span class="ident">authentication</span>));
+    <span class="doccomment">/// Set one or more HTTP authentication methods to attempt to use when
+    /// authenticating with a proxy.
+    ///
+    /// Depending on the authentication schemes enabled, you will also need to
+    /// set credentials to use for authentication using
+    /// [`Configurable::proxy_credentials`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{
+    ///     auth::{Authentication, Credentials},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// let client = HttpClient::builder()
+    ///     .proxy(&quot;http://proxy:80&quot;.parse::&lt;http::Uri&gt;()?)
+    ///     .proxy_authentication(Authentication::basic())
+    ///     .proxy_credentials(Credentials::new(&quot;clark&quot;, &quot;qwerty&quot;))
+    ///     .build()?;
+    /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>proxy_authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.proxy_authentication = <span class="prelude-val">Some</span>(Proxy(authentication));
         })
     }
 
-    <span class="doccomment">/// Set the credentials to use for proxy authentication.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This setting will do nothing unless you also set one or more proxy</span>
-    <span class="doccomment">/// authentication methods using</span>
-    <span class="doccomment">/// [`Configurable::proxy_authentication`].</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">proxy_credentials</span>(<span class="self">self</span>, <span class="ident">credentials</span>: <span class="ident">Credentials</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">proxy_credentials</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Proxy</span>(<span class="ident">credentials</span>));
+    <span class="doccomment">/// Set the credentials to use for proxy authentication.
+    ///
+    /// This setting will do nothing unless you also set one or more proxy
+    /// authentication methods using
+    /// [`Configurable::proxy_authentication`].
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>proxy_credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.proxy_credentials = <span class="prelude-val">Some</span>(Proxy(credentials));
         })
     }
 
-    <span class="doccomment">/// Set a maximum upload speed for the request body, in bytes per second.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is unlimited.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">max_upload_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">max_upload_speed</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>);
+    <span class="doccomment">/// Set a maximum upload speed for the request body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>max_upload_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.max_upload_speed = <span class="prelude-val">Some</span>(max);
         })
     }
 
-    <span class="doccomment">/// Set a maximum download speed for the response body, in bytes per second.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is unlimited.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">max_download_speed</span>(<span class="self">self</span>, <span class="ident">max</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">max_download_speed</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>);
+    <span class="doccomment">/// Set a maximum download speed for the response body, in bytes per second.
+    ///
+    /// The default is unlimited.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>max_download_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.max_download_speed = <span class="prelude-val">Some</span>(max);
         })
     }
 
-    <span class="doccomment">/// Set a custom SSL/TLS client certificate to use for client connections.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If a format is not supported by the underlying SSL/TLS engine, an error</span>
-    <span class="doccomment">/// will be returned when attempting to send a request using the offending</span>
-    <span class="doccomment">/// certificate.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default value is none.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::{ClientCertificate, PrivateKey},</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     Request,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let response = Request::get(&quot;localhost:3999&quot;)</span>
-    <span class="doccomment">///     .ssl_client_certificate(ClientCertificate::pem_file(</span>
-    <span class="doccomment">///         &quot;client.pem&quot;,</span>
-    <span class="doccomment">///         PrivateKey::pem_file(&quot;key.pem&quot;, String::from(&quot;secret&quot;)),</span>
-    <span class="doccomment">///     ))</span>
-    <span class="doccomment">///     .body(())?</span>
-    <span class="doccomment">///     .send()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{</span>
-    <span class="doccomment">///     config::{ClientCertificate, PrivateKey},</span>
-    <span class="doccomment">///     prelude::*,</span>
-    <span class="doccomment">///     HttpClient,</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .ssl_client_certificate(ClientCertificate::pem_file(</span>
-    <span class="doccomment">///         &quot;client.pem&quot;,</span>
-    <span class="doccomment">///         PrivateKey::pem_file(&quot;key.pem&quot;, String::from(&quot;secret&quot;)),</span>
-    <span class="doccomment">///     ))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ssl_client_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">ClientCertificate</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">ssl_client_certificate</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">certificate</span>);
+    <span class="doccomment">/// Set a custom SSL/TLS client certificate to use for client connections.
+    ///
+    /// If a format is not supported by the underlying SSL/TLS engine, an error
+    /// will be returned when attempting to send a request using the offending
+    /// certificate.
+    ///
+    /// The default value is none.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     Request,
+    /// };
+    ///
+    /// let response = Request::get(&quot;localhost:3999&quot;)
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         &quot;client.pem&quot;,
+    ///         PrivateKey::pem_file(&quot;key.pem&quot;, String::from(&quot;secret&quot;)),
+    ///     ))
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    ///
+    /// ```
+    /// use isahc::{
+    ///     config::{ClientCertificate, PrivateKey},
+    ///     prelude::*,
+    ///     HttpClient,
+    /// };
+    ///
+    /// let client = HttpClient::builder()
+    ///     .ssl_client_certificate(ClientCertificate::pem_file(
+    ///         &quot;client.pem&quot;,
+    ///         PrivateKey::pem_file(&quot;key.pem&quot;, String::from(&quot;secret&quot;)),
+    ///     ))
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>ssl_client_certificate(<span class="self">self</span>, certificate: ClientCertificate) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.ssl_client_certificate = <span class="prelude-val">Some</span>(certificate);
         })
     }
 
-    <span class="doccomment">/// Set a custom SSL/TLS CA certificate bundle to use for client</span>
-    <span class="doccomment">/// connections.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default value is none.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Notes</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// On Windows it may be necessary to combine this with</span>
-    <span class="doccomment">/// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on</span>
-    <span class="doccomment">/// the contents of your CA bundle.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{config::CaCertificate, prelude::*, HttpClient};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .ssl_ca_certificate(CaCertificate::file(&quot;ca.pem&quot;))</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ssl_ca_certificate</span>(<span class="self">self</span>, <span class="ident">certificate</span>: <span class="ident">CaCertificate</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">ssl_ca_certificate</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">certificate</span>);
+    <span class="doccomment">/// Set a custom SSL/TLS CA certificate bundle to use for client
+    /// connections.
+    ///
+    /// The default value is none.
+    ///
+    /// # Notes
+    ///
+    /// On Windows it may be necessary to combine this with
+    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
+    /// the contents of your CA bundle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .ssl_ca_certificate(CaCertificate::file(&quot;ca.pem&quot;))
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>ssl_ca_certificate(<span class="self">self</span>, certificate: CaCertificate) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.ssl_ca_certificate = <span class="prelude-val">Some</span>(certificate);
         })
     }
 
-    <span class="doccomment">/// Set a list of ciphers to use for SSL/TLS connections.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The list of valid cipher names is dependent on the underlying SSL/TLS</span>
-    <span class="doccomment">/// engine in use. You can find an up-to-date list of potential cipher names</span>
-    <span class="doccomment">/// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default is unset and will result in the system defaults being used.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ssl_ciphers</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">ciphers</span>: <span class="ident">I</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Set a list of ciphers to use for SSL/TLS connections.
+    ///
+    /// The list of valid cipher names is dependent on the underlying SSL/TLS
+    /// engine in use. You can find an up-to-date list of potential cipher names
+    /// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.
+    ///
+    /// The default is unset and will result in the system defaults being used.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>ssl_ciphers&lt;I, T&gt;(<span class="self">self</span>, ciphers: I) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>I: IntoIterator&lt;Item = T&gt;,
+        T: Into&lt;String&gt;,
     {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">ssl_ciphers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ciphers</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">T::into</span>).<span class="ident">collect</span>());
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.ssl_ciphers = <span class="prelude-val">Some</span>(ciphers.into_iter().map(T::into).collect());
         })
     }
 
-    <span class="doccomment">/// Set various options for this request that control SSL/TLS behavior.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Most options are for disabling security checks that introduce security</span>
-    <span class="doccomment">/// risks, but may be required as a last resort. Note that the most secure</span>
-    <span class="doccomment">/// options are already the default and do not need to be specified.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The default value is [`SslOption::NONE`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Warning</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// You should think very carefully before using this method. Using *any*</span>
-    <span class="doccomment">/// options that alter how certificates are validated can introduce</span>
-    <span class="doccomment">/// significant security vulnerabilities.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::{config::SslOption, prelude::*, Request};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let response = Request::get(&quot;https://badssl.com&quot;)</span>
-    <span class="doccomment">///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)</span>
-    <span class="doccomment">///     .body(())?</span>
-    <span class="doccomment">///     .send()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::{config::SslOption, prelude::*, HttpClient};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let client = HttpClient::builder()</span>
-    <span class="doccomment">///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)</span>
-    <span class="doccomment">///     .build()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">ssl_options</span>(<span class="self">self</span>, <span class="ident">options</span>: <span class="ident">SslOption</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">ssl_options</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">options</span>);
+    <span class="doccomment">/// Set various options for this request that control SSL/TLS behavior.
+    ///
+    /// Most options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are already the default and do not need to be specified.
+    ///
+    /// The default value is [`SslOption::NONE`].
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{config::SslOption, prelude::*, Request};
+    ///
+    /// let response = Request::get(&quot;https://badssl.com&quot;)
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    ///
+    /// ```
+    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .build()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>ssl_options(<span class="self">self</span>, options: SslOption) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.ssl_options = <span class="prelude-val">Some</span>(options);
         })
     }
 
-    <span class="doccomment">/// Enable or disable sending HTTP header names in Title-Case instead of</span>
-    <span class="doccomment">/// lowercase form.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This option only affects user-supplied headers and does not affect</span>
-    <span class="doccomment">/// low-level headers that are automatically supplied for HTTP protocol</span>
-    <span class="doccomment">/// details, such as `Connection` and `Host` (unless you override such a</span>
-    <span class="doccomment">/// header yourself).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This option has no effect when using HTTP/2 or newer where headers are</span>
-    <span class="doccomment">/// required to be lowercase.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">title_case_headers</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">title_case_headers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>);
+    <span class="doccomment">/// Enable or disable sending HTTP header names in Title-Case instead of
+    /// lowercase form.
+    ///
+    /// This option only affects user-supplied headers and does not affect
+    /// low-level headers that are automatically supplied for HTTP protocol
+    /// details, such as `Connection` and `Host` (unless you override such a
+    /// header yourself).
+    ///
+    /// This option has no effect when using HTTP/2 or newer where headers are
+    /// required to be lowercase.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>title_case_headers(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.title_case_headers = <span class="prelude-val">Some</span>(enable);
         })
     }
 
-    <span class="doccomment">/// Enable or disable comprehensive per-request metrics collection.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When enabled, detailed timing metrics will be tracked while a request is</span>
-    <span class="doccomment">/// in progress, such as bytes sent and received, estimated size, DNS lookup</span>
-    <span class="doccomment">/// time, etc. For a complete list of the available metrics that can be</span>
-    <span class="doccomment">/// inspected, see the [`Metrics`](crate::Metrics) documentation.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When enabled, to access a view of the current metrics values you can use</span>
-    <span class="doccomment">/// [`ResponseExt::metrics`](crate::ResponseExt::metrics).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// While effort is taken to optimize hot code in metrics collection, it is</span>
-    <span class="doccomment">/// likely that enabling it will have a small effect on overall throughput.</span>
-    <span class="doccomment">/// Disabling metrics may be necessary for absolute peak performance.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default metrics are disabled.</span>
-    <span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">with_config</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">config</span><span class="op">|</span> {
-            <span class="ident">config</span>.<span class="ident">enable_metrics</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>);
+    <span class="doccomment">/// Enable or disable comprehensive per-request metrics collection.
+    ///
+    /// When enabled, detailed timing metrics will be tracked while a request is
+    /// in progress, such as bytes sent and received, estimated size, DNS lookup
+    /// time, etc. For a complete list of the available metrics that can be
+    /// inspected, see the [`Metrics`](crate::Metrics) documentation.
+    ///
+    /// When enabled, to access a view of the current metrics values you can use
+    /// [`ResponseExt::metrics`](crate::ResponseExt::metrics).
+    ///
+    /// While effort is taken to optimize hot code in metrics collection, it is
+    /// likely that enabling it will have a small effect on overall throughput.
+    /// Disabling metrics may be necessary for absolute peak performance.
+    ///
+    /// By default metrics are disabled.
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+    <span class="kw">fn </span>metrics(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
+            config.enable_metrics = <span class="prelude-val">Some</span>(enable);
         })
     }
 }
 
-<span class="doccomment">/// A strategy for selecting what HTTP versions should be used when</span>
-<span class="doccomment">/// communicating with a server.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// You can set a version negotiation strategy on a given request or on a client</span>
-<span class="doccomment">/// with [`Configurable::version_negotiation`].</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Attempting to use an HTTP version without client-side support at runtime</span>
-<span class="doccomment">/// will result in an error. For example, using the system libcurl on an old</span>
-<span class="doccomment">/// machine may not have an HTTP/2 implementation. Using static linking and the</span>
-<span class="doccomment">/// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2</span>
-<span class="doccomment">/// will be available to use.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VersionNegotiation</span>(<span class="ident">VersionNegotiationInner</span>);
+<span class="doccomment">/// A strategy for selecting what HTTP versions should be used when
+/// communicating with a server.
+///
+/// You can set a version negotiation strategy on a given request or on a client
+/// with [`Configurable::version_negotiation`].
+///
+/// Attempting to use an HTTP version without client-side support at runtime
+/// will result in an error. For example, using the system libcurl on an old
+/// machine may not have an HTTP/2 implementation. Using static linking and the
+/// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2
+/// will be available to use.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>VersionNegotiation(VersionNegotiationInner);
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">VersionNegotiationInner</span> {
-    <span class="ident">LatestCompatible</span>,
-    <span class="ident">Strict</span>(<span class="ident">curl::easy::HttpVersion</span>),
+<span class="attribute">#[derive(Clone, Copy, Debug)]</span>
+<span class="kw">enum </span>VersionNegotiationInner {
+    LatestCompatible,
+    Strict(curl::easy::HttpVersion),
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::latest_compatible</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>VersionNegotiation {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::latest_compatible()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">VersionNegotiation</span> {
-    <span class="doccomment">/// Always prefer the latest supported version announced by the server,</span>
-    <span class="doccomment">/// falling back to older versions if not explicitly listed as supported.</span>
-    <span class="doccomment">/// This is the default.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Secure connections will begin with a TLS handshake, after which the</span>
-    <span class="doccomment">/// highest supported HTTP version listed by the server via ALPN will be</span>
-    <span class="doccomment">/// used. Once connected, additional upgrades to newer versions may also</span>
-    <span class="doccomment">/// occur if the server lists support for it. In the future, headers such as</span>
-    <span class="doccomment">/// `Alt-Svc` will be used.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Insecure connections always use HTTP/1.x since there is no standard</span>
-    <span class="doccomment">/// mechanism for a server to declare support for insecure HTTP versions,</span>
-    <span class="doccomment">/// and only HTTP/0.9, HTTP/1.x, and HTTP/2 support insecure transfers.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">latest_compatible</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::LatestCompatible</span>)
+<span class="kw">impl </span>VersionNegotiation {
+    <span class="doccomment">/// Always prefer the latest supported version announced by the server,
+    /// falling back to older versions if not explicitly listed as supported.
+    /// This is the default.
+    ///
+    /// Secure connections will begin with a TLS handshake, after which the
+    /// highest supported HTTP version listed by the server via ALPN will be
+    /// used. Once connected, additional upgrades to newer versions may also
+    /// occur if the server lists support for it. In the future, headers such as
+    /// `Alt-Svc` will be used.
+    ///
+    /// Insecure connections always use HTTP/1.x since there is no standard
+    /// mechanism for a server to declare support for insecure HTTP versions,
+    /// and only HTTP/0.9, HTTP/1.x, and HTTP/2 support insecure transfers.
+    </span><span class="kw">pub const fn </span>latest_compatible() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(VersionNegotiationInner::LatestCompatible)
     }
 
-    <span class="doccomment">/// Connect via HTTP/1.0 and do not attempt to use a higher version.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http10</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
-            <span class="ident">curl::easy::HttpVersion::V10</span>,
+    <span class="doccomment">/// Connect via HTTP/1.0 and do not attempt to use a higher version.
+    </span><span class="kw">pub const fn </span>http10() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V10,
         ))
     }
 
-    <span class="doccomment">/// Connect via HTTP/1.1 and do not attempt to use a higher version.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http11</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
-            <span class="ident">curl::easy::HttpVersion::V11</span>,
+    <span class="doccomment">/// Connect via HTTP/1.1 and do not attempt to use a higher version.
+    </span><span class="kw">pub const fn </span>http11() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V11,
         ))
     }
 
-    <span class="doccomment">/// Connect via HTTP/2. Failure to connect will not fall back to old</span>
-    <span class="doccomment">/// versions, unless HTTP/1.1 is negotiated via TLS ALPN before the session</span>
-    <span class="doccomment">/// begins.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If HTTP/2 support is not compiled in, then using this strategy will</span>
-    <span class="doccomment">/// always result in an error.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This strategy is often referred to as [HTTP/2 with Prior</span>
-    <span class="doccomment">/// Knowledge](https://http2.github.io/http2-spec/#known-http).</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http2</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(
-            <span class="ident">curl::easy::HttpVersion::V2PriorKnowledge</span>,
+    <span class="doccomment">/// Connect via HTTP/2. Failure to connect will not fall back to old
+    /// versions, unless HTTP/1.1 is negotiated via TLS ALPN before the session
+    /// begins.
+    ///
+    /// If HTTP/2 support is not compiled in, then using this strategy will
+    /// always result in an error.
+    ///
+    /// This strategy is often referred to as [HTTP/2 with Prior
+    /// Knowledge](https://http2.github.io/http2-spec/#known-http).
+    </span><span class="kw">pub const fn </span>http2() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(VersionNegotiationInner::Strict(
+            curl::easy::HttpVersion::V2PriorKnowledge,
         ))
     }
 
-    <span class="doccomment">/// Connect via HTTP/3. Failure to connect will not fall back to old</span>
-    <span class="doccomment">/// versions.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">http3</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">VersionNegotiationInner::Strict</span>(<span class="ident">curl::easy::HttpVersion::V3</span>))
+    <span class="doccomment">/// Connect via HTTP/3. Failure to connect will not fall back to old
+    /// versions.
+    </span><span class="kw">pub const fn </span>http3() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(VersionNegotiationInner::Strict(curl::easy::HttpVersion::V3))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">VersionNegotiation</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">VersionNegotiationInner::LatestCompatible</span> =&gt; {
-                <span class="comment">// If HTTP/2 support is available, this basically the most</span>
-                <span class="comment">// lenient way of using it. Alt-Svc is used to upgrade to newer</span>
-                <span class="comment">// versions, and old versions are used if the server doesn&#39;t</span>
-                <span class="comment">// list HTTP/2 via ALPN.</span>
-                <span class="comment">//</span>
-                <span class="comment">// If HTTP/2 is not available, leaving it the default setting is</span>
-                <span class="comment">// the ideal behavior.</span>
-                <span class="kw">if</span> <span class="ident">is_http_version_supported</span>(<span class="ident">http::Version::HTTP_2</span>) {
-                    <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="ident">curl::easy::HttpVersion::V2TLS</span>)
-                } <span class="kw">else</span> {
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>VersionNegotiation {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
+            VersionNegotiationInner::LatestCompatible =&gt; {
+                <span class="comment">// If HTTP/2 support is available, this basically the most
+                // lenient way of using it. Alt-Svc is used to upgrade to newer
+                // versions, and old versions are used if the server doesn&#39;t
+                // list HTTP/2 via ALPN.
+                //
+                // If HTTP/2 is not available, leaving it the default setting is
+                // the ideal behavior.
+                </span><span class="kw">if </span>is_http_version_supported(http::Version::HTTP_2) {
+                    easy.http_version(curl::easy::HttpVersion::V2TLS)
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(())
                 }
             }
-            <span class="ident">VersionNegotiationInner::Strict</span>(<span class="ident">version</span>) =&gt; <span class="ident">easy</span>.<span class="ident">http_version</span>(<span class="ident">version</span>),
+            VersionNegotiationInner::Strict(version) =&gt; easy.http_version(version),
         }
     }
 }
 
-<span class="doccomment">/// Used to configure which local addresses or interfaces should be used to send</span>
-<span class="doccomment">/// network traffic from.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that this type is &quot;lazy&quot; in the sense that errors are not returned if</span>
-<span class="doccomment">/// the given interfaces are not checked for validity until you actually attempt</span>
-<span class="doccomment">/// to use it in a network request.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkInterface</span> {
-    <span class="doccomment">/// Interface in verbose curl format.</span>
-    <span class="ident">interface</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Used to configure which local addresses or interfaces should be used to send
+/// network traffic from.
+///
+/// Note that this type is &quot;lazy&quot; in the sense that errors are not returned if
+/// the given interfaces are not checked for validity until you actually attempt
+/// to use it in a network request.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>NetworkInterface {
+    <span class="doccomment">/// Interface in verbose curl format.
+    </span>interface: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">NetworkInterface</span> {
-    <span class="doccomment">/// Bind to whatever the networking stack finds suitable. This is the</span>
-    <span class="doccomment">/// default behavior.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">any</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">interface</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>NetworkInterface {
+    <span class="doccomment">/// Bind to whatever the networking stack finds suitable. This is the
+    /// default behavior.
+    </span><span class="kw">pub fn </span>any() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            interface: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Bind to the interface with the given name (such as `eth0`). This method</span>
-    <span class="doccomment">/// is not available on Windows as it does not really have names for network</span>
-    <span class="doccomment">/// devices.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::NetworkInterface;</span>
-    <span class="doccomment">/// let loopback = NetworkInterface::name(&quot;lo&quot;);</span>
-    <span class="doccomment">/// let wifi = NetworkInterface::name(&quot;wlan0&quot;);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="ident">name</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;if!{}&quot;</span>, <span class="ident">name</span>.<span class="ident">as_ref</span>())),
+    <span class="doccomment">/// Bind to the interface with the given name (such as `eth0`). This method
+    /// is not available on Windows as it does not really have names for network
+    /// devices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::NetworkInterface;
+    /// let loopback = NetworkInterface::name(&quot;lo&quot;);
+    /// let wifi = NetworkInterface::name(&quot;wlan0&quot;);
+    /// ```
+    </span><span class="attribute">#[cfg(unix)]</span>
+    <span class="kw">pub fn </span>name(name: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            interface: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;if!{}&quot;</span>, name.as_ref())),
         }
     }
 
-    <span class="doccomment">/// Bind to the given local host or address. This can either be a host name</span>
-    <span class="doccomment">/// or an IP address.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// # use isahc::config::NetworkInterface;</span>
-    <span class="doccomment">/// let local = NetworkInterface::host(&quot;server.local&quot;);</span>
-    <span class="doccomment">/// let addr = NetworkInterface::host(&quot;192.168.1.2&quot;);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host</span>(<span class="ident">host</span>: <span class="kw">impl</span> <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;host!{}&quot;</span>, <span class="ident">host</span>.<span class="ident">as_ref</span>())),
-        }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::any</span>()
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">interface</span>: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;host!{}&quot;</span>, <span class="ident">ip</span>)),
+    <span class="doccomment">/// Bind to the given local host or address. This can either be a host name
+    /// or an IP address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use isahc::config::NetworkInterface;
+    /// let local = NetworkInterface::host(&quot;server.local&quot;);
+    /// let addr = NetworkInterface::host(&quot;192.168.1.2&quot;);
+    /// ```
+    </span><span class="kw">pub fn </span>host(host: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            interface: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;host!{}&quot;</span>, host.as_ref())),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">NetworkInterface</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">interface</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">interface</span>) =&gt; <span class="ident">easy</span>.<span class="ident">interface</span>(<span class="ident">interface</span>),
+<span class="kw">impl </span>Default <span class="kw">for </span>NetworkInterface {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::any()
+    }
+}
 
-            <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.</span>
-            <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> {
-                <span class="kw">match</span> <span class="ident">curl_sys::curl_easy_setopt</span>(<span class="ident">easy</span>.<span class="ident">raw</span>(), <span class="ident">curl_sys::CURLOPT_INTERFACE</span>, <span class="number">0</span>) {
-                    <span class="ident">curl_sys::CURLE_OK</span> =&gt; <span class="prelude-val">Ok</span>(()),
-                    <span class="ident">code</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">curl::Error::new</span>(<span class="ident">code</span>)),
+<span class="kw">impl </span>From&lt;IpAddr&gt; <span class="kw">for </span>NetworkInterface {
+    <span class="kw">fn </span>from(ip: IpAddr) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            interface: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;host!{}&quot;</span>, ip)),
+        }
+    }
+}
+
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>NetworkInterface {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="attribute">#[allow(unsafe_code)]</span>
+        <span class="kw">match </span><span class="self">self</span>.interface.as_ref() {
+            <span class="prelude-val">Some</span>(interface) =&gt; easy.interface(interface),
+
+            <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.
+            </span><span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{
+                <span class="kw">match </span>curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_INTERFACE, <span class="number">0</span>) {
+                    curl_sys::CURLE_OK =&gt; <span class="prelude-val">Ok</span>(()),
+                    code =&gt; <span class="prelude-val">Err</span>(curl::Error::new(code)),
                 }
             },
         }
     }
 }
 
-<span class="doccomment">/// Supported IP versions that can be used.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IpVersion</span> {
-    <span class="doccomment">/// Use IPv4 addresses only. IPv6 addresses will be ignored.</span>
-    <span class="ident">V4</span>,
+<span class="doccomment">/// Supported IP versions that can be used.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub enum </span>IpVersion {
+    <span class="doccomment">/// Use IPv4 addresses only. IPv6 addresses will be ignored.
+    </span>V4,
 
-    <span class="doccomment">/// Use IPv6 addresses only. IPv4 addresses will be ignored.</span>
-    <span class="ident">V6</span>,
+    <span class="doccomment">/// Use IPv6 addresses only. IPv4 addresses will be ignored.
+    </span>V6,
 
-    <span class="doccomment">/// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are</span>
-    <span class="doccomment">/// preferred if available, otherwise an IPv4 address will be used. IPv6</span>
-    <span class="doccomment">/// addresses are tried first by following the recommendations of [RFC</span>
-    <span class="doccomment">/// 6555 &quot;Happy Eyeballs&quot;](https://tools.ietf.org/html/rfc6555).</span>
-    <span class="ident">Any</span>,
+    <span class="doccomment">/// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are
+    /// preferred if available, otherwise an IPv4 address will be used. IPv6
+    /// addresses are tried first by following the recommendations of [RFC
+    /// 6555 &quot;Happy Eyeballs&quot;](https://tools.ietf.org/html/rfc6555).
+    </span>Any,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">IpVersion</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::Any</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>IpVersion {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Any
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">IpVersion</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="ident">easy</span>.<span class="ident">ip_resolve</span>(<span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">IpVersion::V4</span> =&gt; <span class="ident">curl::easy::IpResolve::V4</span>,
-            <span class="ident">IpVersion::V6</span> =&gt; <span class="ident">curl::easy::IpResolve::V6</span>,
-            <span class="ident">IpVersion::Any</span> =&gt; <span class="ident">curl::easy::IpResolve::Any</span>,
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>IpVersion {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        easy.ip_resolve(<span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+            IpVersion::V4 =&gt; curl::easy::IpResolve::V4,
+            IpVersion::V6 =&gt; curl::easy::IpResolve::V6,
+            IpVersion::Any =&gt; curl::easy::IpResolve::Any,
         })
     }
 }
 
-<span class="doccomment">/// Controls the use of the `Expect` request header when sending request bodies</span>
-<span class="doccomment">/// with HTTP/1.1.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// By default, when sending requests containing a body of large or unknown</span>
-<span class="doccomment">/// length over HTTP/1.1, Isahc will send the request headers first without the</span>
-<span class="doccomment">/// body and wait for the server to respond with a 100 (Continue) status code,</span>
-<span class="doccomment">/// as defined by [RFC 7231, Section</span>
-<span class="doccomment">/// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1). This</span>
-<span class="doccomment">/// gives the opportunity for the server to reject the response without needing</span>
-<span class="doccomment">/// to first transmit the request body over the network, if the body contents</span>
-<span class="doccomment">/// are not necessary for the server to determine an appropriate response.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// For servers that do not support this behavior and instead simply wait for</span>
-<span class="doccomment">/// the request body without responding with a 100 (Continue), there is a</span>
-<span class="doccomment">/// limited timeout before the response body is sent anyway without</span>
-<span class="doccomment">/// confirmation. The default timeout is 1 second, but this can be configured.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The `Expect` behavior can also be disabled entirely.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This configuration only takes effect when using HTTP/1.1.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExpectContinue</span> {
-    <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Controls the use of the `Expect` request header when sending request bodies
+/// with HTTP/1.1.
+///
+/// By default, when sending requests containing a body of large or unknown
+/// length over HTTP/1.1, Isahc will send the request headers first without the
+/// body and wait for the server to respond with a 100 (Continue) status code,
+/// as defined by [RFC 7231, Section
+/// 5.1.1](https://datatracker.ietf.org/doc/html/rfc7231#section-5.1.1). This
+/// gives the opportunity for the server to reject the response without needing
+/// to first transmit the request body over the network, if the body contents
+/// are not necessary for the server to determine an appropriate response.
+///
+/// For servers that do not support this behavior and instead simply wait for
+/// the request body without responding with a 100 (Continue), there is a
+/// limited timeout before the response body is sent anyway without
+/// confirmation. The default timeout is 1 second, but this can be configured.
+///
+/// The `Expect` behavior can also be disabled entirely.
+///
+/// This configuration only takes effect when using HTTP/1.1.
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>ExpectContinue {
+    timeout: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExpectContinue</span> {
-    <span class="doccomment">/// Enable the use of `Expect` and wait for a 100 (Continue) response with a</span>
-    <span class="doccomment">/// default timeout before sending a request body.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">enabled</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>))
+<span class="kw">impl </span>ExpectContinue {
+    <span class="doccomment">/// Enable the use of `Expect` and wait for a 100 (Continue) response with a
+    /// default timeout before sending a request body.
+    </span><span class="kw">pub const fn </span>enabled() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::timeout(Duration::from_secs(<span class="number">1</span>))
     }
 
-    <span class="doccomment">/// Enable the use of `Expect` and wait for a 100 (Continue) response, up to</span>
-    <span class="doccomment">/// the given timeout, before sending a request body.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">timeout</span>(<span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">timeout</span>: <span class="prelude-val">Some</span>(<span class="ident">timeout</span>),
+    <span class="doccomment">/// Enable the use of `Expect` and wait for a 100 (Continue) response, up to
+    /// the given timeout, before sending a request body.
+    </span><span class="kw">pub const fn </span>timeout(timeout: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            timeout: <span class="prelude-val">Some</span>(timeout),
         }
     }
 
-    <span class="doccomment">/// Disable the use and handling of the `Expect` request header.</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">disabled</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">timeout</span>: <span class="prelude-val">None</span>,
+    <span class="doccomment">/// Disable the use and handling of the `Expect` request header.
+    </span><span class="kw">pub const fn </span>disabled() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            timeout: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_disabled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">timeout</span>.<span class="ident">is_none</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_disabled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.timeout.is_none()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ExpectContinue</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::enabled</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ExpectContinue {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::enabled()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExpectContinue</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="ident">value</span> {
-            <span class="ident"><span class="self">Self</span>::enabled</span>()
-        } <span class="kw">else</span> {
-            <span class="ident"><span class="self">Self</span>::disabled</span>()
+<span class="kw">impl </span>From&lt;bool&gt; <span class="kw">for </span>ExpectContinue {
+    <span class="kw">fn </span>from(value: bool) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>value {
+            <span class="self">Self</span>::enabled()
+        } <span class="kw">else </span>{
+            <span class="self">Self</span>::disabled()
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExpectContinue</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::timeout</span>(<span class="ident">value</span>)
+<span class="kw">impl </span>From&lt;Duration&gt; <span class="kw">for </span>ExpectContinue {
+    <span class="kw">fn </span>from(value: Duration) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::timeout(value)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">ExpectContinue</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
-            <span class="ident">easy</span>.<span class="ident">expect_100_timeout</span>(<span class="ident">timeout</span>)
-        } <span class="kw">else</span> {
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>ExpectContinue {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(timeout) = <span class="self">self</span>.timeout {
+            easy.expect_100_timeout(timeout)
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

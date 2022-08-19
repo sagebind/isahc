@@ -17,37 +17,37 @@ and response bodies and connection multiplexing.</li>
 <p>Sending requests is as easy as calling a single function. Let’s make a
 simple GET request to an example website:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>()<span class="question-mark">?</span>);</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, response.text()<span class="question-mark">?</span>);</code></pre></div>
 <p>By default, sending a request will wait for the response, up until the
 response headers are received. The returned response struct includes the
 response body as an open stream implementing <a href="https://doc.rust-lang.org/nightly/std/io/trait.Read.html"><code>Read</code></a>.</p>
 <p>Sending a POST request is also easy, and takes an additional argument for
 the request body:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">&quot;make me a salad&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>response = isahc::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">&quot;make me a salad&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>Isahc provides several other simple functions for common HTTP request types:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="ident">isahc::put</span>(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">&quot;have a salad&quot;</span>)<span class="question-mark">?</span>;
-<span class="ident">isahc::head</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
-<span class="ident">isahc::delete</span>(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>isahc::put(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">&quot;have a salad&quot;</span>)<span class="question-mark">?</span>;
+isahc::head(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
+isahc::delete(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>If you want to customize the request by adding headers, setting timeouts,
 etc, then you can create a <a href="struct.Request.html" title="Request"><code>Request</code></a> using a builder-style fluent
 interface, then finishing it off with a <a href="trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, Request};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
-    .<span class="ident">header</span>(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-    .<span class="ident">timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="number">5</span>))
-    .<span class="ident">body</span>(<span class="string">r#&quot;{
+<span class="kw">let </span>response = Request::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
+    .header(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+    .timeout(Duration::from_secs(<span class="number">5</span>))
+    .body(<span class="string">r#&quot;{
         &quot;speed&quot;: &quot;fast&quot;,
         &quot;cool_name&quot;: true
-    }&quot;#</span>)<span class="question-mark">?</span>
-    .<span class="ident">send</span>()<span class="question-mark">?</span>;</code></pre></div>
+    }&quot;#</span>)<span class="question-mark">?
+    </span>.send()<span class="question-mark">?</span>;</code></pre></div>
 <p>For even more examples used in complete programs, please check out the
 <a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory
 in the project repo.</p>
@@ -91,10 +91,10 @@ methods available to prevent blocking threads in your code. All request
 methods have an asynchronous variant that ends with <code>_async</code> in the name.
 Here is our first example rewritten to use async/await syntax:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get_async</span>(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>().<span class="kw">await</span><span class="question-mark">?</span>);</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get_async(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, response.text().<span class="kw">await</span><span class="question-mark">?</span>);</code></pre></div>
 <p>Since we sent our request using <a href="fn.get_async.html" title="get_async"><code>get_async</code></a>, no blocking will occur, and
 the asynchronous versions of all response methods (such as
 <a href="trait.AsyncReadResponseExt.html#tymethod.text"><code>text</code></a>) will also automatically be selected by
@@ -196,4 +196,4 @@ body.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.send_async.html" title="isahc::send_async fn">send_async</a></div><div class="item-right docblock-short"><p>Send an HTTP request and return the HTTP response asynchronously.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.version.html" title="isahc::version fn">version</a></div><div class="item-right docblock-short"><p>Gets a human-readable string with the version number of Isahc and its
 dependencies.</p>
-</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

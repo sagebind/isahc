@@ -24,35 +24,35 @@ an application if they have separate concerns or are making calls to
 different servers. If you are creating an API client library, that might be
 a good place to maintain your own internal client.</p>
 <h2 id="examples"><a href="#examples">Examples</a></h2>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="comment">// Create a new client using reasonable defaults.</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
+<span class="comment">// Create a new client using reasonable defaults.
+</span><span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
 
-<span class="comment">// Make some requests.</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">get</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">assert!</span>(<span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_success</span>());
+<span class="comment">// Make some requests.
+</span><span class="kw">let </span><span class="kw-2">mut </span>response = client.get(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
+<span class="macro">assert!</span>(response.status().is_success());
 
-<span class="macro">println!</span>(<span class="string">&quot;Response:\n{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>()<span class="question-mark">?</span>);</code></pre></div>
+<span class="macro">println!</span>(<span class="string">&quot;Response:\n{}&quot;</span>, response.text()<span class="question-mark">?</span>);</code></pre></div>
 <p>Customizing the client configuration:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config</span>::{<span class="ident">RedirectPolicy</span>, <span class="ident">VersionNegotiation</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::{RedirectPolicy, VersionNegotiation},
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">version_negotiation</span>(<span class="ident">VersionNegotiation::http11</span>())
-    .<span class="ident">redirect_policy</span>(<span class="ident">RedirectPolicy::Limit</span>(<span class="number">10</span>))
-    .<span class="ident">timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="number">20</span>))
-    <span class="comment">// May return an error if there&#39;s something wrong with our configuration</span>
-    <span class="comment">// or if the client failed to start up.</span>
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="kw">let </span>client = HttpClient::builder()
+    .version_negotiation(VersionNegotiation::http11())
+    .redirect_policy(RedirectPolicy::Limit(<span class="number">10</span>))
+    .timeout(Duration::from_secs(<span class="number">20</span>))
+    <span class="comment">// May return an error if there&#39;s something wrong with our configuration
+    // or if the client failed to start up.
+    </span>.build()<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">get</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">assert!</span>(<span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_success</span>());</code></pre></div>
+<span class="kw">let </span>response = client.get(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
+<span class="macro">assert!</span>(response.status().is_success());</code></pre></div>
 <p>See the documentation on <a href="struct.HttpClientBuilder.html" title="HttpClientBuilder"><code>HttpClientBuilder</code></a> for a comprehensive look at
 what can be configured.</p>
 </div></details><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor"></a></h2><div id="implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-HttpClient" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#620-1160">source</a></span><a href="#impl-HttpClient" class="anchor"></a><h3 class="code-header in-band">impl <a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">HttpClient</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.new" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#624-626">source</a></span><h4 class="code-header">pub fn <a href="#method.new" class="fnname">new</a>() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self, <a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>&gt;</h4></section></summary><div class="docblock"><p>Create a new HTTP client using the default configuration.</p>
@@ -66,11 +66,11 @@ feature is enabled.</p>
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send" title="HttpClient::send"><code>HttpClient::send</code></a>. To execute
 the request asynchronously, see <a href="struct.HttpClient.html#method.get_async" title="HttpClient::get_async"><code>HttpClient::get_async</code></a>.</p>
 <h5 id="examples-1"><a href="#examples-1">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">get</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">response</span>.<span class="ident">text</span>()<span class="question-mark">?</span>);</code></pre></div>
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
+<span class="kw">let </span><span class="kw-2">mut </span>response = client.get(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, response.text()<span class="question-mark">?</span>);</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.get_async" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#685-694">source</a></span><h4 class="code-header">pub fn <a href="#method.get_async" class="fnname">get_async</a>&lt;U&gt;(&amp;self, uri: U) -&gt; <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;<span class="notable-traits"><span class="notable-traits-tooltip">ⓘ<span class="notable-traits-tooltiptext"><span class="docblock"><span class="notable">Notable traits for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><code class="content"><span class="where fmt-newline">impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a> for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><span class="where fmt-newline">    type <a href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html#associatedtype.Output" class="associatedtype">Output</a> = <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a>&lt;<a class="struct" href="struct.AsyncBody.html" title="struct isahc::AsyncBody">AsyncBody</a>&gt;, <a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>&gt;;</span></code></span></span></span></span> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;U&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;U&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,&nbsp;</span></h4></section></summary><div class="docblock"><p>Send a GET request to the given URI asynchronously.</p>
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send_async" title="HttpClient::send_async"><code>HttpClient::send_async</code></a>. To
 execute the request synchronously, see <a href="struct.HttpClient.html#method.get" title="HttpClient::get"><code>HttpClient::get</code></a>.</p>
@@ -78,11 +78,11 @@ execute the request synchronously, see <a href="struct.HttpClient.html#method.ge
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send" title="HttpClient::send"><code>HttpClient::send</code></a>. To execute
 the request asynchronously, see <a href="struct.HttpClient.html#method.head_async" title="HttpClient::head_async"><code>HttpClient::head_async</code></a>.</p>
 <h5 id="examples-2"><a href="#examples-2">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">head</span>(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;Page size: {:?}&quot;</span>, <span class="ident">response</span>.<span class="ident">headers</span>()[<span class="string">&quot;content-length&quot;</span>]);</code></pre></div>
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
+<span class="kw">let </span>response = client.head(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">&quot;Page size: {:?}&quot;</span>, response.headers()[<span class="string">&quot;content-length&quot;</span>]);</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.head_async" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#727-736">source</a></span><h4 class="code-header">pub fn <a href="#method.head_async" class="fnname">head_async</a>&lt;U&gt;(&amp;self, uri: U) -&gt; <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;<span class="notable-traits"><span class="notable-traits-tooltip">ⓘ<span class="notable-traits-tooltiptext"><span class="docblock"><span class="notable">Notable traits for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><code class="content"><span class="where fmt-newline">impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a> for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><span class="where fmt-newline">    type <a href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html#associatedtype.Output" class="associatedtype">Output</a> = <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a>&lt;<a class="struct" href="struct.AsyncBody.html" title="struct isahc::AsyncBody">AsyncBody</a>&gt;, <a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>&gt;;</span></code></span></span></span></span> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;U&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;U&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,&nbsp;</span></h4></section></summary><div class="docblock"><p>Send a HEAD request to the given URI asynchronously.</p>
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send_async" title="HttpClient::send_async"><code>HttpClient::send_async</code></a>. To
 execute the request synchronously, see <a href="struct.HttpClient.html#method.head" title="HttpClient::head"><code>HttpClient::head</code></a>.</p>
@@ -90,11 +90,11 @@ execute the request synchronously, see <a href="struct.HttpClient.html#method.he
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send" title="HttpClient::send"><code>HttpClient::send</code></a>. To execute
 the request asynchronously, see <a href="struct.HttpClient.html#method.post_async" title="HttpClient::post_async"><code>HttpClient::post_async</code></a>.</p>
 <h5 id="examples-3"><a href="#examples-3">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">r#&quot;{
+<span class="kw">let </span>response = client.post(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">r#&quot;{
     &quot;speed&quot;: &quot;fast&quot;,
     &quot;cool_name&quot;: true
 }&quot;#</span>)<span class="question-mark">?</span>;</code></pre></div>
@@ -106,11 +106,11 @@ execute the request synchronously, see <a href="struct.HttpClient.html#method.po
 <p>To customize the request further, see <a href="struct.HttpClient.html#method.send" title="HttpClient::send"><code>HttpClient::send</code></a>. To execute
 the request asynchronously, see <a href="struct.HttpClient.html#method.put_async" title="HttpClient::put_async"><code>HttpClient::put_async</code></a>.</p>
 <h5 id="examples-4"><a href="#examples-4">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">put</span>(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">r#&quot;{
+<span class="kw">let </span>response = client.put(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">r#&quot;{
     &quot;speed&quot;: &quot;fast&quot;,
     &quot;cool_name&quot;: true
 }&quot;#</span>)<span class="question-mark">?</span>;</code></pre></div>
@@ -145,19 +145,19 @@ configuring the request using methods provided by the <a href="config/trait.Conf
 trait.</p>
 <p>To execute a request asynchronously, see <a href="struct.HttpClient.html#method.send_async" title="HttpClient::send_async"><code>HttpClient::send_async</code></a>.</p>
 <h5 id="examples-5"><a href="#examples-5">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>, <span class="ident">Request</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient, Request};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
-    .<span class="ident">header</span>(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-    .<span class="ident">body</span>(<span class="string">r#&quot;{
+<span class="kw">let </span>request = Request::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
+    .header(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+    .body(<span class="string">r#&quot;{
         &quot;speed&quot;: &quot;fast&quot;,
         &quot;cool_name&quot;: true
     }&quot;#</span>)<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">send</span>(<span class="ident">request</span>)<span class="question-mark">?</span>;
-<span class="macro">assert!</span>(<span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_success</span>());</code></pre></div>
+<span class="kw">let </span>response = client.send(request)<span class="question-mark">?</span>;
+<span class="macro">assert!</span>(response.status().is_success());</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.send_async" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#1000-1014">source</a></span><h4 class="code-header">pub fn <a href="#method.send_async" class="fnname">send_async</a>&lt;B&gt;(&amp;self, request: <a class="struct" href="struct.Request.html" title="struct isahc::Request">Request</a>&lt;B&gt;) -&gt; <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;<span class="notable-traits"><span class="notable-traits-tooltip">ⓘ<span class="notable-traits-tooltiptext"><span class="docblock"><span class="notable">Notable traits for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><code class="content"><span class="where fmt-newline">impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a> for <a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">ResponseFuture</a>&lt;'_&gt;</span><span class="where fmt-newline">    type <a href="https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html#associatedtype.Output" class="associatedtype">Output</a> = <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a>&lt;<a class="struct" href="struct.AsyncBody.html" title="struct isahc::AsyncBody">AsyncBody</a>&gt;, <a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>&gt;;</span></code></span></span></span></span> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;B: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="struct.AsyncBody.html" title="struct isahc::AsyncBody">AsyncBody</a>&gt;,&nbsp;</span></h4></section></summary><div class="docblock"><p>Send an HTTP request and return the HTTP response asynchronously.</p>
 <p>Upon success, will return a <a href="struct.Response.html" title="Response"><code>Response</code></a> containing the status code,
 response headers, and response body from the server. The <a href="struct.Response.html" title="Response"><code>Response</code></a> is
@@ -179,19 +179,19 @@ configuring the request using methods provided by the <a href="config/trait.Conf
 trait.</p>
 <p>To execute a request synchronously, see <a href="struct.HttpClient.html#method.send" title="HttpClient::send"><code>HttpClient::send</code></a>.</p>
 <h5 id="examples-6"><a href="#examples-6">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>, <span class="ident">Request</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient, Request};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::new</span>()<span class="question-mark">?</span>;
+<span class="kw">let </span>client = HttpClient::new()<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::post</span>(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
-    .<span class="ident">header</span>(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-    .<span class="ident">body</span>(<span class="string">r#&quot;{
+<span class="kw">let </span>request = Request::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
+    .header(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+    .body(<span class="string">r#&quot;{
         &quot;speed&quot;: &quot;fast&quot;,
         &quot;cool_name&quot;: true
     }&quot;#</span>)<span class="question-mark">?</span>;
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">send_async</span>(<span class="ident">request</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-<span class="macro">assert!</span>(<span class="ident">response</span>.<span class="ident">status</span>().<span class="ident">is_success</span>());</code></pre></div>
+<span class="kw">let </span>response = client.send_async(request).<span class="kw">await</span><span class="question-mark">?</span>;
+<span class="macro">assert!</span>(response.status().is_success());</code></pre></div>
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-Clone-for-HttpClient" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#597">source</a></span><a href="#impl-Clone-for-HttpClient" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">HttpClient</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.clone" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#597">source</a></span><a href="#method.clone" class="anchor"></a><h4 class="code-header">fn <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone" class="fnname">clone</a>(&amp;self) -&gt; <a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">HttpClient</a></h4></section></summary><div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.clone_from" class="method trait-impl has-srclink"><span class="rightside"><span class="since" title="Stable since Rust version 1.0.0">1.0.0</span> · <a class="srclink" href="https://doc.rust-lang.org/nightly/src/core/clone.rs.html#132-134">source</a></span><a href="#method.clone_from" class="anchor"></a><h4 class="code-header">fn <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from" class="fnname">clone_from</a>(&amp;mut self, source: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;</a>Self)</h4></section></summary><div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
 </div></details></div></details><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-Debug-for-HttpClient" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#1237-1241">source</a></span><a href="#impl-Debug-for-HttpClient" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> for <a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">HttpClient</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.fmt" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#1238-1240">source</a></span><a href="#method.fmt" class="anchor"></a><h4 class="code-header">fn <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt" class="fnname">fmt</a>(&amp;self, f: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html" title="struct core::fmt::Formatter">Formatter</a>&lt;'_&gt;) -&gt; <a class="type" href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html" title="type core::fmt::Result">Result</a></h4></section></summary><div class='docblock'><p>Formats the value using the given formatter. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt">Read more</a></p>
@@ -225,4 +225,4 @@ trait.</p>
 <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="WithDispatch"><code>WithDispatch</code></a> wrapper. <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_subscriber">Read more</a></p>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.with_current_subscriber-1" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="https://docs.rs/tracing/0.1.36/src/tracing/instrument.rs.html#221">source</a></span><a href="#method.with_current_subscriber-1" class="anchor"></a><h4 class="code-header">fn <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_current_subscriber" class="fnname">with_current_subscriber</a>(self) -&gt; <a class="struct" href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="struct tracing::instrument::WithDispatch">WithDispatch</a>&lt;Self&gt;</h4></section></summary><div class='docblock'><p>Attaches the current <a href="https://docs.rs/tracing/0.1.36/tracing/dispatcher/index.html#setting-the-default-subscriber">default</a> <a href="https://docs.rs/tracing-core/0.1.22/tracing_core/subscriber/trait.Subscriber.html"><code>Subscriber</code></a> to this type, returning a
 <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="WithDispatch"><code>WithDispatch</code></a> wrapper. <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_current_subscriber">Read more</a></p>
-</div></details></div></details></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</div></details></div></details></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

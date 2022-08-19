@@ -562,567 +562,567 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">metrics::Metrics</span>, <span class="ident">redirect::EffectiveUri</span>, <span class="ident">trailer::Trailer</span>};
-<span class="kw">use</span> <span class="ident">futures_lite::io</span>::{<span class="ident">copy</span> <span class="kw">as</span> <span class="ident">copy_async</span>, <span class="ident">AsyncRead</span>, <span class="ident">AsyncWrite</span>};
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Response</span>, <span class="ident">Uri</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fs::File</span>,
-    <span class="ident">io</span>::{<span class="self">self</span>, <span class="ident">Read</span>, <span class="ident">Write</span>},
-    <span class="ident">net::SocketAddr</span>,
-    <span class="ident">path::Path</span>,
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{metrics::Metrics, redirect::EffectiveUri, trailer::Trailer};
+<span class="kw">use </span>futures_lite::io::{copy <span class="kw">as </span>copy_async, AsyncRead, AsyncWrite};
+<span class="kw">use </span>http::{Response, Uri};
+<span class="kw">use </span>std::{
+    fs::File,
+    io::{<span class="self">self</span>, Read, Write},
+    net::SocketAddr,
+    path::Path,
 };
 
-<span class="doccomment">/// Provides extension methods for working with HTTP responses.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ResponseExt</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Get the trailer of the response containing headers that were received</span>
-    <span class="doccomment">/// after the response body.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// See the documentation for [`Trailer`] for more details on how to handle</span>
-    <span class="doccomment">/// trailing headers.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut response = isahc::get(&quot;https://my-site-with-trailers.com&quot;)?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// println!(&quot;Status: {}&quot;, response.status());</span>
-    <span class="doccomment">/// println!(&quot;Headers: {:#?}&quot;, response.headers());</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Read and discard the response body until the end.</span>
-    <span class="doccomment">/// response.consume()?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Now the trailer will be available as well.</span>
-    <span class="doccomment">/// println!(&quot;Trailing headers: {:#?}&quot;, response.trailer().try_get().unwrap());</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">trailer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Trailer</span>;
+<span class="doccomment">/// Provides extension methods for working with HTTP responses.
+</span><span class="kw">pub trait </span>ResponseExt&lt;T&gt; {
+    <span class="doccomment">/// Get the trailer of the response containing headers that were received
+    /// after the response body.
+    ///
+    /// See the documentation for [`Trailer`] for more details on how to handle
+    /// trailing headers.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get(&quot;https://my-site-with-trailers.com&quot;)?;
+    ///
+    /// println!(&quot;Status: {}&quot;, response.status());
+    /// println!(&quot;Headers: {:#?}&quot;, response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    ///
+    /// // Now the trailer will be available as well.
+    /// println!(&quot;Trailing headers: {:#?}&quot;, response.trailer().try_get().unwrap());
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>trailer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Trailer;
 
-    <span class="doccomment">/// Get the effective URI of this response. This value differs from the</span>
-    <span class="doccomment">/// original URI provided when making the request if at least one redirect</span>
-    <span class="doccomment">/// was followed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This information is only available if populated by the HTTP client that</span>
-    <span class="doccomment">/// produced the response.</span>
-    <span class="kw">fn</span> <span class="ident">effective_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uri</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the effective URI of this response. This value differs from the
+    /// original URI provided when making the request if at least one redirect
+    /// was followed.
+    ///
+    /// This information is only available if populated by the HTTP client that
+    /// produced the response.
+    </span><span class="kw">fn </span>effective_uri(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Uri&gt;;
 
-    <span class="doccomment">/// Get the local socket address of the last-used connection involved in</span>
-    <span class="doccomment">/// this request, if known.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Multiple connections may be involved in a request, such as with</span>
-    <span class="doccomment">/// redirects.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method only makes sense with a normal Internet request. If some</span>
-    <span class="doccomment">/// other kind of transport is used to perform the request, such as a Unix</span>
-    <span class="doccomment">/// socket, then this method will return `None`.</span>
-    <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the local socket address of the last-used connection involved in
+    /// this request, if known.
+    ///
+    /// Multiple connections may be involved in a request, such as with
+    /// redirects.
+    ///
+    /// This method only makes sense with a normal Internet request. If some
+    /// other kind of transport is used to perform the request, such as a Unix
+    /// socket, then this method will return `None`.
+    </span><span class="kw">fn </span>local_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;;
 
-    <span class="doccomment">/// Get the remote socket address of the last-used connection involved in</span>
-    <span class="doccomment">/// this request, if known.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Multiple connections may be involved in a request, such as with</span>
-    <span class="doccomment">/// redirects.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method only makes sense with a normal Internet request. If some</span>
-    <span class="doccomment">/// other kind of transport is used to perform the request, such as a Unix</span>
-    <span class="doccomment">/// socket, then this method will return `None`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Addresses and proxies</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The address returned by this method is the IP address and port that the</span>
-    <span class="doccomment">/// client _connected to_ and not necessarily the real address of the origin</span>
-    <span class="doccomment">/// server. Forward and reverse proxies between the caller and the server</span>
-    <span class="doccomment">/// can cause the address to be returned to reflect the address of the</span>
-    <span class="doccomment">/// nearest proxy rather than the server.</span>
-    <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the remote socket address of the last-used connection involved in
+    /// this request, if known.
+    ///
+    /// Multiple connections may be involved in a request, such as with
+    /// redirects.
+    ///
+    /// This method only makes sense with a normal Internet request. If some
+    /// other kind of transport is used to perform the request, such as a Unix
+    /// socket, then this method will return `None`.
+    ///
+    /// # Addresses and proxies
+    ///
+    /// The address returned by this method is the IP address and port that the
+    /// client _connected to_ and not necessarily the real address of the origin
+    /// server. Forward and reverse proxies between the caller and the server
+    /// can cause the address to be returned to reflect the address of the
+    /// nearest proxy rather than the server.
+    </span><span class="kw">fn </span>remote_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt;;
 
-    <span class="doccomment">/// Get the configured cookie jar used for persisting cookies from this</span>
-    <span class="doccomment">/// response, if any.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the [`cookies`](index.html#cookies)</span>
-    <span class="doccomment">/// feature is enabled.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the configured cookie jar used for persisting cookies from this
+    /// response, if any.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`cookies`](index.html#cookies)
+    /// feature is enabled.
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">fn </span>cookie_jar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::cookies::CookieJar&gt;;
 
-    <span class="doccomment">/// If request metrics are enabled for this particular transfer, return a</span>
-    <span class="doccomment">/// metrics object containing a live view of currently available data.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default metrics are disabled and `None` will be returned. To enable</span>
-    <span class="doccomment">/// metrics you can use</span>
-    <span class="doccomment">/// [`Configurable::metrics`](crate::config::Configurable::metrics).</span>
-    <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Metrics</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// If request metrics are enabled for this particular transfer, return a
+    /// metrics object containing a live view of currently available data.
+    ///
+    /// By default metrics are disabled and `None` will be returned. To enable
+    /// metrics you can use
+    /// [`Configurable::metrics`](crate::config::Configurable::metrics).
+    </span><span class="kw">fn </span>metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Metrics&gt;;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">ResponseExt</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::redundant_closure</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">trailer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Trailer</span> {
-        <span class="comment">// Return a static empty trailer if the extension does not exist. This</span>
-        <span class="comment">// offers a more convenient API so that users do not have to unwrap the</span>
-        <span class="comment">// trailer from an extra Option.</span>
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Trailer::empty</span>())
+<span class="kw">impl</span>&lt;T&gt; ResponseExt&lt;T&gt; <span class="kw">for </span>Response&lt;T&gt; {
+    <span class="attribute">#[allow(clippy::redundant_closure)]</span>
+    <span class="kw">fn </span>trailer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Trailer {
+        <span class="comment">// Return a static empty trailer if the extension does not exist. This
+        // offers a more convenient API so that users do not have to unwrap the
+        // trailer from an extra Option.
+        </span><span class="self">self</span>.extensions().get().unwrap_or_else(|| Trailer::empty())
     }
 
-    <span class="kw">fn</span> <span class="ident">effective_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uri</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">EffectiveUri</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">v</span>.<span class="number">0</span>)
+    <span class="kw">fn </span>effective_uri(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Uri&gt; {
+        <span class="self">self</span>.extensions().get::&lt;EffectiveUri&gt;().map(|v| <span class="kw-2">&amp;</span>v.<span class="number">0</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">local_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">LocalAddr</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
+    <span class="kw">fn </span>local_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="self">self</span>.extensions().get::&lt;LocalAddr&gt;().map(|v| v.<span class="number">0</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">remote_addr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RemoteAddr</span><span class="op">&gt;</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>)
+    <span class="kw">fn </span>remote_addr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+        <span class="self">self</span>.extensions().get::&lt;RemoteAddr&gt;().map(|v| v.<span class="number">0</span>)
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>()
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">fn </span>cookie_jar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::cookies::CookieJar&gt; {
+        <span class="self">self</span>.extensions().get()
     }
 
-    <span class="kw">fn</span> <span class="ident">metrics</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Metrics</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>()
+    <span class="kw">fn </span>metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Metrics&gt; {
+        <span class="self">self</span>.extensions().get()
     }
 }
 
-<span class="doccomment">/// Provides extension methods for consuming HTTP response streams.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ReadResponseExt</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Read any remaining bytes from the response body stream and discard them</span>
-    <span class="doccomment">/// until the end of the stream is reached. It is usually a good idea to</span>
-    <span class="doccomment">/// call this method before dropping a response if you know you haven&#39;t read</span>
-    <span class="doccomment">/// the entire response body.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Background</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default, if a response stream is dropped before it has been</span>
-    <span class="doccomment">/// completely read from, then that HTTP connection will be terminated.</span>
-    <span class="doccomment">/// Depending on which version of HTTP is being used, this may require</span>
-    <span class="doccomment">/// closing the network connection to the server entirely. This can result</span>
-    <span class="doccomment">/// in sub-optimal performance for making multiple requests, as it prevents</span>
-    <span class="doccomment">/// Isahc from keeping the connection alive to be reused for subsequent</span>
-    <span class="doccomment">/// requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If you are downloading a file on behalf of a user and have been</span>
-    <span class="doccomment">/// requested to cancel the operation, then this is probably what you want.</span>
-    <span class="doccomment">/// But if you are making many small API calls to a known server, then you</span>
-    <span class="doccomment">/// may want to call `consume()` before dropping the response, as reading a</span>
-    <span class="doccomment">/// few megabytes off a socket is usually more efficient in the long run</span>
-    <span class="doccomment">/// than taking a hit on connection reuse, and opening new connections can</span>
-    <span class="doccomment">/// be expensive.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that in HTTP/2 and newer, it is not necessary to close the network</span>
-    <span class="doccomment">/// connection in order to interrupt the transfer of a particular response.</span>
-    <span class="doccomment">/// If you know that you will be using only HTTP/2 or newer, then calling</span>
-    <span class="doccomment">/// this method is probably unnecessary.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut response = isahc::get(&quot;https://example.org&quot;)?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// println!(&quot;Status: {}&quot;, response.status());</span>
-    <span class="doccomment">/// println!(&quot;Headers: {:#?}&quot;, response.headers());</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Read and discard the response body until the end.</span>
-    <span class="doccomment">/// response.consume()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">consume</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">copy_to</span>(<span class="ident">io::sink</span>())<span class="question-mark">?</span>;
+<span class="doccomment">/// Provides extension methods for consuming HTTP response streams.
+</span><span class="kw">pub trait </span>ReadResponseExt&lt;R: Read&gt; {
+    <span class="doccomment">/// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven&#39;t read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut response = isahc::get(&quot;https://example.org&quot;)?;
+    ///
+    /// println!(&quot;Status: {}&quot;, response.status());
+    /// println!(&quot;Headers: {:#?}&quot;, response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>consume(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;()&gt; {
+        <span class="self">self</span>.copy_to(io::sink())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Copy the response body into a writer.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the number of bytes that were written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Copying the response into an in-memory buffer:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut buf = vec![];</span>
-    <span class="doccomment">/// isahc::get(&quot;https://example.org&quot;)?.copy_to(&amp;mut buf)?;</span>
-    <span class="doccomment">/// println!(&quot;Read {} bytes&quot;, buf.len());</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">copy_to</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="ident">W</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Copy the response body into a writer.
+    ///
+    /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let mut buf = vec![];
+    /// isahc::get(&quot;https://example.org&quot;)?.copy_to(&amp;mut buf)?;
+    /// println!(&quot;Read {} bytes&quot;, buf.len());
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>copy_to&lt;W: Write&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, writer: W) -&gt; io::Result&lt;u64&gt;;
 
-    <span class="doccomment">/// Write the response body to a file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method makes it convenient to download a file using a GET request</span>
-    <span class="doccomment">/// and write it to a file synchronously in a single chain of calls.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the number of bytes that were written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// isahc::get(&quot;https://httpbin.org/image/jpeg&quot;)?</span>
-    <span class="doccomment">///     .copy_to_file(&quot;myimage.jpg&quot;)?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">copy_to_file</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">P</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="ident">File::create</span>(<span class="ident">path</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">copy_to</span>(<span class="ident">f</span>))
+    <span class="doccomment">/// Write the response body to a file.
+    ///
+    /// This method makes it convenient to download a file using a GET request
+    /// and write it to a file synchronously in a single chain of calls.
+    ///
+    /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// isahc::get(&quot;https://httpbin.org/image/jpeg&quot;)?
+    ///     .copy_to_file(&quot;myimage.jpg&quot;)?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>copy_to_file&lt;P: AsRef&lt;Path&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: P) -&gt; io::Result&lt;u64&gt; {
+        File::create(path).and_then(|f| <span class="self">self</span>.copy_to(f))
     }
 
-    <span class="doccomment">/// Read the entire response body into memory.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let image_bytes = isahc::get(&quot;https://httpbin.org/image/jpeg&quot;)?.bytes()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">bytes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Read the entire response body into memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let image_bytes = isahc::get(&quot;https://httpbin.org/image/jpeg&quot;)?.bytes()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>bytes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;Vec&lt;u8&gt;&gt;;
 
-    <span class="doccomment">/// Read the response body as a string.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The encoding used to decode the response body into a string depends on</span>
-    <span class="doccomment">/// the response. If the body begins with a [Byte Order Mark</span>
-    <span class="doccomment">/// (BOM)](https://en.wikipedia.org/wiki/Byte_order_mark), then UTF-8,</span>
-    <span class="doccomment">/// UTF-16LE or UTF-16BE is used as indicated by the BOM. If no BOM is</span>
-    <span class="doccomment">/// present, the encoding specified in the `charset` parameter of the</span>
-    <span class="doccomment">/// `Content-Type` header is used if present. Otherwise UTF-8 is assumed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the response body contains any malformed characters or characters not</span>
-    <span class="doccomment">/// representable in UTF-8, the offending bytes will be replaced with</span>
-    <span class="doccomment">/// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method consumes the entire response body stream and can only be</span>
-    <span class="doccomment">/// called once.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the</span>
-    <span class="doccomment">/// [`text-decoding`](index.html#text-decoding) feature is enabled, which it</span>
-    <span class="doccomment">/// is by default.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let text = isahc::get(&quot;https://example.org&quot;)?.text()?;</span>
-    <span class="doccomment">/// println!(&quot;{}&quot;, text);</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Read the response body as a string.
+    ///
+    /// The encoding used to decode the response body into a string depends on
+    /// the response. If the body begins with a [Byte Order Mark
+    /// (BOM)](https://en.wikipedia.org/wiki/Byte_order_mark), then UTF-8,
+    /// UTF-16LE or UTF-16BE is used as indicated by the BOM. If no BOM is
+    /// present, the encoding specified in the `charset` parameter of the
+    /// `Content-Type` header is used if present. Otherwise UTF-8 is assumed.
+    ///
+    /// If the response body contains any malformed characters or characters not
+    /// representable in UTF-8, the offending bytes will be replaced with
+    /// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �.
+    ///
+    /// This method consumes the entire response body stream and can only be
+    /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// let text = isahc::get(&quot;https://example.org&quot;)?.text()?;
+    /// println!(&quot;{}&quot;, text);
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;text-decoding&quot;</span>)]</span>
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;String&gt;;
 
-    <span class="doccomment">/// Deserialize the response body as JSON into a given type.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the [`json`](index.html#json) feature</span>
-    <span class="doccomment">/// is enabled.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">/// use serde_json::Value;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let json: Value = isahc::get(&quot;https://httpbin.org/json&quot;)?.json()?;</span>
-    <span class="doccomment">/// println!(&quot;author: {}&quot;, json[&quot;slideshow&quot;][&quot;author&quot;]);</span>
-    <span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">json</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">serde_json::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">serde::de::DeserializeOwned</span>;
+    <span class="doccomment">/// Deserialize the response body as JSON into a given type.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`json`](index.html#json) feature
+    /// is enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    /// use serde_json::Value;
+    ///
+    /// let json: Value = isahc::get(&quot;https://httpbin.org/json&quot;)?.json()?;
+    /// println!(&quot;author: {}&quot;, json[&quot;slideshow&quot;][&quot;author&quot;]);
+    /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+    /// ```
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;json&quot;</span>)]</span>
+    <span class="kw">fn </span>json&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;T, serde_json::Error&gt;
+    <span class="kw">where
+        </span>T: serde::de::DeserializeOwned;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> <span class="ident">ReadResponseExt</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">copy_to</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">writer</span>: <span class="ident">W</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="ident">io::copy</span>(<span class="self">self</span>.<span class="ident">body_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">writer</span>)
+<span class="kw">impl</span>&lt;R: Read&gt; ReadResponseExt&lt;R&gt; <span class="kw">for </span>Response&lt;R&gt; {
+    <span class="kw">fn </span>copy_to&lt;W: Write&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>writer: W) -&gt; io::Result&lt;u64&gt; {
+        io::copy(<span class="self">self</span>.body_mut(), <span class="kw-2">&amp;mut </span>writer)
     }
 
-    <span class="kw">fn</span> <span class="ident">bytes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">allocate_buffer</span>(<span class="self">self</span>);
+    <span class="kw">fn </span>bytes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = allocate_buffer(<span class="self">self</span>);
 
-        <span class="self">self</span>.<span class="ident">copy_to</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.copy_to(<span class="kw-2">&amp;mut </span>buf)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+        <span class="prelude-val">Ok</span>(buf)
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="self">self</span>).<span class="ident">decode_reader</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;text-decoding&quot;</span>)]</span>
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; io::Result&lt;String&gt; {
+        <span class="kw">crate</span>::text::Decoder::for_response(<span class="self">self</span>).decode_reader(<span class="self">self</span>.body_mut())
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">json</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">D</span>, <span class="ident">serde_json::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">serde::de::DeserializeOwned</span>,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;json&quot;</span>)]</span>
+    <span class="kw">fn </span>json&lt;D&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;D, serde_json::Error&gt;
+    <span class="kw">where
+        </span>D: serde::de::DeserializeOwned,
     {
-        <span class="ident">serde_json::from_reader</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
+        serde_json::from_reader(<span class="self">self</span>.body_mut())
     }
 }
 
-<span class="doccomment">/// Provides extension methods for consuming asynchronous HTTP response streams.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AsyncReadResponseExt</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Read any remaining bytes from the response body stream and discard them</span>
-    <span class="doccomment">/// until the end of the stream is reached. It is usually a good idea to</span>
-    <span class="doccomment">/// call this method before dropping a response if you know you haven&#39;t read</span>
-    <span class="doccomment">/// the entire response body.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Background</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// By default, if a response stream is dropped before it has been</span>
-    <span class="doccomment">/// completely read from, then that HTTP connection will be terminated.</span>
-    <span class="doccomment">/// Depending on which version of HTTP is being used, this may require</span>
-    <span class="doccomment">/// closing the network connection to the server entirely. This can result</span>
-    <span class="doccomment">/// in sub-optimal performance for making multiple requests, as it prevents</span>
-    <span class="doccomment">/// Isahc from keeping the connection alive to be reused for subsequent</span>
-    <span class="doccomment">/// requests.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If you are downloading a file on behalf of a user and have been</span>
-    <span class="doccomment">/// requested to cancel the operation, then this is probably what you want.</span>
-    <span class="doccomment">/// But if you are making many small API calls to a known server, then you</span>
-    <span class="doccomment">/// may want to call `consume()` before dropping the response, as reading a</span>
-    <span class="doccomment">/// few megabytes off a socket is usually more efficient in the long run</span>
-    <span class="doccomment">/// than taking a hit on connection reuse, and opening new connections can</span>
-    <span class="doccomment">/// be expensive.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that in HTTP/2 and newer, it is not necessary to close the network</span>
-    <span class="doccomment">/// connection in order to interrupt the transfer of a particular response.</span>
-    <span class="doccomment">/// If you know that you will be using only HTTP/2 or newer, then calling</span>
-    <span class="doccomment">/// this method is probably unnecessary.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-    <span class="doccomment">/// let mut response = isahc::get_async(&quot;https://example.org&quot;).await?;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// println!(&quot;Status: {}&quot;, response.status());</span>
-    <span class="doccomment">/// println!(&quot;Headers: {:#?}&quot;, response.headers());</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// // Read and discard the response body until the end.</span>
-    <span class="doccomment">/// response.consume().await?;</span>
-    <span class="doccomment">/// # Ok(()) }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">consume</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">ConsumeFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">R</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Provides extension methods for consuming asynchronous HTTP response streams.
+</span><span class="kw">pub trait </span>AsyncReadResponseExt&lt;R: AsyncRead + Unpin&gt; {
+    <span class="doccomment">/// Read any remaining bytes from the response body stream and discard them
+    /// until the end of the stream is reached. It is usually a good idea to
+    /// call this method before dropping a response if you know you haven&#39;t read
+    /// the entire response body.
+    ///
+    /// # Background
+    ///
+    /// By default, if a response stream is dropped before it has been
+    /// completely read from, then that HTTP connection will be terminated.
+    /// Depending on which version of HTTP is being used, this may require
+    /// closing the network connection to the server entirely. This can result
+    /// in sub-optimal performance for making multiple requests, as it prevents
+    /// Isahc from keeping the connection alive to be reused for subsequent
+    /// requests.
+    ///
+    /// If you are downloading a file on behalf of a user and have been
+    /// requested to cancel the operation, then this is probably what you want.
+    /// But if you are making many small API calls to a known server, then you
+    /// may want to call `consume()` before dropping the response, as reading a
+    /// few megabytes off a socket is usually more efficient in the long run
+    /// than taking a hit on connection reuse, and opening new connections can
+    /// be expensive.
+    ///
+    /// Note that in HTTP/2 and newer, it is not necessary to close the network
+    /// connection in order to interrupt the transfer of a particular response.
+    /// If you know that you will be using only HTTP/2 or newer, then calling
+    /// this method is probably unnecessary.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {
+    /// let mut response = isahc::get_async(&quot;https://example.org&quot;).await?;
+    ///
+    /// println!(&quot;Status: {}&quot;, response.status());
+    /// println!(&quot;Headers: {:#?}&quot;, response.headers());
+    ///
+    /// // Read and discard the response body until the end.
+    /// response.consume().await?;
+    /// # Ok(()) }
+    /// ```
+    </span><span class="kw">fn </span>consume(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ConsumeFuture&lt;<span class="lifetime">&#39;_</span>, R&gt;;
 
-    <span class="doccomment">/// Copy the response body into a writer asynchronously.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the number of bytes that were written.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Copying the response into an in-memory buffer:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-    <span class="doccomment">/// let mut buf = vec![];</span>
-    <span class="doccomment">/// isahc::get_async(&quot;https://example.org&quot;).await?</span>
-    <span class="doccomment">///     .copy_to(&amp;mut buf).await?;</span>
-    <span class="doccomment">/// println!(&quot;Read {} bytes&quot;, buf.len());</span>
-    <span class="doccomment">/// # Ok(()) }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">copy_to</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">W</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="ident">W</span>) -&gt; <span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">R</span>, <span class="ident">W</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">W</span>: <span class="ident">AsyncWrite</span> <span class="op">+</span> <span class="ident">Unpin</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>;
+    <span class="doccomment">/// Copy the response body into a writer asynchronously.
+    ///
+    /// Returns the number of bytes that were written.
+    ///
+    /// # Examples
+    ///
+    /// Copying the response into an in-memory buffer:
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {
+    /// let mut buf = vec![];
+    /// isahc::get_async(&quot;https://example.org&quot;).await?
+    ///     .copy_to(&amp;mut buf).await?;
+    /// println!(&quot;Read {} bytes&quot;, buf.len());
+    /// # Ok(()) }
+    /// ```
+    </span><span class="kw">fn </span>copy_to&lt;<span class="lifetime">&#39;a</span>, W&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span><span class="self">self</span>, writer: W) -&gt; CopyFuture&lt;<span class="lifetime">&#39;a</span>, R, W&gt;
+    <span class="kw">where
+        </span>W: AsyncWrite + Unpin + <span class="lifetime">&#39;a</span>;
 
-    <span class="doccomment">/// Read the entire response body into memory.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-    <span class="doccomment">/// let image_bytes = isahc::get_async(&quot;https://httpbin.org/image/jpeg&quot;)</span>
-    <span class="doccomment">///     .await?</span>
-    <span class="doccomment">///     .bytes()</span>
-    <span class="doccomment">///     .await?;</span>
-    <span class="doccomment">/// # Ok(()) }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">bytes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">BytesFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut</span> <span class="ident">R</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Read the entire response body into memory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {
+    /// let image_bytes = isahc::get_async(&quot;https://httpbin.org/image/jpeg&quot;)
+    ///     .await?
+    ///     .bytes()
+    ///     .await?;
+    /// # Ok(()) }
+    /// ```
+    </span><span class="kw">fn </span>bytes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; BytesFuture&lt;<span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut </span>R&gt;;
 
-    <span class="doccomment">/// Read the response body as a string asynchronously.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method consumes the entire response body stream and can only be</span>
-    <span class="doccomment">/// called once.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the</span>
-    <span class="doccomment">/// [`text-decoding`](index.html#text-decoding) feature is enabled, which it</span>
-    <span class="doccomment">/// is by default.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {</span>
-    <span class="doccomment">/// let text = isahc::get_async(&quot;https://example.org&quot;).await?</span>
-    <span class="doccomment">///     .text().await?;</span>
-    <span class="doccomment">/// println!(&quot;{}&quot;, text);</span>
-    <span class="doccomment">/// # Ok(()) }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident"><span class="kw">crate</span>::text::TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut</span> <span class="ident">R</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Read the response body as a string asynchronously.
+    ///
+    /// This method consumes the entire response body stream and can only be
+    /// called once.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the
+    /// [`text-decoding`](index.html#text-decoding) feature is enabled, which it
+    /// is by default.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    ///
+    /// # async fn run() -&gt; Result&lt;(), isahc::Error&gt; {
+    /// let text = isahc::get_async(&quot;https://example.org&quot;).await?
+    ///     .text().await?;
+    /// println!(&quot;{}&quot;, text);
+    /// # Ok(()) }
+    /// ```
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;text-decoding&quot;</span>)]</span>
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::text::TextFuture&lt;<span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut </span>R&gt;;
 
-    <span class="doccomment">/// Deserialize the response body as JSON into a given type.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Caveats</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Unlike its [synchronous equivalent](ReadResponseExt::json), this method</span>
-    <span class="doccomment">/// reads the entire response body into memory before attempting</span>
-    <span class="doccomment">/// deserialization. This is due to a Serde limitation since incremental</span>
-    <span class="doccomment">/// partial deserializing is not supported.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is only available when the [`json`](index.html#json) feature</span>
-    <span class="doccomment">/// is enabled.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::prelude::*;</span>
-    <span class="doccomment">/// use serde_json::Value;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # async fn run() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {</span>
-    <span class="doccomment">/// let json: Value = isahc::get_async(&quot;https://httpbin.org/json&quot;).await?</span>
-    <span class="doccomment">///     .json().await?;</span>
-    <span class="doccomment">/// println!(&quot;author: {}&quot;, json[&quot;slideshow&quot;][&quot;author&quot;]);</span>
-    <span class="doccomment">/// # Ok(()) }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">json</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">JsonFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">R</span>, <span class="ident">T</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">serde::de::DeserializeOwned</span>;
+    <span class="doccomment">/// Deserialize the response body as JSON into a given type.
+    ///
+    /// # Caveats
+    ///
+    /// Unlike its [synchronous equivalent](ReadResponseExt::json), this method
+    /// reads the entire response body into memory before attempting
+    /// deserialization. This is due to a Serde limitation since incremental
+    /// partial deserializing is not supported.
+    ///
+    /// # Availability
+    ///
+    /// This method is only available when the [`json`](index.html#json) feature
+    /// is enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::prelude::*;
+    /// use serde_json::Value;
+    ///
+    /// # async fn run() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    /// let json: Value = isahc::get_async(&quot;https://httpbin.org/json&quot;).await?
+    ///     .json().await?;
+    /// println!(&quot;author: {}&quot;, json[&quot;slideshow&quot;][&quot;author&quot;]);
+    /// # Ok(()) }
+    /// ```
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;json&quot;</span>)]</span>
+    <span class="kw">fn </span>json&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; JsonFuture&lt;<span class="lifetime">&#39;_</span>, R, T&gt;
+    <span class="kw">where
+        </span>T: serde::de::DeserializeOwned;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span><span class="op">&gt;</span> <span class="ident">AsyncReadResponseExt</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">consume</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">ConsumeFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">R</span><span class="op">&gt;</span> {
-        <span class="ident">ConsumeFuture::new</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="ident">copy_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>(), <span class="ident">futures_lite::io::sink</span>()).<span class="kw">await</span><span class="question-mark">?</span>;
+<span class="kw">impl</span>&lt;R: AsyncRead + Unpin&gt; AsyncReadResponseExt&lt;R&gt; <span class="kw">for </span>Response&lt;R&gt; {
+    <span class="kw">fn </span>consume(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ConsumeFuture&lt;<span class="lifetime">&#39;_</span>, R&gt; {
+        ConsumeFuture::new(<span class="kw">async move </span>{
+            copy_async(<span class="self">self</span>.body_mut(), futures_lite::io::sink()).<span class="kw">await</span><span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(())
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">copy_to</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">W</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="ident">W</span>) -&gt; <span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">R</span>, <span class="ident">W</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">W</span>: <span class="ident">AsyncWrite</span> <span class="op">+</span> <span class="ident">Unpin</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+    <span class="kw">fn </span>copy_to&lt;<span class="lifetime">&#39;a</span>, W&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span><span class="self">self</span>, writer: W) -&gt; CopyFuture&lt;<span class="lifetime">&#39;a</span>, R, W&gt;
+    <span class="kw">where
+        </span>W: AsyncWrite + Unpin + <span class="lifetime">&#39;a</span>,
     {
-        <span class="ident">CopyFuture::new</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="ident">copy_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>(), <span class="ident">writer</span>).<span class="kw">await</span> })
+        CopyFuture::new(<span class="kw">async move </span>{ copy_async(<span class="self">self</span>.body_mut(), writer).<span class="kw">await </span>})
     }
 
-    <span class="kw">fn</span> <span class="ident">bytes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">BytesFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut</span> <span class="ident">R</span><span class="op">&gt;</span> {
-        <span class="ident">BytesFuture::new</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">allocate_buffer</span>(<span class="self">self</span>);
+    <span class="kw">fn </span>bytes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; BytesFuture&lt;<span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut </span>R&gt; {
+        BytesFuture::new(<span class="kw">async move </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>buf = allocate_buffer(<span class="self">self</span>);
 
-            <span class="ident">copy_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            copy_async(<span class="self">self</span>.body_mut(), <span class="kw-2">&amp;mut </span>buf).<span class="kw">await</span><span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(<span class="ident">buf</span>)
+            <span class="prelude-val">Ok</span>(buf)
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;text-decoding&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">text</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident"><span class="kw">crate</span>::text::TextFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut</span> <span class="ident">R</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="kw">crate</span>::text::Decoder::for_response</span>(<span class="self">self</span>).<span class="ident">decode_reader_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>())
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;text-decoding&quot;</span>)]</span>
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::text::TextFuture&lt;<span class="lifetime">&#39;_</span>, <span class="kw-2">&amp;mut </span>R&gt; {
+        <span class="kw">crate</span>::text::Decoder::for_response(<span class="self">self</span>).decode_reader_async(<span class="self">self</span>.body_mut())
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">json</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">JsonFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">R</span>, <span class="ident">T</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">serde::de::DeserializeOwned</span>,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;json&quot;</span>)]</span>
+    <span class="kw">fn </span>json&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; JsonFuture&lt;<span class="lifetime">&#39;_</span>, R, T&gt;
+    <span class="kw">where
+        </span>T: serde::de::DeserializeOwned,
     {
-        <span class="ident">JsonFuture::new</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">allocate_buffer</span>(<span class="self">self</span>);
+        JsonFuture::new(<span class="kw">async move </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>buf = allocate_buffer(<span class="self">self</span>);
 
-            <span class="comment">// Serde does not support incremental parsing, so we have to resort</span>
-            <span class="comment">// to reading the entire response into memory first and then</span>
-            <span class="comment">// deserializing.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">copy_async</span>(<span class="self">self</span>.<span class="ident">body_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">buf</span>).<span class="kw">await</span> {
-                <span class="kw">struct</span> <span class="ident">ErrorReader</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">io::Error</span><span class="op">&gt;</span>);
+            <span class="comment">// Serde does not support incremental parsing, so we have to resort
+            // to reading the entire response into memory first and then
+            // deserializing.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = copy_async(<span class="self">self</span>.body_mut(), <span class="kw-2">&amp;mut </span>buf).<span class="kw">await </span>{
+                <span class="kw">struct </span>ErrorReader(<span class="prelude-ty">Option</span>&lt;io::Error&gt;);
 
-                <span class="kw">impl</span> <span class="ident">Read</span> <span class="kw">for</span> <span class="ident">ErrorReader</span> {
-                    <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-                        <span class="prelude-val">Err</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>())
+                <span class="kw">impl </span>Read <span class="kw">for </span>ErrorReader {
+                    <span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
+                        <span class="prelude-val">Err</span>(<span class="self">self</span>.<span class="number">0</span>.take().unwrap())
                     }
                 }
 
-                <span class="comment">// Serde offers no public way to directly create an error from</span>
-                <span class="comment">// an I/O error, but we can do so in a roundabout way by parsing</span>
-                <span class="comment">// a reader that always returns the desired error.</span>
-                <span class="ident">serde_json::from_reader</span>(<span class="ident">ErrorReader</span>(<span class="prelude-val">Some</span>(<span class="ident">e</span>)))
-            } <span class="kw">else</span> {
-                <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>)
+                <span class="comment">// Serde offers no public way to directly create an error from
+                // an I/O error, but we can do so in a roundabout way by parsing
+                // a reader that always returns the desired error.
+                </span>serde_json::from_reader(ErrorReader(<span class="prelude-val">Some</span>(e)))
+            } <span class="kw">else </span>{
+                serde_json::from_slice(<span class="kw-2">&amp;</span>buf)
             }
         })
     }
 }
 
-<span class="kw">fn</span> <span class="ident">allocate_buffer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">length</span>) <span class="op">=</span> <span class="ident">get_content_length</span>(<span class="ident">response</span>) {
-        <span class="ident">Vec::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>)
-    } <span class="kw">else</span> {
-        <span class="ident">Vec::new</span>()
+<span class="kw">fn </span>allocate_buffer&lt;T&gt;(response: <span class="kw-2">&amp;</span>Response&lt;T&gt;) -&gt; Vec&lt;u8&gt; {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(length) = get_content_length(response) {
+        Vec::with_capacity(length <span class="kw">as </span>usize)
+    } <span class="kw">else </span>{
+        Vec::new()
     }
 }
 
-<span class="kw">fn</span> <span class="ident">get_content_length</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">response</span>: <span class="kw-2">&amp;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-    <span class="ident">response</span>
-        .<span class="ident">headers</span>()
-        .<span class="ident">get</span>(<span class="ident">http::header::CONTENT_LENGTH</span>)<span class="question-mark">?</span>
-        .<span class="ident">to_str</span>()
-        .<span class="ident">ok</span>()<span class="question-mark">?</span>
-        .<span class="ident">parse</span>()
-        .<span class="ident">ok</span>()
+<span class="kw">fn </span>get_content_length&lt;T&gt;(response: <span class="kw-2">&amp;</span>Response&lt;T&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    response
+        .headers()
+        .get(http::header::CONTENT_LENGTH)<span class="question-mark">?
+        </span>.to_str()
+        .ok()<span class="question-mark">?
+        </span>.parse()
+        .ok()
 }
 
 <span class="macro">decl_future!</span> {
-    <span class="doccomment">/// A future which reads any remaining bytes from the response body stream</span>
-    <span class="doccomment">/// and discard them.</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ConsumeFuture</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// A future which reads any remaining bytes from the response body stream
+    /// and discard them.
+    </span><span class="kw">pub type </span>ConsumeFuture&lt;R&gt; = <span class="kw">impl </span>Future&lt;Output = io::Result&lt;()&gt;&gt; + SendIf&lt;R&gt;;
 
-    <span class="doccomment">/// A future which copies all the response body bytes into a sink.</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">W</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">W</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// A future which copies all the response body bytes into a sink.
+    </span><span class="kw">pub type </span>CopyFuture&lt;R, W&gt; = <span class="kw">impl </span>Future&lt;Output = io::Result&lt;u64&gt;&gt; + SendIf&lt;R, W&gt;;
 
-    <span class="doccomment">/// A future which reads the entire response body into memory.</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BytesFuture</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// A future which reads the entire response body into memory.
+    </span><span class="kw">pub type </span>BytesFuture&lt;R&gt; = <span class="kw">impl </span>Future&lt;Output = io::Result&lt;Vec&lt;u8&gt;&gt;&gt; + SendIf&lt;R&gt;;
 
-    <span class="doccomment">/// A future which deserializes the response body as JSON.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">JsonFuture</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">impl</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">serde_json::Error</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">SendIf</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">T</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// A future which deserializes the response body as JSON.
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;json&quot;</span>)]</span>
+    <span class="kw">pub type </span>JsonFuture&lt;R, T&gt; = <span class="kw">impl </span>Future&lt;Output = <span class="prelude-ty">Result</span>&lt;T, serde_json::Error&gt;&gt; + SendIf&lt;R, T&gt;;
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">LocalAddr</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">SocketAddr</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LocalAddr(<span class="kw">pub</span>(<span class="kw">crate</span>) SocketAddr);
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RemoteAddr</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">SocketAddr</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RemoteAddr(<span class="kw">pub</span>(<span class="kw">crate</span>) SocketAddr);
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(CopyFuture&lt;<span class="lifetime">&#39;static</span>, Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;: Send);
 
-    <span class="comment">// *mut T is !Send</span>
-    <span class="macro">static_assertions::assert_not_impl_any!</span>(<span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="kw-2">*mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
-    <span class="macro">static_assertions::assert_not_impl_any!</span>(<span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="kw-2">*mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
-    <span class="macro">static_assertions::assert_not_impl_any!</span>(<span class="ident">CopyFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, <span class="kw-2">*mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="kw-2">*mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>: <span class="ident">Send</span>);
+    <span class="comment">// *mut T is !Send
+    </span><span class="macro">static_assertions::assert_not_impl_any!</span>(CopyFuture&lt;<span class="lifetime">&#39;static</span>, <span class="kw-2">*mut </span>Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;: Send);
+    <span class="macro">static_assertions::assert_not_impl_any!</span>(CopyFuture&lt;<span class="lifetime">&#39;static</span>, Vec&lt;u8&gt;, <span class="kw-2">*mut </span>Vec&lt;u8&gt;&gt;: Send);
+    <span class="macro">static_assertions::assert_not_impl_any!</span>(CopyFuture&lt;<span class="lifetime">&#39;static</span>, <span class="kw-2">*mut </span>Vec&lt;u8&gt;, <span class="kw-2">*mut </span>Vec&lt;u8&gt;&gt;: Send);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

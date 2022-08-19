@@ -170,175 +170,175 @@
 <span id="168">168</span>
 <span id="169">169</span>
 <span id="170">170</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Request and response metrics tracking.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Request and response metrics tracking.
 
-<span class="kw">use</span> <span class="ident">crossbeam_utils::atomic::AtomicCell</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
+</span><span class="kw">use </span>crossbeam_utils::atomic::AtomicCell;
+<span class="kw">use </span>std::{fmt, sync::Arc, time::Duration};
 
-<span class="doccomment">/// An object that holds status updates and progress statistics on a particular</span>
-<span class="doccomment">/// request. A [`Metrics`] can be shared between threads, which allows an agent</span>
-<span class="doccomment">/// thread to post updates to the object while consumers can read from the</span>
-<span class="doccomment">/// object simultaneously.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Reading stats is not always guaranteed to be up-to-date.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Metrics</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Inner</span><span class="op">&gt;</span>,
+<span class="doccomment">/// An object that holds status updates and progress statistics on a particular
+/// request. A [`Metrics`] can be shared between threads, which allows an agent
+/// thread to post updates to the object while consumers can read from the
+/// object simultaneously.
+///
+/// Reading stats is not always guaranteed to be up-to-date.
+</span><span class="attribute">#[derive(Clone)]</span>
+<span class="kw">pub struct </span>Metrics {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) inner: Arc&lt;Inner&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Inner</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">upload_progress</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">upload_total</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">download_progress</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">download_total</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Default)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Inner {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) upload_progress: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) upload_total: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) download_progress: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) download_total: AtomicCell&lt;f64&gt;,
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">upload_speed</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">download_speed</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) upload_speed: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) download_speed: AtomicCell&lt;f64&gt;,
 
-    <span class="comment">// An overview of the six time values (taken from the curl documentation):</span>
-    <span class="comment">//</span>
-    <span class="comment">// curl_easy_perform()</span>
-    <span class="comment">//     |</span>
-    <span class="comment">//     |--NAMELOOKUP</span>
-    <span class="comment">//     |--|--CONNECT</span>
-    <span class="comment">//     |--|--|--APPCONNECT</span>
-    <span class="comment">//     |--|--|--|--PRETRANSFER</span>
-    <span class="comment">//     |--|--|--|--|--STARTTRANSFER</span>
-    <span class="comment">//     |--|--|--|--|--|--TOTAL</span>
-    <span class="comment">//     |--|--|--|--|--|--REDIRECT</span>
-    <span class="comment">//</span>
-    <span class="comment">// The numbers we expose in the API are a little more &quot;high-level&quot; than the</span>
-    <span class="comment">// ones written here.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">namelookup_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">connect_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">appconnect_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">pretransfer_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">starttransfer_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">total_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">redirect_time</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
+    <span class="comment">// An overview of the six time values (taken from the curl documentation):
+    //
+    // curl_easy_perform()
+    //     |
+    //     |--NAMELOOKUP
+    //     |--|--CONNECT
+    //     |--|--|--APPCONNECT
+    //     |--|--|--|--PRETRANSFER
+    //     |--|--|--|--|--STARTTRANSFER
+    //     |--|--|--|--|--|--TOTAL
+    //     |--|--|--|--|--|--REDIRECT
+    //
+    // The numbers we expose in the API are a little more &quot;high-level&quot; than the
+    // ones written here.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) namelookup_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) connect_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) appconnect_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) pretransfer_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) starttransfer_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) total_time: AtomicCell&lt;f64&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) redirect_time: AtomicCell&lt;f64&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Metrics</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="ident">Arc::default</span>(),
+<span class="kw">impl </span>Metrics {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            inner: Arc::default(),
         }
     }
 
-    <span class="doccomment">/// Number of bytes uploaded / estimated total.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">u64</span>, <span class="ident">u64</span>) {
+    <span class="doccomment">/// Number of bytes uploaded / estimated total.
+    </span><span class="kw">pub fn </span>upload_progress(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u64, u64) {
         (
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_progress</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_total</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
+            <span class="self">self</span>.inner.upload_progress.load() <span class="kw">as </span>u64,
+            <span class="self">self</span>.inner.upload_total.load() <span class="kw">as </span>u64,
         )
     }
 
-    <span class="doccomment">/// Average upload speed so far in bytes/second.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upload_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">f64</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">upload_speed</span>.<span class="ident">load</span>()
+    <span class="doccomment">/// Average upload speed so far in bytes/second.
+    </span><span class="kw">pub fn </span>upload_speed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; f64 {
+        <span class="self">self</span>.inner.upload_speed.load()
     }
 
-    <span class="doccomment">/// Number of bytes downloaded / estimated total.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_progress</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">u64</span>, <span class="ident">u64</span>) {
+    <span class="doccomment">/// Number of bytes downloaded / estimated total.
+    </span><span class="kw">pub fn </span>download_progress(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u64, u64) {
         (
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_progress</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_total</span>.<span class="ident">load</span>() <span class="kw">as</span> <span class="ident">u64</span>,
+            <span class="self">self</span>.inner.download_progress.load() <span class="kw">as </span>u64,
+            <span class="self">self</span>.inner.download_total.load() <span class="kw">as </span>u64,
         )
     }
 
-    <span class="doccomment">/// Average download speed so far in bytes/second.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">download_speed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">f64</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">download_speed</span>.<span class="ident">load</span>()
+    <span class="doccomment">/// Average download speed so far in bytes/second.
+    </span><span class="kw">pub fn </span>download_speed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; f64 {
+        <span class="self">self</span>.inner.download_speed.load()
     }
 
-    <span class="doccomment">/// Get the total time from the start of the request until DNS name</span>
-    <span class="doccomment">/// resolving was completed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_lookup_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>())
+    <span class="doccomment">/// Get the total time from the start of the request until DNS name
+    /// resolving was completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>name_lookup_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(<span class="self">self</span>.inner.namelookup_time.load())
     }
 
-    <span class="doccomment">/// Get the amount of time taken to establish a connection to the server</span>
-    <span class="doccomment">/// (not including TLS connection time).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(
-            (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">namelookup_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
+    <span class="doccomment">/// Get the amount of time taken to establish a connection to the server
+    /// (not including TLS connection time).
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>connect_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(
+            (<span class="self">self</span>.inner.connect_time.load() - <span class="self">self</span>.inner.namelookup_time.load()).max(<span class="number">0f64</span>),
         )
     }
 
-    <span class="doccomment">/// Get the amount of time spent on TLS handshakes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secure_connect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="kw">let</span> <span class="ident">app_connect_time</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">appconnect_time</span>.<span class="ident">load</span>();
+    <span class="doccomment">/// Get the amount of time spent on TLS handshakes.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>secure_connect_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        <span class="kw">let </span>app_connect_time = <span class="self">self</span>.inner.appconnect_time.load();
 
-        <span class="kw">if</span> <span class="ident">app_connect_time</span> <span class="op">&gt;</span> <span class="number">0f64</span> {
-            <span class="ident">Duration::from_secs_f64</span>(<span class="ident">app_connect_time</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">connect_time</span>.<span class="ident">load</span>())
-        } <span class="kw">else</span> {
-            <span class="ident">Duration::new</span>(<span class="number">0</span>, <span class="number">0</span>)
+        <span class="kw">if </span>app_connect_time &gt; <span class="number">0f64 </span>{
+            Duration::from_secs_f64(app_connect_time - <span class="self">self</span>.inner.connect_time.load())
+        } <span class="kw">else </span>{
+            Duration::new(<span class="number">0</span>, <span class="number">0</span>)
         }
     }
 
-    <span class="doccomment">/// Get the time it took from the start of the request until the first</span>
-    <span class="doccomment">/// byte is either sent or received.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_start_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>())
+    <span class="doccomment">/// Get the time it took from the start of the request until the first
+    /// byte is either sent or received.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>transfer_start_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(<span class="self">self</span>.inner.starttransfer_time.load())
     }
 
-    <span class="doccomment">/// Get the amount of time spent performing the actual request transfer. The</span>
-    <span class="doccomment">/// &quot;transfer&quot; includes both sending the request and receiving the response.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(
-            (<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">starttransfer_time</span>.<span class="ident">load</span>()).<span class="ident">max</span>(<span class="number">0f64</span>),
+    <span class="doccomment">/// Get the amount of time spent performing the actual request transfer. The
+    /// &quot;transfer&quot; includes both sending the request and receiving the response.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>transfer_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(
+            (<span class="self">self</span>.inner.total_time.load() - <span class="self">self</span>.inner.starttransfer_time.load()).max(<span class="number">0f64</span>),
         )
     }
 
-    <span class="doccomment">/// Get the total time for the entire request. This will continuously</span>
-    <span class="doccomment">/// increase until the entire response body is consumed and completed.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// When a redirect is followed, the time from each request is added</span>
-    <span class="doccomment">/// together.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">total_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">total_time</span>.<span class="ident">load</span>())
+    <span class="doccomment">/// Get the total time for the entire request. This will continuously
+    /// increase until the entire response body is consumed and completed.
+    ///
+    /// When a redirect is followed, the time from each request is added
+    /// together.
+    </span><span class="kw">pub fn </span>total_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(<span class="self">self</span>.inner.total_time.load())
     }
 
-    <span class="doccomment">/// If automatic redirect following is enabled, gets the total time taken</span>
-    <span class="doccomment">/// for all redirection steps including name lookup, connect, pretransfer</span>
-    <span class="doccomment">/// and transfer before final transaction was started.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">redirect_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
-        <span class="ident">Duration::from_secs_f64</span>(<span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">redirect_time</span>.<span class="ident">load</span>())
+    <span class="doccomment">/// If automatic redirect following is enabled, gets the total time taken
+    /// for all redirection steps including name lookup, connect, pretransfer
+    /// and transfer before final transaction was started.
+    </span><span class="kw">pub fn </span>redirect_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        Duration::from_secs_f64(<span class="self">self</span>.inner.redirect_time.load())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Metrics</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Metrics&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;upload_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_progress</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;upload_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">upload_speed</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;download_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">download_progress</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;download_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">download_speed</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;name_lookup_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name_lookup_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;connect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connect_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;secure_connect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secure_connect_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;transfer_start_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transfer_start_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;transfer_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transfer_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;total_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">total_time</span>())
-            .<span class="ident">field</span>(<span class="string">&quot;redirect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">redirect_time</span>())
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Metrics {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;Metrics&quot;</span>)
+            .field(<span class="string">&quot;upload_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.upload_progress())
+            .field(<span class="string">&quot;upload_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.upload_speed())
+            .field(<span class="string">&quot;download_progress&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.download_progress())
+            .field(<span class="string">&quot;download_speed&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.download_speed())
+            .field(<span class="string">&quot;name_lookup_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.name_lookup_time())
+            .field(<span class="string">&quot;connect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.connect_time())
+            .field(<span class="string">&quot;secure_connect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.secure_connect_time())
+            .field(<span class="string">&quot;transfer_start_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transfer_start_time())
+            .field(<span class="string">&quot;transfer_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.transfer_time())
+            .field(<span class="string">&quot;total_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.total_time())
+            .field(<span class="string">&quot;redirect_time&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.redirect_time())
+            .finish()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

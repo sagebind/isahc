@@ -224,229 +224,229 @@
 <span id="222">222</span>
 <span id="223">223</span>
 <span id="224">224</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Configuration for customizing how connections are established and sockets</span>
-<span class="doccomment">//! are opened.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Configuration for customizing how connections are established and sockets
+//! are opened.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SetOpt</span>;
-<span class="kw">use</span> <span class="ident">curl::easy</span>::{<span class="ident">Easy2</span>, <span class="ident">List</span>};
-<span class="kw">use</span> <span class="ident">http::Uri</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryFrom</span>, <span class="ident">fmt</span>, <span class="ident">net::SocketAddr</span>, <span class="ident">str::FromStr</span>};
+</span><span class="kw">use </span><span class="kw">super</span>::SetOpt;
+<span class="kw">use </span>curl::easy::{Easy2, List};
+<span class="kw">use </span>http::Uri;
+<span class="kw">use </span>std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
 
-<span class="doccomment">/// An error which can be returned when parsing a dial address.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DialerParseError</span>(());
+<span class="doccomment">/// An error which can be returned when parsing a dial address.
+</span><span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]</span>
+<span class="kw">pub struct </span>DialerParseError(());
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">DialerParseError</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">fmt</span>.<span class="ident">write_str</span>(<span class="string">&quot;invalid dial address syntax&quot;</span>)
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>DialerParseError {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        fmt.write_str(<span class="string">&quot;invalid dial address syntax&quot;</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::error::Error</span> <span class="kw">for</span> <span class="ident">DialerParseError</span> {}
+<span class="kw">impl </span>std::error::Error <span class="kw">for </span>DialerParseError {}
 
-<span class="doccomment">/// A custom address or dialer for connecting to a host.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A dialer can be created from a URI-like string using [`FromStr`]. The</span>
-<span class="doccomment">/// following URI schemes are supported:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// - `tcp`: Connect to a TCP address and port pair, like `tcp:127.0.0.1:8080`.</span>
-<span class="doccomment">/// - `unix`: Connect to a Unix socket located on the file system, like</span>
-<span class="doccomment">///   `unix:/path/to/my.sock`. This is only supported on Unix.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The [`Default`] dialer uses the hostname and port specified in each request</span>
-<span class="doccomment">/// as normal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Connect to a Unix socket URI:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use isahc::config::Dialer;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # #[cfg(unix)]</span>
-<span class="doccomment">/// let unix_socket = &quot;unix:/path/to/my.sock&quot;.parse::&lt;Dialer&gt;()?;</span>
-<span class="doccomment">/// # Ok::&lt;(), isahc::config::DialerParseError&gt;(())</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Dialer</span>(<span class="ident">Inner</span>);
+<span class="doccomment">/// A custom address or dialer for connecting to a host.
+///
+/// A dialer can be created from a URI-like string using [`FromStr`]. The
+/// following URI schemes are supported:
+///
+/// - `tcp`: Connect to a TCP address and port pair, like `tcp:127.0.0.1:8080`.
+/// - `unix`: Connect to a Unix socket located on the file system, like
+///   `unix:/path/to/my.sock`. This is only supported on Unix.
+///
+/// The [`Default`] dialer uses the hostname and port specified in each request
+/// as normal.
+///
+/// # Examples
+///
+/// Connect to a Unix socket URI:
+///
+/// ```
+/// use isahc::config::Dialer;
+///
+/// # #[cfg(unix)]
+/// let unix_socket = &quot;unix:/path/to/my.sock&quot;.parse::&lt;Dialer&gt;()?;
+/// # Ok::&lt;(), isahc::config::DialerParseError&gt;(())
+/// ```
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>Dialer(Inner);
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">enum</span> <span class="ident">Inner</span> {
-    <span class="ident">Default</span>,
+<span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]</span>
+<span class="kw">enum </span>Inner {
+    Default,
 
-    <span class="ident">IpSocket</span>(<span class="ident">String</span>),
+    IpSocket(String),
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="ident">UnixSocket</span>(<span class="ident">std::path::PathBuf</span>),
+    <span class="attribute">#[cfg(unix)]</span>
+    UnixSocket(std::path::PathBuf),
 }
 
-<span class="kw">impl</span> <span class="ident">Dialer</span> {
-    <span class="doccomment">/// Connect to the given IP socket.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Any value that can be converted into a [`SocketAddr`] can be given as an</span>
-    <span class="doccomment">/// argument; check the [`SocketAddr`] documentation for a complete list.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::config::Dialer;</span>
-    <span class="doccomment">/// use std::net::Ipv4Addr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let dialer = Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080));</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::config::Dialer;</span>
-    <span class="doccomment">/// use std::net::SocketAddr;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let dialer = Dialer::ip_socket(&quot;0.0.0.0:8765&quot;.parse::&lt;SocketAddr&gt;()?);</span>
-    <span class="doccomment">/// # Ok::&lt;(), std::net::AddrParseError&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ip_socket</span>(<span class="ident">addr</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// Create a string in the format CURLOPT_CONNECT_TO expects.</span>
-        <span class="self">Self</span>(<span class="ident">Inner::IpSocket</span>(<span class="macro">format!</span>(<span class="string">&quot;::{}&quot;</span>, <span class="ident">addr</span>.<span class="ident">into</span>())))
+<span class="kw">impl </span>Dialer {
+    <span class="doccomment">/// Connect to the given IP socket.
+    ///
+    /// Any value that can be converted into a [`SocketAddr`] can be given as an
+    /// argument; check the [`SocketAddr`] documentation for a complete list.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::Dialer;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let dialer = Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080));
+    /// ```
+    ///
+    /// ```
+    /// use isahc::config::Dialer;
+    /// use std::net::SocketAddr;
+    ///
+    /// let dialer = Dialer::ip_socket(&quot;0.0.0.0:8765&quot;.parse::&lt;SocketAddr&gt;()?);
+    /// # Ok::&lt;(), std::net::AddrParseError&gt;(())
+    /// ```
+    </span><span class="kw">pub fn </span>ip_socket(addr: <span class="kw">impl </span>Into&lt;SocketAddr&gt;) -&gt; <span class="self">Self </span>{
+        <span class="comment">// Create a string in the format CURLOPT_CONNECT_TO expects.
+        </span><span class="self">Self</span>(Inner::IpSocket(<span class="macro">format!</span>(<span class="string">&quot;::{}&quot;</span>, addr.into())))
     }
 
-    <span class="doccomment">/// Connect to a Unix socket described by a file.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The path given is not checked ahead of time for correctness or that the</span>
-    <span class="doccomment">/// socket exists. If the socket is invalid an error will be returned when a</span>
-    <span class="doccomment">/// request attempt is made.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use isahc::config::Dialer;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let docker = Dialer::unix_socket(&quot;/var/run/docker.sock&quot;);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Availability</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function is only available on Unix.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unix_socket</span>(<span class="ident">path</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">std::path::PathBuf</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner::UnixSocket</span>(<span class="ident">path</span>.<span class="ident">into</span>()))
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">Inner::Default</span>)
+    <span class="doccomment">/// Connect to a Unix socket described by a file.
+    ///
+    /// The path given is not checked ahead of time for correctness or that the
+    /// socket exists. If the socket is invalid an error will be returned when a
+    /// request attempt is made.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::config::Dialer;
+    ///
+    /// let docker = Dialer::unix_socket(&quot;/var/run/docker.sock&quot;);
+    /// ```
+    ///
+    /// # Availability
+    ///
+    /// This function is only available on Unix.
+    </span><span class="attribute">#[cfg(unix)]</span>
+    <span class="kw">pub fn </span>unix_socket(path: <span class="kw">impl </span>Into&lt;std::path::PathBuf&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(Inner::UnixSocket(path.into()))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">socket_addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::ip_socket</span>(<span class="ident">socket_addr</span>)
+<span class="kw">impl </span>Default <span class="kw">for </span>Dialer {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(Inner::Default)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">DialerParseError</span>;
+<span class="kw">impl </span>From&lt;SocketAddr&gt; <span class="kw">for </span>Dialer {
+    <span class="kw">fn </span>from(socket_addr: SocketAddr) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::ip_socket(socket_addr)
+    }
+}
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">starts_with</span>(<span class="string">&quot;tcp:&quot;</span>) {
-            <span class="kw">let</span> <span class="ident">addr_str</span> <span class="op">=</span> <span class="ident">s</span>[<span class="number">4</span>..].<span class="ident">trim_start_matches</span>(<span class="string">&#39;/&#39;</span>);
+<span class="kw">impl </span>FromStr <span class="kw">for </span>Dialer {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= DialerParseError;
 
-            <span class="kw">return</span> <span class="ident">addr_str</span>
-                .<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>()
-                .<span class="ident">map</span>(<span class="ident"><span class="self">Self</span>::ip_socket</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">DialerParseError</span>(()));
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">if </span>s.starts_with(<span class="string">&quot;tcp:&quot;</span>) {
+            <span class="kw">let </span>addr_str = s[<span class="number">4</span>..].trim_start_matches(<span class="string">&#39;/&#39;</span>);
+
+            <span class="kw">return </span>addr_str
+                .parse::&lt;SocketAddr&gt;()
+                .map(<span class="self">Self</span>::ip_socket)
+                .map_err(|<span class="kw">_</span>| DialerParseError(()));
         }
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
+        <span class="attribute">#[cfg(unix)]</span>
         {
-            <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">starts_with</span>(<span class="string">&quot;unix:&quot;</span>) {
-                <span class="comment">// URI paths are always absolute.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">std::path::PathBuf::from</span>(<span class="string">&quot;/&quot;</span>);
-                <span class="ident">path</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>[<span class="number">5</span>..].<span class="ident">trim_start_matches</span>(<span class="string">&#39;/&#39;</span>));
+            <span class="kw">if </span>s.starts_with(<span class="string">&quot;unix:&quot;</span>) {
+                <span class="comment">// URI paths are always absolute.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>path = std::path::PathBuf::from(<span class="string">&quot;/&quot;</span>);
+                path.push(<span class="kw-2">&amp;</span>s[<span class="number">5</span>..].trim_start_matches(<span class="string">&#39;/&#39;</span>));
 
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="self">Self</span>(<span class="ident">Inner::UnixSocket</span>(<span class="ident">path</span>)));
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>(Inner::UnixSocket(path)));
             }
         }
 
-        <span class="prelude-val">Err</span>(<span class="ident">DialerParseError</span>(()))
+        <span class="prelude-val">Err</span>(DialerParseError(()))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;_</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">DialerParseError</span>;
+<span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>str&gt; <span class="kw">for </span>Dialer {
+    <span class="kw">type </span>Error = DialerParseError;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">str</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="ident">str</span>.<span class="ident">parse</span>()
+    <span class="kw">fn </span>try_from(str: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        str.parse()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">DialerParseError</span>;
+<span class="kw">impl </span>TryFrom&lt;String&gt; <span class="kw">for </span>Dialer {
+    <span class="kw">type </span>Error = DialerParseError;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">string</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="ident">string</span>.<span class="ident">parse</span>()
+    <span class="kw">fn </span>try_from(string: String) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        string.parse()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Uri</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">DialerParseError</span>;
+<span class="kw">impl </span>TryFrom&lt;Uri&gt; <span class="kw">for </span>Dialer {
+    <span class="kw">type </span>Error = DialerParseError;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">uri</span>: <span class="ident">Uri</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Not the most efficient implementation, but straightforward.</span>
-        <span class="ident">uri</span>.<span class="ident">to_string</span>().<span class="ident">parse</span>()
+    <span class="kw">fn </span>try_from(uri: Uri) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="comment">// Not the most efficient implementation, but straightforward.
+        </span>uri.to_string().parse()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">Dialer</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connect_to</span> <span class="op">=</span> <span class="ident">List::new</span>();
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>Dialer {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>connect_to = List::new();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Inner::IpSocket</span>(<span class="ident">addr</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">connect_to</span>.<span class="ident">append</span>(<span class="ident">addr</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span>Inner::IpSocket(addr) = <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
+            connect_to.append(addr)<span class="question-mark">?</span>;
         }
 
-        <span class="ident">easy</span>.<span class="ident">connect_to</span>(<span class="ident">connect_to</span>)<span class="question-mark">?</span>;
+        easy.connect_to(connect_to)<span class="question-mark">?</span>;
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-        <span class="ident">easy</span>.<span class="ident">unix_socket_path</span>(<span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> {
-            <span class="ident">Inner::UnixSocket</span>(<span class="ident">path</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">path</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+        <span class="attribute">#[cfg(unix)]</span>
+        easy.unix_socket_path(<span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
+            Inner::UnixSocket(path) =&gt; <span class="prelude-val">Some</span>(path),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_tcp_socket_and_port_uri</span>() {
-        <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="string">&quot;tcp:127.0.0.1:1200&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_tcp_socket_and_port_uri() {
+        <span class="kw">let </span>dialer = <span class="string">&quot;tcp:127.0.0.1:1200&quot;</span>.parse::&lt;Dialer&gt;().unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner::IpSocket</span>(<span class="string">&quot;::127.0.0.1:1200&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(dialer.<span class="number">0</span>, Inner::IpSocket(<span class="string">&quot;::127.0.0.1:1200&quot;</span>.into()));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_invalid_tcp_uri</span>() {
-        <span class="string">&quot;tcp:127.0.0.1-1200&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>().<span class="ident">unwrap_err</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_invalid_tcp_uri() {
+        <span class="string">&quot;tcp:127.0.0.1-1200&quot;</span>.parse::&lt;Dialer&gt;().unwrap_err();
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">parse_unix_socket_uri</span>() {
-        <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="string">&quot;unix:/path/to/my.sock&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="attribute">#[cfg(unix)]</span>
+    <span class="kw">fn </span>parse_unix_socket_uri() {
+        <span class="kw">let </span>dialer = <span class="string">&quot;unix:/path/to/my.sock&quot;</span>.parse::&lt;Dialer&gt;().unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner::UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(dialer.<span class="number">0</span>, Inner::UnixSocket(<span class="string">&quot;/path/to/my.sock&quot;</span>.into()));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">unix</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">from_unix_socket_uri</span>() {
-        <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="string">&quot;unix://path/to/my.sock&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">dialer</span> <span class="op">=</span> <span class="ident">Dialer::try_from</span>(<span class="ident">uri</span>).<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="attribute">#[cfg(unix)]</span>
+    <span class="kw">fn </span>from_unix_socket_uri() {
+        <span class="kw">let </span>uri = <span class="string">&quot;unix://path/to/my.sock&quot;</span>.parse::&lt;http::Uri&gt;().unwrap();
+        <span class="kw">let </span>dialer = Dialer::try_from(uri).unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">dialer</span>.<span class="number">0</span>, <span class="ident">Inner::UnixSocket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>.<span class="ident">into</span>()));
+        <span class="macro">assert_eq!</span>(dialer.<span class="number">0</span>, Inner::UnixSocket(<span class="string">&quot;/path/to/my.sock&quot;</span>.into()));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

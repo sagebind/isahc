@@ -530,535 +530,535 @@
 <span id="528">528</span>
 <span id="529">529</span>
 <span id="530">530</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">error::Error</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">str</span>,
-    <span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>},
+</pre><pre class="rust"><code><span class="kw">use </span>std::{
+    error::Error,
+    fmt,
+    str,
+    time::{Duration, SystemTime},
 };
 
-<span class="doccomment">/// An error which can occur when attempting to parse a cookie string.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ParseError</span>(());
+<span class="doccomment">/// An error which can occur when attempting to parse a cookie string.
+</span><span class="attribute">#[derive(Debug)]</span>
+<span class="kw">pub struct </span>ParseError(());
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ParseError</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;invalid cookie string syntax&quot;</span>)
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>ParseError {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;invalid cookie string syntax&quot;</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Error</span> <span class="kw">for</span> <span class="ident">ParseError</span> {}
+<span class="kw">impl </span>Error <span class="kw">for </span>ParseError {}
 
-<span class="doccomment">/// Builder for a [`Cookie`].</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use isahc::cookies::Cookie;</span>
-<span class="doccomment">/// use std::time::{Duration, SystemTime};</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let cookie: Cookie = Cookie::builder(&quot;name&quot;, &quot;value&quot;) // or CookieBuilder::new(&quot;name&quot;, &quot;value&quot;)</span>
-<span class="doccomment">///     .domain(&quot;example.com&quot;)</span>
-<span class="doccomment">///     .path(&quot;/&quot;)</span>
-<span class="doccomment">///     .secure(true)</span>
-<span class="doccomment">///     .expiration(SystemTime::now() + Duration::from_secs(30 * 60))</span>
-<span class="doccomment">///     .build()</span>
-<span class="doccomment">///     .unwrap();</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">must_use</span> <span class="op">=</span> <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CookieBuilder</span> {
-    <span class="doccomment">/// The name of the cookie.</span>
-    <span class="ident">name</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Builder for a [`Cookie`].
+///
+/// ```rust
+/// use isahc::cookies::Cookie;
+/// use std::time::{Duration, SystemTime};
+///
+/// let cookie: Cookie = Cookie::builder(&quot;name&quot;, &quot;value&quot;) // or CookieBuilder::new(&quot;name&quot;, &quot;value&quot;)
+///     .domain(&quot;example.com&quot;)
+///     .path(&quot;/&quot;)
+///     .secure(true)
+///     .expiration(SystemTime::now() + Duration::from_secs(30 * 60))
+///     .build()
+///     .unwrap();
+/// ```
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
+<span class="kw">pub struct </span>CookieBuilder {
+    <span class="doccomment">/// The name of the cookie.
+    </span>name: String,
 
-    <span class="doccomment">/// The cookie value.</span>
-    <span class="ident">value</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// The cookie value.
+    </span>value: String,
 
-    <span class="doccomment">/// The domain the cookie belongs to.</span>
-    <span class="ident">domain</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The domain the cookie belongs to.
+    </span>domain: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// A path prefix that this cookie belongs to.</span>
-    <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A path prefix that this cookie belongs to.
+    </span>path: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).</span>
-    <span class="ident">secure</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).
+    </span>secure: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 
-    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session</span>
-    <span class="doccomment">/// cookie that expires when the current client session ends.</span>
-    <span class="ident">expiration</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
+    </span>expiration: <span class="prelude-ty">Option</span>&lt;SystemTime&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">CookieBuilder</span> {
-    <span class="doccomment">/// Create a new cookie builder with a given name and value.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">name</span>: <span class="ident">N</span>, <span class="ident">value</span>: <span class="ident">V</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">N</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">V</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>CookieBuilder {
+    <span class="doccomment">/// Create a new cookie builder with a given name and value.
+    </span><span class="attribute">#[allow(unused)]</span>
+    <span class="kw">pub fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>N: Into&lt;String&gt;,
+        V: Into&lt;String&gt;,
     {
-        <span class="self">Self</span> {
-            <span class="ident">name</span>: <span class="ident">name</span>.<span class="ident">into</span>(),
-            <span class="ident">value</span>: <span class="ident">value</span>.<span class="ident">into</span>(),
-            <span class="ident">domain</span>: <span class="prelude-val">None</span>,
-            <span class="ident">path</span>: <span class="prelude-val">None</span>,
-            <span class="ident">secure</span>: <span class="prelude-val">None</span>,
-            <span class="ident">expiration</span>: <span class="prelude-val">None</span>,
+        <span class="self">Self </span>{
+            name: name.into(),
+            value: value.into(),
+            domain: <span class="prelude-val">None</span>,
+            path: <span class="prelude-val">None</span>,
+            secure: <span class="prelude-val">None</span>,
+            expiration: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Sets the domain the cookie belongs to.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that the domain will be preserved exactly as supplied. If the</span>
-    <span class="doccomment">/// string has a `.` prefix that should be ignored (such as allowed by the</span>
-    <span class="doccomment">/// `Set-Cookie` HTTP header), then you must remove it manually first.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">domain</span>: <span class="ident">S</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Sets the domain the cookie belongs to.
+    ///
+    /// Note that the domain will be preserved exactly as supplied. If the
+    /// string has a `.` prefix that should be ignored (such as allowed by the
+    /// `Set-Cookie` HTTP header), then you must remove it manually first.
+    </span><span class="kw">pub fn </span>domain&lt;S&gt;(<span class="kw-2">mut </span><span class="self">self</span>, domain: S) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>S: Into&lt;String&gt;,
     {
-        <span class="self">self</span>.<span class="ident">domain</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">domain</span>.<span class="ident">into</span>());
-        <span class="self">self</span>
-    }
+        <span class="self">self</span>.domain = <span class="prelude-val">Some</span>(domain.into());
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Sets the path prefix that this cookie belongs to.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">path</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">S</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Sets the path prefix that this cookie belongs to.
+    </span><span class="kw">pub fn </span>path&lt;S&gt;(<span class="kw-2">mut </span><span class="self">self</span>, path: S) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>S: Into&lt;String&gt;,
     {
-        <span class="self">self</span>.<span class="ident">path</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>.<span class="ident">into</span>());
-        <span class="self">self</span>
-    }
+        <span class="self">self</span>.path = <span class="prelude-val">Some</span>(path.into());
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secure</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">secure</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">secure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">secure</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).
+    </span><span class="kw">pub fn </span>secure(<span class="kw-2">mut </span><span class="self">self</span>, secure: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.secure = <span class="prelude-val">Some</span>(secure);
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session</span>
-    <span class="doccomment">/// cookie that expires when the current client session ends.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expiration</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">expiration</span>: <span class="ident">T</span>) -&gt; <span class="self">Self</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
+    </span><span class="kw">pub fn </span>expiration&lt;T&gt;(<span class="kw-2">mut </span><span class="self">self</span>, expiration: T) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>T: Into&lt;SystemTime&gt;,
     {
-        <span class="self">self</span>.<span class="ident">expiration</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">expiration</span>.<span class="ident">into</span>());
-        <span class="self">self</span>
-    }
+        <span class="self">self</span>.expiration = <span class="prelude-val">Some</span>(expiration.into());
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Builds the cookie.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if either the name or value given contains illegal</span>
-    <span class="doccomment">/// characters. In practice, only a subset of US-ASCII characters are</span>
-    <span class="doccomment">/// allowed in cookies for maximum compatibility with most web servers.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Cookie</span>, <span class="ident">ParseError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="self">Self</span> {
-            <span class="ident">name</span>,
-            <span class="ident">value</span>,
-            <span class="ident">domain</span>,
-            <span class="ident">path</span>,
-            <span class="ident">secure</span>,
-            <span class="ident">expiration</span>,
-        } <span class="op">=</span> <span class="self">self</span>;
+    <span class="doccomment">/// Builds the cookie.
+    ///
+    /// Returns an error if either the name or value given contains illegal
+    /// characters. In practice, only a subset of US-ASCII characters are
+    /// allowed in cookies for maximum compatibility with most web servers.
+    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Cookie, ParseError&gt; {
+        <span class="kw">let </span><span class="self">Self </span>{
+            name,
+            value,
+            domain,
+            path,
+            secure,
+            expiration,
+        } = <span class="self">self</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">Cookie::new</span>(<span class="ident">name</span>, <span class="ident">value</span>)<span class="question-mark">?</span>;
-        <span class="ident">cookie</span>.<span class="ident">domain</span> <span class="op">=</span> <span class="ident">domain</span>;
-        <span class="ident">cookie</span>.<span class="ident">path</span> <span class="op">=</span> <span class="ident">path</span>;
-        <span class="ident">cookie</span>.<span class="ident">expiration</span> <span class="op">=</span> <span class="ident">expiration</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>cookie = Cookie::new(name, value)<span class="question-mark">?</span>;
+        cookie.domain = domain;
+        cookie.path = path;
+        cookie.expiration = expiration;
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">secure</span>) <span class="op">=</span> <span class="ident">secure</span> {
-            <span class="ident">cookie</span>.<span class="ident">secure</span> <span class="op">=</span> <span class="ident">secure</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(secure) = secure {
+            cookie.secure = secure;
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">cookie</span>)
+        <span class="prelude-val">Ok</span>(cookie)
     }
 }
 
-<span class="doccomment">/// Information stored about an HTTP cookie.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Comparison operators</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// You can use the equals operator to compare the value of a cookie with a string directly for convenience. In other words, this:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```ignore</span>
-<span class="doccomment">/// assert_eq!(cookie.value(), &quot;foo&quot;);</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// is equivalent to this:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```ignore</span>
-<span class="doccomment">/// assert_eq!(cookie, &quot;foo&quot;);</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Cookie</span> {
-    <span class="doccomment">/// The name of the cookie.</span>
-    <span class="ident">name</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Information stored about an HTTP cookie.
+///
+/// # Comparison operators
+///
+/// You can use the equals operator to compare the value of a cookie with a string directly for convenience. In other words, this:
+///
+/// ```ignore
+/// assert_eq!(cookie.value(), &quot;foo&quot;);
+/// ```
+///
+/// is equivalent to this:
+///
+/// ```ignore
+/// assert_eq!(cookie, &quot;foo&quot;);
+/// ```
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>Cookie {
+    <span class="doccomment">/// The name of the cookie.
+    </span>name: String,
 
-    <span class="doccomment">/// The cookie value.</span>
-    <span class="ident">value</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// The cookie value.
+    </span>value: String,
 
-    <span class="doccomment">/// The domain the cookie belongs to.</span>
-    <span class="ident">domain</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The domain the cookie belongs to.
+    </span>domain: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// A path prefix that this cookie belongs to.</span>
-    <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A path prefix that this cookie belongs to.
+    </span>path: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).</span>
-    <span class="ident">secure</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// True if the cookie is marked as secure (limited in scope to HTTPS).
+    </span>secure: bool,
 
-    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session</span>
-    <span class="doccomment">/// cookie that expires when the current client session ends.</span>
-    <span class="ident">expiration</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SystemTime</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Time when this cookie expires. If not present, then this is a session
+    /// cookie that expires when the current client session ends.
+    </span>expiration: <span class="prelude-ty">Option</span>&lt;SystemTime&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Cookie</span> {
-    <span class="doccomment">/// Create a new cookie with a given name and value.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if either the name or value given contains illegal</span>
-    <span class="doccomment">/// characters. In practice, only a subset of US-ASCII characters are</span>
-    <span class="doccomment">/// allowed in cookies for maximum compatibility with most web servers.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">name</span>: <span class="ident">N</span>, <span class="ident">value</span>: <span class="ident">V</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ParseError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">N</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">V</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>Cookie {
+    <span class="doccomment">/// Create a new cookie with a given name and value.
+    ///
+    /// Returns an error if either the name or value given contains illegal
+    /// characters. In practice, only a subset of US-ASCII characters are
+    /// allowed in cookies for maximum compatibility with most web servers.
+    </span><span class="attribute">#[allow(unused)]</span>
+    <span class="kw">fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ParseError&gt;
+    <span class="kw">where
+        </span>N: Into&lt;String&gt;,
+        V: Into&lt;String&gt;,
     {
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">into</span>();
+        <span class="kw">let </span>name = name.into();
+        <span class="kw">let </span>value = value.into();
 
-        <span class="comment">// Validate the characters of the name and value.</span>
-        <span class="kw">if</span> <span class="ident">is_valid_token</span>(<span class="ident">name</span>.<span class="ident">as_bytes</span>()) <span class="op">&amp;&amp;</span> <span class="ident">is_valid_cookie_value</span>(<span class="ident">value</span>.<span class="ident">as_bytes</span>()) {
-            <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-                <span class="ident">name</span>,
-                <span class="ident">value</span>,
-                <span class="ident">domain</span>: <span class="prelude-val">None</span>,
-                <span class="ident">path</span>: <span class="prelude-val">None</span>,
-                <span class="ident">secure</span>: <span class="bool-val">false</span>,
-                <span class="ident">expiration</span>: <span class="prelude-val">None</span>,
+        <span class="comment">// Validate the characters of the name and value.
+        </span><span class="kw">if </span>is_valid_token(name.as_bytes()) &amp;&amp; is_valid_cookie_value(value.as_bytes()) {
+            <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+                name,
+                value,
+                domain: <span class="prelude-val">None</span>,
+                path: <span class="prelude-val">None</span>,
+                secure: <span class="bool-val">false</span>,
+                expiration: <span class="prelude-val">None</span>,
             })
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ParseError</span>(()))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(ParseError(()))
         }
     }
 
-    <span class="doccomment">/// Create a new cookie builder with a given name and value.</span>
-    <span class="doccomment">/// See [`CookieBuilder::new`] for an example.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span><span class="op">&lt;</span><span class="ident">N</span>, <span class="ident">V</span><span class="op">&gt;</span>(<span class="ident">name</span>: <span class="ident">N</span>, <span class="ident">value</span>: <span class="ident">V</span>) -&gt; <span class="ident">CookieBuilder</span>
-    <span class="kw">where</span>
-        <span class="ident">N</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">V</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Create a new cookie builder with a given name and value.
+    /// See [`CookieBuilder::new`] for an example.
+    </span><span class="attribute">#[allow(unused)]</span>
+    <span class="kw">pub fn </span>builder&lt;N, V&gt;(name: N, value: V) -&gt; CookieBuilder
+    <span class="kw">where
+        </span>N: Into&lt;String&gt;,
+        V: Into&lt;String&gt;,
     {
-        <span class="ident">CookieBuilder::new</span>(<span class="ident">name</span>, <span class="ident">value</span>)
+        CookieBuilder::new(name, value)
     }
 
-    <span class="doccomment">/// Parse a cookie from a cookie string, as defined in [RFC 6265, section</span>
-    <span class="doccomment">/// 4.2.1](https://tools.ietf.org/html/rfc6265#section-4.2.1). This can be</span>
-    <span class="doccomment">/// used to parse `Set-Cookie` header values, but not `Cookie` header</span>
-    <span class="doccomment">/// values, which follow a slightly different syntax.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the given value is not a valid cookie string, an error is returned.</span>
-    <span class="doccomment">/// Note that unknown attributes do not cause a parsing error, and are</span>
-    <span class="doccomment">/// simply ignored (as per [RFC 6265, section</span>
-    <span class="doccomment">/// 4.1.2](https://tools.ietf.org/html/rfc6265#section-4.1.2)).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">header</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ParseError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">AsRef</span><span class="op">&lt;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span>,
+    <span class="doccomment">/// Parse a cookie from a cookie string, as defined in [RFC 6265, section
+    /// 4.2.1](https://tools.ietf.org/html/rfc6265#section-4.2.1). This can be
+    /// used to parse `Set-Cookie` header values, but not `Cookie` header
+    /// values, which follow a slightly different syntax.
+    ///
+    /// If the given value is not a valid cookie string, an error is returned.
+    /// Note that unknown attributes do not cause a parsing error, and are
+    /// simply ignored (as per [RFC 6265, section
+    /// 4.1.2](https://tools.ietf.org/html/rfc6265#section-4.1.2)).
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse&lt;T&gt;(header: T) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ParseError&gt;
+    <span class="kw">where
+        </span>T: AsRef&lt;[u8]&gt;,
     {
-        <span class="ident"><span class="self">Self</span>::parse_impl</span>(<span class="ident">header</span>.<span class="ident">as_ref</span>())
+        <span class="self">Self</span>::parse_impl(header.as_ref())
     }
 
-    <span class="doccomment">/// Get the name of the cookie.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>
+    <span class="doccomment">/// Get the name of the cookie.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.name
     }
 
-    <span class="doccomment">/// Get the value of the cookie.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+    <span class="doccomment">/// Get the value of the cookie.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.value
     }
 
-    <span class="doccomment">/// Get the domain of the cookie, if specified.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">domain</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">as_deref</span>()
+    <span class="doccomment">/// Get the domain of the cookie, if specified.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="self">self</span>.domain.as_deref()
     }
 
-    <span class="doccomment">/// Get the path of the cookie, if specified.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">as_deref</span>()
+    <span class="doccomment">/// Get the path of the cookie, if specified.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="self">self</span>.path.as_deref()
     }
 
-    <span class="doccomment">/// Get whether this cookie was marked as being secure only. If `true`, this</span>
-    <span class="doccomment">/// cookie will only be sent to the server for HTTPS requests.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_secure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">secure</span>
+    <span class="doccomment">/// Get whether this cookie was marked as being secure only. If `true`, this
+    /// cookie will only be sent to the server for HTTPS requests.
+    </span><span class="attribute">#[inline]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_secure(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.secure
     }
 
-    <span class="doccomment">/// Get whether this cookie should be persisted across sessions.</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_persistent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">expiration</span>.<span class="ident">is_some</span>()
+    <span class="doccomment">/// Get whether this cookie should be persisted across sessions.
+    </span><span class="attribute">#[inline]</span>
+    <span class="attribute">#[allow(unused)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_persistent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.expiration.is_some()
     }
 
-    <span class="doccomment">/// Check if the cookie has expired.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_expired</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">time</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiration</span>.<span class="ident">as_ref</span>() {
-            <span class="kw-2">*</span><span class="ident">time</span> <span class="op">&lt;</span> <span class="ident">SystemTime::now</span>()
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
+    <span class="doccomment">/// Check if the cookie has expired.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_expired(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(time) = <span class="self">self</span>.expiration.as_ref() {
+            <span class="kw-2">*</span>time &lt; SystemTime::now()
+        } <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">parse_impl</span>(<span class="ident">header</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ParseError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attributes</span> <span class="op">=</span> <span class="ident">trim_left_ascii</span>(<span class="ident">header</span>)
-            .<span class="ident">split</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">byte</span><span class="op">|</span> <span class="ident">byte</span> <span class="op">==</span> <span class="string">b&#39;;&#39;</span>)
-            .<span class="ident">map</span>(<span class="ident">trim_left_ascii</span>);
+    <span class="kw">fn </span>parse_impl(header: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ParseError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>attributes = trim_left_ascii(header)
+            .split(|<span class="kw-2">&amp;</span>byte| byte == <span class="string">b&#39;;&#39;</span>)
+            .map(trim_left_ascii);
 
-        <span class="kw">let</span> <span class="ident">first_pair</span> <span class="op">=</span> <span class="ident">split_at_first</span>(<span class="ident">attributes</span>.<span class="ident">next</span>().<span class="ident">ok_or</span>(<span class="ident">ParseError</span>(()))<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="string">b&#39;=&#39;</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ParseError</span>(()))<span class="question-mark">?</span>;
+        <span class="kw">let </span>first_pair = split_at_first(attributes.next().ok_or(ParseError(()))<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="string">b&#39;=&#39;</span>)
+            .ok_or(ParseError(()))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">cookie_name</span> <span class="op">=</span> <span class="ident">parse_token</span>(<span class="ident">first_pair</span>.<span class="number">0</span>)<span class="question-mark">?</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">cookie_value</span> <span class="op">=</span> <span class="ident">parse_cookie_value</span>(<span class="ident">first_pair</span>.<span class="number">1</span>)<span class="question-mark">?</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookie_domain</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookie_path</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookie_secure</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookie_expiration</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="kw">let </span>cookie_name = parse_token(first_pair.<span class="number">0</span>)<span class="question-mark">?</span>.into();
+        <span class="kw">let </span>cookie_value = parse_cookie_value(first_pair.<span class="number">1</span>)<span class="question-mark">?</span>.into();
+        <span class="kw">let </span><span class="kw-2">mut </span>cookie_domain = <span class="prelude-val">None</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>cookie_path = <span class="prelude-val">None</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>cookie_secure = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>cookie_expiration = <span class="prelude-val">None</span>;
 
-        <span class="comment">// Look for known attribute names and parse them. Note that there are</span>
-        <span class="comment">// multiple attributes in the spec that we don&#39;t parse right now because we</span>
-        <span class="comment">// do not care about them, including HttpOnly and SameSite.</span>
-        <span class="kw">for</span> <span class="ident">attribute</span> <span class="kw">in</span> <span class="ident">attributes</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>)) <span class="op">=</span> <span class="ident">split_at_first</span>(<span class="ident">attribute</span>, <span class="kw-2">&amp;</span><span class="string">b&#39;=&#39;</span>) {
-                <span class="kw">if</span> <span class="ident">name</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="string">b&quot;Expires&quot;</span>) {
-                    <span class="kw">if</span> <span class="ident">cookie_expiration</span>.<span class="ident">is_none</span>() {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">str::from_utf8</span>(<span class="ident">value</span>) {
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time</span>) <span class="op">=</span> <span class="ident">httpdate::parse_http_date</span>(<span class="ident">value</span>) {
-                                <span class="ident">cookie_expiration</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">time</span>);
+        <span class="comment">// Look for known attribute names and parse them. Note that there are
+        // multiple attributes in the spec that we don&#39;t parse right now because we
+        // do not care about them, including HttpOnly and SameSite.
+        </span><span class="kw">for </span>attribute <span class="kw">in </span>attributes {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((name, value)) = split_at_first(attribute, <span class="kw-2">&amp;</span><span class="string">b&#39;=&#39;</span>) {
+                <span class="kw">if </span>name.eq_ignore_ascii_case(<span class="string">b&quot;Expires&quot;</span>) {
+                    <span class="kw">if </span>cookie_expiration.is_none() {
+                        <span class="kw">if let </span><span class="prelude-val">Ok</span>(value) = str::from_utf8(value) {
+                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(time) = httpdate::parse_http_date(value) {
+                                cookie_expiration = <span class="prelude-val">Some</span>(time);
                             }
                         }
                     }
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">name</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="string">b&quot;Domain&quot;</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">str::from_utf8</span>(<span class="ident">value</span>) {
-                        <span class="ident">cookie_domain</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>.<span class="ident">trim_start_matches</span>(<span class="string">&#39;.&#39;</span>).<span class="ident">to_lowercase</span>());
+                } <span class="kw">else if </span>name.eq_ignore_ascii_case(<span class="string">b&quot;Domain&quot;</span>) {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(value) = str::from_utf8(value) {
+                        cookie_domain = <span class="prelude-val">Some</span>(value.trim_start_matches(<span class="string">&#39;.&#39;</span>).to_lowercase());
                     }
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">name</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="string">b&quot;Max-Age&quot;</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">str::from_utf8</span>(<span class="ident">value</span>) {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">seconds</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">parse</span>() {
-                            <span class="ident">cookie_expiration</span> <span class="op">=</span>
-                                <span class="prelude-val">Some</span>(<span class="ident">SystemTime::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">seconds</span>));
+                } <span class="kw">else if </span>name.eq_ignore_ascii_case(<span class="string">b&quot;Max-Age&quot;</span>) {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(value) = str::from_utf8(value) {
+                        <span class="kw">if let </span><span class="prelude-val">Ok</span>(seconds) = value.parse() {
+                            cookie_expiration =
+                                <span class="prelude-val">Some</span>(SystemTime::now() + Duration::from_secs(seconds));
                         }
                     }
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">name</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="string">b&quot;Path&quot;</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">str::from_utf8</span>(<span class="ident">value</span>) {
-                        <span class="ident">cookie_path</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>.<span class="ident">to_owned</span>());
+                } <span class="kw">else if </span>name.eq_ignore_ascii_case(<span class="string">b&quot;Path&quot;</span>) {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(value) = str::from_utf8(value) {
+                        cookie_path = <span class="prelude-val">Some</span>(value.to_owned());
                     }
                 }
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">attribute</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="string">b&quot;Secure&quot;</span>) {
-                <span class="ident">cookie_secure</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            } <span class="kw">else if </span>attribute.eq_ignore_ascii_case(<span class="string">b&quot;Secure&quot;</span>) {
+                cookie_secure = <span class="bool-val">true</span>;
             }
         }
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">name</span>: <span class="ident">cookie_name</span>,
-            <span class="ident">value</span>: <span class="ident">cookie_value</span>,
-            <span class="ident">secure</span>: <span class="ident">cookie_secure</span>,
-            <span class="ident">expiration</span>: <span class="ident">cookie_expiration</span>,
-            <span class="ident">domain</span>: <span class="ident">cookie_domain</span>,
-            <span class="ident">path</span>: <span class="ident">cookie_path</span>,
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            name: cookie_name,
+            value: cookie_value,
+            secure: cookie_secure,
+            expiration: cookie_expiration,
+            domain: cookie_domain,
+            path: cookie_path,
         })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Cookie</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="op">&amp;&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_str</span>() <span class="op">==</span> <span class="kw-2">*</span><span class="ident">other</span>
+<span class="kw">impl </span>PartialEq&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>Cookie {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: &amp;&amp;str) -&gt; bool {
+        <span class="self">self</span>.value.as_str() == <span class="kw-2">*</span>other
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Cookie</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">value</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">other</span>
+<span class="kw">impl </span>PartialEq&lt;String&gt; <span class="kw">for </span>Cookie {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>String) -&gt; bool {
+        <span class="self">self</span>.value == <span class="kw-2">*</span>other
     }
 }
 
-<span class="comment">// Maybe one day implement FromStr publicly.</span>
-<span class="comment">// impl FromStr for Cookie {</span>
-<span class="comment">//     type Err = ParseError;</span>
+<span class="comment">// Maybe one day implement FromStr publicly.
+// impl FromStr for Cookie {
+//     type Err = ParseError;
 
-<span class="comment">//     fn from_str(s: &amp;str) -&gt; Result&lt;Self, Self::Err&gt; {</span>
-<span class="comment">//         Self::parse(s)</span>
-<span class="comment">//     }</span>
-<span class="comment">// }</span>
+//     fn from_str(s: &amp;str) -&gt; Result&lt;Self, Self::Err&gt; {
+//         Self::parse(s)
+//     }
+// }
 
-<span class="comment">// https://tools.ietf.org/html/rfc6265#section-4.1.1</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="kw">fn</span> <span class="ident">parse_cookie_value</span>(<span class="kw-2">mut</span> <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">ParseError</span><span class="op">&gt;</span> {
-    <span class="comment">// Strip quotes, but only if in a legal pair.</span>
-    <span class="kw">if</span> <span class="ident">bytes</span>.<span class="ident">starts_with</span>(<span class="string">b&quot;\&quot;&quot;</span>) <span class="op">&amp;&amp;</span> <span class="ident">bytes</span>.<span class="ident">ends_with</span>(<span class="string">b&quot;\&quot;&quot;</span>) {
-        <span class="ident">bytes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="number">1</span>..<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>];
+// https://tools.ietf.org/html/rfc6265#section-4.1.1
+</span><span class="attribute">#[allow(unsafe_code)]</span>
+<span class="kw">fn </span>parse_cookie_value(<span class="kw-2">mut </span>bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
+    <span class="comment">// Strip quotes, but only if in a legal pair.
+    </span><span class="kw">if </span>bytes.starts_with(<span class="string">b&quot;\&quot;&quot;</span>) &amp;&amp; bytes.ends_with(<span class="string">b&quot;\&quot;&quot;</span>) {
+        bytes = <span class="kw-2">&amp;</span>bytes[<span class="number">1</span>..bytes.len() - <span class="number">1</span>];
     }
 
-    <span class="comment">// Validate the bytes are all legal cookie octets.</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">is_valid_cookie_value</span>(<span class="ident">bytes</span>) {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParseError</span>(()));
+    <span class="comment">// Validate the bytes are all legal cookie octets.
+    </span><span class="kw">if </span>!is_valid_cookie_value(bytes) {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ParseError(()));
     }
 
-    <span class="comment">// Safety: We know that the given bytes are valid US-ASCII at this point, so</span>
-    <span class="comment">// therefore it is also valid UTF-8.</span>
-    <span class="prelude-val">Ok</span>(<span class="kw">unsafe</span> { <span class="ident">str::from_utf8_unchecked</span>(<span class="ident">bytes</span>) })
+    <span class="comment">// Safety: We know that the given bytes are valid US-ASCII at this point, so
+    // therefore it is also valid UTF-8.
+    </span><span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{ str::from_utf8_unchecked(bytes) })
 }
 
-<span class="comment">// https://tools.ietf.org/html/rfc6265#section-4.1.1</span>
-<span class="kw">fn</span> <span class="ident">is_valid_cookie_value</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span> {
-    <span class="ident">bytes</span>.<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">byte</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">byte</span> {
-        <span class="number">0x21</span> <span class="op">|</span> <span class="number">0x23</span>..<span class="op">=</span><span class="number">0x2B</span> <span class="op">|</span> <span class="number">0x2D</span>..<span class="op">=</span><span class="number">0x3A</span> <span class="op">|</span> <span class="number">0x3C</span>..<span class="op">=</span><span class="number">0x5B</span> <span class="op">|</span> <span class="number">0x5D</span>..<span class="op">=</span><span class="number">0x7E</span> =&gt; <span class="bool-val">true</span>,
-        <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+<span class="comment">// https://tools.ietf.org/html/rfc6265#section-4.1.1
+</span><span class="kw">fn </span>is_valid_cookie_value(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
+    bytes.iter().all(|<span class="kw-2">&amp;</span>byte| <span class="kw">match </span>byte {
+        <span class="number">0x21 </span>| <span class="number">0x23</span>..=<span class="number">0x2B </span>| <span class="number">0x2D</span>..=<span class="number">0x3A </span>| <span class="number">0x3C</span>..=<span class="number">0x5B </span>| <span class="number">0x5D</span>..=<span class="number">0x7E </span>=&gt; <span class="bool-val">true</span>,
+        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
     })
 }
 
-<span class="comment">// https://tools.ietf.org/html/rfc2616#section-2.2</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="kw">fn</span> <span class="ident">parse_token</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">ParseError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">is_valid_token</span>(<span class="ident">bytes</span>) {
-        <span class="comment">// Safety: We know that the given bytes are valid US-ASCII at this</span>
-        <span class="comment">// point, so therefore it is also valid UTF-8.</span>
-        <span class="prelude-val">Ok</span>(<span class="kw">unsafe</span> { <span class="ident">str::from_utf8_unchecked</span>(<span class="ident">bytes</span>) })
-    } <span class="kw">else</span> {
-        <span class="prelude-val">Err</span>(<span class="ident">ParseError</span>(()))
+<span class="comment">// https://tools.ietf.org/html/rfc2616#section-2.2
+</span><span class="attribute">#[allow(unsafe_code)]</span>
+<span class="kw">fn </span>parse_token(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
+    <span class="kw">if </span>is_valid_token(bytes) {
+        <span class="comment">// Safety: We know that the given bytes are valid US-ASCII at this
+        // point, so therefore it is also valid UTF-8.
+        </span><span class="prelude-val">Ok</span>(<span class="kw">unsafe </span>{ str::from_utf8_unchecked(bytes) })
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Err</span>(ParseError(()))
     }
 }
 
-<span class="comment">// https://tools.ietf.org/html/rfc2616#section-2.2</span>
-<span class="kw">fn</span> <span class="ident">is_valid_token</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span> {
-    <span class="kw">const</span> <span class="ident">SEPARATORS</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="string">b&quot;()&lt;&gt;@,;:\\\&quot;/[]?={} \t&quot;</span>;
+<span class="comment">// https://tools.ietf.org/html/rfc2616#section-2.2
+</span><span class="kw">fn </span>is_valid_token(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
+    <span class="kw">const </span>SEPARATORS: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;()&lt;&gt;@,;:\\\&quot;/[]?={} \t&quot;</span>;
 
-    <span class="ident">bytes</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">all</span>(<span class="op">|</span><span class="ident">byte</span><span class="op">|</span> <span class="ident">byte</span>.<span class="ident">is_ascii</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">byte</span>.<span class="ident">is_ascii_control</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">SEPARATORS</span>.<span class="ident">contains</span>(<span class="ident">byte</span>))
+    bytes
+        .iter()
+        .all(|byte| byte.is_ascii() &amp;&amp; !byte.is_ascii_control() &amp;&amp; !SEPARATORS.contains(byte))
 }
 
-<span class="kw">fn</span> <span class="ident">trim_left_ascii</span>(<span class="kw-2">mut</span> <span class="ident">ascii</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-    <span class="kw">while</span> <span class="ident">ascii</span>.<span class="ident">first</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">b&#39; &#39;</span>) {
-        <span class="ident">ascii</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ascii</span>[<span class="number">1</span>..];
+<span class="kw">fn </span>trim_left_ascii(<span class="kw-2">mut </span>ascii: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="kw-2">&amp;</span>[u8] {
+    <span class="kw">while </span>ascii.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">b&#39; &#39;</span>) {
+        ascii = <span class="kw-2">&amp;</span>ascii[<span class="number">1</span>..];
     }
 
-    <span class="ident">ascii</span>
+    ascii
 }
 
-<span class="kw">fn</span> <span class="ident">split_at_first</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">PartialEq</span><span class="op">&gt;</span>(<span class="ident">slice</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">T</span>], <span class="ident">separator</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">T</span>], <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">T</span>])<span class="op">&gt;</span> {
-    <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">slice</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">if</span> <span class="ident">value</span> <span class="op">==</span> <span class="ident">separator</span> {
-            <span class="kw">return</span> <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span><span class="ident">slice</span>[..<span class="ident">i</span>], <span class="kw-2">&amp;</span><span class="ident">slice</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>..]));
+<span class="kw">fn </span>split_at_first&lt;<span class="lifetime">&#39;a</span>, T: PartialEq&gt;(slice: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[T], separator: <span class="kw-2">&amp;</span>T) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[T], <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[T])&gt; {
+    <span class="kw">for </span>(i, value) <span class="kw">in </span>slice.iter().enumerate() {
+        <span class="kw">if </span>value == separator {
+            <span class="kw">return </span><span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>slice[..i], <span class="kw-2">&amp;</span>slice[i + <span class="number">1</span>..]));
         }
     }
 
-    <span class="prelude-val">None</span>
-}
+    <span class="prelude-val">None
+</span>}
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">test_case::test_case</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>test_case::test_case;
 
-    <span class="kw">fn</span> <span class="ident">system_time_timestamp</span>(<span class="ident">time</span>: <span class="kw-2">&amp;</span><span class="ident">SystemTime</span>) -&gt; <span class="ident">u64</span> {
-        <span class="ident">time</span>.<span class="ident">duration_since</span>(<span class="ident">SystemTime::UNIX_EPOCH</span>)
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">as_secs</span>()
+    <span class="kw">fn </span>system_time_timestamp(time: <span class="kw-2">&amp;</span>SystemTime) -&gt; u64 {
+        time.duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;foo&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;foo;=bar&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;bad_name@?=bar&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;bad_value_comma=bar,&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;bad_value_space= bar&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">parse_invalid</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="ident">Cookie::parse</span>(<span class="ident">s</span>).<span class="ident">unwrap_err</span>();
+    <span class="attribute">#[test_case(<span class="string">&quot;foo&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;foo;=bar&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;bad_name@?=bar&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;bad_value_comma=bar,&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;bad_value_space= bar&quot;</span>)]</span>
+    <span class="kw">fn </span>parse_invalid(s: <span class="kw-2">&amp;</span>str) {
+        Cookie::parse(s).unwrap_err();
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;foo=bar&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">r#&quot;foo=&quot;bar&quot;&quot;#</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">parse_simple</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">Cookie::parse</span>(<span class="ident">s</span>).<span class="ident">unwrap</span>();
+    <span class="attribute">#[test_case(<span class="string">&quot;foo=bar&quot;</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">r#&quot;foo=&quot;bar&quot;&quot;#</span>)]</span>
+    <span class="kw">fn </span>parse_simple(s: <span class="kw-2">&amp;</span>str) {
+        <span class="kw">let </span>cookie = Cookie::parse(s).unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">name</span>(), <span class="string">&quot;foo&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">value</span>(), <span class="string">&quot;bar&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">path</span>(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">cookie</span>.<span class="ident">is_secure</span>());
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">cookie</span>.<span class="ident">is_persistent</span>());
+        <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.value(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.path(), <span class="prelude-val">None</span>);
+        <span class="macro">assert!</span>(!cookie.is_secure());
+        <span class="macro">assert!</span>(!cookie.is_persistent());
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_persistent</span>() {
-        <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; max-age=86400&quot;</span>).<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_persistent() {
+        <span class="kw">let </span>cookie = Cookie::parse(<span class="string">&quot;foo=bar; max-age=86400&quot;</span>).unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">name</span>(), <span class="string">&quot;foo&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">value</span>(), <span class="string">&quot;bar&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">path</span>(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">cookie</span>.<span class="ident">is_secure</span>());
-        <span class="macro">assert!</span>(<span class="ident">cookie</span>.<span class="ident">is_persistent</span>());
+        <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.value(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.path(), <span class="prelude-val">None</span>);
+        <span class="macro">assert!</span>(!cookie.is_secure());
+        <span class="macro">assert!</span>(cookie.is_persistent());
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_set_cookie_header_expires</span>() {
-        <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">Cookie::parse</span>(
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_set_cookie_header_expires() {
+        <span class="kw">let </span>cookie = Cookie::parse(
             <span class="string">&quot;foo=bar; path=/sub;Secure; DOMAIN=baz.com;expires=Wed, 21 Oct 2015 07:28:00 GMT&quot;</span>,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">name</span>(), <span class="string">&quot;foo&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">value</span>(), <span class="string">&quot;bar&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">path</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">domain</span>.<span class="ident">as_deref</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
-        <span class="macro">assert!</span>(<span class="ident">cookie</span>.<span class="ident">is_secure</span>());
-        <span class="macro">assert!</span>(<span class="ident">cookie</span>.<span class="ident">is_expired</span>());
+        <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.value(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.path(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
+        <span class="macro">assert_eq!</span>(cookie.domain.as_deref(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
+        <span class="macro">assert!</span>(cookie.is_secure());
+        <span class="macro">assert!</span>(cookie.is_expired());
         <span class="macro">assert_eq!</span>(
-            <span class="ident">cookie</span>.<span class="ident">expiration</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="ident">system_time_timestamp</span>),
+            cookie.expiration.as_ref().map(system_time_timestamp),
             <span class="prelude-val">Some</span>(<span class="number">1_445_412_480</span>)
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_set_cookie_header_max_age</span>() {
-        <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span>
-            <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; path=/sub;Secure; DOMAIN=baz.com; max-age=60&quot;</span>).<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_set_cookie_header_max_age() {
+        <span class="kw">let </span>cookie =
+            Cookie::parse(<span class="string">&quot;foo=bar; path=/sub;Secure; DOMAIN=baz.com; max-age=60&quot;</span>).unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">name</span>(), <span class="string">&quot;foo&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">value</span>(), <span class="string">&quot;bar&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">path</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">domain</span>.<span class="ident">as_deref</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
-        <span class="macro">assert!</span>(<span class="ident">cookie</span>.<span class="ident">is_secure</span>());
-        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">cookie</span>.<span class="ident">is_expired</span>());
+        <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.value(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.path(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
+        <span class="macro">assert_eq!</span>(cookie.domain.as_deref(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
+        <span class="macro">assert!</span>(cookie.is_secure());
+        <span class="macro">assert!</span>(!cookie.is_expired());
         <span class="macro">assert!</span>(
-            <span class="ident">cookie</span>
-                .<span class="ident">expiration</span>
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">duration_since</span>(<span class="ident">SystemTime::now</span>())
-                .<span class="ident">unwrap</span>()
-                <span class="op">&lt;</span><span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="number">60</span>)
+            cookie
+                .expiration
+                .unwrap()
+                .duration_since(SystemTime::now())
+                .unwrap()
+                &lt;= Duration::from_secs(<span class="number">60</span>)
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">create_cookie</span>() {
-        <span class="kw">let</span> <span class="ident">exp</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>create_cookie() {
+        <span class="kw">let </span>exp = SystemTime::now();
 
-        <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">Cookie::builder</span>(<span class="string">&quot;foo&quot;</span>, <span class="string">&quot;bar&quot;</span>)
-            .<span class="ident">domain</span>(<span class="string">&quot;baz.com&quot;</span>)
-            .<span class="ident">path</span>(<span class="string">&quot;/sub&quot;</span>)
-            .<span class="ident">secure</span>(<span class="bool-val">true</span>)
-            .<span class="ident">expiration</span>(<span class="ident">exp</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">unwrap</span>();
+        <span class="kw">let </span>cookie = Cookie::builder(<span class="string">&quot;foo&quot;</span>, <span class="string">&quot;bar&quot;</span>)
+            .domain(<span class="string">&quot;baz.com&quot;</span>)
+            .path(<span class="string">&quot;/sub&quot;</span>)
+            .secure(<span class="bool-val">true</span>)
+            .expiration(exp)
+            .build()
+            .unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">name</span>(), <span class="string">&quot;foo&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">value</span>(), <span class="string">&quot;bar&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">path</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">domain</span>.<span class="ident">as_deref</span>(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
-        <span class="macro">assert!</span>(<span class="ident">cookie</span>.<span class="ident">is_secure</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">cookie</span>.<span class="ident">expiration</span>, <span class="prelude-val">Some</span>(<span class="ident">exp</span>));
+        <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.value(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(cookie.path(), <span class="prelude-val">Some</span>(<span class="string">&quot;/sub&quot;</span>));
+        <span class="macro">assert_eq!</span>(cookie.domain.as_deref(), <span class="prelude-val">Some</span>(<span class="string">&quot;baz.com&quot;</span>));
+        <span class="macro">assert!</span>(cookie.is_secure());
+        <span class="macro">assert_eq!</span>(cookie.expiration, <span class="prelude-val">Some</span>(exp));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

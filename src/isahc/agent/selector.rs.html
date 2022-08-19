@@ -315,135 +315,135 @@
 <span id="313">313</span>
 <span id="314">314</span>
 <span id="315">315</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">curl::multi::Socket</span>;
-<span class="kw">use</span> <span class="ident">polling</span>::{<span class="ident">Event</span>, <span class="ident">Poller</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>},
-    <span class="ident">hash</span>::{<span class="ident">BuildHasherDefault</span>, <span class="ident">Hasher</span>},
-    <span class="ident">io</span>,
-    <span class="ident">sync::Arc</span>,
-    <span class="ident">task::Waker</span>,
-    <span class="ident">time::Duration</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>curl::multi::Socket;
+<span class="kw">use </span>polling::{Event, Poller};
+<span class="kw">use </span>std::{
+    collections::{HashMap, HashSet},
+    hash::{BuildHasherDefault, Hasher},
+    io,
+    sync::Arc,
+    task::Waker,
+    time::Duration,
 };
 
-<span class="doccomment">/// Asynchronous I/O selector for sockets. Used by the agent to wait for network</span>
-<span class="doccomment">/// activity asynchronously, as directed by curl.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Provides an abstraction layer on a bare poller that manages the bookkeeping</span>
-<span class="doccomment">/// of socket registration and translating oneshot registrations into persistent</span>
-<span class="doccomment">/// registrations.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Events are level-triggered, since that is what curl wants.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Selector</span> {
-    <span class="doccomment">/// This is the poller we use to poll for socket activity!</span>
-    <span class="ident">poller</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Poller</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Asynchronous I/O selector for sockets. Used by the agent to wait for network
+/// activity asynchronously, as directed by curl.
+///
+/// Provides an abstraction layer on a bare poller that manages the bookkeeping
+/// of socket registration and translating oneshot registrations into persistent
+/// registrations.
+///
+/// Events are level-triggered, since that is what curl wants.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Selector {
+    <span class="doccomment">/// This is the poller we use to poll for socket activity!
+    </span>poller: Arc&lt;Poller&gt;,
 
-    <span class="doccomment">/// All of the sockets that we have been asked to keep track of.</span>
-    <span class="ident">sockets</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Socket</span>, <span class="ident">Registration</span>, <span class="ident">BuildHasherDefault</span><span class="op">&lt;</span><span class="ident">IntHasher</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// All of the sockets that we have been asked to keep track of.
+    </span>sockets: HashMap&lt;Socket, Registration, BuildHasherDefault&lt;IntHasher&gt;&gt;,
 
-    <span class="doccomment">/// If a socket is currently invalid when it is registered, we put it in this</span>
-    <span class="doccomment">/// set and try to register it again later.</span>
-    <span class="ident">bad_sockets</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Socket</span>, <span class="ident">BuildHasherDefault</span><span class="op">&lt;</span><span class="ident">IntHasher</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// If a socket is currently invalid when it is registered, we put it in this
+    /// set and try to register it again later.
+    </span>bad_sockets: HashSet&lt;Socket, BuildHasherDefault&lt;IntHasher&gt;&gt;,
 
-    <span class="doccomment">/// Socket events that have occurred. We re-use this vec every call for</span>
-    <span class="doccomment">/// efficiency.</span>
-    <span class="ident">events</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Event</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Socket events that have occurred. We re-use this vec every call for
+    /// efficiency.
+    </span>events: Vec&lt;Event&gt;,
 
-    <span class="doccomment">/// Incrementing counter used to deduplicate registration operations.</span>
-    <span class="ident">tick</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Incrementing counter used to deduplicate registration operations.
+    </span>tick: usize,
 }
 
-<span class="doccomment">/// Information stored about each registered socket.</span>
-<span class="kw">struct</span> <span class="ident">Registration</span> {
-    <span class="ident">readable</span>: <span class="ident">bool</span>,
-    <span class="ident">writable</span>: <span class="ident">bool</span>,
-    <span class="ident">tick</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Information stored about each registered socket.
+</span><span class="kw">struct </span>Registration {
+    readable: bool,
+    writable: bool,
+    tick: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">Selector</span> {
-    <span class="doccomment">/// Create a new socket selector.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">poller</span>: <span class="ident">Arc::new</span>(<span class="ident">Poller::new</span>()<span class="question-mark">?</span>),
-            <span class="ident">sockets</span>: <span class="ident">HashMap::with_hasher</span>(<span class="ident">Default::default</span>()),
-            <span class="ident">bad_sockets</span>: <span class="ident">HashSet::with_hasher</span>(<span class="ident">Default::default</span>()),
-            <span class="ident">events</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">tick</span>: <span class="number">0</span>,
+<span class="kw">impl </span>Selector {
+    <span class="doccomment">/// Create a new socket selector.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; io::Result&lt;<span class="self">Self</span>&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            poller: Arc::new(Poller::new()<span class="question-mark">?</span>),
+            sockets: HashMap::with_hasher(Default::default()),
+            bad_sockets: HashSet::with_hasher(Default::default()),
+            events: Vec::new(),
+            tick: <span class="number">0</span>,
         })
     }
 
-    <span class="doccomment">/// Get a task waker that will interrupt this selector whenever it is</span>
-    <span class="doccomment">/// waiting for activity.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">waker</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Waker</span> {
-        <span class="ident">waker_fn::waker_fn</span>({
-            <span class="kw">let</span> <span class="ident">poller_ref</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">poller</span>.<span class="ident">clone</span>();
+    <span class="doccomment">/// Get a task waker that will interrupt this selector whenever it is
+    /// waiting for activity.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Waker {
+        waker_fn::waker_fn({
+            <span class="kw">let </span>poller_ref = <span class="self">self</span>.poller.clone();
 
-            <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">poller_ref</span>.<span class="ident">notify</span>();
+            <span class="kw">move </span>|| {
+                <span class="kw">let _ </span>= poller_ref.notify();
             }
         })
     }
 
-    <span class="doccomment">/// Register a socket with the selector to begin receiving readiness events</span>
-    <span class="doccomment">/// for it.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method can also be used to update/modify the readiness events you</span>
-    <span class="doccomment">/// are interested in for a previously registered socket.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">register</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">socket</span>: <span class="ident">Socket</span>,
-        <span class="ident">readable</span>: <span class="ident">bool</span>,
-        <span class="ident">writable</span>: <span class="ident">bool</span>,
-    ) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">previous</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sockets</span>.<span class="ident">insert</span>(<span class="ident">socket</span>, <span class="ident">Registration</span> {
-            <span class="ident">readable</span>,
-            <span class="ident">writable</span>,
-            <span class="ident">tick</span>: <span class="self">self</span>.<span class="ident">tick</span>,
+    <span class="doccomment">/// Register a socket with the selector to begin receiving readiness events
+    /// for it.
+    ///
+    /// This method can also be used to update/modify the readiness events you
+    /// are interested in for a previously registered socket.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        socket: Socket,
+        readable: bool,
+        writable: bool,
+    ) -&gt; io::Result&lt;()&gt; {
+        <span class="kw">let </span>previous = <span class="self">self</span>.sockets.insert(socket, Registration {
+            readable,
+            writable,
+            tick: <span class="self">self</span>.tick,
         });
 
-        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">previous</span>.<span class="ident">is_some</span>() {
-            <span class="ident">poller_modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poller</span>, <span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>)
-        } <span class="kw">else</span> {
-            <span class="ident">poller_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poller</span>, <span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>)
+        <span class="kw">let </span>result = <span class="kw">if </span>previous.is_some() {
+            poller_modify(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
+        } <span class="kw">else </span>{
+            poller_add(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
         };
 
-        <span class="kw">match</span> <span class="ident">result</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">is_bad_socket_error</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>) =&gt; {
-                <span class="comment">// We&#39;ve been asked to monitor a socket, but the poller thinks</span>
-                <span class="comment">// that the socket is invalid or closed. On occasion, curl will</span>
-                <span class="comment">// give such sockets with the assumption that we will monitor</span>
-                <span class="comment">// them until curl tells us to stop. With stateless pollers such</span>
-                <span class="comment">// as `select(2)` this is not a problem, but most</span>
-                <span class="comment">// high-performance stateless pollers need the socket to be</span>
-                <span class="comment">// valid in order to monitor them.</span>
-                <span class="comment">//</span>
-                <span class="comment">// To get around this problem, we return `Ok` to the caller and</span>
-                <span class="comment">// hold onto this currently invalid socket for later. Whenever</span>
-                <span class="comment">// `poll` is called, we retry registering these sockets in the</span>
-                <span class="comment">// hope that they will eventually become valid.</span>
-                <span class="macro">tracing::debug!</span>(<span class="ident">socket</span>, <span class="ident">error</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;bad socket registered, will try again later&quot;</span>);
-                <span class="self">self</span>.<span class="ident">bad_sockets</span>.<span class="ident">insert</span>(<span class="ident">socket</span>);
+        <span class="kw">match </span>result {
+            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>is_bad_socket_error(<span class="kw-2">&amp;</span>e) =&gt; {
+                <span class="comment">// We&#39;ve been asked to monitor a socket, but the poller thinks
+                // that the socket is invalid or closed. On occasion, curl will
+                // give such sockets with the assumption that we will monitor
+                // them until curl tells us to stop. With stateless pollers such
+                // as `select(2)` this is not a problem, but most
+                // high-performance stateless pollers need the socket to be
+                // valid in order to monitor them.
+                //
+                // To get around this problem, we return `Ok` to the caller and
+                // hold onto this currently invalid socket for later. Whenever
+                // `poll` is called, we retry registering these sockets in the
+                // hope that they will eventually become valid.
+                </span><span class="macro">tracing::debug!</span>(socket, error = <span class="question-mark">?</span>e, <span class="string">&quot;bad socket registered, will try again later&quot;</span>);
+                <span class="self">self</span>.bad_sockets.insert(socket);
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="ident">result</span> =&gt; <span class="ident">result</span>,
+            result =&gt; result,
         }
     }
 
-    <span class="doccomment">/// Remove a socket from the selector and stop receiving events for it.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">deregister</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">socket</span>: <span class="ident">Socket</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="comment">// Remove this socket from our bookkeeping. If we recognize it, also</span>
-        <span class="comment">// remove it from the underlying poller.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">sockets</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">socket</span>).<span class="ident">is_some</span>() {
-            <span class="self">self</span>.<span class="ident">bad_sockets</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">socket</span>);
+    <span class="doccomment">/// Remove a socket from the selector and stop receiving events for it.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deregister(<span class="kw-2">&amp;mut </span><span class="self">self</span>, socket: Socket) -&gt; io::Result&lt;()&gt; {
+        <span class="comment">// Remove this socket from our bookkeeping. If we recognize it, also
+        // remove it from the underlying poller.
+        </span><span class="kw">if </span><span class="self">self</span>.sockets.remove(<span class="kw-2">&amp;</span>socket).is_some() {
+            <span class="self">self</span>.bad_sockets.remove(<span class="kw-2">&amp;</span>socket);
 
-            <span class="comment">// There&#39;s a good chance that the socket has already been closed.</span>
-            <span class="comment">// Depending on the poller implementation, it may have already</span>
-            <span class="comment">// forgotten about this socket (e.g. epoll). Therefore if we get an</span>
-            <span class="comment">// error back complaining that the socket is invalid, we can safely</span>
-            <span class="comment">// ignore it.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">poller</span>.<span class="ident">delete</span>(<span class="ident">socket</span>) {
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">is_bad_socket_error</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>) <span class="op">&amp;&amp;</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">io::ErrorKind::PermissionDenied</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
+            <span class="comment">// There&#39;s a good chance that the socket has already been closed.
+            // Depending on the poller implementation, it may have already
+            // forgotten about this socket (e.g. epoll). Therefore if we get an
+            // error back complaining that the socket is invalid, we can safely
+            // ignore it.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.poller.delete(socket) {
+                <span class="kw">if </span>!is_bad_socket_error(<span class="kw-2">&amp;</span>e) &amp;&amp; e.kind() != io::ErrorKind::PermissionDenied {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
                 }
             }
         }
@@ -451,184 +451,184 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Block until socket activity is detected or a timeout passes.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns `true` if one or more socket events occurred.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="comment">// Since our I/O events are oneshot, make sure we re-register sockets</span>
-        <span class="comment">// with the poller that previously were triggered last time we polled.</span>
-        <span class="comment">//</span>
-        <span class="comment">// We don&#39;t do this immediately after polling because the caller may</span>
-        <span class="comment">// choose to de-register a socket before the next call. That&#39;s why we</span>
-        <span class="comment">// wait until the last minute.</span>
-        <span class="kw">for</span> <span class="ident">event</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">events</span>.<span class="ident">drain</span>(..) {
-            <span class="kw">let</span> <span class="ident">socket</span> <span class="op">=</span> <span class="ident">event</span>.<span class="ident">key</span> <span class="kw">as</span> <span class="ident">Socket</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">registration</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">sockets</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">socket</span>) {
-                <span class="comment">// If the socket was already re-registered this tick, then we</span>
-                <span class="comment">// don&#39;t need to do this.</span>
-                <span class="kw">if</span> <span class="ident">registration</span>.<span class="ident">tick</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">tick</span> {
-                    <span class="ident">poller_modify</span>(
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poller</span>,
-                        <span class="ident">socket</span>,
-                        <span class="ident">registration</span>.<span class="ident">readable</span>,
-                        <span class="ident">registration</span>.<span class="ident">writable</span>,
+    <span class="doccomment">/// Block until socket activity is detected or a timeout passes.
+    ///
+    /// Returns `true` if one or more socket events occurred.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timeout: Duration) -&gt; io::Result&lt;bool&gt; {
+        <span class="comment">// Since our I/O events are oneshot, make sure we re-register sockets
+        // with the poller that previously were triggered last time we polled.
+        //
+        // We don&#39;t do this immediately after polling because the caller may
+        // choose to de-register a socket before the next call. That&#39;s why we
+        // wait until the last minute.
+        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.drain(..) {
+            <span class="kw">let </span>socket = event.key <span class="kw">as </span>Socket;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = <span class="self">self</span>.sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
+                <span class="comment">// If the socket was already re-registered this tick, then we
+                // don&#39;t need to do this.
+                </span><span class="kw">if </span>registration.tick != <span class="self">self</span>.tick {
+                    poller_modify(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.poller,
+                        socket,
+                        registration.readable,
+                        registration.writable,
                     )<span class="question-mark">?</span>;
-                    <span class="ident">registration</span>.<span class="ident">tick</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tick</span>;
+                    registration.tick = <span class="self">self</span>.tick;
                 }
             }
         }
 
-        <span class="comment">// Iterate over sockets that have been registered, but failed to be</span>
-        <span class="comment">// added to the underlying poller temporarily, and retry adding them.</span>
-        <span class="self">self</span>.<span class="ident">bad_sockets</span>.<span class="ident">retain</span>({
-            <span class="kw">let</span> <span class="ident">sockets</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">sockets</span>;
-            <span class="kw">let</span> <span class="ident">poller</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poller</span>;
-            <span class="kw">let</span> <span class="ident">tick</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tick</span>;
+        <span class="comment">// Iterate over sockets that have been registered, but failed to be
+        // added to the underlying poller temporarily, and retry adding them.
+        </span><span class="self">self</span>.bad_sockets.retain({
+            <span class="kw">let </span>sockets = <span class="kw-2">&amp;mut </span><span class="self">self</span>.sockets;
+            <span class="kw">let </span>poller = <span class="kw-2">&amp;</span><span class="self">self</span>.poller;
+            <span class="kw">let </span>tick = <span class="self">self</span>.tick;
 
-            <span class="kw">move</span> <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">socket</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">registration</span>) <span class="op">=</span> <span class="ident">sockets</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">socket</span>) {
-                    <span class="kw">if</span> <span class="ident">registration</span>.<span class="ident">tick</span> <span class="op">!</span><span class="op">=</span> <span class="ident">tick</span> {
-                        <span class="ident">registration</span>.<span class="ident">tick</span> <span class="op">=</span> <span class="ident">tick</span>;
-                        <span class="ident">poller_add</span>(<span class="ident">poller</span>, <span class="ident">socket</span>, <span class="ident">registration</span>.<span class="ident">readable</span>, <span class="ident">registration</span>.<span class="ident">writable</span>)
-                            .<span class="ident">is_err</span>()
-                    } <span class="kw">else</span> {
-                        <span class="bool-val">true</span>
-                    }
-                } <span class="kw">else</span> {
-                    <span class="bool-val">false</span>
-                }
+            <span class="kw">move </span>|<span class="kw-2">&amp;</span>socket| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
+                    <span class="kw">if </span>registration.tick != tick {
+                        registration.tick = tick;
+                        poller_add(poller, socket, registration.readable, registration.writable)
+                            .is_err()
+                    } <span class="kw">else </span>{
+                        <span class="bool-val">true
+                    </span>}
+                } <span class="kw">else </span>{
+                    <span class="bool-val">false
+                </span>}
             }
         });
 
-        <span class="self">self</span>.<span class="ident">tick</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tick</span>.<span class="ident">wrapping_add</span>(<span class="number">1</span>);
+        <span class="self">self</span>.tick = <span class="self">self</span>.tick.wrapping_add(<span class="number">1</span>);
 
-        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is</span>
-        <span class="comment">// reached, or the agent handle interrupts us.</span>
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">poller</span>.<span class="ident">wait</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">events</span>, <span class="prelude-val">Some</span>(<span class="ident">timeout</span>)) {
+        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is
+        // reached, or the agent handle interrupts us.
+        </span><span class="kw">match </span><span class="self">self</span>.poller.wait(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">Some</span>(timeout)) {
             <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">io::ErrorKind::Interrupted</span> =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::Interrupted =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
     }
 
-    <span class="doccomment">/// Get an iterator over the socket events that occurred during the most</span>
-    <span class="doccomment">/// recent call to `poll`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">events</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">Socket</span>, <span class="ident">bool</span>, <span class="ident">bool</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
-        <span class="self">self</span>.<span class="ident">events</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">event</span><span class="op">|</span> (<span class="ident">event</span>.<span class="ident">key</span> <span class="kw">as</span> <span class="ident">Socket</span>, <span class="ident">event</span>.<span class="ident">readable</span>, <span class="ident">event</span>.<span class="ident">writable</span>))
+    <span class="doccomment">/// Get an iterator over the socket events that occurred during the most
+    /// recent call to `poll`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>events(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (Socket, bool, bool)&gt; + <span class="lifetime">&#39;_ </span>{
+        <span class="self">self</span>.events
+            .iter()
+            .map(|event| (event.key <span class="kw">as </span>Socket, event.readable, event.writable))
     }
 }
 
-<span class="kw">fn</span> <span class="ident">poller_add</span>(<span class="ident">poller</span>: <span class="kw-2">&amp;</span><span class="ident">Poller</span>, <span class="ident">socket</span>: <span class="ident">Socket</span>, <span class="ident">readable</span>: <span class="ident">bool</span>, <span class="ident">writable</span>: <span class="ident">bool</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="comment">// If this errors, we retry the operation as a modification instead. This is</span>
-    <span class="comment">// because this new socket might re-use a file descriptor that was</span>
-    <span class="comment">// previously closed, but is still registered with the poller. Retrying the</span>
-    <span class="comment">// operation as a modification is sufficient to handle this.</span>
-    <span class="comment">//</span>
-    <span class="comment">// This is especially common with the epoll backend.</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">poller</span>.<span class="ident">add</span>(<span class="ident">socket</span>, <span class="ident">Event</span> {
-        <span class="ident">key</span>: <span class="ident">socket</span> <span class="kw">as</span> <span class="ident">usize</span>,
-        <span class="ident">readable</span>,
-        <span class="ident">writable</span>,
+<span class="kw">fn </span>poller_add(poller: <span class="kw-2">&amp;</span>Poller, socket: Socket, readable: bool, writable: bool) -&gt; io::Result&lt;()&gt; {
+    <span class="comment">// If this errors, we retry the operation as a modification instead. This is
+    // because this new socket might re-use a file descriptor that was
+    // previously closed, but is still registered with the poller. Retrying the
+    // operation as a modification is sufficient to handle this.
+    //
+    // This is especially common with the epoll backend.
+    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = poller.add(socket, Event {
+        key: socket <span class="kw">as </span>usize,
+        readable,
+        writable,
     }) {
         <span class="macro">tracing::debug!</span>(
             <span class="string">&quot;failed to add interest for socket {}, retrying as a modify: {}&quot;</span>,
-            <span class="ident">socket</span>,
-            <span class="ident">e</span>
+            socket,
+            e
         );
-        <span class="ident">poller</span>.<span class="ident">modify</span>(<span class="ident">socket</span>, <span class="ident">Event</span> {
-            <span class="ident">key</span>: <span class="ident">socket</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">readable</span>,
-            <span class="ident">writable</span>,
+        poller.modify(socket, Event {
+            key: socket <span class="kw">as </span>usize,
+            readable,
+            writable,
         })<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn</span> <span class="ident">poller_modify</span>(
-    <span class="ident">poller</span>: <span class="kw-2">&amp;</span><span class="ident">Poller</span>,
-    <span class="ident">socket</span>: <span class="ident">Socket</span>,
-    <span class="ident">readable</span>: <span class="ident">bool</span>,
-    <span class="ident">writable</span>: <span class="ident">bool</span>,
-) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="comment">// If this errors, we retry the operation as an add instead. This is done</span>
-    <span class="comment">// because epoll is weird.</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">poller</span>.<span class="ident">modify</span>(<span class="ident">socket</span>, <span class="ident">Event</span> {
-        <span class="ident">key</span>: <span class="ident">socket</span> <span class="kw">as</span> <span class="ident">usize</span>,
-        <span class="ident">readable</span>,
-        <span class="ident">writable</span>,
+<span class="kw">fn </span>poller_modify(
+    poller: <span class="kw-2">&amp;</span>Poller,
+    socket: Socket,
+    readable: bool,
+    writable: bool,
+) -&gt; io::Result&lt;()&gt; {
+    <span class="comment">// If this errors, we retry the operation as an add instead. This is done
+    // because epoll is weird.
+    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = poller.modify(socket, Event {
+        key: socket <span class="kw">as </span>usize,
+        readable,
+        writable,
     }) {
         <span class="macro">tracing::debug!</span>(
             <span class="string">&quot;failed to modify interest for socket {}, retrying as an add: {}&quot;</span>,
-            <span class="ident">socket</span>,
-            <span class="ident">e</span>
+            socket,
+            e
         );
-        <span class="ident">poller</span>.<span class="ident">add</span>(<span class="ident">socket</span>, <span class="ident">Event</span> {
-            <span class="ident">key</span>: <span class="ident">socket</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">readable</span>,
-            <span class="ident">writable</span>,
+        poller.add(socket, Event {
+            key: socket <span class="kw">as </span>usize,
+            readable,
+            writable,
         })<span class="question-mark">?</span>;
     }
 
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn</span> <span class="ident">is_bad_socket_error</span>(<span class="ident">error</span>: <span class="kw-2">&amp;</span><span class="ident">io::Error</span>) -&gt; <span class="ident">bool</span> {
-    <span class="comment">// OS-specific error codes that aren&#39;t mapped to an `std::io::ErrorKind`.</span>
-    <span class="kw">const</span> <span class="ident">EBADF</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="number">9</span>;
-    <span class="kw">const</span> <span class="ident">ERROR_INVALID_HANDLE</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="number">6</span>;
-    <span class="kw">const</span> <span class="ident">ERROR_NOT_FOUND</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="number">1168</span>;
+<span class="kw">fn </span>is_bad_socket_error(error: <span class="kw-2">&amp;</span>io::Error) -&gt; bool {
+    <span class="comment">// OS-specific error codes that aren&#39;t mapped to an `std::io::ErrorKind`.
+    </span><span class="kw">const </span>EBADF: i32 = <span class="number">9</span>;
+    <span class="kw">const </span>ERROR_INVALID_HANDLE: i32 = <span class="number">6</span>;
+    <span class="kw">const </span>ERROR_NOT_FOUND: i32 = <span class="number">1168</span>;
 
-    <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">kind</span>() {
-        <span class="comment">// Common error codes std understands.</span>
-        <span class="ident">io::ErrorKind::NotFound</span> <span class="op">|</span> <span class="ident">io::ErrorKind::InvalidInput</span> =&gt; <span class="bool-val">true</span>,
+    <span class="kw">match </span>error.kind() {
+        <span class="comment">// Common error codes std understands.
+        </span>io::ErrorKind::NotFound | io::ErrorKind::InvalidInput =&gt; <span class="bool-val">true</span>,
 
-        <span class="comment">// Check for OS-specific error codes.</span>
-        <span class="kw">_</span> =&gt; <span class="kw">match</span> <span class="ident">error</span>.<span class="ident">raw_os_error</span>() {
-            <span class="comment">// kqueue likes to return EBADF, especially on removal, since it</span>
-            <span class="comment">// automatically removes sockets when they are closed.</span>
-            <span class="prelude-val">Some</span>(<span class="ident">EBADF</span>) <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">unix</span>) =&gt; <span class="bool-val">true</span>,
+        <span class="comment">// Check for OS-specific error codes.
+        </span><span class="kw">_ </span>=&gt; <span class="kw">match </span>error.raw_os_error() {
+            <span class="comment">// kqueue likes to return EBADF, especially on removal, since it
+            // automatically removes sockets when they are closed.
+            </span><span class="prelude-val">Some</span>(EBADF) <span class="kw">if </span><span class="macro">cfg!</span>(unix) =&gt; <span class="bool-val">true</span>,
 
-            <span class="comment">// IOCP can return these in rare circumstances. Typically these just</span>
-            <span class="comment">// indicate that the socket is no longer registered with the</span>
-            <span class="comment">// completion port or was already closed.</span>
-            <span class="prelude-val">Some</span>(<span class="ident">ERROR_INVALID_HANDLE</span>) <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">ERROR_NOT_FOUND</span>) <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">windows</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="comment">// IOCP can return these in rare circumstances. Typically these just
+            // indicate that the socket is no longer registered with the
+            // completion port or was already closed.
+            </span><span class="prelude-val">Some</span>(ERROR_INVALID_HANDLE) | <span class="prelude-val">Some</span>(ERROR_NOT_FOUND) <span class="kw">if </span><span class="macro">cfg!</span>(windows) =&gt; <span class="bool-val">true</span>,
 
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         },
     }
 }
 
-<span class="doccomment">/// Trivial hash function to use for our maps and sets that use file descriptors</span>
-<span class="doccomment">/// as keys.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">IntHasher</span>([<span class="ident">u8</span>; <span class="number">8</span>], <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug_assertions</span>)]</span> <span class="ident">bool</span>);
+<span class="doccomment">/// Trivial hash function to use for our maps and sets that use file descriptors
+/// as keys.
+</span><span class="attribute">#[derive(Default)]</span>
+<span class="kw">struct </span>IntHasher([u8; <span class="number">8</span>], <span class="attribute">#[cfg(debug_assertions)]</span> bool);
 
-<span class="kw">impl</span> <span class="ident">Hasher</span> <span class="kw">for</span> <span class="ident">IntHasher</span> {
-    <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug_assertions</span>)]</span>
+<span class="kw">impl </span>Hasher <span class="kw">for </span>IntHasher {
+    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytes: <span class="kw-2">&amp;</span>[u8]) {
+        <span class="attribute">#[cfg(debug_assertions)]</span>
         {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="number">1</span> {
+            <span class="kw">if </span><span class="self">self</span>.<span class="number">1 </span>{
                 <span class="macro">panic!</span>(<span class="string">&quot;socket hash function can only be written to once&quot;</span>);
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="number">1</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.<span class="number">1 </span>= <span class="bool-val">true</span>;
             }
 
-            <span class="kw">if</span> <span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">8</span> {
+            <span class="kw">if </span>bytes.len() &gt; <span class="number">8 </span>{
                 <span class="macro">panic!</span>(<span class="string">&quot;only a maximum of 8 bytes can be hashed&quot;</span>);
             }
         }
 
-        (<span class="self">self</span>.<span class="number">0</span>[..<span class="ident">bytes</span>.<span class="ident">len</span>()]).<span class="ident">copy_from_slice</span>(<span class="ident">bytes</span>);
+        (<span class="self">self</span>.<span class="number">0</span>[..bytes.len()]).copy_from_slice(bytes);
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">finish</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="ident">u64::from_ne_bytes</span>(<span class="self">self</span>.<span class="number">0</span>)
+    <span class="attribute">#[inline]</span>
+    <span class="kw">fn </span>finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        u64::from_ne_bytes(<span class="self">self</span>.<span class="number">0</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

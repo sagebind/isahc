@@ -111,116 +111,116 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">body</span>::{<span class="ident">AsyncBody</span>, <span class="ident">Body</span>},
-    <span class="ident">client::ResponseFuture</span>,
-    <span class="ident">config</span>::{
-        <span class="ident">request</span>::{<span class="ident">RequestConfig</span>, <span class="ident">WithRequestConfig</span>},
-        <span class="ident">Configurable</span>,
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    body::{AsyncBody, Body},
+    client::ResponseFuture,
+    config::{
+        request::{RequestConfig, WithRequestConfig},
+        Configurable,
     },
-    <span class="ident">error::Error</span>,
+    error::Error,
 };
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
+<span class="kw">use </span>http::{Request, Response};
 
-<span class="doccomment">/// Extension methods on an HTTP request.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RequestExt</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a new request builder with the method, URI, and headers cloned</span>
-    <span class="doccomment">/// from this request.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that third-party extensions are not cloned.</span>
-    <span class="kw">fn</span> <span class="ident">to_builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">http::request::Builder</span>;
+<span class="doccomment">/// Extension methods on an HTTP request.
+</span><span class="kw">pub trait </span>RequestExt&lt;T&gt; {
+    <span class="doccomment">/// Create a new request builder with the method, URI, and headers cloned
+    /// from this request.
+    ///
+    /// Note that third-party extensions are not cloned.
+    </span><span class="kw">fn </span>to_builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; http::request::Builder;
 
-    <span class="doccomment">/// Send the HTTP request synchronously using the default client.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is a convenience method that is equivalent to</span>
-    <span class="doccomment">/// [`send`](crate::send).</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```no_run</span>
-    <span class="doccomment">/// use isahc::{prelude::*, Request};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let response = Request::post(&quot;https://httpbin.org/post&quot;)</span>
-    <span class="doccomment">///     .header(&quot;Content-Type&quot;, &quot;application/json&quot;)</span>
-    <span class="doccomment">///     .body(r#&quot;{</span>
-    <span class="doccomment">///         &quot;speed&quot;: &quot;fast&quot;,</span>
-    <span class="doccomment">///         &quot;cool_name&quot;: true</span>
-    <span class="doccomment">///     }&quot;#)?</span>
-    <span class="doccomment">///     .send()?;</span>
-    <span class="doccomment">/// # Ok::&lt;(), isahc::Error&gt;(())</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">send</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Send the HTTP request synchronously using the default client.
+    ///
+    /// This is a convenience method that is equivalent to
+    /// [`send`](crate::send).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{prelude::*, Request};
+    ///
+    /// let response = Request::post(&quot;https://httpbin.org/post&quot;)
+    ///     .header(&quot;Content-Type&quot;, &quot;application/json&quot;)
+    ///     .body(r#&quot;{
+    ///         &quot;speed&quot;: &quot;fast&quot;,
+    ///         &quot;cool_name&quot;: true
+    ///     }&quot;#)?
+    ///     .send()?;
+    /// # Ok::&lt;(), isahc::Error&gt;(())
+    /// ```
+    </span><span class="kw">fn </span>send(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    <span class="kw">where
+        </span>T: Into&lt;Body&gt;;
 
-    <span class="doccomment">/// Sends the HTTP request asynchronously using the default client.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is a convenience method that is equivalent to</span>
-    <span class="doccomment">/// [`send_async`](crate::send_async).</span>
-    <span class="kw">fn</span> <span class="ident">send_async</span>(<span class="self">self</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Sends the HTTP request asynchronously using the default client.
+    ///
+    /// This is a convenience method that is equivalent to
+    /// [`send_async`](crate::send_async).
+    </span><span class="kw">fn </span>send_async(<span class="self">self</span>) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+    <span class="kw">where
+        </span>T: Into&lt;AsyncBody&gt;;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">RequestExt</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">to_builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">http::request::Builder</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Request::builder</span>()
-            .<span class="ident">method</span>(<span class="self">self</span>.<span class="ident">method</span>().<span class="ident">clone</span>())
-            .<span class="ident">uri</span>(<span class="self">self</span>.<span class="ident">uri</span>().<span class="ident">clone</span>())
-            .<span class="ident">version</span>(<span class="self">self</span>.<span class="ident">version</span>());
+<span class="kw">impl</span>&lt;T&gt; RequestExt&lt;T&gt; <span class="kw">for </span>Request&lt;T&gt; {
+    <span class="kw">fn </span>to_builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; http::request::Builder {
+        <span class="kw">let </span><span class="kw-2">mut </span>builder = Request::builder()
+            .method(<span class="self">self</span>.method().clone())
+            .uri(<span class="self">self</span>.uri().clone())
+            .version(<span class="self">self</span>.version());
 
-        <span class="kw-2">*</span><span class="ident">builder</span>.<span class="ident">headers_mut</span>().<span class="ident">unwrap</span>() <span class="op">=</span> <span class="self">self</span>.<span class="ident">headers</span>().<span class="ident">clone</span>();
+        <span class="kw-2">*</span>builder.headers_mut().unwrap() = <span class="self">self</span>.headers().clone();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">RequestConfig</span><span class="op">&gt;</span>() {
-            <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">config</span>.<span class="ident">clone</span>());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(config) = <span class="self">self</span>.extensions().get::&lt;RequestConfig&gt;() {
+            builder = builder.extension(config.clone());
         }
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
         {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cookie_jar</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span><span class="op">&gt;</span>() {
-                <span class="ident">builder</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">extension</span>(<span class="ident">cookie_jar</span>.<span class="ident">clone</span>());
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(cookie_jar) = <span class="self">self</span>.extensions().get::&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;() {
+                builder = builder.extension(cookie_jar.clone());
             }
         }
 
-        <span class="ident">builder</span>
+        builder
     }
 
-    <span class="kw">fn</span> <span class="ident">send</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>send(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    <span class="kw">where
+        </span>T: Into&lt;Body&gt;,
     {
-        <span class="ident"><span class="kw">crate</span>::send</span>(<span class="self">self</span>)
+        <span class="kw">crate</span>::send(<span class="self">self</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">send_async</span>(<span class="self">self</span>) -&gt; <span class="ident">ResponseFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>send_async(<span class="self">self</span>) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;static</span>&gt;
+    <span class="kw">where
+        </span>T: Into&lt;AsyncBody&gt;,
     {
-        <span class="ident"><span class="kw">crate</span>::send_async</span>(<span class="self">self</span>)
+        <span class="kw">crate</span>::send_async(<span class="self">self</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Configurable</span> <span class="kw">for</span> <span class="ident">http::request::Builder</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_jar</span>(<span class="self">self</span>, <span class="ident">cookie_jar</span>: <span class="ident"><span class="kw">crate</span>::cookies::CookieJar</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">extension</span>(<span class="ident">cookie_jar</span>)
+<span class="kw">impl </span>Configurable <span class="kw">for </span>http::request::Builder {
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
+    <span class="kw">fn </span>cookie_jar(<span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.extension(cookie_jar)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">WithRequestConfig</span> <span class="kw">for</span> <span class="ident">http::request::Builder</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="kw">impl</span> <span class="ident">FnOnce</span>(<span class="kw-2">&amp;mut</span> <span class="ident">RequestConfig</span>)) -&gt; <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">extensions</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extensions_mut</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>) <span class="op">=</span> <span class="ident">extensions</span>.<span class="ident">get_mut</span>() {
-                <span class="ident">f</span>(<span class="ident">config</span>);
-            } <span class="kw">else</span> {
-                <span class="ident">extensions</span>.<span class="ident">insert</span>(<span class="ident">RequestConfig::default</span>());
-                <span class="ident">f</span>(<span class="ident">extensions</span>.<span class="ident">get_mut</span>().<span class="ident">unwrap</span>());
+<span class="kw">impl </span>WithRequestConfig <span class="kw">for </span>http::request::Builder {
+    <span class="attribute">#[inline]</span>
+    <span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>RequestConfig)) -&gt; <span class="self">Self </span>{
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(extensions) = <span class="self">self</span>.extensions_mut() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(config) = extensions.get_mut() {
+                f(config);
+            } <span class="kw">else </span>{
+                extensions.insert(RequestConfig::default());
+                f(extensions.get_mut().unwrap());
             }
         }
 
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

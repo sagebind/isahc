@@ -65,15 +65,15 @@ this in mind when consuming responses and consider handling the response
 body right after you receive it if you are using this option.</p>
 <p>If not set, no timeout will be enforced.</p>
 <h5 id="examples"><a href="#examples">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, Request};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="comment">// This page is too slow and won&#39;t respond in time.</span>
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;https://httpbin.org/delay/10&quot;</span>)
-    .<span class="ident">timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="number">5</span>))
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>
-    .<span class="ident">send</span>()
-    .<span class="ident">expect_err</span>(<span class="string">&quot;page should time out&quot;</span>);</code></pre></div>
+<span class="comment">// This page is too slow and won&#39;t respond in time.
+</span><span class="kw">let </span>response = Request::get(<span class="string">&quot;https://httpbin.org/delay/10&quot;</span>)
+    .timeout(Duration::from_secs(<span class="number">5</span>))
+    .body(())<span class="question-mark">?
+    </span>.send()
+    .expect_err(<span class="string">&quot;page should time out&quot;</span>);</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.connect_timeout" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#91-95">source</a></div><h4 class="code-header">fn <a href="#method.connect_timeout" class="fnname">connect_timeout</a>(self, timeout: <a class="struct" href="https://doc.rust-lang.org/nightly/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set a timeout for establishing connections to a host.</p>
 <p>If not set, a default connect timeout of 300 seconds will be used.</p>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.low_speed_timeout" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#102-106">source</a></div><h4 class="code-header">fn <a href="#method.low_speed_timeout" class="fnname">low_speed_timeout</a>(self, low_speed: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, timeout: <a class="struct" href="https://doc.rust-lang.org/nightly/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Specify a maximum amount of time where transfer rate can go below
@@ -83,38 +83,38 @@ a minimum speed limit. <code>low_speed</code> is that limit in bytes/s.</p>
 server.</p>
 <p>The default is <a href="struct.VersionNegotiation.html#method.latest_compatible" title="VersionNegotiation::latest_compatible"><code>VersionNegotiation::latest_compatible</code></a>.</p>
 <h5 id="examples-1"><a href="#examples-1">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config::VersionNegotiation</span>,
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::VersionNegotiation,
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
 
-<span class="comment">// Never use anything newer than HTTP/1.x for this client.</span>
-<span class="kw">let</span> <span class="ident">http11_client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">version_negotiation</span>(<span class="ident">VersionNegotiation::http11</span>())
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Never use anything newer than HTTP/1.x for this client.
+</span><span class="kw">let </span>http11_client = HttpClient::builder()
+    .version_negotiation(VersionNegotiation::http11())
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// HTTP/2 with prior knowledge.</span>
-<span class="kw">let</span> <span class="ident">http2_client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">version_negotiation</span>(<span class="ident">VersionNegotiation::http2</span>())
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="comment">// HTTP/2 with prior knowledge.
+</span><span class="kw">let </span>http2_client = HttpClient::builder()
+    .version_negotiation(VersionNegotiation::http2())
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.redirect_policy" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#164-168">source</a></div><h4 class="code-header">fn <a href="#method.redirect_policy" class="fnname">redirect_policy</a>(self, policy: <a class="enum" href="enum.RedirectPolicy.html" title="enum isahc::config::RedirectPolicy">RedirectPolicy</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set a policy for automatically following server redirects.</p>
 <p>The default is to not follow redirects.</p>
 <h5 id="examples-2"><a href="#examples-2">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config::RedirectPolicy</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::RedirectPolicy, prelude::<span class="kw-2">*</span>, Request};
 
-<span class="comment">// This URL redirects us to where we want to go.</span>
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;https://httpbin.org/redirect/1&quot;</span>)
-    .<span class="ident">redirect_policy</span>(<span class="ident">RedirectPolicy::Follow</span>)
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>
-    .<span class="ident">send</span>()<span class="question-mark">?</span>;
+<span class="comment">// This URL redirects us to where we want to go.
+</span><span class="kw">let </span>response = Request::get(<span class="string">&quot;https://httpbin.org/redirect/1&quot;</span>)
+    .redirect_policy(RedirectPolicy::Follow)
+    .body(())<span class="question-mark">?
+    </span>.send()<span class="question-mark">?</span>;
 
-<span class="comment">// This URL redirects too much!</span>
-<span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;https://httpbin.org/redirect/10&quot;</span>)
-    .<span class="ident">redirect_policy</span>(<span class="ident">RedirectPolicy::Limit</span>(<span class="number">5</span>))
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>
-    .<span class="ident">send</span>()
-    .<span class="ident">expect_err</span>(<span class="string">&quot;too many redirects&quot;</span>);</code></pre></div>
+<span class="comment">// This URL redirects too much!
+</span><span class="kw">let </span>error = Request::get(<span class="string">&quot;https://httpbin.org/redirect/10&quot;</span>)
+    .redirect_policy(RedirectPolicy::Limit(<span class="number">5</span>))
+    .body(())<span class="question-mark">?
+    </span>.send()
+    .expect_err(<span class="string">&quot;too many redirects&quot;</span>);</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.auto_referer" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#172-176">source</a></div><h4 class="code-header">fn <a href="#method.auto_referer" class="fnname">auto_referer</a>(self) -&gt; Self</h4></div></summary><div class="docblock"><p>Update the <code>Referer</code> header automatically when following redirects.</p>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.automatic_decompression" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#208-212">source</a></div><h4 class="code-header">fn <a href="#method.automatic_decompression" class="fnname">automatic_decompression</a>(self, decompress: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Enable or disable automatic decompression of the response body for
 various compression algorithms as returned by the server in the
@@ -148,52 +148,52 @@ configured.</p>
 <p>The <code>Expect</code> behavior can also be disabled entirely.</p>
 <p>This configuration only takes effect when using HTTP/1.1.</p>
 <h5 id="examples-3"><a href="#examples-3">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
-<span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config::ExpectContinue</span>,
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::time::Duration;
+<span class="kw">use </span>isahc::{
+    config::ExpectContinue,
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
 
-<span class="comment">// Use the default behavior (enabled).</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">expect_continue</span>(<span class="ident">ExpectContinue::enabled</span>())
-    <span class="comment">// or equivalently...</span>
-    .<span class="ident">expect_continue</span>(<span class="ident">ExpectContinue::default</span>())
-    <span class="comment">// or equivalently...</span>
-    .<span class="ident">expect_continue</span>(<span class="bool-val">true</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Use the default behavior (enabled).
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .expect_continue(ExpectContinue::enabled())
+    <span class="comment">// or equivalently...
+    </span>.expect_continue(ExpectContinue::default())
+    <span class="comment">// or equivalently...
+    </span>.expect_continue(<span class="bool-val">true</span>)
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// Customize the timeout if the server doesn&#39;t respond with a 100</span>
-<span class="comment">// (Continue) status.</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">expect_continue</span>(<span class="ident">ExpectContinue::timeout</span>(<span class="ident">Duration::from_millis</span>(<span class="number">200</span>)))
-    <span class="comment">// or equivalently...</span>
-    .<span class="ident">expect_continue</span>(<span class="ident">Duration::from_millis</span>(<span class="number">200</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Customize the timeout if the server doesn&#39;t respond with a 100
+// (Continue) status.
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .expect_continue(ExpectContinue::timeout(Duration::from_millis(<span class="number">200</span>)))
+    <span class="comment">// or equivalently...
+    </span>.expect_continue(Duration::from_millis(<span class="number">200</span>))
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// Disable the Expect header entirely.</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">expect_continue</span>(<span class="ident">ExpectContinue::disabled</span>())
-    <span class="comment">// or equivalently...</span>
-    .<span class="ident">expect_continue</span>(<span class="bool-val">false</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="comment">// Disable the Expect header entirely.
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .expect_continue(ExpectContinue::disabled())
+    <span class="comment">// or equivalently...
+    </span>.expect_continue(<span class="bool-val">false</span>)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.authentication" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#305-309">source</a></div><h4 class="code-header">fn <a href="#method.authentication" class="fnname">authentication</a>(self, authentication: <a class="struct" href="../auth/struct.Authentication.html" title="struct isahc::auth::Authentication">Authentication</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set one or more default HTTP authentication methods to attempt to use
 when authenticating with the server.</p>
 <p>Depending on the authentication schemes enabled, you will also need to
 set credentials to use for authentication using
 <a href="trait.Configurable.html#method.credentials" title="Configurable::credentials"><code>Configurable::credentials</code></a>.</p>
 <h5 id="examples-4"><a href="#examples-4">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    auth::{Authentication, Credentials},
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">authentication</span>(<span class="ident">Authentication::basic</span>() <span class="op">|</span> <span class="ident">Authentication::digest</span>())
-    .<span class="ident">credentials</span>(<span class="ident">Credentials::new</span>(<span class="string">&quot;clark&quot;</span>, <span class="string">&quot;qwerty&quot;</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .authentication(Authentication::basic() | Authentication::digest())
+    .credentials(Credentials::new(<span class="string">&quot;clark&quot;</span>, <span class="string">&quot;qwerty&quot;</span>))
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.credentials" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#316-320">source</a></div><h4 class="code-header">fn <a href="#method.credentials" class="fnname">credentials</a>(self, credentials: <a class="struct" href="../auth/struct.Credentials.html" title="struct isahc::auth::Credentials">Credentials</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set the credentials to use for HTTP authentication.</p>
 <p>This setting will do nothing unless you also set one or more
 authentication methods using <a href="trait.Configurable.html#method.authentication" title="Configurable::authentication"><code>Configurable::authentication</code></a>.</p>
@@ -203,29 +203,29 @@ authentication methods using <a href="trait.Configurable.html#method.authenticat
 <h5 id="examples-5"><a href="#examples-5">Examples</a></h5>
 <p>Bind to an IP address.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">config::NetworkInterface</span>,
-    <span class="ident">HttpClient</span>,
-    <span class="ident">Request</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    prelude::<span class="kw-2">*</span>,
+    config::NetworkInterface,
+    HttpClient,
+    Request,
 };
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+<span class="kw">use </span>std::net::IpAddr;
 
-<span class="comment">// Bind to an IP address.</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">interface</span>(<span class="ident">IpAddr::from</span>([<span class="number">192</span>, <span class="number">168</span>, <span class="number">1</span>, <span class="number">2</span>]))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Bind to an IP address.
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .interface(IpAddr::from([<span class="number">192</span>, <span class="number">168</span>, <span class="number">1</span>, <span class="number">2</span>]))
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// Bind to an interface by name (not supported on Windows).</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">interface</span>(<span class="ident">NetworkInterface::name</span>(<span class="string">&quot;eth0&quot;</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Bind to an interface by name (not supported on Windows).
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .interface(NetworkInterface::name(<span class="string">&quot;eth0&quot;</span>))
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// Reset to using whatever interface the TCP stack finds suitable (the</span>
-<span class="comment">// default).</span>
-<span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;https://example.org&quot;</span>)
-    .<span class="ident">interface</span>(<span class="ident">NetworkInterface::any</span>())
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>;</code></pre></div>
+<span class="comment">// Reset to using whatever interface the TCP stack finds suitable (the
+// default).
+</span><span class="kw">let </span>request = Request::get(<span class="string">&quot;https://example.org&quot;</span>)
+    .interface(NetworkInterface::any())
+    .body(())<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.ip_version" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#389-393">source</a></div><h4 class="code-header">fn <a href="#method.ip_version" class="fnname">ip_version</a>(self, version: <a class="enum" href="enum.IpVersion.html" title="enum isahc::config::IpVersion">IpVersion</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Select a specific IP version when resolving hostnames. If a given
 hostname does not resolve to an IP address of the desired version, then
 the request will fail with a connection error.</p>
@@ -236,29 +236,29 @@ defined in the request URI.</p>
 <h5 id="examples-6"><a href="#examples-6">Examples</a></h5>
 <p>Connecting to a Unix socket:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config::Dialer</span>,
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">Request</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::Dialer,
+    prelude::<span class="kw-2">*</span>,
+    Request,
 };
 
-<span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;http://localhost/containers&quot;</span>)
-    .<span class="ident">dial</span>(<span class="ident">Dialer::unix_socket</span>(<span class="string">&quot;/path/to/my.sock&quot;</span>))
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>request = Request::get(<span class="string">&quot;http://localhost/containers&quot;</span>)
+    .dial(Dialer::unix_socket(<span class="string">&quot;/path/to/my.sock&quot;</span>))
+    .body(())<span class="question-mark">?</span>;</code></pre></div>
 <p>Connecting to a specific Internet socket address:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config::Dialer</span>,
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">Request</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::Dialer,
+    prelude::<span class="kw-2">*</span>,
+    Request,
 };
-<span class="kw">use</span> <span class="ident">std::net::Ipv4Addr</span>;
+<span class="kw">use </span>std::net::Ipv4Addr;
 
-<span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;http://exmaple.org&quot;</span>)
-    <span class="comment">// Actually issue the request to localhost on port 8080. The host</span>
-    <span class="comment">// header will remain unchanged.</span>
-    .<span class="ident">dial</span>(<span class="ident">Dialer::ip_socket</span>((<span class="ident">Ipv4Addr::LOCALHOST</span>, <span class="number">8080</span>)))
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>request = Request::get(<span class="string">&quot;http://exmaple.org&quot;</span>)
+    <span class="comment">// Actually issue the request to localhost on port 8080. The host
+    // header will remain unchanged.
+    </span>.dial(Dialer::ip_socket((Ipv4Addr::LOCALHOST, <span class="number">8080</span>)))
+    .body(())<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.proxy" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#484-488">source</a></div><h4 class="code-header">fn <a href="#method.proxy" class="fnname">proxy</a>(self, proxy: impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a>&gt;&gt;) -&gt; Self</h4></div></summary><div class="docblock"><p>Set a proxy to use for requests.</p>
 <p>The proxy protocol is specified by the URI scheme.</p>
 <ul>
@@ -276,43 +276,43 @@ NSS)</li>
 <h5 id="examples-7"><a href="#examples-7">Examples</a></h5>
 <p>Using <code>http://proxy:80</code> as a proxy:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">proxy</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;http://proxy:80&quot;</span>.<span class="ident">parse</span>()<span class="question-mark">?</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .proxy(<span class="prelude-val">Some</span>(<span class="string">&quot;http://proxy:80&quot;</span>.parse()<span class="question-mark">?</span>))
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 <p>Explicitly disable the use of a proxy:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">proxy</span>(<span class="prelude-val">None</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .proxy(<span class="prelude-val">None</span>)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.proxy_blacklist" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#504-512">source</a></div><h4 class="code-header">fn <a href="#method.proxy_blacklist" class="fnname">proxy_blacklist</a>&lt;I, T&gt;(self, hosts: I) -&gt; Self <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;I: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html" title="trait core::iter::traits::collect::IntoIterator">IntoIterator</a>&lt;Item = T&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,&nbsp;</span></h4></div></summary><div class="docblock"><p>Disable proxy usage for the provided list of hosts.</p>
 <h5 id="examples-8"><a href="#examples-8">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    <span class="comment">// Disable proxy for specified hosts.</span>
-    .<span class="ident">proxy_blacklist</span>(<span class="macro">vec!</span>[<span class="string">&quot;a.com&quot;</span>, <span class="string">&quot;b.org&quot;</span>])
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    <span class="comment">// Disable proxy for specified hosts.
+    </span>.proxy_blacklist(<span class="macro">vec!</span>[<span class="string">&quot;a.com&quot;</span>, <span class="string">&quot;b.org&quot;</span>])
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.proxy_authentication" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#538-542">source</a></div><h4 class="code-header">fn <a href="#method.proxy_authentication" class="fnname">proxy_authentication</a>(self, authentication: <a class="struct" href="../auth/struct.Authentication.html" title="struct isahc::auth::Authentication">Authentication</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set one or more HTTP authentication methods to attempt to use when
 authenticating with a proxy.</p>
 <p>Depending on the authentication schemes enabled, you will also need to
 set credentials to use for authentication using
 <a href="trait.Configurable.html#method.proxy_credentials" title="Configurable::proxy_credentials"><code>Configurable::proxy_credentials</code></a>.</p>
 <h5 id="examples-9"><a href="#examples-9">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">auth</span>::{<span class="ident">Authentication</span>, <span class="ident">Credentials</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    auth::{Authentication, Credentials},
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">proxy</span>(<span class="string">&quot;http://proxy:80&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span>()<span class="question-mark">?</span>)
-    .<span class="ident">proxy_authentication</span>(<span class="ident">Authentication::basic</span>())
-    .<span class="ident">proxy_credentials</span>(<span class="ident">Credentials::new</span>(<span class="string">&quot;clark&quot;</span>, <span class="string">&quot;qwerty&quot;</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .proxy(<span class="string">&quot;http://proxy:80&quot;</span>.parse::&lt;http::Uri&gt;()<span class="question-mark">?</span>)
+    .proxy_authentication(Authentication::basic())
+    .proxy_credentials(Credentials::new(<span class="string">&quot;clark&quot;</span>, <span class="string">&quot;qwerty&quot;</span>))
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.proxy_credentials" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#550-554">source</a></div><h4 class="code-header">fn <a href="#method.proxy_credentials" class="fnname">proxy_credentials</a>(self, credentials: <a class="struct" href="../auth/struct.Credentials.html" title="struct isahc::auth::Credentials">Credentials</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set the credentials to use for proxy authentication.</p>
 <p>This setting will do nothing unless you also set one or more proxy
 authentication methods using
@@ -327,32 +327,32 @@ will be returned when attempting to send a request using the offending
 certificate.</p>
 <p>The default value is none.</p>
 <h5 id="examples-10"><a href="#examples-10">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config</span>::{<span class="ident">ClientCertificate</span>, <span class="ident">PrivateKey</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">Request</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::{ClientCertificate, PrivateKey},
+    prelude::<span class="kw-2">*</span>,
+    Request,
 };
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;localhost:3999&quot;</span>)
-    .<span class="ident">ssl_client_certificate</span>(<span class="ident">ClientCertificate::pem_file</span>(
+<span class="kw">let </span>response = Request::get(<span class="string">&quot;localhost:3999&quot;</span>)
+    .ssl_client_certificate(ClientCertificate::pem_file(
         <span class="string">&quot;client.pem&quot;</span>,
-        <span class="ident">PrivateKey::pem_file</span>(<span class="string">&quot;key.pem&quot;</span>, <span class="ident">String::from</span>(<span class="string">&quot;secret&quot;</span>)),
+        PrivateKey::pem_file(<span class="string">&quot;key.pem&quot;</span>, String::from(<span class="string">&quot;secret&quot;</span>)),
     ))
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>
-    .<span class="ident">send</span>()<span class="question-mark">?</span>;</code></pre></div>
+    .body(())<span class="question-mark">?
+    </span>.send()<span class="question-mark">?</span>;</code></pre></div>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config</span>::{<span class="ident">ClientCertificate</span>, <span class="ident">PrivateKey</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::{ClientCertificate, PrivateKey},
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">ssl_client_certificate</span>(<span class="ident">ClientCertificate::pem_file</span>(
+<span class="kw">let </span>client = HttpClient::builder()
+    .ssl_client_certificate(ClientCertificate::pem_file(
         <span class="string">&quot;client.pem&quot;</span>,
-        <span class="ident">PrivateKey::pem_file</span>(<span class="string">&quot;key.pem&quot;</span>, <span class="ident">String::from</span>(<span class="string">&quot;secret&quot;</span>)),
+        PrivateKey::pem_file(<span class="string">&quot;key.pem&quot;</span>, String::from(<span class="string">&quot;secret&quot;</span>)),
     ))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.ssl_ca_certificate" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#647-651">source</a></div><h4 class="code-header">fn <a href="#method.ssl_ca_certificate" class="fnname">ssl_ca_certificate</a>(self, certificate: <a class="struct" href="struct.CaCertificate.html" title="struct isahc::config::CaCertificate">CaCertificate</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Set a custom SSL/TLS CA certificate bundle to use for client
 connections.</p>
 <p>The default value is none.</p>
@@ -361,11 +361,11 @@ connections.</p>
 <a href="struct.SslOption.html#associatedconstant.DANGER_ACCEPT_REVOKED_CERTS" title="SslOption::DANGER_ACCEPT_REVOKED_CERTS"><code>SslOption::DANGER_ACCEPT_REVOKED_CERTS</code></a> in order to work depending on
 the contents of your CA bundle.</p>
 <h5 id="examples-11"><a href="#examples-11">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config::CaCertificate</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::CaCertificate, prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">ssl_ca_certificate</span>(<span class="ident">CaCertificate::file</span>(<span class="string">&quot;ca.pem&quot;</span>))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .ssl_ca_certificate(CaCertificate::file(<span class="string">&quot;ca.pem&quot;</span>))
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.ssl_ciphers" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#661-669">source</a></div><h4 class="code-header">fn <a href="#method.ssl_ciphers" class="fnname">ssl_ciphers</a>&lt;I, T&gt;(self, ciphers: I) -&gt; Self <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;I: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html" title="trait core::iter::traits::collect::IntoIterator">IntoIterator</a>&lt;Item = T&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;T: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,&nbsp;</span></h4></div></summary><div class="docblock"><p>Set a list of ciphers to use for SSL/TLS connections.</p>
 <p>The list of valid cipher names is dependent on the underlying SSL/TLS
 engine in use. You can find an up-to-date list of potential cipher names
@@ -381,18 +381,18 @@ options are already the default and do not need to be specified.</p>
 options that alter how certificates are validated can introduce
 significant security vulnerabilities.</p>
 <h5 id="examples-12"><a href="#examples-12">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config::SslOption</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Request</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::SslOption, prelude::<span class="kw-2">*</span>, Request};
 
-<span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">Request::get</span>(<span class="string">&quot;https://badssl.com&quot;</span>)
-    .<span class="ident">ssl_options</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span> <span class="op">|</span> <span class="ident">SslOption::DANGER_ACCEPT_REVOKED_CERTS</span>)
-    .<span class="ident">body</span>(())<span class="question-mark">?</span>
-    .<span class="ident">send</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>response = Request::get(<span class="string">&quot;https://badssl.com&quot;</span>)
+    .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    .body(())<span class="question-mark">?
+    </span>.send()<span class="question-mark">?</span>;</code></pre></div>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config::SslOption</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::SslOption, prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">ssl_options</span>(<span class="ident">SslOption::DANGER_ACCEPT_INVALID_CERTS</span> <span class="op">|</span> <span class="ident">SslOption::DANGER_ACCEPT_REVOKED_CERTS</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="method.title_case_headers" class="method has-srclink"><div class="rightside"><a class="srclink" href="../../src/isahc/config/mod.rs.html#723-727">source</a></div><h4 class="code-header">fn <a href="#method.title_case_headers" class="fnname">title_case_headers</a>(self, enable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) -&gt; Self</h4></div></summary><div class="docblock"><p>Enable or disable sending HTTP header names in Title-Case instead of
 lowercase form.</p>
 <p>This option only affects user-supplied headers and does not affect
@@ -412,4 +412,4 @@ inspected, see the <a href="../struct.Metrics.html"><code>Metrics</code></a> doc
 likely that enabling it will have a small effect on overall throughput.
 Disabling metrics may be necessary for absolute peak performance.</p>
 <p>By default metrics are disabled.</p>
-</div></details></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor"></a></h2><details class="rustdoc-toggle implementors-toggle"><summary><section id="impl-Configurable-for-Builder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/request.rs.html#90-95">source</a></span><a href="#impl-Configurable-for-Builder" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Configurable.html" title="trait isahc::config::Configurable">Configurable</a> for <a class="struct" href="https://docs.rs/http/0.2.8/http/request/struct.Builder.html" title="struct http::request::Builder">Builder</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.cookie_jar" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/request.rs.html#92-94">source</a></span><a href="#method.cookie_jar" class="anchor"></a><h4 class="code-header">fn <a href="#tymethod.cookie_jar" class="fnname">cookie_jar</a>(self, cookie_jar: <a class="struct" href="../cookies/struct.CookieJar.html" title="struct isahc::cookies::CookieJar">CookieJar</a>) -&gt; Self</h4></section></summary><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>cookies</code></strong> only.</div></span></details></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-Configurable-for-HttpClientBuilder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/client.rs.html#486-492">source</a></span><a href="#impl-Configurable-for-HttpClientBuilder" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Configurable.html" title="trait isahc::config::Configurable">Configurable</a> for <a class="struct" href="../struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder">HttpClientBuilder</a></h3></section></div><script type="text/javascript" src="../../implementors/isahc/config/trait.Configurable.js" data-ignore-extern-crates="http" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</div></details></div><h2 id="foreign-impls" class="small-section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor"></a></h2><details class="rustdoc-toggle implementors-toggle"><summary><section id="impl-Configurable-for-Builder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/request.rs.html#90-95">source</a></span><a href="#impl-Configurable-for-Builder" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Configurable.html" title="trait isahc::config::Configurable">Configurable</a> for <a class="struct" href="https://docs.rs/http/0.2.8/http/request/struct.Builder.html" title="struct http::request::Builder">Builder</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.cookie_jar" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/request.rs.html#92-94">source</a></span><a href="#method.cookie_jar" class="anchor"></a><h4 class="code-header">fn <a href="#tymethod.cookie_jar" class="fnname">cookie_jar</a>(self, cookie_jar: <a class="struct" href="../cookies/struct.CookieJar.html" title="struct isahc::cookies::CookieJar">CookieJar</a>) -&gt; Self</h4></section></summary><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>cookies</code></strong> only.</div></span></details></div></details><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-Configurable-for-HttpClientBuilder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../../src/isahc/client.rs.html#486-492">source</a></span><a href="#impl-Configurable-for-HttpClientBuilder" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.Configurable.html" title="trait isahc::config::Configurable">Configurable</a> for <a class="struct" href="../struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder">HttpClientBuilder</a></h3></section></div><script type="text/javascript" src="../../implementors/isahc/config/trait.Configurable.js" data-ignore-extern-crates="http" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

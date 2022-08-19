@@ -31,36 +31,36 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">dns</span>::{<span class="ident">DnsCache</span>, <span class="ident">ResolveMap</span>},
-    <span class="ident">request::SetOpt</span>,
+</pre><pre class="rust"><code><span class="kw">use super</span>::{
+    dns::{DnsCache, ResolveMap},
+    request::SetOpt,
 };
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ClientConfig</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">connection_cache_ttl</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">close_connections</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">dns_cache</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DnsCache</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">dns_resolve</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ResolveMap</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Default)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ClientConfig {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) connection_cache_ttl: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) close_connections: bool,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) dns_cache: <span class="prelude-ty">Option</span>&lt;DnsCache&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) dns_resolve: <span class="prelude-ty">Option</span>&lt;ResolveMap&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">ClientConfig</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ttl</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">connection_cache_ttl</span> {
-            <span class="ident">easy</span>.<span class="ident">maxage_conn</span>(<span class="ident">ttl</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>ClientConfig {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>curl::easy::Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ttl) = <span class="self">self</span>.connection_cache_ttl {
+            easy.maxage_conn(ttl)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cache</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">dns_cache</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">cache</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(cache) = <span class="self">self</span>.dns_cache.as_ref() {
+            cache.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">map</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">dns_resolve</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">map</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(map) = <span class="self">self</span>.dns_resolve.as_ref() {
+            map.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="ident">easy</span>.<span class="ident">forbid_reuse</span>(<span class="self">self</span>.<span class="ident">close_connections</span>)
+        easy.forbid_reuse(<span class="self">self</span>.close_connections)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

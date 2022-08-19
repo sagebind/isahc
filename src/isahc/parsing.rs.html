@@ -202,207 +202,207 @@
 <span id="200">200</span>
 <span id="201">201</span>
 <span id="202">202</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">http</span>::{
-    <span class="ident">header</span>::{<span class="ident">HeaderName</span>, <span class="ident">HeaderValue</span>},
-    <span class="ident">StatusCode</span>,
-    <span class="ident">Version</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>http::{
+    header::{HeaderName, HeaderValue},
+    StatusCode,
+    Version,
 };
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse_status_line</span>(<span class="ident">line</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Version</span>, <span class="ident">StatusCode</span>)<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parts</span> <span class="op">=</span> <span class="ident">line</span>.<span class="ident">split</span>(<span class="ident">u8::is_ascii_whitespace</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_status_line(line: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;(Version, StatusCode)&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>parts = line.split(u8::is_ascii_whitespace);
 
-    <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">parts</span>.<span class="ident">next</span>()<span class="question-mark">?</span> {
-        <span class="string">b&quot;HTTP/3&quot;</span> =&gt; <span class="ident">Version::HTTP_3</span>,
-        <span class="string">b&quot;HTTP/2&quot;</span> =&gt; <span class="ident">Version::HTTP_2</span>,
-        <span class="string">b&quot;HTTP/1.1&quot;</span> =&gt; <span class="ident">Version::HTTP_11</span>,
-        <span class="string">b&quot;HTTP/1.0&quot;</span> =&gt; <span class="ident">Version::HTTP_10</span>,
-        <span class="string">b&quot;HTTP/0.9&quot;</span> =&gt; <span class="ident">Version::HTTP_09</span>,
-        <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
+    <span class="kw">let </span>version = <span class="kw">match </span>parts.next()<span class="question-mark">? </span>{
+        <span class="string">b&quot;HTTP/3&quot; </span>=&gt; Version::HTTP_3,
+        <span class="string">b&quot;HTTP/2&quot; </span>=&gt; Version::HTTP_2,
+        <span class="string">b&quot;HTTP/1.1&quot; </span>=&gt; Version::HTTP_11,
+        <span class="string">b&quot;HTTP/1.0&quot; </span>=&gt; Version::HTTP_10,
+        <span class="string">b&quot;HTTP/0.9&quot; </span>=&gt; Version::HTTP_09,
+        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
     };
 
-    <span class="kw">let</span> <span class="ident">status_code</span> <span class="op">=</span> <span class="ident">parts</span>
-        .<span class="ident">find</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="op">!</span><span class="ident">s</span>.<span class="ident">is_empty</span>())
-        .<span class="ident">map</span>(<span class="ident">StatusCode::from_bytes</span>)<span class="question-mark">?</span>
-        .<span class="ident">ok</span>()<span class="question-mark">?</span>;
+    <span class="kw">let </span>status_code = parts
+        .find(|s| !s.is_empty())
+        .map(StatusCode::from_bytes)<span class="question-mark">?
+        </span>.ok()<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Some</span>((<span class="ident">version</span>, <span class="ident">status_code</span>))
+    <span class="prelude-val">Some</span>((version, status_code))
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse_header</span>(<span class="ident">line</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">HeaderName</span>, <span class="ident">HeaderValue</span>)<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">split_index</span> <span class="op">=</span> <span class="ident">line</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span> <span class="op">==</span> <span class="string">b&#39;:&#39;</span>)<span class="question-mark">?</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_header(line: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;(HeaderName, HeaderValue)&gt; {
+    <span class="kw">let </span>split_index = line.iter().position(|<span class="kw-2">&amp;</span>f| f == <span class="string">b&#39;:&#39;</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">HeaderName::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">line</span>[..<span class="ident">split_index</span>]).<span class="ident">ok</span>()<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">value</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">line</span>[<span class="ident">split_index</span> <span class="op">+</span> <span class="number">1</span>..];
+    <span class="kw">let </span>name = HeaderName::from_bytes(<span class="kw-2">&amp;</span>line[..split_index]).ok()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>value = <span class="kw-2">&amp;</span>line[split_index + <span class="number">1</span>..];
 
-    <span class="comment">// Trim whitespace</span>
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">byte</span>, <span class="ident">right</span>)) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">split_first</span>() {
-        <span class="kw">if</span> <span class="ident">byte</span>.<span class="ident">is_ascii_whitespace</span>() {
-            <span class="ident">value</span> <span class="op">=</span> <span class="ident">right</span>;
-        } <span class="kw">else</span> {
+    <span class="comment">// Trim whitespace
+    </span><span class="kw">while let </span><span class="prelude-val">Some</span>((byte, right)) = value.split_first() {
+        <span class="kw">if </span>byte.is_ascii_whitespace() {
+            value = right;
+        } <span class="kw">else </span>{
             <span class="kw">break</span>;
         }
     }
 
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">byte</span>, <span class="ident">left</span>)) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">split_last</span>() {
-        <span class="kw">if</span> <span class="ident">byte</span>.<span class="ident">is_ascii_whitespace</span>() {
-            <span class="ident">value</span> <span class="op">=</span> <span class="ident">left</span>;
-        } <span class="kw">else</span> {
+    <span class="kw">while let </span><span class="prelude-val">Some</span>((byte, left)) = value.split_last() {
+        <span class="kw">if </span>byte.is_ascii_whitespace() {
+            value = left;
+        } <span class="kw">else </span>{
             <span class="kw">break</span>;
         }
     }
 
-    <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">HeaderValue::from_bytes</span>(<span class="ident">value</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = HeaderValue::from_bytes(value).ok()<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Some</span>((<span class="ident">name</span>, <span class="ident">value</span>))
+    <span class="prelude-val">Some</span>((name, value))
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">header_to_curl_string</span>(
-    <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderName</span>,
-    <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">HeaderValue</span>,
-    <span class="ident">title_case</span>: <span class="ident">bool</span>,
-) -&gt; <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="ident">header_value</span> <span class="op">=</span> <span class="ident">value</span>
-        .<span class="ident">to_str</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;request header value is not valid UTF-8!&quot;</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>header_to_curl_string(
+    name: <span class="kw-2">&amp;</span>HeaderName,
+    value: <span class="kw-2">&amp;</span>HeaderValue,
+    title_case: bool,
+) -&gt; String {
+    <span class="kw">let </span>header_value = value
+        .to_str()
+        .expect(<span class="string">&quot;request header value is not valid UTF-8!&quot;</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">string</span> <span class="op">=</span> <span class="ident">String::new</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>string = String::new();
 
-    <span class="kw">if</span> <span class="ident">title_case</span> {
-        <span class="kw">let</span> <span class="ident">name_bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="ident">name</span>.<span class="ident">as_ref</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">at_start_of_word</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="kw">if </span>title_case {
+        <span class="kw">let </span>name_bytes: <span class="kw-2">&amp;</span>[u8] = name.as_ref();
+        <span class="kw">let </span><span class="kw-2">mut </span>at_start_of_word = <span class="bool-val">true</span>;
 
-        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">byte</span> <span class="kw">in</span> <span class="ident">name_bytes</span> {
-            <span class="kw">if</span> <span class="ident">at_start_of_word</span> {
-                <span class="ident">string</span>.<span class="ident">push</span>(<span class="ident">byte</span>.<span class="ident">to_ascii_uppercase</span>().<span class="ident">into</span>());
-            } <span class="kw">else</span> {
-                <span class="ident">string</span>.<span class="ident">push</span>(<span class="ident">byte</span>.<span class="ident">into</span>());
+        <span class="kw">for </span><span class="kw-2">&amp;</span>byte <span class="kw">in </span>name_bytes {
+            <span class="kw">if </span>at_start_of_word {
+                string.push(byte.to_ascii_uppercase().into());
+            } <span class="kw">else </span>{
+                string.push(byte.into());
             }
 
-            <span class="ident">at_start_of_word</span> <span class="op">=</span> <span class="op">!</span><span class="ident">byte</span>.<span class="ident">is_ascii_alphanumeric</span>();
+            at_start_of_word = !byte.is_ascii_alphanumeric();
         }
-    } <span class="kw">else</span> {
-        <span class="ident">string</span>.<span class="ident">push_str</span>(<span class="ident">name</span>.<span class="ident">as_str</span>());
+    } <span class="kw">else </span>{
+        string.push_str(name.as_str());
     }
 
-    <span class="comment">// libcurl requires a special syntax to set a header with an explicit empty</span>
-    <span class="comment">// value. See https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.</span>
-    <span class="kw">if</span> <span class="ident">header_value</span>.<span class="ident">trim</span>().<span class="ident">is_empty</span>() {
-        <span class="ident">string</span>.<span class="ident">push</span>(<span class="string">&#39;;&#39;</span>);
-    } <span class="kw">else</span> {
-        <span class="ident">string</span>.<span class="ident">push_str</span>(<span class="string">&quot;: &quot;</span>);
-        <span class="ident">string</span>.<span class="ident">push_str</span>(<span class="ident">header_value</span>);
+    <span class="comment">// libcurl requires a special syntax to set a header with an explicit empty
+    // value. See https://curl.haxx.se/libcurl/c/CURLOPT_HTTPHEADER.html.
+    </span><span class="kw">if </span>header_value.trim().is_empty() {
+        string.push(<span class="string">&#39;;&#39;</span>);
+    } <span class="kw">else </span>{
+        string.push_str(<span class="string">&quot;: &quot;</span>);
+        string.push_str(header_value);
     }
 
-    <span class="ident">string</span>
+    string
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_valid_status_line</span>() {
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_valid_status_line() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/0.9  200  \r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="ident">Version::HTTP_09</span>, <span class="ident">StatusCode::OK</span>,))
+            parse_status_line(<span class="string">b&quot;HTTP/0.9  200  \r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((Version::HTTP_09, StatusCode::OK,))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/1.0 500 Internal Server Error\r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="ident">Version::HTTP_10</span>, <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,))
+            parse_status_line(<span class="string">b&quot;HTTP/1.0 500 Internal Server Error\r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((Version::HTTP_10, StatusCode::INTERNAL_SERVER_ERROR,))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/1.1 404 not found \r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="ident">Version::HTTP_11</span>, <span class="ident">StatusCode::NOT_FOUND</span>,))
+            parse_status_line(<span class="string">b&quot;HTTP/1.1 404 not found \r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((Version::HTTP_11, StatusCode::NOT_FOUND,))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/2 200\r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="ident">Version::HTTP_2</span>, <span class="ident">StatusCode::OK</span>,))
+            parse_status_line(<span class="string">b&quot;HTTP/2 200\r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((Version::HTTP_2, StatusCode::OK,))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/3 200\r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="ident">Version::HTTP_3</span>, <span class="ident">StatusCode::OK</span>,))
+            parse_status_line(<span class="string">b&quot;HTTP/3 200\r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((Version::HTTP_3, StatusCode::OK,))
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_invalid_status_line</span>() {
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot; \r\n&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTP/foo bar baz\r\n&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;a-header: bar\r\n&quot;</span>), <span class="prelude-val">None</span>);
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_invalid_status_line() {
+        <span class="macro">assert_eq!</span>(parse_status_line(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_status_line(<span class="string">b&quot; \r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_status_line(<span class="string">b&quot;HTP/foo bar baz\r\n&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_status_line(<span class="string">b&quot;a-header: bar\r\n&quot;</span>), <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_status_line</span>(<span class="string">b&quot; HTTP/1.1 500 Internal Server Error\r\n&quot;</span>),
-            <span class="prelude-val">None</span>
-        );
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_status_line</span>(<span class="string">b&quot;HTTP/4 200\r\n&quot;</span>), <span class="prelude-val">None</span>);
+            parse_status_line(<span class="string">b&quot; HTTP/1.1 500 Internal Server Error\r\n&quot;</span>),
+            <span class="prelude-val">None
+        </span>);
+        <span class="macro">assert_eq!</span>(parse_status_line(<span class="string">b&quot;HTTP/4 200\r\n&quot;</span>), <span class="prelude-val">None</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_valid_headers</span>() {
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_valid_headers() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_header</span>(<span class="string">b&quot;Empty:&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="string">&quot;empty&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
+            parse_header(<span class="string">b&quot;Empty:&quot;</span>),
+            <span class="prelude-val">Some</span>((<span class="string">&quot;empty&quot;</span>.parse().unwrap(), <span class="string">&quot;&quot;</span>.parse().unwrap(),))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_header</span>(<span class="string">b&quot;CONTENT-LENGTH:20\r\n&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="string">&quot;content-length&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;20&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
+            parse_header(<span class="string">b&quot;CONTENT-LENGTH:20\r\n&quot;</span>),
+            <span class="prelude-val">Some</span>((<span class="string">&quot;content-length&quot;</span>.parse().unwrap(), <span class="string">&quot;20&quot;</span>.parse().unwrap(),))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_header</span>(<span class="string">b&quot;x-Server:     Rust \r&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="string">&quot;x-server&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;Rust&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
+            parse_header(<span class="string">b&quot;x-Server:     Rust \r&quot;</span>),
+            <span class="prelude-val">Some</span>((<span class="string">&quot;x-server&quot;</span>.parse().unwrap(), <span class="string">&quot;Rust&quot;</span>.parse().unwrap(),))
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_header</span>(<span class="string">b&quot;X-val: Hello World\r&quot;</span>),
-            <span class="prelude-val">Some</span>((<span class="string">&quot;x-val&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;Hello World&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),))
+            parse_header(<span class="string">b&quot;X-val: Hello World\r&quot;</span>),
+            <span class="prelude-val">Some</span>((<span class="string">&quot;x-val&quot;</span>.parse().unwrap(), <span class="string">&quot;Hello World&quot;</span>.parse().unwrap(),))
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">parse_header</span>(<span class="string">b&quot;Location: https://example.com/\r&quot;</span>),
+            parse_header(<span class="string">b&quot;Location: https://example.com/\r&quot;</span>),
             <span class="prelude-val">Some</span>((
-                <span class="string">&quot;location&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
-                <span class="string">&quot;https://example.com/&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+                <span class="string">&quot;location&quot;</span>.parse().unwrap(),
+                <span class="string">&quot;https://example.com/&quot;</span>.parse().unwrap(),
             ))
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_invalid_headers</span>() {
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;:&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;: bar&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;a\nheader: bar&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">parse_header</span>(<span class="string">b&quot;foo : bar\r&quot;</span>), <span class="prelude-val">None</span>);
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>parse_invalid_headers() {
+        <span class="macro">assert_eq!</span>(parse_header(<span class="string">b&quot;&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_header(<span class="string">b&quot;:&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_header(<span class="string">b&quot;: bar&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_header(<span class="string">b&quot;a\nheader: bar&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(parse_header(<span class="string">b&quot;foo : bar\r&quot;</span>), <span class="prelude-val">None</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">normal_header_to_curl_string</span>() {
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;foo&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>normal_header_to_curl_string() {
+        <span class="kw">let </span>name = <span class="string">&quot;User-Agent&quot;</span>.parse().unwrap();
+        <span class="kw">let </span>value = <span class="string">&quot;foo&quot;</span>.parse().unwrap();
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">false</span>),
-            <span class="string">&quot;user-agent: foo&quot;</span>
-        );
+            header_to_curl_string(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>value, <span class="bool-val">false</span>),
+            <span class="string">&quot;user-agent: foo&quot;
+        </span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">blank_header_to_curl_string</span>() {
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>blank_header_to_curl_string() {
+        <span class="kw">let </span>name = <span class="string">&quot;User-Agent&quot;</span>.parse().unwrap();
+        <span class="kw">let </span>value = <span class="string">&quot;&quot;</span>.parse().unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">false</span>), <span class="string">&quot;user-agent;&quot;</span>);
+        <span class="macro">assert_eq!</span>(header_to_curl_string(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>value, <span class="bool-val">false</span>), <span class="string">&quot;user-agent;&quot;</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">normal_header_to_curl_string_title_case</span>() {
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;User-Agent&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="string">&quot;foo&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>normal_header_to_curl_string_title_case() {
+        <span class="kw">let </span>name = <span class="string">&quot;User-Agent&quot;</span>.parse().unwrap();
+        <span class="kw">let </span>value = <span class="string">&quot;foo&quot;</span>.parse().unwrap();
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">header_to_curl_string</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">value</span>, <span class="bool-val">true</span>),
-            <span class="string">&quot;User-Agent: foo&quot;</span>
-        );
+            header_to_curl_string(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>value, <span class="bool-val">true</span>),
+            <span class="string">&quot;User-Agent: foo&quot;
+        </span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

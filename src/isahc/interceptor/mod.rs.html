@@ -171,176 +171,176 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
-</pre><pre class="rust"><code><span class="doccomment">//! HTTP client interceptor API.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module provides the core types and functions for defining and working</span>
-<span class="doccomment">//! with interceptors. Interceptors are handlers that augment HTTP client</span>
-<span class="doccomment">//! functionality by decorating HTTP calls with custom logic.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Known issues:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! - [`from_fn`] doesn&#39;t work as desired. The trait bounds are too ambiguous</span>
-<span class="doccomment">//!   for the compiler to infer for closures, and since the return type is</span>
-<span class="doccomment">//!   generic over a lifetime, there&#39;s no way to give the return type the</span>
-<span class="doccomment">//!   correct name using current Rust syntax.</span>
-<span class="doccomment">//! - [`InterceptorObj`] wraps the returned future in an extra box.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Availability</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This module is only available when the</span>
-<span class="doccomment">/// [`unstable-interceptors`](../index.html#unstable-interceptors) feature is</span>
-<span class="doccomment">/// enabled.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::body::AsyncBody</span>;
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">error::Error</span>, <span class="ident">fmt</span>, <span class="ident">future::Future</span>, <span class="ident">pin::Pin</span>};
+</pre><pre class="rust"><code><span class="doccomment">//! HTTP client interceptor API.
+//!
+//! This module provides the core types and functions for defining and working
+//! with interceptors. Interceptors are handlers that augment HTTP client
+//! functionality by decorating HTTP calls with custom logic.
+//!
+//! Known issues:
+//!
+//! - [`from_fn`] doesn&#39;t work as desired. The trait bounds are too ambiguous
+//!   for the compiler to infer for closures, and since the return type is
+//!   generic over a lifetime, there&#39;s no way to give the return type the
+//!   correct name using current Rust syntax.
+//! - [`InterceptorObj`] wraps the returned future in an extra box.
+///
+/// # Availability
+///
+/// This module is only available when the
+/// [`unstable-interceptors`](../index.html#unstable-interceptors) feature is
+/// enabled.
+</span><span class="kw">use </span><span class="kw">crate</span>::body::AsyncBody;
+<span class="kw">use </span>http::{Request, Response};
+<span class="kw">use </span>std::{error::Error, fmt, future::Future, pin::Pin};
 
-<span class="kw">mod</span> <span class="ident">context</span>;
-<span class="kw">mod</span> <span class="ident">obj</span>;
+<span class="kw">mod </span>context;
+<span class="kw">mod </span>obj;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::context::Context</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="self">self</span>::{<span class="ident">context::Invoke</span>, <span class="ident">obj::InterceptorObj</span>};
+<span class="kw">pub use </span><span class="self">self</span>::context::Context;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{context::Invoke, obj::InterceptorObj};
 
-<span class="kw">type</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">E</span><span class="op">&gt;</span>;
+<span class="kw">type </span>InterceptorResult&lt;E&gt; = <span class="prelude-ty">Result</span>&lt;Response&lt;AsyncBody&gt;, E&gt;;
 
-<span class="doccomment">/// Defines an inline interceptor using a closure-like syntax.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Closures are not supported due to a limitation in Rust&#39;s type inference.</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">interceptor</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">request</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ctx</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">interceptor</span>(
-            <span class="kw-2">mut</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">request</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::http::Request</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::AsyncBody</span><span class="op">&gt;</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ctx</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::interceptor::Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>,
-        ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::http::Response</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::AsyncBody</span><span class="op">&gt;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::Error</span><span class="op">&gt;</span> {
-            (<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="kw">async</span> <span class="kw">move</span> { <span class="macro-nonterminal">$</span><span class="macro-nonterminal">body</span> })().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="ident">Into::into</span>)
+<span class="doccomment">/// Defines an inline interceptor using a closure-like syntax.
+///
+/// Closures are not supported due to a limitation in Rust&#39;s type inference.
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
+<span class="attribute">#[macro_export]</span>
+<span class="macro">macro_rules!</span> interceptor {
+    (<span class="macro-nonterminal">$request</span>:ident, <span class="macro-nonterminal">$ctx</span>:ident, <span class="macro-nonterminal">$body</span>:expr) =&gt; {{
+        <span class="kw">async fn </span>interceptor(
+            <span class="kw-2">mut </span><span class="macro-nonterminal">$request</span>: <span class="macro-nonterminal">$crate::http::Request</span>&lt;<span class="macro-nonterminal">$crate::AsyncBody</span>&gt;,
+            <span class="macro-nonterminal">$ctx</span>: <span class="macro-nonterminal">$crate::interceptor::Context</span>&lt;<span class="lifetime">&#39;_</span>&gt;,
+        ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="macro-nonterminal">$crate::http::Response</span>&lt;<span class="macro-nonterminal">$crate::AsyncBody</span>&gt;, <span class="macro-nonterminal">$crate::Error</span>&gt; {
+            (<span class="kw">move </span>|| <span class="kw">async move </span>{ <span class="macro-nonterminal">$body </span>})().<span class="kw">await</span>.map_err(Into::into)
         }
 
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::interceptor::from_fn</span>(<span class="ident">interceptor</span>)
+        <span class="macro-nonterminal">$crate::interceptor::from_fn</span>(interceptor)
     }};
 }
 
-<span class="doccomment">/// Base trait for interceptors.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Since clients may be used to send requests concurrently, all interceptors</span>
-<span class="doccomment">/// must be synchronized and must be able to account for multiple requests being</span>
-<span class="doccomment">/// made in parallel.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Interceptor</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="doccomment">/// The type of error returned by this interceptor.</span>
-    <span class="kw">type</span> <span class="prelude-val">Err</span>: <span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>;
+<span class="doccomment">/// Base trait for interceptors.
+///
+/// Since clients may be used to send requests concurrently, all interceptors
+/// must be synchronized and must be able to account for multiple requests being
+/// made in parallel.
+</span><span class="kw">pub trait </span>Interceptor: Send + Sync {
+    <span class="doccomment">/// The type of error returned by this interceptor.
+    </span><span class="kw">type </span><span class="prelude-val">Err</span>: Error + Send + Sync + <span class="lifetime">&#39;static</span>;
 
-    <span class="doccomment">/// Intercept a request, returning a response.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The returned future is allowed to borrow the interceptor for the</span>
-    <span class="doccomment">/// duration of its execution.</span>
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
-        <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Intercept a request, returning a response.
+    ///
+    /// The returned future is allowed to borrow the interceptor for the
+    /// duration of its execution.
+    </span><span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
+        request: Request&lt;AsyncBody&gt;,
+        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
+    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt;;
 }
 
-<span class="doccomment">/// The type of future returned by an interceptor.</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Pin</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="doccomment">/// The type of future returned by an interceptor.
+</span><span class="kw">pub type </span>InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, E&gt; = Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = InterceptorResult&lt;E&gt;&gt; + Send + <span class="lifetime">&#39;a</span>&gt;&gt;;
 
-<span class="doccomment">/// Creates an interceptor from an arbitrary closure or function.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_fn</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">E</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private::AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">Send</span>
-        <span class="op">+</span> <span class="ident">Sync</span>
-        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-    <span class="ident">E</span>: <span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="doccomment">/// Creates an interceptor from an arbitrary closure or function.
+</span><span class="kw">pub fn </span>from_fn&lt;F, E&gt;(f: F) -&gt; InterceptorFn&lt;F&gt;
+<span class="kw">where
+    </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context&lt;<span class="lifetime">&#39;a</span>&gt;, Output = InterceptorResult&lt;E&gt;&gt;
+        + Send
+        + Sync
+        + <span class="lifetime">&#39;static</span>,
+    E: Error + Send + Sync + <span class="lifetime">&#39;static</span>,
 {
-    <span class="ident">InterceptorFn</span>(<span class="ident">f</span>)
+    InterceptorFn(f)
 }
 
-<span class="doccomment">/// An interceptor created from an arbitrary closure or function. See</span>
-<span class="doccomment">/// [`from_fn`] for details.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">F</span>);
+<span class="doccomment">/// An interceptor created from an arbitrary closure or function. See
+/// [`from_fn`] for details.
+</span><span class="kw">pub struct </span>InterceptorFn&lt;F&gt;(F);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Interceptor</span> <span class="kw">for</span> <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">E</span>: <span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span>,
-    <span class="ident">F</span>: <span class="kw">for</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">private::AsyncFn2</span><span class="op">&lt;</span><span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Output</span> <span class="op">=</span> <span class="ident">InterceptorResult</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">Send</span>
-        <span class="op">+</span> <span class="ident">Sync</span>
-        <span class="op">+</span> <span class="lifetime">&#39;static</span>,
+<span class="kw">impl</span>&lt;E, F&gt; Interceptor <span class="kw">for </span>InterceptorFn&lt;F&gt;
+<span class="kw">where
+    </span>E: Error + Send + Sync + <span class="lifetime">&#39;static</span>,
+    F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context&lt;<span class="lifetime">&#39;a</span>&gt;, Output = InterceptorResult&lt;E&gt;&gt;
+        + Send
+        + Sync
+        + <span class="lifetime">&#39;static</span>,
 {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">E</span>;
+    <span class="kw">type </span><span class="prelude-val">Err </span>= E;
 
-    <span class="kw">fn</span> <span class="ident">intercept</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>,
-        <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="ident">Box::pin</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">call</span>(<span class="ident">request</span>, <span class="ident">ctx</span>))
+        request: Request&lt;AsyncBody&gt;,
+        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
+    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt; {
+        Box::pin(<span class="self">self</span>.<span class="number">0</span>.call(request, ctx))
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">fmt::Debug</span><span class="op">&gt;</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">InterceptorFn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">fmt</span>(<span class="ident">f</span>)
+<span class="kw">impl</span>&lt;F: fmt::Debug&gt; fmt::Debug <span class="kw">for </span>InterceptorFn&lt;F&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="self">self</span>.<span class="number">0</span>.fmt(f)
     }
 }
 
-<span class="comment">// Workaround for https://github.com/rust-lang/rust/issues/51004</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unreachable_pub</span>)]</span>
-<span class="kw">mod</span> <span class="ident">private</span> {
-    <span class="kw">use</span> <span class="ident">std::future::Future</span>;
+<span class="comment">// Workaround for https://github.com/rust-lang/rust/issues/51004
+</span><span class="attribute">#[allow(unreachable_pub)]</span>
+<span class="kw">mod </span>private {
+    <span class="kw">use </span>std::future::Future;
 
-    <span class="macro">macro_rules!</span> <span class="ident">impl_async_fn</span> {
-        ($((<span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnMut</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Fn</span>:<span class="ident">ident</span>, ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>:<span class="ident">ident</span>,)<span class="kw-2">*</span>)),)<span class="kw-2">*</span>) =&gt; {
+    <span class="macro">macro_rules!</span> impl_async_fn {
+        ($((<span class="macro-nonterminal">$FnOnce</span>:ident, <span class="macro-nonterminal">$FnMut</span>:ident, <span class="macro-nonterminal">$Fn</span>:ident, ($(<span class="macro-nonterminal">$arg</span>:ident: <span class="macro-nonterminal">$arg_ty</span>:ident,)<span class="kw-2">*</span>)),)<span class="kw-2">*</span>) =&gt; {
             $(
-                <span class="kw">pub</span> <span class="kw">trait</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                    <span class="kw">type</span> <span class="ident">Output</span>;
-                    <span class="kw">type</span> <span class="ident">Future</span>: <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Send</span>;
-                    <span class="kw">fn</span> <span class="ident">call_once</span>(<span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span>;
+                <span class="kw">pub trait </span><span class="macro-nonterminal">$FnOnce</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; {
+                    <span class="kw">type </span>Output;
+                    <span class="kw">type </span>Future: Future&lt;Output = <span class="self">Self</span>::Output&gt; + Send;
+                    <span class="kw">fn </span>call_once(<span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future;
                 }
-                <span class="kw">pub</span> <span class="kw">trait</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnMut</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                    <span class="kw">fn</span> <span class="ident">call_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span>;
+                <span class="kw">pub trait </span><span class="macro-nonterminal">$FnMut</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt;: <span class="macro-nonterminal">$FnOnce</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; {
+                    <span class="kw">fn </span>call_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future;
                 }
-                <span class="kw">pub</span> <span class="kw">trait</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Fn</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnMut</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> {
-                    <span class="kw">fn</span> <span class="ident">call</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span>;
+                <span class="kw">pub trait </span><span class="macro-nonterminal">$Fn</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt;: <span class="macro-nonterminal">$FnMut</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; {
+                    <span class="kw">fn </span>call(<span class="kw-2">&amp;</span><span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future;
                 }
-                <span class="kw">impl</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="op">*</span> <span class="ident">F</span>, <span class="ident">Fut</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnOnce</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span>
-                <span class="kw">where</span>
-                    <span class="ident">F</span>: <span class="ident">FnOnce</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident">Fut</span>,
-                    <span class="ident">Fut</span>: <span class="ident">Future</span> <span class="op">+</span> <span class="ident">Send</span>,
+                <span class="kw">impl</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)* F, Fut&gt; <span class="macro-nonterminal">$FnOnce</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; <span class="kw">for </span>F
+                <span class="kw">where
+                    </span>F: FnOnce($(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; Fut,
+                    Fut: Future + Send,
                 {
-                    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Fut::Output</span>;
-                    <span class="kw">type</span> <span class="ident">Future</span> <span class="op">=</span> <span class="ident">Fut</span>;
-                    <span class="kw">fn</span> <span class="ident">call_once</span>(<span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span> {
-                        <span class="self">self</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>,)<span class="kw-2">*</span>)
+                    <span class="kw">type </span>Output = Fut::Output;
+                    <span class="kw">type </span>Future = Fut;
+                    <span class="kw">fn </span>call_once(<span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future {
+                        <span class="self">self</span>($(<span class="macro-nonterminal">$arg</span>,)<span class="kw-2">*</span>)
                     }
                 }
-                <span class="kw">impl</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="op">*</span> <span class="ident">F</span>, <span class="ident">Fut</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">FnMut</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span>
-                <span class="kw">where</span>
-                    <span class="ident">F</span>: <span class="ident">FnMut</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident">Fut</span>,
-                    <span class="ident">Fut</span>: <span class="ident">Future</span> <span class="op">+</span> <span class="ident">Send</span>,
+                <span class="kw">impl</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)* F, Fut&gt; <span class="macro-nonterminal">$FnMut</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; <span class="kw">for </span>F
+                <span class="kw">where
+                    </span>F: FnMut($(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; Fut,
+                    Fut: Future + Send,
                 {
-                    <span class="kw">fn</span> <span class="ident">call_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span> {
-                        <span class="self">self</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>,)<span class="kw-2">*</span>)
+                    <span class="kw">fn </span>call_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future {
+                        <span class="self">self</span>($(<span class="macro-nonterminal">$arg</span>,)<span class="kw-2">*</span>)
                     }
                 }
-                <span class="kw">impl</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="op">*</span> <span class="ident">F</span>, <span class="ident">Fut</span><span class="op">&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">Fn</span><span class="op">&lt;</span>$(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span>
-                <span class="kw">where</span>
-                    <span class="ident">F</span>: <span class="ident">Fn</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident">Fut</span>,
-                    <span class="ident">Fut</span>: <span class="ident">Future</span> <span class="op">+</span> <span class="ident">Send</span>,
+                <span class="kw">impl</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)* F, Fut&gt; <span class="macro-nonterminal">$Fn</span>&lt;$(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>&gt; <span class="kw">for </span>F
+                <span class="kw">where
+                    </span>F: Fn($(<span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; Fut,
+                    Fut: Future + Send,
                 {
-                    <span class="kw">fn</span> <span class="ident">call</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="ident"><span class="self">Self</span>::Future</span> {
-                        <span class="self">self</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>,)<span class="kw-2">*</span>)
+                    <span class="kw">fn </span>call(<span class="kw-2">&amp;</span><span class="self">self</span>, $(<span class="macro-nonterminal">$arg</span>: <span class="macro-nonterminal">$arg_ty</span>,)<span class="kw-2">*</span>) -&gt; <span class="self">Self</span>::Future {
+                        <span class="self">self</span>($(<span class="macro-nonterminal">$arg</span>,)<span class="kw-2">*</span>)
                     }
                 }
-            )<span class="op">*</span>
+            )*
         }
     }
 
     <span class="macro">impl_async_fn!</span> {
-        (<span class="ident">AsyncFnOnce0</span>, <span class="ident">AsyncFnMut0</span>, <span class="ident">AsyncFn0</span>, ()),
-        (<span class="ident">AsyncFnOnce1</span>, <span class="ident">AsyncFnMut1</span>, <span class="ident">AsyncFn1</span>, (<span class="ident">a0</span>:<span class="ident">A0</span>, )),
-        (<span class="ident">AsyncFnOnce2</span>, <span class="ident">AsyncFnMut2</span>, <span class="ident">AsyncFn2</span>, (<span class="ident">a0</span>:<span class="ident">A0</span>, <span class="ident">a1</span>:<span class="ident">A1</span>, )),
+        (AsyncFnOnce0, AsyncFnMut0, AsyncFn0, ()),
+        (AsyncFnOnce1, AsyncFnMut1, AsyncFn1, (a0:A0, )),
+        (AsyncFnOnce2, AsyncFnMut2, AsyncFn2, (a0:A0, a1:A1, )),
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

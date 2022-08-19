@@ -226,231 +226,231 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Internal traits that define the Isahc configuration system.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Internal traits that define the Isahc configuration system.
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proxy::Proxy</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident">curl::easy::Easy2</span>;
+</span><span class="kw">use super</span>::{proxy::Proxy, <span class="kw-2">*</span>};
+<span class="kw">use </span>curl::easy::Easy2;
 
-<span class="doccomment">/// Base trait for any object that can be configured for requests, such as an</span>
-<span class="doccomment">/// HTTP request builder or an HTTP client.</span>
-<span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">WithRequestConfig</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// Invoke a function to mutate the request configuration for this object.</span>
-    <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="self">self</span>, <span class="ident">f</span>: <span class="kw">impl</span> <span class="ident">FnOnce</span>(<span class="kw-2">&amp;mut</span> <span class="ident">RequestConfig</span>)) -&gt; <span class="self">Self</span>;
+<span class="doccomment">/// Base trait for any object that can be configured for requests, such as an
+/// HTTP request builder or an HTTP client.
+</span><span class="attribute">#[doc(hidden)]</span>
+<span class="kw">pub trait </span>WithRequestConfig: Sized {
+    <span class="doccomment">/// Invoke a function to mutate the request configuration for this object.
+    </span><span class="kw">fn </span>with_config(<span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>RequestConfig)) -&gt; <span class="self">Self</span>;
 }
 
-<span class="doccomment">/// A helper trait for applying a configuration value to a given curl handle.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">SetOpt</span> {
-    <span class="doccomment">/// Apply this configuration property to the given curl handle.</span>
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span>;
+<span class="doccomment">/// A helper trait for applying a configuration value to a given curl handle.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>SetOpt {
+    <span class="doccomment">/// Apply this configuration property to the given curl handle.
+    </span><span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt;;
 }
 
-<span class="comment">// Define this struct inside a macro to reduce some boilerplate.</span>
-<span class="macro">macro_rules!</span> <span class="ident">define_request_config</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>:<span class="ident">ident</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ty</span>,)<span class="kw-2">*</span>) =&gt; {
-        <span class="doccomment">/// Configuration for an HTTP request.</span>
-        <span class="doccomment">///</span>
-        <span class="doccomment">/// This struct is not exposed directly, but rather is interacted with</span>
-        <span class="doccomment">/// via the [`Configurable`] trait.</span>
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-        <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RequestConfig</span> {
+<span class="comment">// Define this struct inside a macro to reduce some boilerplate.
+</span><span class="macro">macro_rules!</span> define_request_config {
+    ($(<span class="macro-nonterminal">$field</span>:ident: <span class="macro-nonterminal">$t</span>:ty,)<span class="kw-2">*</span>) =&gt; {
+        <span class="doccomment">/// Configuration for an HTTP request.
+        ///
+        /// This struct is not exposed directly, but rather is interacted with
+        /// via the [`Configurable`] trait.
+        </span><span class="attribute">#[derive(Clone, Debug, Default)]</span>
+        <span class="kw">pub struct </span>RequestConfig {
             $(
-                <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>,
-            )<span class="op">*</span>
+                <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="macro-nonterminal">$field</span>: <span class="macro-nonterminal">$t</span>,
+            )*
         }
 
-        <span class="kw">impl</span> <span class="ident">RequestConfig</span> {
-            <span class="doccomment">/// Merge another request configuration into this one. Unspecified</span>
-            <span class="doccomment">/// values in this config are replaced with values in the given</span>
-            <span class="doccomment">/// config.</span>
-            <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">defaults</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
+        <span class="kw">impl </span>RequestConfig {
+            <span class="doccomment">/// Merge another request configuration into this one. Unspecified
+            /// values in this config are replaced with values in the given
+            /// config.
+            </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, defaults: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
                 $(
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>.<span class="ident">is_none</span>() {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">defaults</span>.<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span>.<span class="ident">as_ref</span>() {
-                            <span class="self">self</span>.<span class="macro-nonterminal">$</span><span class="macro-nonterminal">field</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>.<span class="ident">clone</span>());
+                    <span class="kw">if </span><span class="self">self</span>.<span class="macro-nonterminal">$field</span>.is_none() {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = defaults.<span class="macro-nonterminal">$field</span>.as_ref() {
+                            <span class="self">self</span>.<span class="macro-nonterminal">$field </span>= <span class="prelude-val">Some</span>(value.clone());
                         }
                     }
-                )<span class="op">*</span>
+                )*
             }
         }
     };
 }
 
 <span class="macro">define_request_config!</span> {
-    <span class="comment">// Used by curl</span>
-    <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
-    <span class="ident">connect_timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
-    <span class="ident">low_speed_timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">Duration</span>)<span class="op">&gt;</span>,
-    <span class="ident">version_negotiation</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VersionNegotiation</span><span class="op">&gt;</span>,
-    <span class="ident">automatic_decompression</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-    <span class="ident">expect_continue</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExpectContinue</span><span class="op">&gt;</span>,
-    <span class="ident">authentication</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span>,
-    <span class="ident">credentials</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span>,
-    <span class="ident">tcp_keepalive</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
-    <span class="ident">tcp_nodelay</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-    <span class="ident">interface</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NetworkInterface</span><span class="op">&gt;</span>,
-    <span class="ident">ip_version</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpVersion</span><span class="op">&gt;</span>,
-    <span class="ident">dial</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Dialer</span><span class="op">&gt;</span>,
-    <span class="ident">proxy</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">http::Uri</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">proxy_blacklist</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">proxy::Blacklist</span><span class="op">&gt;</span>,
-    <span class="ident">proxy_authentication</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Authentication</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">proxy_credentials</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Proxy</span><span class="op">&lt;</span><span class="ident">Credentials</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">max_upload_speed</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">max_download_speed</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">ssl_client_certificate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ClientCertificate</span><span class="op">&gt;</span>,
-    <span class="ident">ssl_ca_certificate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CaCertificate</span><span class="op">&gt;</span>,
-    <span class="ident">ssl_ciphers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">tls::Ciphers</span><span class="op">&gt;</span>,
-    <span class="ident">ssl_options</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslOption</span><span class="op">&gt;</span>,
-    <span class="ident">enable_metrics</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="comment">// Used by curl
+    </span>timeout: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
+    connect_timeout: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
+    low_speed_timeout: <span class="prelude-ty">Option</span>&lt;(u32, Duration)&gt;,
+    version_negotiation: <span class="prelude-ty">Option</span>&lt;VersionNegotiation&gt;,
+    automatic_decompression: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    expect_continue: <span class="prelude-ty">Option</span>&lt;ExpectContinue&gt;,
+    authentication: <span class="prelude-ty">Option</span>&lt;Authentication&gt;,
+    credentials: <span class="prelude-ty">Option</span>&lt;Credentials&gt;,
+    tcp_keepalive: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
+    tcp_nodelay: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    interface: <span class="prelude-ty">Option</span>&lt;NetworkInterface&gt;,
+    ip_version: <span class="prelude-ty">Option</span>&lt;IpVersion&gt;,
+    dial: <span class="prelude-ty">Option</span>&lt;Dialer&gt;,
+    proxy: <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Option</span>&lt;http::Uri&gt;&gt;,
+    proxy_blacklist: <span class="prelude-ty">Option</span>&lt;proxy::Blacklist&gt;,
+    proxy_authentication: <span class="prelude-ty">Option</span>&lt;Proxy&lt;Authentication&gt;&gt;,
+    proxy_credentials: <span class="prelude-ty">Option</span>&lt;Proxy&lt;Credentials&gt;&gt;,
+    max_upload_speed: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    max_download_speed: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ssl_client_certificate: <span class="prelude-ty">Option</span>&lt;ClientCertificate&gt;,
+    ssl_ca_certificate: <span class="prelude-ty">Option</span>&lt;CaCertificate&gt;,
+    ssl_ciphers: <span class="prelude-ty">Option</span>&lt;tls::Ciphers&gt;,
+    ssl_options: <span class="prelude-ty">Option</span>&lt;SslOption&gt;,
+    enable_metrics: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 
-    <span class="comment">// Used by interceptors</span>
-    <span class="ident">redirect_policy</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RedirectPolicy</span><span class="op">&gt;</span>,
-    <span class="ident">auto_referer</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-    <span class="ident">title_case_headers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="comment">// Used by interceptors
+    </span>redirect_policy: <span class="prelude-ty">Option</span>&lt;RedirectPolicy&gt;,
+    auto_referer: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    title_case_headers: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">RequestConfig</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">client_defaults</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="comment">// Always start out with latest compatible HTTP version.</span>
-            <span class="ident">version_negotiation</span>: <span class="prelude-val">Some</span>(<span class="ident">VersionNegotiation::default</span>()),
-            <span class="comment">// Enable automatic decompression by default for convenience</span>
-            <span class="comment">// (and maintain backwards compatibility).</span>
-            <span class="ident">automatic_decompression</span>: <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="comment">// Erase curl&#39;s default auth method of Basic.</span>
-            <span class="ident">authentication</span>: <span class="prelude-val">Some</span>(<span class="ident">Authentication::default</span>()),
-            <span class="comment">// Set native root certificates if available.</span>
-            <span class="ident">ssl_ca_certificate</span>: <span class="ident">CaCertificate::native</span>(),
-            ..<span class="ident">Default::default</span>()
+<span class="kw">impl </span>RequestConfig {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>client_defaults() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            <span class="comment">// Always start out with latest compatible HTTP version.
+            </span>version_negotiation: <span class="prelude-val">Some</span>(VersionNegotiation::default()),
+            <span class="comment">// Enable automatic decompression by default for convenience
+            // (and maintain backwards compatibility).
+            </span>automatic_decompression: <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            <span class="comment">// Erase curl&#39;s default auth method of Basic.
+            </span>authentication: <span class="prelude-val">Some</span>(Authentication::default()),
+            <span class="comment">// Set native root certificates if available.
+            </span>ssl_ca_certificate: CaCertificate::native(),
+            ..Default::default()
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SetOpt</span> <span class="kw">for</span> <span class="ident">RequestConfig</span> {
-    <span class="kw">fn</span> <span class="ident">set_opt</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">easy</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Easy2</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">timeout</span> {
-            <span class="ident">easy</span>.<span class="ident">timeout</span>(<span class="ident">timeout</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>SetOpt <span class="kw">for </span>RequestConfig {
+    <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(timeout) = <span class="self">self</span>.timeout {
+            easy.timeout(timeout)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">low_speed</span>, <span class="ident">timeout</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">low_speed_timeout</span> {
-            <span class="ident">easy</span>.<span class="ident">low_speed_limit</span>(<span class="ident">low_speed</span>)<span class="question-mark">?</span>;
-            <span class="ident">easy</span>.<span class="ident">low_speed_time</span>(<span class="ident">timeout</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((low_speed, timeout)) = <span class="self">self</span>.low_speed_timeout {
+            easy.low_speed_limit(low_speed)<span class="question-mark">?</span>;
+            easy.low_speed_time(timeout)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">connect_timeout</span> {
-            <span class="ident">easy</span>.<span class="ident">connect_timeout</span>(<span class="ident">timeout</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(timeout) = <span class="self">self</span>.connect_timeout {
+            easy.connect_timeout(timeout)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">negotiation</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">version_negotiation</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">negotiation</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(negotiation) = <span class="self">self</span>.version_negotiation.as_ref() {
+            negotiation.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unsafe_code</span>)]</span>
+        <span class="attribute">#[allow(unsafe_code)]</span>
         {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">automatic_decompression</span> {
-                <span class="kw">if</span> <span class="ident">enable</span> {
-                    <span class="comment">// Enable automatic decompression, and also populate the</span>
-                    <span class="comment">// Accept-Encoding header with all supported encodings if not</span>
-                    <span class="comment">// explicitly set.</span>
-                    <span class="ident">easy</span>.<span class="ident">accept_encoding</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.</span>
-                    <span class="kw">unsafe</span> {
-                        <span class="kw">match</span> <span class="ident">curl_sys::curl_easy_setopt</span>(
-                            <span class="ident">easy</span>.<span class="ident">raw</span>(),
-                            <span class="ident">curl_sys::CURLOPT_ACCEPT_ENCODING</span>,
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.automatic_decompression {
+                <span class="kw">if </span>enable {
+                    <span class="comment">// Enable automatic decompression, and also populate the
+                    // Accept-Encoding header with all supported encodings if not
+                    // explicitly set.
+                    </span>easy.accept_encoding(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.
+                    </span><span class="kw">unsafe </span>{
+                        <span class="kw">match </span>curl_sys::curl_easy_setopt(
+                            easy.raw(),
+                            curl_sys::CURLOPT_ACCEPT_ENCODING,
                             <span class="number">0</span>,
                         ) {
-                            <span class="ident">curl_sys::CURLE_OK</span> =&gt; {}
-                            <span class="ident">code</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">curl::Error::new</span>(<span class="ident">code</span>)),
+                            curl_sys::CURLE_OK =&gt; {}
+                            code =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(curl::Error::new(code)),
                         }
                     }
                 }
             }
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">expect_continue</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expect_continue</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">expect_continue</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(expect_continue) = <span class="self">self</span>.expect_continue.as_ref() {
+            expect_continue.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">auth</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">authentication</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">auth</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.authentication.as_ref() {
+            auth.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">credentials</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">credentials</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">credentials</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.credentials.as_ref() {
+            credentials.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">interval</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">tcp_keepalive</span> {
-            <span class="ident">easy</span>.<span class="ident">tcp_keepalive</span>(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
-            <span class="ident">easy</span>.<span class="ident">tcp_keepintvl</span>(<span class="ident">interval</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(interval) = <span class="self">self</span>.tcp_keepalive {
+            easy.tcp_keepalive(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
+            easy.tcp_keepintvl(interval)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">tcp_nodelay</span> {
-            <span class="ident">easy</span>.<span class="ident">tcp_nodelay</span>(<span class="ident">enable</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.tcp_nodelay {
+            easy.tcp_nodelay(enable)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">interface</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">interface</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">interface</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(interface) = <span class="self">self</span>.interface.as_ref() {
+            interface.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ip_version</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">version</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(version) = <span class="self">self</span>.ip_version.as_ref() {
+            version.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dialer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">dial</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">dialer</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(dialer) = <span class="self">self</span>.dial.as_ref() {
+            dialer.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">proxy</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy</span>.<span class="ident">as_ref</span>() {
-            <span class="kw">match</span> <span class="ident">proxy</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">uri</span>) =&gt; <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">uri</span>))<span class="question-mark">?</span>,
-                <span class="prelude-val">None</span> =&gt; <span class="ident">easy</span>.<span class="ident">proxy</span>(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>,
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(proxy) = <span class="self">self</span>.proxy.as_ref() {
+            <span class="kw">match </span>proxy {
+                <span class="prelude-val">Some</span>(uri) =&gt; easy.proxy(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, uri))<span class="question-mark">?</span>,
+                <span class="prelude-val">None </span>=&gt; easy.proxy(<span class="string">&quot;&quot;</span>)<span class="question-mark">?</span>,
             }
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">blacklist</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_blacklist</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">blacklist</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(blacklist) = <span class="self">self</span>.proxy_blacklist.as_ref() {
+            blacklist.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">auth</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_authentication</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">auth</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.proxy_authentication.as_ref() {
+            auth.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">credentials</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_credentials</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">credentials</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.proxy_credentials.as_ref() {
+            credentials.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_upload_speed</span> {
-            <span class="ident">easy</span>.<span class="ident">max_send_speed</span>(<span class="ident">max</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_upload_speed {
+            easy.max_send_speed(max)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">max</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_download_speed</span> {
-            <span class="ident">easy</span>.<span class="ident">max_recv_speed</span>(<span class="ident">max</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_download_speed {
+            easy.max_recv_speed(max)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cert</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ssl_client_certificate</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">cert</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(cert) = <span class="self">self</span>.ssl_client_certificate.as_ref() {
+            cert.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cert</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ssl_ca_certificate</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">cert</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(cert) = <span class="self">self</span>.ssl_ca_certificate.as_ref() {
+            cert.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ciphers</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ssl_ciphers</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">ciphers</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ciphers) = <span class="self">self</span>.ssl_ciphers.as_ref() {
+            ciphers.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">options</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ssl_options</span>.<span class="ident">as_ref</span>() {
-            <span class="ident">options</span>.<span class="ident">set_opt</span>(<span class="ident">easy</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(options) = <span class="self">self</span>.ssl_options.as_ref() {
+            options.set_opt(easy)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">enable</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">enable_metrics</span> {
-            <span class="ident">easy</span>.<span class="ident">progress</span>(<span class="ident">enable</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.enable_metrics {
+            easy.progress(enable)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

@@ -461,466 +461,466 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::Cookie</span>;
-<span class="kw">use</span> <span class="ident">http::Uri</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections::HashSet</span>,
-    <span class="ident">error::Error</span>,
-    <span class="ident">fmt</span>,
-    <span class="ident">hash</span>::{<span class="ident">Hash</span>, <span class="ident">Hasher</span>},
-    <span class="ident">net</span>::{<span class="ident">Ipv4Addr</span>, <span class="ident">Ipv6Addr</span>},
-    <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">RwLock</span>},
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::Cookie;
+<span class="kw">use </span>http::Uri;
+<span class="kw">use </span>std::{
+    collections::HashSet,
+    error::Error,
+    fmt,
+    hash::{Hash, Hasher},
+    net::{Ipv4Addr, Ipv6Addr},
+    sync::{Arc, RwLock},
 };
 
-<span class="doccomment">/// Returned when a [`Cookie`] fails to be added to the [`CookieJar`].</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CookieRejectedError</span> {
-    <span class="ident">kind</span>: <span class="ident">CookieRejectedErrorKind</span>,
-    <span class="ident">cookie</span>: <span class="ident">Cookie</span>,
+<span class="doccomment">/// Returned when a [`Cookie`] fails to be added to the [`CookieJar`].
+</span><span class="attribute">#[derive(Clone, Debug)]</span>
+<span class="kw">pub struct </span>CookieRejectedError {
+    kind: CookieRejectedErrorKind,
+    cookie: Cookie,
 }
 
-<span class="doccomment">/// The reason why the [`Cookie`] was rejected.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CookieRejectedErrorKind</span> {
-    <span class="doccomment">/// The absolute request URI did not contain a valid host.</span>
-    <span class="ident">InvalidRequestDomain</span>,
+<span class="doccomment">/// The reason why the [`Cookie`] was rejected.
+</span><span class="attribute">#[derive(Clone, Copy, Debug, PartialEq, Eq)]</span>
+<span class="attribute">#[non_exhaustive]</span>
+<span class="kw">pub enum </span>CookieRejectedErrorKind {
+    <span class="doccomment">/// The absolute request URI did not contain a valid host.
+    </span>InvalidRequestDomain,
 
-    <span class="doccomment">/// The [`Cookie`]&#39;s specified domain was not valid.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This can be for a number of reasons:</span>
-    <span class="doccomment">/// 1. The domain was a top-level domain.</span>
-    <span class="doccomment">/// 2. The domain is disallowed, for example if it is a public suffix.</span>
-    <span class="ident">InvalidCookieDomain</span>,
+    <span class="doccomment">/// The [`Cookie`]&#39;s specified domain was not valid.
+    ///
+    /// This can be for a number of reasons:
+    /// 1. The domain was a top-level domain.
+    /// 2. The domain is disallowed, for example if it is a public suffix.
+    </span>InvalidCookieDomain,
 
-    <span class="doccomment">/// The domain of the [`Cookie`] did not match the domain of the absolute request URI.</span>
-    <span class="ident">DomainMismatch</span>,
+    <span class="doccomment">/// The domain of the [`Cookie`] did not match the domain of the absolute request URI.
+    </span>DomainMismatch,
 }
 
-<span class="kw">impl</span> <span class="ident">CookieRejectedError</span> {
-    <span class="doccomment">/// Get the kind of error that occurred.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CookieRejectedErrorKind</span> {
-        <span class="self">self</span>.<span class="ident">kind</span>
+<span class="kw">impl </span>CookieRejectedError {
+    <span class="doccomment">/// Get the kind of error that occurred.
+    </span><span class="kw">pub fn </span>kind(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CookieRejectedErrorKind {
+        <span class="self">self</span>.kind
     }
 
-    <span class="doccomment">/// Get back the [`Cookie`] that failed to be set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cookie</span>(<span class="self">self</span>) -&gt; <span class="ident">Cookie</span> {
-        <span class="self">self</span>.<span class="ident">cookie</span>
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">CookieRejectedError</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;invalid cookie for given request URI&quot;</span>)
+    <span class="doccomment">/// Get back the [`Cookie`] that failed to be set.
+    </span><span class="kw">pub fn </span>cookie(<span class="self">self</span>) -&gt; Cookie {
+        <span class="self">self</span>.cookie
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Error</span> <span class="kw">for</span> <span class="ident">CookieRejectedError</span> {}
-
-<span class="doccomment">/// Provides automatic cookie session management using an in-memory cookie</span>
-<span class="doccomment">/// store.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Cookie jars are designed to be shareable across many concurrent requests, so</span>
-<span class="doccomment">/// cloning the jar simply returns a new reference to the jar instead of doing a</span>
-<span class="doccomment">/// deep clone.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This cookie jar implementation seeks to conform to the rules for client</span>
-<span class="doccomment">/// state management as described in [RFC</span>
-<span class="doccomment">/// 6265](https://tools.ietf.org/html/rfc6265).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Domain isolation</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Cookies are isolated from each other based on the domain and path they are</span>
-<span class="doccomment">/// received from. As such, most methods require you to specify a URI, since</span>
-<span class="doccomment">/// unrelated websites can have cookies with the same name without conflict.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CookieJar</span> {
-    <span class="ident">cookies</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">CookieWithContext</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>CookieRejectedError {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;invalid cookie for given request URI&quot;</span>)
+    }
 }
 
-<span class="kw">impl</span> <span class="ident">CookieJar</span> {
-    <span class="doccomment">/// Create a new, empty cookie jar.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::default</span>()
+<span class="kw">impl </span>Error <span class="kw">for </span>CookieRejectedError {}
+
+<span class="doccomment">/// Provides automatic cookie session management using an in-memory cookie
+/// store.
+///
+/// Cookie jars are designed to be shareable across many concurrent requests, so
+/// cloning the jar simply returns a new reference to the jar instead of doing a
+/// deep clone.
+///
+/// This cookie jar implementation seeks to conform to the rules for client
+/// state management as described in [RFC
+/// 6265](https://tools.ietf.org/html/rfc6265).
+///
+/// # Domain isolation
+///
+/// Cookies are isolated from each other based on the domain and path they are
+/// received from. As such, most methods require you to specify a URI, since
+/// unrelated websites can have cookies with the same name without conflict.
+</span><span class="attribute">#[derive(Clone, Debug, Default)]</span>
+<span class="kw">pub struct </span>CookieJar {
+    cookies: Arc&lt;RwLock&lt;HashSet&lt;CookieWithContext&gt;&gt;&gt;,
+}
+
+<span class="kw">impl </span>CookieJar {
+    <span class="doccomment">/// Create a new, empty cookie jar.
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::default()
     }
 
-    <span class="doccomment">/// Get a cookie by name for the given URI.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_by_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>, <span class="ident">cookie_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cookie</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">cookies</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">cookie</span><span class="op">|</span> <span class="ident">cookie</span>.<span class="ident">matches</span>(<span class="ident">uri</span>))
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">cookie</span><span class="op">|</span> <span class="ident">cookie</span>.<span class="ident">cookie</span>.<span class="ident">name</span>() <span class="op">==</span> <span class="ident">cookie_name</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">cookie</span>.<span class="ident">clone</span>())
-            .<span class="ident">next</span>()
+    <span class="doccomment">/// Get a cookie by name for the given URI.
+    </span><span class="kw">pub fn </span>get_by_name(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: <span class="kw-2">&amp;</span>Uri, cookie_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;Cookie&gt; {
+        <span class="self">self</span>.cookies
+            .read()
+            .unwrap()
+            .iter()
+            .filter(|cookie| cookie.matches(uri))
+            .filter(|cookie| cookie.cookie.name() == cookie_name)
+            .map(|c| c.cookie.clone())
+            .next()
     }
 
-    <span class="doccomment">/// Get a copy of all the cookies in the jar that match the given URI.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The returned collection contains a copy of all the cookies matching the</span>
-    <span class="doccomment">/// URI at the time this function was called. The collection is not a &quot;live&quot;</span>
-    <span class="doccomment">/// view into the cookie jar; concurrent changes made to the jar (cookies</span>
-    <span class="doccomment">/// inserted or removed) will not be reflected in the collection.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_for_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>) -&gt; <span class="kw">impl</span> <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Cookie</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookies</span>.<span class="ident">read</span>().<span class="ident">unwrap</span>();
+    <span class="doccomment">/// Get a copy of all the cookies in the jar that match the given URI.
+    ///
+    /// The returned collection contains a copy of all the cookies matching the
+    /// URI at the time this function was called. The collection is not a &quot;live&quot;
+    /// view into the cookie jar; concurrent changes made to the jar (cookies
+    /// inserted or removed) will not be reflected in the collection.
+    </span><span class="kw">pub fn </span>get_for_uri(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: <span class="kw-2">&amp;</span>Uri) -&gt; <span class="kw">impl </span>IntoIterator&lt;Item = Cookie&gt; {
+        <span class="kw">let </span>jar = <span class="self">self</span>.cookies.read().unwrap();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cookies</span> <span class="op">=</span> <span class="ident">jar</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">cookie</span><span class="op">|</span> <span class="ident">cookie</span>.<span class="ident">matches</span>(<span class="ident">uri</span>))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">cookie</span>.<span class="ident">clone</span>())
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>cookies = jar
+            .iter()
+            .filter(|cookie| cookie.matches(uri))
+            .map(|c| c.cookie.clone())
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="comment">// Cookies should be returned in lexical order.</span>
-        <span class="ident">cookies</span>.<span class="ident">sort_by</span>(<span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">name</span>().<span class="ident">cmp</span>(<span class="ident">b</span>.<span class="ident">name</span>()));
+        <span class="comment">// Cookies should be returned in lexical order.
+        </span>cookies.sort_by(|a, b| a.name().cmp(b.name()));
 
-        <span class="ident">cookies</span>
+        cookies
     }
 
-    <span class="doccomment">/// Remove all cookies from this cookie jar.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">cookies</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+    <span class="doccomment">/// Remove all cookies from this cookie jar.
+    </span><span class="kw">pub fn </span>clear(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.cookies.write().unwrap().clear();
     }
 
-    <span class="doccomment">/// Set a cookie for the given absolute request URI.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the cookie was set successfully, returns the cookie that previously existed for</span>
-    <span class="doccomment">/// the given domain, path, and cookie name, if any.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If unsuccessful, returns a [`CookieRejectedError`] which can be used to get back the</span>
-    <span class="doccomment">/// attempted cookie.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set</span>(
+    <span class="doccomment">/// Set a cookie for the given absolute request URI.
+    ///
+    /// If the cookie was set successfully, returns the cookie that previously existed for
+    /// the given domain, path, and cookie name, if any.
+    ///
+    /// If unsuccessful, returns a [`CookieRejectedError`] which can be used to get back the
+    /// attempted cookie.
+    </span><span class="kw">pub fn </span>set(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cookie</span>: <span class="ident">Cookie</span>,
-        <span class="ident">request_uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Cookie</span><span class="op">&gt;</span>, <span class="ident">CookieRejectedError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">request_host</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">host</span>) <span class="op">=</span> <span class="ident">request_uri</span>.<span class="ident">host</span>() {
-            <span class="ident">host</span>
-        } <span class="kw">else</span> {
+        cookie: Cookie,
+        request_uri: <span class="kw-2">&amp;</span>Uri,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Cookie&gt;, CookieRejectedError&gt; {
+        <span class="kw">let </span>request_host = <span class="kw">if let </span><span class="prelude-val">Some</span>(host) = request_uri.host() {
+            host
+        } <span class="kw">else </span>{
             <span class="macro">tracing::warn!</span>(
                 <span class="string">&quot;cookie &#39;{}&#39; dropped, no domain specified in request URI&quot;</span>,
-                <span class="ident">cookie</span>.<span class="ident">name</span>()
+                cookie.name()
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CookieRejectedError</span> {
-                <span class="ident">kind</span>: <span class="ident">CookieRejectedErrorKind::InvalidRequestDomain</span>,
-                <span class="ident">cookie</span>,
+            <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
+                kind: CookieRejectedErrorKind::InvalidRequestDomain,
+                cookie,
             });
         };
 
-        <span class="comment">// Perform some validations on the domain.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">domain</span>) <span class="op">=</span> <span class="ident">cookie</span>.<span class="ident">domain</span>() {
-            <span class="comment">// The given domain must domain-match the origin.</span>
-            <span class="comment">// https://tools.ietf.org/html/rfc6265#section-5.3.6</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">domain_matches</span>(<span class="ident">request_host</span>, <span class="ident">domain</span>) {
+        <span class="comment">// Perform some validations on the domain.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(domain) = cookie.domain() {
+            <span class="comment">// The given domain must domain-match the origin.
+            // https://tools.ietf.org/html/rfc6265#section-5.3.6
+            </span><span class="kw">if </span>!domain_matches(request_host, domain) {
                 <span class="macro">tracing::warn!</span>(
                     <span class="string">&quot;cookie &#39;{}&#39; dropped, domain &#39;{}&#39; not allowed to set cookies for &#39;{}&#39;&quot;</span>,
-                    <span class="ident">cookie</span>.<span class="ident">name</span>(),
-                    <span class="ident">request_host</span>,
-                    <span class="ident">domain</span>
+                    cookie.name(),
+                    request_host,
+                    domain
                 );
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CookieRejectedError</span> {
-                    <span class="ident">kind</span>: <span class="ident">CookieRejectedErrorKind::DomainMismatch</span>,
-                    <span class="ident">cookie</span>,
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
+                    kind: CookieRejectedErrorKind::DomainMismatch,
+                    cookie,
                 });
             }
 
-            <span class="comment">// Drop cookies for top-level domains.</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">domain</span>.<span class="ident">contains</span>(<span class="string">&#39;.&#39;</span>) {
+            <span class="comment">// Drop cookies for top-level domains.
+            </span><span class="kw">if </span>!domain.contains(<span class="string">&#39;.&#39;</span>) {
                 <span class="macro">tracing::warn!</span>(
                     <span class="string">&quot;cookie &#39;{}&#39; dropped, setting cookies for domain &#39;{}&#39; is not allowed&quot;</span>,
-                    <span class="ident">cookie</span>.<span class="ident">name</span>(),
-                    <span class="ident">domain</span>
+                    cookie.name(),
+                    domain
                 );
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CookieRejectedError</span> {
-                    <span class="ident">kind</span>: <span class="ident">CookieRejectedErrorKind::InvalidCookieDomain</span>,
-                    <span class="ident">cookie</span>,
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
+                    kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                    cookie,
                 });
             }
 
-            <span class="comment">// Check the PSL for bad domain suffixes if available.</span>
-            <span class="comment">// https://tools.ietf.org/html/rfc6265#section-5.3.5</span>
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;psl&quot;</span>)]</span>
+            <span class="comment">// Check the PSL for bad domain suffixes if available.
+            // https://tools.ietf.org/html/rfc6265#section-5.3.5
+            </span><span class="attribute">#[cfg(feature = <span class="string">&quot;psl&quot;</span>)]</span>
             {
-                <span class="kw">if</span> <span class="ident"><span class="kw">super</span>::psl::is_public_suffix</span>(<span class="ident">domain</span>) {
+                <span class="kw">if </span><span class="kw">super</span>::psl::is_public_suffix(domain) {
                     <span class="macro">tracing::warn!</span>(
                         <span class="string">&quot;cookie &#39;{}&#39; dropped, setting cookies for domain &#39;{}&#39; is not allowed&quot;</span>,
-                        <span class="ident">cookie</span>.<span class="ident">name</span>(),
-                        <span class="ident">domain</span>
+                        cookie.name(),
+                        domain
                     );
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CookieRejectedError</span> {
-                        <span class="ident">kind</span>: <span class="ident">CookieRejectedErrorKind::InvalidCookieDomain</span>,
-                        <span class="ident">cookie</span>,
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
+                        kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                        cookie,
                     });
                 }
             }
         }
 
-        <span class="kw">let</span> <span class="ident">cookie_with_context</span> <span class="op">=</span> <span class="ident">CookieWithContext</span> {
-            <span class="ident">domain_value</span>: <span class="ident">cookie</span>
-                .<span class="ident">domain</span>()
-                .<span class="ident">map</span>(<span class="ident">ToOwned::to_owned</span>)
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">request_host</span>.<span class="ident">to_owned</span>()),
-            <span class="ident">path_value</span>: <span class="ident">cookie</span>
-                .<span class="ident">path</span>()
-                .<span class="ident">map</span>(<span class="ident">ToOwned::to_owned</span>)
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">default_path</span>(<span class="ident">request_uri</span>).<span class="ident">to_owned</span>()),
-            <span class="ident">cookie</span>,
+        <span class="kw">let </span>cookie_with_context = CookieWithContext {
+            domain_value: cookie
+                .domain()
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| request_host.to_owned()),
+            path_value: cookie
+                .path()
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| default_path(request_uri).to_owned()),
+            cookie,
         };
 
-        <span class="comment">// Insert the cookie.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">jar</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cookies</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">existing</span> <span class="op">=</span> <span class="ident">jar</span>
-            .<span class="ident">replace</span>(<span class="ident">cookie_with_context</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cookie_with_context</span><span class="op">|</span> <span class="ident">cookie_with_context</span>.<span class="ident">cookie</span>);
+        <span class="comment">// Insert the cookie.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>jar = <span class="self">self</span>.cookies.write().unwrap();
+        <span class="kw">let </span>existing = jar
+            .replace(cookie_with_context)
+            .map(|cookie_with_context| cookie_with_context.cookie);
 
-        <span class="comment">// Clear expired cookies while we have a write lock.</span>
-        <span class="ident">jar</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">cookie</span><span class="op">|</span> <span class="op">!</span><span class="ident">cookie</span>.<span class="ident">cookie</span>.<span class="ident">is_expired</span>());
+        <span class="comment">// Clear expired cookies while we have a write lock.
+        </span>jar.retain(|cookie| !cookie.cookie.is_expired());
 
-        <span class="prelude-val">Ok</span>(<span class="ident">existing</span>)
+        <span class="prelude-val">Ok</span>(existing)
     }
 }
 
-<span class="doccomment">/// Cookies with context is all the sweeter!</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A persisted cookie including the context required to match the cookie</span>
-<span class="doccomment">/// against outgoing requests. This type also implements `Eq` and `Hash` such</span>
-<span class="doccomment">/// that cookies with the same domain, path, and name are considered the same,</span>
-<span class="doccomment">/// as per RFC 6265 semantics.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">CookieWithContext</span> {
-    <span class="doccomment">/// The domain-value of the cookie, as defined in RFC 6265. Will be derived</span>
-    <span class="doccomment">/// from the request URI if the cookie did not specify one.</span>
-    <span class="ident">domain_value</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Cookies with context is all the sweeter!
+///
+/// A persisted cookie including the context required to match the cookie
+/// against outgoing requests. This type also implements `Eq` and `Hash` such
+/// that cookies with the same domain, path, and name are considered the same,
+/// as per RFC 6265 semantics.
+</span><span class="attribute">#[derive(Debug)]</span>
+<span class="kw">struct </span>CookieWithContext {
+    <span class="doccomment">/// The domain-value of the cookie, as defined in RFC 6265. Will be derived
+    /// from the request URI if the cookie did not specify one.
+    </span>domain_value: String,
 
-    <span class="doccomment">/// The path-value of the cookie, as defined in RFC 6265. Will be derived</span>
-    <span class="doccomment">/// from the request URI if the cookie did not specify one.</span>
-    <span class="ident">path_value</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// The path-value of the cookie, as defined in RFC 6265. Will be derived
+    /// from the request URI if the cookie did not specify one.
+    </span>path_value: String,
 
-    <span class="comment">// The original cookie.</span>
-    <span class="ident">cookie</span>: <span class="ident">Cookie</span>,
+    <span class="comment">// The original cookie.
+    </span>cookie: Cookie,
 }
 
-<span class="kw">impl</span> <span class="ident">CookieWithContext</span> {
-    <span class="doccomment">/// True if the cookie is a host-only cookie (i.e. the request&#39;s host must</span>
-    <span class="doccomment">/// exactly match the domain of the cookie).</span>
-    <span class="kw">fn</span> <span class="ident">is_host_only</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">cookie</span>.<span class="ident">domain</span>().<span class="ident">is_none</span>()
+<span class="kw">impl </span>CookieWithContext {
+    <span class="doccomment">/// True if the cookie is a host-only cookie (i.e. the request&#39;s host must
+    /// exactly match the domain of the cookie).
+    </span><span class="kw">fn </span>is_host_only(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.cookie.domain().is_none()
     }
 
-    <span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.4</span>
-    <span class="kw">fn</span> <span class="ident">matches</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cookie</span>.<span class="ident">is_secure</span>() <span class="op">&amp;&amp;</span> <span class="ident">uri</span>.<span class="ident">scheme</span>() <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">::http::uri::Scheme::HTTPS</span>) {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+    <span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.4
+    </span><span class="kw">fn </span>matches(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: <span class="kw-2">&amp;</span>Uri) -&gt; bool {
+        <span class="kw">if </span><span class="self">self</span>.cookie.is_secure() &amp;&amp; uri.scheme() != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>::http::uri::Scheme::HTTPS) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">request_host</span> <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">host</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;&quot;</span>);
+        <span class="kw">let </span>request_host = uri.host().unwrap_or(<span class="string">&quot;&quot;</span>);
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_host_only</span>() {
-            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">domain_value</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="ident">request_host</span>) {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="kw">if </span><span class="self">self</span>.is_host_only() {
+            <span class="kw">if </span>!<span class="self">self</span>.domain_value.eq_ignore_ascii_case(request_host) {
+                <span class="kw">return </span><span class="bool-val">false</span>;
             }
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">domain_matches</span>(<span class="ident">request_host</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">domain_value</span>) {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+        } <span class="kw">else if </span>!domain_matches(request_host, <span class="kw-2">&amp;</span><span class="self">self</span>.domain_value) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">path_matches</span>(<span class="ident">uri</span>.<span class="ident">path</span>(), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">path_value</span>) {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="kw">if </span>!path_matches(uri.path(), <span class="kw-2">&amp;</span><span class="self">self</span>.path_value) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cookie</span>.<span class="ident">is_expired</span>() {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="kw">if </span><span class="self">self</span>.cookie.is_expired() {
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="bool-val">true</span>
+        <span class="bool-val">true
+    </span>}
+}
+
+<span class="kw">impl </span>Hash <span class="kw">for </span>CookieWithContext {
+    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="self">self</span>.domain_value.hash(state);
+        <span class="self">self</span>.path_value.hash(state);
+        <span class="self">self</span>.cookie.name().hash(state);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Hash</span> <span class="kw">for</span> <span class="ident">CookieWithContext</span> {
-    <span class="kw">fn</span> <span class="ident">hash</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hasher</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">H</span>) {
-        <span class="self">self</span>.<span class="ident">domain_value</span>.<span class="ident">hash</span>(<span class="ident">state</span>);
-        <span class="self">self</span>.<span class="ident">path_value</span>.<span class="ident">hash</span>(<span class="ident">state</span>);
-        <span class="self">self</span>.<span class="ident">cookie</span>.<span class="ident">name</span>().<span class="ident">hash</span>(<span class="ident">state</span>);
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>CookieWithContext {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.domain_value == other.domain_value
+            &amp;&amp; <span class="self">self</span>.path_value == other.path_value
+            &amp;&amp; <span class="self">self</span>.cookie.name() == other.cookie.name()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">CookieWithContext</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">domain_value</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">domain_value</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">path_value</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">path_value</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">cookie</span>.<span class="ident">name</span>() <span class="op">==</span> <span class="ident">other</span>.<span class="ident">cookie</span>.<span class="ident">name</span>()
+<span class="kw">impl </span>Eq <span class="kw">for </span>CookieWithContext {}
+
+<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.3
+</span><span class="kw">fn </span>domain_matches(string: <span class="kw-2">&amp;</span>str, domain_string: <span class="kw-2">&amp;</span>str) -&gt; bool {
+    <span class="kw">if </span>domain_string.eq_ignore_ascii_case(string) {
+        <span class="kw">return </span><span class="bool-val">true</span>;
     }
+
+    <span class="kw">let </span>string = <span class="kw-2">&amp;</span>string.to_lowercase();
+    <span class="kw">let </span>domain_string = <span class="kw-2">&amp;</span>domain_string.to_lowercase();
+
+    string.ends_with(domain_string)
+        &amp;&amp; string.as_bytes()[string.len() - domain_string.len() - <span class="number">1</span>] == <span class="string">b&#39;.&#39;
+        </span>&amp;&amp; string.parse::&lt;Ipv4Addr&gt;().is_err()
+        &amp;&amp; string.parse::&lt;Ipv6Addr&gt;().is_err()
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">CookieWithContext</span> {}
-
-<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.3</span>
-<span class="kw">fn</span> <span class="ident">domain_matches</span>(<span class="ident">string</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">domain_string</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
-    <span class="kw">if</span> <span class="ident">domain_string</span>.<span class="ident">eq_ignore_ascii_case</span>(<span class="ident">string</span>) {
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.4
+</span><span class="kw">fn </span>path_matches(request_path: <span class="kw-2">&amp;</span>str, cookie_path: <span class="kw-2">&amp;</span>str) -&gt; bool {
+    <span class="kw">if </span>request_path == cookie_path {
+        <span class="kw">return </span><span class="bool-val">true</span>;
     }
 
-    <span class="kw">let</span> <span class="ident">string</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">string</span>.<span class="ident">to_lowercase</span>();
-    <span class="kw">let</span> <span class="ident">domain_string</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">domain_string</span>.<span class="ident">to_lowercase</span>();
-
-    <span class="ident">string</span>.<span class="ident">ends_with</span>(<span class="ident">domain_string</span>)
-        <span class="op">&amp;&amp;</span> <span class="ident">string</span>.<span class="ident">as_bytes</span>()[<span class="ident">string</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">domain_string</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>] <span class="op">==</span> <span class="string">b&#39;.&#39;</span>
-        <span class="op">&amp;&amp;</span> <span class="ident">string</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Ipv4Addr</span><span class="op">&gt;</span>().<span class="ident">is_err</span>()
-        <span class="op">&amp;&amp;</span> <span class="ident">string</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Ipv6Addr</span><span class="op">&gt;</span>().<span class="ident">is_err</span>()
-}
-
-<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.4</span>
-<span class="kw">fn</span> <span class="ident">path_matches</span>(<span class="ident">request_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cookie_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
-    <span class="kw">if</span> <span class="ident">request_path</span> <span class="op">==</span> <span class="ident">cookie_path</span> {
-        <span class="kw">return</span> <span class="bool-val">true</span>;
-    }
-
-    <span class="kw">if</span> <span class="ident">request_path</span>.<span class="ident">starts_with</span>(<span class="ident">cookie_path</span>)
-        <span class="op">&amp;&amp;</span> (<span class="ident">cookie_path</span>.<span class="ident">ends_with</span>(<span class="string">&#39;/&#39;</span>) <span class="op">|</span><span class="op">|</span> <span class="ident">request_path</span>[<span class="ident">cookie_path</span>.<span class="ident">len</span>()..].<span class="ident">starts_with</span>(<span class="string">&#39;/&#39;</span>))
+    <span class="kw">if </span>request_path.starts_with(cookie_path)
+        &amp;&amp; (cookie_path.ends_with(<span class="string">&#39;/&#39;</span>) || request_path[cookie_path.len()..].starts_with(<span class="string">&#39;/&#39;</span>))
     {
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+        <span class="kw">return </span><span class="bool-val">true</span>;
     }
 
-    <span class="bool-val">false</span>
+    <span class="bool-val">false
+</span>}
+
+<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.4
+</span><span class="kw">fn </span>default_path(uri: <span class="kw-2">&amp;</span>Uri) -&gt; <span class="kw-2">&amp;</span>str {
+    <span class="comment">// Step 2
+    </span><span class="kw">if </span>!uri.path().starts_with(<span class="string">&#39;/&#39;</span>) {
+        <span class="kw">return </span><span class="string">&quot;/&quot;</span>;
+    }
+
+    <span class="comment">// Step 3
+    </span><span class="kw">let </span>rightmost_slash_idx = uri.path().rfind(<span class="string">&#39;/&#39;</span>).unwrap();
+    <span class="kw">if </span>rightmost_slash_idx == <span class="number">0 </span>{
+        <span class="comment">// There&#39;s only one slash; it&#39;s the first character.
+        </span><span class="kw">return </span><span class="string">&quot;/&quot;</span>;
+    }
+
+    <span class="comment">// Step 4
+    </span><span class="kw-2">&amp;</span>uri.path()[..rightmost_slash_idx]
 }
 
-<span class="comment">// http://tools.ietf.org/html/rfc6265#section-5.1.4</span>
-<span class="kw">fn</span> <span class="ident">default_path</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">Uri</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-    <span class="comment">// Step 2</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">uri</span>.<span class="ident">path</span>().<span class="ident">starts_with</span>(<span class="string">&#39;/&#39;</span>) {
-        <span class="kw">return</span> <span class="string">&quot;/&quot;</span>;
-    }
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>test_case::test_case;
 
-    <span class="comment">// Step 3</span>
-    <span class="kw">let</span> <span class="ident">rightmost_slash_idx</span> <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">path</span>().<span class="ident">rfind</span>(<span class="string">&#39;/&#39;</span>).<span class="ident">unwrap</span>();
-    <span class="kw">if</span> <span class="ident">rightmost_slash_idx</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="comment">// There&#39;s only one slash; it&#39;s the first character.</span>
-        <span class="kw">return</span> <span class="string">&quot;/&quot;</span>;
-    }
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>cookie_domain_not_allowed() {
+        <span class="kw">let </span>jar = CookieJar::default();
 
-    <span class="comment">// Step 4</span>
-    <span class="kw-2">&amp;</span><span class="ident">uri</span>.<span class="ident">path</span>()[..<span class="ident">rightmost_slash_idx</span>]
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">test_case::test_case</span>;
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">cookie_domain_not_allowed</span>() {
-        <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="ident">CookieJar::default</span>();
-
-        <span class="ident">jar</span>.<span class="ident">set</span>(
-            <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+        jar.set(
+            Cookie::parse(<span class="string">&quot;foo=bar&quot;</span>).unwrap(),
+            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
-        <span class="ident">jar</span>.<span class="ident">set</span>(
-            <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=bar.baz.com&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+        jar.set(
+            Cookie::parse(<span class="string">&quot;foo=bar; domain=bar.baz.com&quot;</span>).unwrap(),
+            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
-        <span class="ident">jar</span>.<span class="ident">set</span>(
-            <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=baz.com&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+        jar.set(
+            Cookie::parse(<span class="string">&quot;foo=bar; domain=baz.com&quot;</span>).unwrap(),
+            <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
         <span class="macro">assert!</span>(
-            <span class="ident">jar</span>.<span class="ident">set</span>(
-                <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=www.bar.baz.com&quot;</span>).<span class="ident">unwrap</span>(),
-                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+            jar.set(
+                Cookie::parse(<span class="string">&quot;foo=bar; domain=www.bar.baz.com&quot;</span>).unwrap(),
+                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
             )
-            .<span class="ident">unwrap_err</span>()
-            .<span class="ident">kind</span>()
-                <span class="op">==</span> <span class="ident">CookieRejectedErrorKind::DomainMismatch</span>
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::DomainMismatch
         );
 
-        <span class="comment">// TLDs are not allowed.</span>
-        <span class="macro">assert!</span>(
-            <span class="ident">jar</span>.<span class="ident">set</span>(
-                <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=com&quot;</span>).<span class="ident">unwrap</span>(),
-                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+        <span class="comment">// TLDs are not allowed.
+        </span><span class="macro">assert!</span>(
+            jar.set(
+                Cookie::parse(<span class="string">&quot;foo=bar; domain=com&quot;</span>).unwrap(),
+                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
             )
-            .<span class="ident">unwrap_err</span>()
-            .<span class="ident">kind</span>()
-                <span class="op">==</span> <span class="ident">CookieRejectedErrorKind::InvalidCookieDomain</span>
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::InvalidCookieDomain
         );
 
         <span class="macro">assert!</span>(
-            <span class="ident">jar</span>.<span class="ident">set</span>(
-                <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=.com&quot;</span>).<span class="ident">unwrap</span>(),
-                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+            jar.set(
+                Cookie::parse(<span class="string">&quot;foo=bar; domain=.com&quot;</span>).unwrap(),
+                <span class="kw-2">&amp;</span><span class="string">&quot;https://bar.baz.com&quot;</span>.parse().unwrap(),
             )
-            .<span class="ident">unwrap_err</span>()
-            .<span class="ident">kind</span>()
-                <span class="op">==</span> <span class="ident">CookieRejectedErrorKind::InvalidCookieDomain</span>
+            .unwrap_err()
+            .kind()
+                == CookieRejectedErrorKind::InvalidCookieDomain
         );
 
-        <span class="comment">// If the public suffix list is enabled, also exercise that validation.</span>
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;psl&quot;</span>) {
-            <span class="comment">// wi.us is a public suffix</span>
-            <span class="macro">assert!</span>(
-                <span class="ident">jar</span>.<span class="ident">set</span>(
-                    <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar; domain=wi.us&quot;</span>).<span class="ident">unwrap</span>(),
-                    <span class="kw-2">&amp;</span><span class="string">&quot;https://www.state.wi.us&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+        <span class="comment">// If the public suffix list is enabled, also exercise that validation.
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;psl&quot;</span>) {
+            <span class="comment">// wi.us is a public suffix
+            </span><span class="macro">assert!</span>(
+                jar.set(
+                    Cookie::parse(<span class="string">&quot;foo=bar; domain=wi.us&quot;</span>).unwrap(),
+                    <span class="kw-2">&amp;</span><span class="string">&quot;https://www.state.wi.us&quot;</span>.parse().unwrap(),
                 )
-                .<span class="ident">unwrap_err</span>()
-                .<span class="ident">kind</span>()
-                    <span class="op">==</span> <span class="ident">CookieRejectedErrorKind::InvalidCookieDomain</span>
+                .unwrap_err()
+                .kind()
+                    == CookieRejectedErrorKind::InvalidCookieDomain
             );
         }
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">expire_a_cookie</span>() {
-        <span class="kw">let</span> <span class="ident">uri</span>: <span class="ident">Uri</span> <span class="op">=</span> <span class="string">&quot;https://example.com/foo&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">jar</span> <span class="op">=</span> <span class="ident">CookieJar::default</span>();
+    <span class="attribute">#[test]</span>
+    <span class="kw">fn </span>expire_a_cookie() {
+        <span class="kw">let </span>uri: Uri = <span class="string">&quot;https://example.com/foo&quot;</span>.parse().unwrap();
+        <span class="kw">let </span>jar = CookieJar::default();
 
-        <span class="ident">jar</span>.<span class="ident">set</span>(<span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=bar&quot;</span>).<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">uri</span>).<span class="ident">unwrap</span>();
+        jar.set(Cookie::parse(<span class="string">&quot;foo=bar&quot;</span>).unwrap(), <span class="kw-2">&amp;</span>uri).unwrap();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">jar</span>.<span class="ident">get_by_name</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>, <span class="string">&quot;foo&quot;</span>).<span class="ident">unwrap</span>(), <span class="string">&quot;bar&quot;</span>);
+        <span class="macro">assert_eq!</span>(jar.get_by_name(<span class="kw-2">&amp;</span>uri, <span class="string">&quot;foo&quot;</span>).unwrap(), <span class="string">&quot;bar&quot;</span>);
 
-        <span class="ident">jar</span>.<span class="ident">set</span>(
-            <span class="ident">Cookie::parse</span>(<span class="string">&quot;foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">uri</span>,
+        jar.set(
+            Cookie::parse(<span class="string">&quot;foo=; expires=Wed, 21 Oct 2015 07:28:00 GMT&quot;</span>).unwrap(),
+            <span class="kw-2">&amp;</span>uri,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
 
-        <span class="macro">assert!</span>(<span class="ident">jar</span>.<span class="ident">get_for_uri</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>).<span class="ident">into_iter</span>().<span class="ident">next</span>().<span class="ident">is_none</span>());
+        <span class="macro">assert!</span>(jar.get_for_uri(<span class="kw-2">&amp;</span>uri).into_iter().next().is_none());
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;.127.0.0.2&quot;</span>, <span class="string">&quot;127.0.0.2&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;bar.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;baz.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;baz.bar.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;www.baz.com&quot;</span>, <span class="string">&quot;baz.com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;baz.bar.com&quot;</span>, <span class="string">&quot;com&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">test_domain_matches</span>(<span class="ident">string</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">domain_string</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">should_match</span>: <span class="ident">bool</span>) {
-        <span class="macro">assert_eq!</span>(<span class="ident">domain_matches</span>(<span class="ident">string</span>, <span class="ident">domain_string</span>), <span class="ident">should_match</span>);
+    <span class="attribute">#[test_case(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;.127.0.0.2&quot;</span>, <span class="string">&quot;127.0.0.2&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;bar.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;baz.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;baz.bar.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;www.baz.com&quot;</span>, <span class="string">&quot;baz.com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;baz.bar.com&quot;</span>, <span class="string">&quot;com&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="kw">fn </span>test_domain_matches(string: <span class="kw-2">&amp;</span>str, domain_string: <span class="kw-2">&amp;</span>str, should_match: bool) {
+        <span class="macro">assert_eq!</span>(domain_matches(string, domain_string), should_match);
     }
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/Bar&quot;</span>, <span class="string">&quot;/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/fo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar/baz&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar//baz2&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foobar&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foobar&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar2/&quot;</span>, <span class="string">&quot;/foo/bar2&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar/baz&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar3&quot;</span>, <span class="string">&quot;/foo/bar3/&quot;</span>, <span class="bool-val">false</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar4/&quot;</span>, <span class="string">&quot;/foo/bar4/&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;/foo/bar/baz2&quot;</span>, <span class="string">&quot;/foo/bar/&quot;</span>, <span class="bool-val">true</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">test_path_matches</span>(<span class="ident">request_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cookie_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">should_match</span>: <span class="ident">bool</span>) {
-        <span class="macro">assert_eq!</span>(<span class="ident">path_matches</span>(<span class="ident">request_path</span>, <span class="ident">cookie_path</span>), <span class="ident">should_match</span>);
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/Bar&quot;</span>, <span class="string">&quot;/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/fo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar/baz&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar//baz2&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foobar&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foobar&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar2/&quot;</span>, <span class="string">&quot;/foo/bar2&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar/baz&quot;</span>, <span class="string">&quot;/foo/bar&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar3&quot;</span>, <span class="string">&quot;/foo/bar3/&quot;</span>, <span class="bool-val">false</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar4/&quot;</span>, <span class="string">&quot;/foo/bar4/&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="attribute">#[test_case(<span class="string">&quot;/foo/bar/baz2&quot;</span>, <span class="string">&quot;/foo/bar/&quot;</span>, <span class="bool-val">true</span>)]</span>
+    <span class="kw">fn </span>test_path_matches(request_path: <span class="kw-2">&amp;</span>str, cookie_path: <span class="kw-2">&amp;</span>str, should_match: bool) {
+        <span class="macro">assert_eq!</span>(path_matches(request_path, cookie_path), should_match);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

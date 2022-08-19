@@ -37,42 +37,42 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Interceptor</span>, <span class="ident">InterceptorFuture</span>, <span class="ident">InterceptorObj</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">body::AsyncBody</span>, <span class="ident">error::Error</span>};
-<span class="kw">use</span> <span class="ident">http</span>::{<span class="ident">Request</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">sync::Arc</span>};
+</pre><pre class="rust"><code><span class="kw">use super</span>::{Interceptor, InterceptorFuture, InterceptorObj};
+<span class="kw">use crate</span>::{body::AsyncBody, error::Error};
+<span class="kw">use </span>http::{Request, Response};
+<span class="kw">use </span>std::{fmt, sync::Arc};
 
-<span class="doccomment">/// Execution context for an interceptor.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">invoker</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Invoke</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">InterceptorObj</span>],
+<span class="doccomment">/// Execution context for an interceptor.
+</span><span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) invoker: Arc&lt;<span class="kw">dyn </span>Invoke + Send + Sync + <span class="lifetime">&#39;a</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) interceptors: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[InterceptorObj],
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Send a request asynchronously, executing the next interceptor in the</span>
-    <span class="doccomment">/// chain, if any.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Response</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">interceptor</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">interceptors</span>.<span class="ident">first</span>() {
-            <span class="kw">let</span> <span class="ident">inner_context</span> <span class="op">=</span> <span class="self">Self</span> {
-                <span class="ident">invoker</span>: <span class="self">self</span>.<span class="ident">invoker</span>.<span class="ident">clone</span>(),
-                <span class="ident">interceptors</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interceptors</span>[<span class="number">1</span>..],
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Context&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="doccomment">/// Send a request asynchronously, executing the next interceptor in the
+    /// chain, if any.
+    </span><span class="kw">pub async fn </span>send(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;AsyncBody&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;AsyncBody&gt;, Error&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(interceptor) = <span class="self">self</span>.interceptors.first() {
+            <span class="kw">let </span>inner_context = <span class="self">Self </span>{
+                invoker: <span class="self">self</span>.invoker.clone(),
+                interceptors: <span class="kw-2">&amp;</span><span class="self">self</span>.interceptors[<span class="number">1</span>..],
             };
 
-            <span class="ident">interceptor</span>.<span class="ident">intercept</span>(<span class="ident">request</span>, <span class="ident">inner_context</span>).<span class="kw">await</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">invoker</span>.<span class="ident">invoke</span>(<span class="ident">request</span>).<span class="kw">await</span>
-        }
+            interceptor.intercept(request, inner_context).<span class="kw">await
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.invoker.invoke(request).<span class="kw">await
+        </span>}
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Context&quot;</span>).<span class="ident">finish</span>()
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Context&lt;<span class="lifetime">&#39;_</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;Context&quot;</span>).finish()
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">Invoke</span> {
-    <span class="kw">fn</span> <span class="ident">invoke</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">AsyncBody</span><span class="op">&gt;</span>) -&gt; <span class="ident">InterceptorFuture</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Invoke {
+    <span class="kw">fn </span>invoke(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;AsyncBody&gt;) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;_</span>, Error&gt;;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

@@ -7,41 +7,41 @@ client builder as a default setting. Request configuration is provided by
 the <a href="config/trait.Configurable.html" title="Configurable"><code>Configurable</code></a> trait, which is also available in the
 <a href="prelude/index.html"><code>prelude</code></a> module.</p>
 <h2 id="examples"><a href="#examples">Examples</a></h2>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{
-    <span class="ident">config</span>::{<span class="ident">RedirectPolicy</span>, <span class="ident">VersionNegotiation</span>},
-    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
-    <span class="ident">HttpClient</span>,
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{
+    config::{RedirectPolicy, VersionNegotiation},
+    prelude::<span class="kw-2">*</span>,
+    HttpClient,
 };
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="number">60</span>))
-    .<span class="ident">redirect_policy</span>(<span class="ident">RedirectPolicy::Limit</span>(<span class="number">10</span>))
-    .<span class="ident">version_negotiation</span>(<span class="ident">VersionNegotiation::http2</span>())
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .timeout(Duration::from_secs(<span class="number">60</span>))
+    .redirect_policy(RedirectPolicy::Limit(<span class="number">10</span>))
+    .version_negotiation(VersionNegotiation::http2())
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor"></a></h2><div id="implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-HttpClientBuilder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#92-484">source</a></span><a href="#impl-HttpClientBuilder" class="anchor"></a><h3 class="code-header in-band">impl <a class="struct" href="struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder">HttpClientBuilder</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.new" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#97-115">source</a></span><h4 class="code-header">pub fn <a href="#method.new" class="fnname">new</a>() -&gt; Self</h4></section></summary><div class="docblock"><p>Create a new builder for building a custom client. All configuration
 will start out with the default values.</p>
 <p>This is equivalent to the <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html" title="Default"><code>Default</code></a> implementation.</p>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.cookies" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#149-153">source</a></span><h4 class="code-header">pub fn <a href="#method.cookies" class="fnname">cookies</a>(self) -&gt; Self</h4></section><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>cookies</code></strong> only.</div></span></summary><div class="docblock"><p>Enable persistent cookie handling for all requests using this client
 using a shared cookie jar.</p>
 <h5 id="examples-1"><a href="#examples-1">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="comment">// Create a client with a cookie jar.</span>
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">cookies</span>()
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;
+<span class="comment">// Create a client with a cookie jar.
+</span><span class="kw">let </span>client = HttpClient::builder()
+    .cookies()
+    .build()<span class="question-mark">?</span>;
 
-<span class="comment">// Make a request that sets a cookie.</span>
-<span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="string">&quot;http://httpbin.org/cookies/set?foo=bar&quot;</span>.<span class="ident">parse</span>()<span class="question-mark">?</span>;
-<span class="ident">client</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>)<span class="question-mark">?</span>;
+<span class="comment">// Make a request that sets a cookie.
+</span><span class="kw">let </span>uri = <span class="string">&quot;http://httpbin.org/cookies/set?foo=bar&quot;</span>.parse()<span class="question-mark">?</span>;
+client.get(<span class="kw-2">&amp;</span>uri)<span class="question-mark">?</span>;
 
-<span class="comment">// Get the cookie from the cookie jar.</span>
-<span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">cookie_jar</span>()
-    .<span class="ident">unwrap</span>()
-    .<span class="ident">get_by_name</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>, <span class="string">&quot;foo&quot;</span>)
-    .<span class="ident">unwrap</span>();
-<span class="macro">assert_eq!</span>(<span class="ident">cookie</span>, <span class="string">&quot;bar&quot;</span>);
+<span class="comment">// Get the cookie from the cookie jar.
+</span><span class="kw">let </span>cookie = client.cookie_jar()
+    .unwrap()
+    .get_by_name(<span class="kw-2">&amp;</span>uri, <span class="string">&quot;foo&quot;</span>)
+    .unwrap();
+<span class="macro">assert_eq!</span>(cookie, <span class="string">&quot;bar&quot;</span>);
 </code></pre></div>
 <h5 id="availability"><a href="#availability">Availability</a></h5>
 <p>This method is only available when the <a href="index.html#cookies"><code>cookies</code></a>
@@ -95,30 +95,30 @@ change the entry timeout duration or disable caching completely.</p>
 <p>Note that DNS entry TTLs are not respected, regardless of this setting.</p>
 <p>By default caching is enabled with a 60 second timeout.</p>
 <h5 id="examples-2"><a href="#examples-2">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config</span>::<span class="kw-2">*</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::<span class="kw-2">*</span>, prelude::<span class="kw-2">*</span>, HttpClient};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    <span class="comment">// Cache entries for 10 seconds.</span>
-    .<span class="ident">dns_cache</span>(<span class="ident">Duration::from_secs</span>(<span class="number">10</span>))
-    <span class="comment">// Cache entries forever.</span>
-    .<span class="ident">dns_cache</span>(<span class="ident">DnsCache::Forever</span>)
-    <span class="comment">// Don&#39;t cache anything.</span>
-    .<span class="ident">dns_cache</span>(<span class="ident">DnsCache::Disable</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    <span class="comment">// Cache entries for 10 seconds.
+    </span>.dns_cache(Duration::from_secs(<span class="number">10</span>))
+    <span class="comment">// Cache entries forever.
+    </span>.dns_cache(DnsCache::Forever)
+    <span class="comment">// Don&#39;t cache anything.
+    </span>.dns_cache(DnsCache::Disable)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.dns_resolve" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#310-316">source</a></span><h4 class="code-header">pub fn <a href="#method.dns_resolve" class="fnname">dns_resolve</a>(self, map: <a class="struct" href="config/struct.ResolveMap.html" title="struct isahc::config::ResolveMap">ResolveMap</a>) -&gt; Self</h4></section></summary><div class="docblock"><p>Set a mapping of DNS resolve overrides.</p>
 <p>Entries in the given map will be used first before using the default DNS
 resolver for host+port pairs.</p>
 <p>Note that DNS resolving is only performed when establishing a new</p>
 <h5 id="examples-3"><a href="#examples-3">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">config::ResolveMap</span>, <span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{config::ResolveMap, prelude::<span class="kw-2">*</span>, HttpClient};
+<span class="kw">use </span>std::net::IpAddr;
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">dns_resolve</span>(<span class="ident">ResolveMap::new</span>()
-        <span class="comment">// Send requests for example.org on port 80 to 127.0.0.1.</span>
-        .<span class="ident">add</span>(<span class="string">&quot;example.org&quot;</span>, <span class="number">80</span>, [<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>]))
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .dns_resolve(ResolveMap::new()
+        <span class="comment">// Send requests for example.org on port 80 to 127.0.0.1.
+        </span>.add(<span class="string">&quot;example.org&quot;</span>, <span class="number">80</span>, [<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>]))
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.default_header" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#340-361">source</a></span><h4 class="code-header">pub fn <a href="#method.default_header" class="fnname">default_header</a>&lt;K, V&gt;(self, key: K, value: V) -&gt; Self <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/name/struct.HeaderName.html" title="struct http::header::name::HeaderName">HeaderName</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;K&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/name/struct.HeaderName.html" title="struct http::header::name::HeaderName">HeaderName</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;K&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/value/struct.HeaderValue.html" title="struct http::header::value::HeaderValue">HeaderValue</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/value/struct.HeaderValue.html" title="struct http::header::value::HeaderValue">HeaderValue</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;V&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,&nbsp;</span></h4></section></summary><div class="docblock"><p>Add a default header to be passed with every request.</p>
 <p>If a default header value is already defined for the given key, then a
 second header value will be appended to the list and multiple header
@@ -128,11 +128,11 @@ they will override any default header values.</p>
 <p>If the header key or value are malformed, <a href="struct.HttpClientBuilder.html#method.build" title="HttpClientBuilder::build"><code>HttpClientBuilder::build</code></a>
 will return an error.</p>
 <h5 id="examples-4"><a href="#examples-4">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">default_header</span>(<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span>client = HttpClient::builder()
+    .default_header(<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.default_headers" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#417-433">source</a></span><h4 class="code-header">pub fn <a href="#method.default_headers" class="fnname">default_headers</a>&lt;K, V, I, P&gt;(self, headers: I) -&gt; Self <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/name/struct.HeaderName.html" title="struct http::header::name::HeaderName">HeaderName</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;K&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/name/struct.HeaderName.html" title="struct http::header::name::HeaderName">HeaderName</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;K&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/value/struct.HeaderValue.html" title="struct http::header::value::HeaderValue">HeaderValue</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;V&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/header/value/struct.HeaderValue.html" title="struct http::header::value::HeaderValue">HeaderValue</a> as <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html" title="trait core::convert::TryFrom">TryFrom</a>&lt;V&gt;&gt;::<a class="associatedtype" href="https://doc.rust-lang.org/nightly/core/convert/trait.TryFrom.html#associatedtype.Error" title="type core::convert::TryFrom::Error">Error</a>: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://docs.rs/http/0.2.8/http/error/struct.Error.html" title="struct http::error::Error">Error</a>&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;I: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html" title="trait core::iter::traits::collect::IntoIterator">IntoIterator</a>&lt;Item = P&gt;,<br>&nbsp;&nbsp;&nbsp;&nbsp;P: HeaderPair&lt;K, V&gt;,&nbsp;</span></h4></section></summary><div class="docblock"><p>Set the default headers to include in every request, replacing any
 previously set default headers.</p>
 <p>Headers defined on an individual request always override headers in the
@@ -142,36 +142,36 @@ will return an error.</p>
 <h5 id="examples-5"><a href="#examples-5">Examples</a></h5>
 <p>Set default headers from a slice:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">default_headers</span>(<span class="kw-2">&amp;</span>[
+<span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClient::builder()
+    .default_headers(<span class="kw-2">&amp;</span>[
         (<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;value1&quot;</span>),
         (<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;value2&quot;</span>),
         (<span class="string">&quot;some-other-header&quot;</span>, <span class="string">&quot;some-other-value&quot;</span>),
     ])
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 <p>Using an existing header map:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">http::HeaderMap::new</span>();
-<span class="ident">headers</span>.<span class="ident">append</span>(<span class="string">&quot;some-header&quot;</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">http::header::HeaderName</span><span class="op">&gt;</span>()<span class="question-mark">?</span>, <span class="string">&quot;some-value&quot;</span>.<span class="ident">parse</span>()<span class="question-mark">?</span>);
+<span class="kw">let </span><span class="kw-2">mut </span>headers = http::HeaderMap::new();
+headers.append(<span class="string">&quot;some-header&quot;</span>.parse::&lt;http::header::HeaderName&gt;()<span class="question-mark">?</span>, <span class="string">&quot;some-value&quot;</span>.parse()<span class="question-mark">?</span>);
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">default_headers</span>(<span class="kw-2">&amp;</span><span class="ident">headers</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClient::builder()
+    .default_headers(<span class="kw-2">&amp;</span>headers)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 <p>Using a hashmap:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">HttpClient</span>};
-<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, HttpClient};
+<span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-<span class="ident">headers</span>.<span class="ident">insert</span>(<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
+<span class="kw">let </span><span class="kw-2">mut </span>headers = HashMap::new();
+headers.insert(<span class="string">&quot;some-header&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">HttpClient::builder</span>()
-    .<span class="ident">default_headers</span>(<span class="ident">headers</span>)
-    .<span class="ident">build</span>()<span class="question-mark">?</span>;</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClient::builder()
+    .default_headers(headers)
+    .build()<span class="question-mark">?</span>;</code></pre></div>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.build" class="method has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#439-483">source</a></span><h4 class="code-header">pub fn <a href="#method.build" class="fnname">build</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">HttpClient</a>, <a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>&gt;</h4></section></summary><div class="docblock"><p>Build an <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a> using the configured options.</p>
 <p>If the client fails to initialize, an error will be returned.</p>
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="rustdoc-toggle implementors-toggle" open><summary><section id="impl-Configurable-for-HttpClientBuilder" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#486-492">source</a></span><a href="#impl-Configurable-for-HttpClientBuilder" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="config/trait.Configurable.html" title="trait isahc::config::Configurable">Configurable</a> for <a class="struct" href="struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder">HttpClientBuilder</a></h3></section></summary><div class="impl-items"><details class="rustdoc-toggle method-toggle" open><summary><section id="method.cookie_jar" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/client.rs.html#488-491">source</a></span><a href="#method.cookie_jar" class="anchor"></a><h4 class="code-header">fn <a href="config/trait.Configurable.html#tymethod.cookie_jar" class="fnname">cookie_jar</a>(self, cookie_jar: <a class="struct" href="cookies/struct.CookieJar.html" title="struct isahc::cookies::CookieJar">CookieJar</a>) -&gt; Self</h4></section></summary><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>cookies</code></strong> only.</div></span><div class='docblock'><p>Set a cookie jar to use to accept, store, and supply cookies for
@@ -247,4 +247,4 @@ lowercase form. <a href="config/trait.Configurable.html#method.title_case_header
 <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="WithDispatch"><code>WithDispatch</code></a> wrapper. <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_subscriber">Read more</a></p>
 </div></details><details class="rustdoc-toggle method-toggle" open><summary><section id="method.with_current_subscriber-1" class="method trait-impl has-srclink"><span class="rightside"><a class="srclink" href="https://docs.rs/tracing/0.1.36/src/tracing/instrument.rs.html#221">source</a></span><a href="#method.with_current_subscriber-1" class="anchor"></a><h4 class="code-header">fn <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_current_subscriber" class="fnname">with_current_subscriber</a>(self) -&gt; <a class="struct" href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="struct tracing::instrument::WithDispatch">WithDispatch</a>&lt;Self&gt;</h4></section></summary><div class='docblock'><p>Attaches the current <a href="https://docs.rs/tracing/0.1.36/tracing/dispatcher/index.html#setting-the-default-subscriber">default</a> <a href="https://docs.rs/tracing-core/0.1.22/tracing_core/subscriber/trait.Subscriber.html"><code>Subscriber</code></a> to this type, returning a
 <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/struct.WithDispatch.html" title="WithDispatch"><code>WithDispatch</code></a> wrapper. <a href="https://docs.rs/tracing/0.1.36/tracing/instrument/trait.WithSubscriber.html#method.with_current_subscriber">Read more</a></p>
-</div></details></div></details></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</div></details></div></details></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

@@ -13,18 +13,18 @@ after the response body.</p>
 <p>See the documentation for <a href="struct.Trailer.html" title="Trailer"><code>Trailer</code></a> for more details on how to handle
 trailing headers.</p>
 <h5 id="examples"><a href="#examples">Examples</a></h5>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">isahc::prelude</span>::<span class="kw-2">*</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">isahc::get</span>(<span class="string">&quot;https://my-site-with-trailers.com&quot;</span>)<span class="question-mark">?</span>;
+<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get(<span class="string">&quot;https://my-site-with-trailers.com&quot;</span>)<span class="question-mark">?</span>;
 
-<span class="macro">println!</span>(<span class="string">&quot;Status: {}&quot;</span>, <span class="ident">response</span>.<span class="ident">status</span>());
-<span class="macro">println!</span>(<span class="string">&quot;Headers: {:#?}&quot;</span>, <span class="ident">response</span>.<span class="ident">headers</span>());
+<span class="macro">println!</span>(<span class="string">&quot;Status: {}&quot;</span>, response.status());
+<span class="macro">println!</span>(<span class="string">&quot;Headers: {:#?}&quot;</span>, response.headers());
 
-<span class="comment">// Read and discard the response body until the end.</span>
-<span class="ident">response</span>.<span class="ident">consume</span>()<span class="question-mark">?</span>;
+<span class="comment">// Read and discard the response body until the end.
+</span>response.consume()<span class="question-mark">?</span>;
 
-<span class="comment">// Now the trailer will be available as well.</span>
-<span class="macro">println!</span>(<span class="string">&quot;Trailing headers: {:#?}&quot;</span>, <span class="ident">response</span>.<span class="ident">trailer</span>().<span class="ident">try_get</span>().<span class="ident">unwrap</span>());</code></pre></div>
+<span class="comment">// Now the trailer will be available as well.
+</span><span class="macro">println!</span>(<span class="string">&quot;Trailing headers: {:#?}&quot;</span>, response.trailer().try_get().unwrap());</code></pre></div>
 </div></details><details class="rustdoc-toggle" open><summary><div id="tymethod.effective_uri" class="method has-srclink"><div class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#44">source</a></div><h4 class="code-header">fn <a href="#tymethod.effective_uri" class="fnname">effective_uri</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="https://docs.rs/http/0.2.8/http/uri/struct.Uri.html" title="struct http::uri::Uri">Uri</a>&gt;</h4></div></summary><div class="docblock"><p>Get the effective URI of this response. This value differs from the
 original URI provided when making the request if at least one redirect
 was followed.</p>
@@ -60,4 +60,4 @@ metrics object containing a live view of currently available data.</p>
 <p>By default metrics are disabled and <code>None</code> will be returned. To enable
 metrics you can use
 <a href="config/trait.Configurable.html#method.metrics"><code>Configurable::metrics</code></a>.</p>
-</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-ResponseExt%3CT%3E-for-Response%3CT%3E" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#95-124">source</a></span><a href="#impl-ResponseExt%3CT%3E-for-Response%3CT%3E" class="anchor"></a><h3 class="code-header in-band">impl&lt;T&gt; <a class="trait" href="trait.ResponseExt.html" title="trait isahc::ResponseExt">ResponseExt</a>&lt;T&gt; for <a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a>&lt;T&gt;</h3></section></div><script type="text/javascript" src="../implementors/isahc/response/trait.ResponseExt.js" data-ignore-extern-crates="http" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"><section id="impl-ResponseExt%3CT%3E-for-Response%3CT%3E" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/isahc/response.rs.html#95-124">source</a></span><a href="#impl-ResponseExt%3CT%3E-for-Response%3CT%3E" class="anchor"></a><h3 class="code-header in-band">impl&lt;T&gt; <a class="trait" href="trait.ResponseExt.html" title="trait isahc::ResponseExt">ResponseExt</a>&lt;T&gt; for <a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a>&lt;T&gt;</h3></section></div><script type="text/javascript" src="../implementors/isahc/response/trait.ResponseExt.js" data-ignore-extern-crates="http" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>

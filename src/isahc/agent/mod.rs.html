@@ -562,418 +562,418 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Curl agent that executes multiple requests simultaneously.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The agent is implemented as a single background thread attached to a</span>
-<span class="doccomment">//! &quot;handle&quot;. The handle communicates with the agent thread by using message</span>
-<span class="doccomment">//! passing. The agent executes multiple curl requests simultaneously by using a</span>
-<span class="doccomment">//! single &quot;multi&quot; handle.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Since request executions are driven through futures, the agent also acts as</span>
-<span class="doccomment">//! a specialized task executor for tasks related to requests.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Curl agent that executes multiple requests simultaneously.
+//!
+//! The agent is implemented as a single background thread attached to a
+//! &quot;handle&quot;. The handle communicates with the agent thread by using message
+//! passing. The agent executes multiple curl requests simultaneously by using a
+//! single &quot;multi&quot; handle.
+//!
+//! Since request executions are driven through futures, the agent also acts as
+//! a specialized task executor for tasks related to requests.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::Error</span>, <span class="ident">handler::RequestHandler</span>, <span class="ident">task::WakerExt</span>};
-<span class="kw">use</span> <span class="ident">async_channel</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::{<span class="ident">atomic::AtomicCell</span>, <span class="ident">sync::WaitGroup</span>};
-<span class="kw">use</span> <span class="ident">curl::multi</span>::{<span class="ident">Events</span>, <span class="ident">Multi</span>, <span class="ident">Socket</span>, <span class="ident">SocketEvents</span>};
-<span class="kw">use</span> <span class="ident">futures_lite::future::block_on</span>;
-<span class="kw">use</span> <span class="ident">slab::Slab</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">io</span>,
-    <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>},
-    <span class="ident">task::Waker</span>,
-    <span class="ident">thread</span>,
-    <span class="ident">time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>},
+</span><span class="kw">use crate</span>::{error::Error, handler::RequestHandler, task::WakerExt};
+<span class="kw">use </span>async_channel::{Receiver, Sender};
+<span class="kw">use </span>crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
+<span class="kw">use </span>curl::multi::{Events, Multi, Socket, SocketEvents};
+<span class="kw">use </span>futures_lite::future::block_on;
+<span class="kw">use </span>slab::Slab;
+<span class="kw">use </span>std::{
+    io,
+    sync::{Arc, Mutex},
+    task::Waker,
+    thread,
+    time::{Duration, Instant},
 };
 
-<span class="kw">use</span> <span class="self">self</span>::{<span class="ident">selector::Selector</span>, <span class="ident">timer::Timer</span>};
+<span class="kw">use </span><span class="self">self</span>::{selector::Selector, timer::Timer};
 
-<span class="kw">mod</span> <span class="ident">selector</span>;
-<span class="kw">mod</span> <span class="ident">timer</span>;
+<span class="kw">mod </span>selector;
+<span class="kw">mod </span>timer;
 
-<span class="kw">static</span> <span class="ident">NEXT_AGENT_ID</span>: <span class="ident">AtomicCell</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AtomicCell::new</span>(<span class="number">0</span>);
-<span class="kw">const</span> <span class="ident">WAIT_TIMEOUT</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration::from_millis</span>(<span class="number">1000</span>);
+<span class="kw">static </span>NEXT_AGENT_ID: AtomicCell&lt;usize&gt; = AtomicCell::new(<span class="number">0</span>);
+<span class="kw">const </span>WAIT_TIMEOUT: Duration = Duration::from_millis(<span class="number">1000</span>);
 
-<span class="kw">type</span> <span class="ident">EasyHandle</span> <span class="op">=</span> <span class="ident">curl::easy::Easy2</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span>;
+<span class="kw">type </span>EasyHandle = curl::easy::Easy2&lt;RequestHandler&gt;;
 
-<span class="doccomment">/// Builder for configuring and spawning an agent.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AgentBuilder</span> {
-    <span class="ident">max_connections</span>: <span class="ident">usize</span>,
-    <span class="ident">max_connections_per_host</span>: <span class="ident">usize</span>,
-    <span class="ident">connection_cache_size</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Builder for configuring and spawning an agent.
+</span><span class="attribute">#[derive(Debug, Default)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AgentBuilder {
+    max_connections: usize,
+    max_connections_per_host: usize,
+    connection_cache_size: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">AgentBuilder</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">max_connections</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">max</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">max_connections</span> <span class="op">=</span> <span class="ident">max</span>;
-        <span class="self">self</span>
-    }
+<span class="kw">impl </span>AgentBuilder {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>max_connections(<span class="kw-2">mut </span><span class="self">self</span>, max: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.max_connections = max;
+        <span class="self">self
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">max_connections_per_host</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">max</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">max_connections_per_host</span> <span class="op">=</span> <span class="ident">max</span>;
-        <span class="self">self</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>max_connections_per_host(<span class="kw-2">mut </span><span class="self">self</span>, max: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.max_connections_per_host = max;
+        <span class="self">self
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">connection_cache_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">connection_cache_size</span> <span class="op">=</span> <span class="ident">size</span>;
-        <span class="self">self</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>connection_cache_size(<span class="kw-2">mut </span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.connection_cache_size = size;
+        <span class="self">self
+    </span>}
 
-    <span class="doccomment">/// Spawn a new agent using the configuration in this builder and return a</span>
-    <span class="doccomment">/// handle for communicating with the agent.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">spawn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Handle</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">create_start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
+    <span class="doccomment">/// Spawn a new agent using the configuration in this builder and return a
+    /// handle for communicating with the agent.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>spawn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; io::Result&lt;Handle&gt; {
+        <span class="kw">let </span>create_start = Instant::now();
 
-        <span class="comment">// Initialize libcurl, if necessary, on the current thread.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Note that as of 0.4.30, the curl crate will attempt to do this for us</span>
-        <span class="comment">// on the main thread automatically at program start on most targets,</span>
-        <span class="comment">// but on other targets must still be initialized on the main thread. We</span>
-        <span class="comment">// do this here in the hope that the user builds an `HttpClient` on the</span>
-        <span class="comment">// main thread (as opposed to waiting for `Multi::new()` to do it for</span>
-        <span class="comment">// us below, which we _know_ is not on the main thread).</span>
-        <span class="comment">//</span>
-        <span class="comment">// See #189.</span>
-        <span class="ident">curl::init</span>();
+        <span class="comment">// Initialize libcurl, if necessary, on the current thread.
+        //
+        // Note that as of 0.4.30, the curl crate will attempt to do this for us
+        // on the main thread automatically at program start on most targets,
+        // but on other targets must still be initialized on the main thread. We
+        // do this here in the hope that the user builds an `HttpClient` on the
+        // main thread (as opposed to waiting for `Multi::new()` to do it for
+        // us below, which we _know_ is not on the main thread).
+        //
+        // See #189.
+        </span>curl::init();
 
-        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">NEXT_AGENT_ID</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>);
+        <span class="kw">let </span>id = NEXT_AGENT_ID.fetch_add(<span class="number">1</span>);
 
-        <span class="comment">// Create an I/O selector for driving curl&#39;s sockets.</span>
-        <span class="kw">let</span> <span class="ident">selector</span> <span class="op">=</span> <span class="ident">Selector::new</span>()<span class="question-mark">?</span>;
+        <span class="comment">// Create an I/O selector for driving curl&#39;s sockets.
+        </span><span class="kw">let </span>selector = Selector::new()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="ident">message_tx</span>, <span class="ident">message_rx</span>) <span class="op">=</span> <span class="ident">async_channel::unbounded</span>();
+        <span class="kw">let </span>(message_tx, message_rx) = async_channel::unbounded();
 
-        <span class="kw">let</span> <span class="ident">wait_group</span> <span class="op">=</span> <span class="ident">WaitGroup::new</span>();
-        <span class="kw">let</span> <span class="ident">wait_group_thread</span> <span class="op">=</span> <span class="ident">wait_group</span>.<span class="ident">clone</span>();
+        <span class="kw">let </span>wait_group = WaitGroup::new();
+        <span class="kw">let </span>wait_group_thread = wait_group.clone();
 
-        <span class="kw">let</span> <span class="ident">max_connections</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_connections</span>;
-        <span class="kw">let</span> <span class="ident">max_connections_per_host</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_connections_per_host</span>;
-        <span class="kw">let</span> <span class="ident">connection_cache_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">connection_cache_size</span>;
+        <span class="kw">let </span>max_connections = <span class="self">self</span>.max_connections;
+        <span class="kw">let </span>max_connections_per_host = <span class="self">self</span>.max_connections_per_host;
+        <span class="kw">let </span>connection_cache_size = <span class="self">self</span>.connection_cache_size;
 
-        <span class="comment">// Create a span for the agent thread that outlives this method call,</span>
-        <span class="comment">// but rather was caused by it.</span>
-        <span class="kw">let</span> <span class="ident">agent_span</span> <span class="op">=</span> <span class="macro">tracing::debug_span!</span>(<span class="string">&quot;agent_thread&quot;</span>, <span class="ident">id</span>);
-        <span class="ident">agent_span</span>.<span class="ident">follows_from</span>(<span class="ident">tracing::Span::current</span>());
+        <span class="comment">// Create a span for the agent thread that outlives this method call,
+        // but rather was caused by it.
+        </span><span class="kw">let </span>agent_span = <span class="macro">tracing::debug_span!</span>(<span class="string">&quot;agent_thread&quot;</span>, id);
+        agent_span.follows_from(tracing::Span::current());
 
-        <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">selector</span>.<span class="ident">waker</span>();
-        <span class="kw">let</span> <span class="ident">message_tx_clone</span> <span class="op">=</span> <span class="ident">message_tx</span>.<span class="ident">clone</span>();
+        <span class="kw">let </span>waker = selector.waker();
+        <span class="kw">let </span>message_tx_clone = message_tx.clone();
 
-        <span class="kw">let</span> <span class="ident">thread_main</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">_enter</span> <span class="op">=</span> <span class="ident">agent_span</span>.<span class="ident">enter</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi</span> <span class="op">=</span> <span class="ident">Multi::new</span>();
+        <span class="kw">let </span>thread_main = <span class="kw">move </span>|| {
+            <span class="kw">let </span>_enter = agent_span.enter();
+            <span class="kw">let </span><span class="kw-2">mut </span>multi = Multi::new();
 
-            <span class="kw">if</span> <span class="ident">max_connections</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="ident">multi</span>
-                    .<span class="ident">set_max_total_connections</span>(<span class="ident">max_connections</span>)
-                    .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span>max_connections &gt; <span class="number">0 </span>{
+                multi
+                    .set_max_total_connections(max_connections)
+                    .map_err(Error::from_any)<span class="question-mark">?</span>;
             }
 
-            <span class="kw">if</span> <span class="ident">max_connections_per_host</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="ident">multi</span>
-                    .<span class="ident">set_max_host_connections</span>(<span class="ident">max_connections_per_host</span>)
-                    .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span>max_connections_per_host &gt; <span class="number">0 </span>{
+                multi
+                    .set_max_host_connections(max_connections_per_host)
+                    .map_err(Error::from_any)<span class="question-mark">?</span>;
             }
 
-            <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.</span>
-            <span class="kw">if</span> <span class="ident">connection_cache_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="ident">multi</span>
-                    .<span class="ident">set_max_connects</span>(<span class="ident">connection_cache_size</span>)
-                    .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+            <span class="comment">// Only set maxconnects if greater than 0, because 0 actually means unlimited.
+            </span><span class="kw">if </span>connection_cache_size &gt; <span class="number">0 </span>{
+                multi
+                    .set_max_connects(connection_cache_size)
+                    .map_err(Error::from_any)<span class="question-mark">?</span>;
             }
 
-            <span class="kw">let</span> <span class="ident">agent</span> <span class="op">=</span> <span class="ident">AgentContext::new</span>(<span class="ident">multi</span>, <span class="ident">selector</span>, <span class="ident">message_tx_clone</span>, <span class="ident">message_rx</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>agent = AgentContext::new(multi, selector, message_tx_clone, message_rx)<span class="question-mark">?</span>;
 
-            <span class="ident">drop</span>(<span class="ident">wait_group_thread</span>);
+            drop(wait_group_thread);
 
-            <span class="macro">tracing::debug!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, <span class="ident">create_start</span>.<span class="ident">elapsed</span>());
+            <span class="macro">tracing::debug!</span>(<span class="string">&quot;agent took {:?} to start up&quot;</span>, create_start.elapsed());
 
-            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">agent</span>.<span class="ident">run</span>();
+            <span class="kw">let </span>result = agent.run();
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">result</span> {
-                <span class="macro">tracing::error!</span>(<span class="string">&quot;agent shut down with error: {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="kw-2">&amp;</span>result {
+                <span class="macro">tracing::error!</span>(<span class="string">&quot;agent shut down with error: {:?}&quot;</span>, e);
             }
 
-            <span class="ident">result</span>
+            result
         };
 
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">Handle</span> {
-            <span class="ident">message_tx</span>,
-            <span class="ident">waker</span>,
-            <span class="ident">join_handle</span>: <span class="ident">Mutex::new</span>(<span class="prelude-val">Some</span>(
-                <span class="ident">thread::Builder::new</span>()
-                    .<span class="ident">name</span>(<span class="macro">format!</span>(<span class="string">&quot;isahc-agent-{}&quot;</span>, <span class="ident">id</span>))
-                    .<span class="ident">spawn</span>(<span class="ident">thread_main</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>handle = Handle {
+            message_tx,
+            waker,
+            join_handle: Mutex::new(<span class="prelude-val">Some</span>(
+                thread::Builder::new()
+                    .name(<span class="macro">format!</span>(<span class="string">&quot;isahc-agent-{}&quot;</span>, id))
+                    .spawn(thread_main)<span class="question-mark">?</span>,
             )),
         };
 
-        <span class="comment">// Block until the agent thread responds.</span>
-        <span class="ident">wait_group</span>.<span class="ident">wait</span>();
+        <span class="comment">// Block until the agent thread responds.
+        </span>wait_group.wait();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">handle</span>)
+        <span class="prelude-val">Ok</span>(handle)
     }
 }
 
-<span class="doccomment">/// A handle to an active agent running in a background thread.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Dropping the handle will cause the agent thread to shut down and abort any</span>
-<span class="doccomment">/// pending transfers.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Handle</span> {
-    <span class="doccomment">/// Used to send messages to the agent thread.</span>
-    <span class="ident">message_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A handle to an active agent running in a background thread.
+///
+/// Dropping the handle will cause the agent thread to shut down and abort any
+/// pending transfers.
+</span><span class="attribute">#[derive(Debug)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Handle {
+    <span class="doccomment">/// Used to send messages to the agent thread.
+    </span>message_tx: Sender&lt;Message&gt;,
 
-    <span class="doccomment">/// A waker that can wake up the agent thread while it is polling.</span>
-    <span class="ident">waker</span>: <span class="ident">Waker</span>,
+    <span class="doccomment">/// A waker that can wake up the agent thread while it is polling.
+    </span>waker: Waker,
 
-    <span class="doccomment">/// A join handle for the agent thread.</span>
-    <span class="ident">join_handle</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">thread::JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A join handle for the agent thread.
+    </span>join_handle: Mutex&lt;<span class="prelude-ty">Option</span>&lt;thread::JoinHandle&lt;<span class="prelude-ty">Result</span>&lt;(), Error&gt;&gt;&gt;&gt;,
 }
 
-<span class="doccomment">/// Internal state of an agent thread.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The agent thread runs the primary client event loop, which is essentially a</span>
-<span class="doccomment">/// traditional curl multi event loop with some extra bookkeeping and async</span>
-<span class="doccomment">/// features like wakers.</span>
-<span class="kw">struct</span> <span class="ident">AgentContext</span> {
-    <span class="doccomment">/// A curl multi handle, of course.</span>
-    <span class="ident">multi</span>: <span class="ident">curl::multi::Multi</span>,
+<span class="doccomment">/// Internal state of an agent thread.
+///
+/// The agent thread runs the primary client event loop, which is essentially a
+/// traditional curl multi event loop with some extra bookkeeping and async
+/// features like wakers.
+</span><span class="kw">struct </span>AgentContext {
+    <span class="doccomment">/// A curl multi handle, of course.
+    </span>multi: curl::multi::Multi,
 
-    <span class="doccomment">/// Used to send messages to the agent thread.</span>
-    <span class="ident">message_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Used to send messages to the agent thread.
+    </span>message_tx: Sender&lt;Message&gt;,
 
-    <span class="doccomment">/// Incoming messages from the agent handle.</span>
-    <span class="ident">message_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Incoming messages from the agent handle.
+    </span>message_rx: Receiver&lt;Message&gt;,
 
-    <span class="doccomment">/// Contains all of the active requests.</span>
-    <span class="ident">requests</span>: <span class="ident">Slab</span><span class="op">&lt;</span><span class="ident">curl::multi::Easy2Handle</span><span class="op">&lt;</span><span class="ident">RequestHandler</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Contains all of the active requests.
+    </span>requests: Slab&lt;curl::multi::Easy2Handle&lt;RequestHandler&gt;&gt;,
 
-    <span class="doccomment">/// Indicates if the thread has been requested to stop.</span>
-    <span class="ident">close_requested</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Indicates if the thread has been requested to stop.
+    </span>close_requested: bool,
 
-    <span class="doccomment">/// A waker that can wake up the agent thread while it is polling.</span>
-    <span class="ident">waker</span>: <span class="ident">Waker</span>,
+    <span class="doccomment">/// A waker that can wake up the agent thread while it is polling.
+    </span>waker: Waker,
 
-    <span class="doccomment">/// This is the poller we use to poll for socket activity!</span>
-    <span class="ident">selector</span>: <span class="ident">Selector</span>,
+    <span class="doccomment">/// This is the poller we use to poll for socket activity!
+    </span>selector: Selector,
 
-    <span class="doccomment">/// A timer we use to keep track of curl&#39;s timeouts.</span>
-    <span class="ident">timer</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Timer</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A timer we use to keep track of curl&#39;s timeouts.
+    </span>timer: Arc&lt;Timer&gt;,
 
-    <span class="doccomment">/// Queue of socket registration updates from the multi handle.</span>
-    <span class="ident">socket_updates</span>: <span class="ident">Receiver</span><span class="op">&lt;</span>(<span class="ident">Socket</span>, <span class="ident">SocketEvents</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
+    <span class="doccomment">/// Queue of socket registration updates from the multi handle.
+    </span>socket_updates: Receiver&lt;(Socket, SocketEvents, usize)&gt;,
 }
 
-<span class="doccomment">/// A message sent from the main thread to the agent thread.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">Message</span> {
-    <span class="doccomment">/// Requests the agent to close.</span>
-    <span class="ident">Close</span>,
+<span class="doccomment">/// A message sent from the main thread to the agent thread.
+</span><span class="attribute">#[derive(Debug)]</span>
+<span class="kw">enum </span>Message {
+    <span class="doccomment">/// Requests the agent to close.
+    </span>Close,
 
-    <span class="doccomment">/// Begin executing a new request.</span>
-    <span class="ident">Execute</span>(<span class="ident">EasyHandle</span>),
+    <span class="doccomment">/// Begin executing a new request.
+    </span>Execute(EasyHandle),
 
-    <span class="doccomment">/// Request to resume reading the request body for the request with the</span>
-    <span class="doccomment">/// given ID.</span>
-    <span class="ident">UnpauseRead</span>(<span class="ident">usize</span>),
+    <span class="doccomment">/// Request to resume reading the request body for the request with the
+    /// given ID.
+    </span>UnpauseRead(usize),
 
-    <span class="doccomment">/// Request to resume writing the response body for the request with the</span>
-    <span class="doccomment">/// given ID.</span>
-    <span class="ident">UnpauseWrite</span>(<span class="ident">usize</span>),
+    <span class="doccomment">/// Request to resume writing the response body for the request with the
+    /// given ID.
+    </span>UnpauseWrite(usize),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">JoinResult</span> {
-    <span class="ident">AlreadyJoined</span>,
+<span class="attribute">#[derive(Debug)]</span>
+<span class="kw">enum </span>JoinResult {
+    AlreadyJoined,
     <span class="prelude-val">Ok</span>,
-    <span class="prelude-val">Err</span>(<span class="ident">Error</span>),
-    <span class="ident">Panic</span>,
+    <span class="prelude-val">Err</span>(Error),
+    Panic,
 }
 
-<span class="kw">impl</span> <span class="ident">Handle</span> {
-    <span class="doccomment">/// Begin executing a request with this agent.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">submit_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">EasyHandle</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">send_message</span>(<span class="ident">Message::Execute</span>(<span class="ident">request</span>))
+<span class="kw">impl </span>Handle {
+    <span class="doccomment">/// Begin executing a request with this agent.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>submit_request(<span class="kw-2">&amp;</span><span class="self">self</span>, request: EasyHandle) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="self">self</span>.send_message(Message::Execute(request))
     }
 
-    <span class="doccomment">/// Send a message to the agent thread.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If the agent is not connected, an error is returned.</span>
-    <span class="kw">fn</span> <span class="ident">send_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="ident">Message</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">try_send</span>(<span class="ident">message</span>) {
+    <span class="doccomment">/// Send a message to the agent thread.
+    ///
+    /// If the agent is not connected, an error is returned.
+    </span><span class="kw">fn </span>send_message(<span class="kw-2">&amp;</span><span class="self">self</span>, message: Message) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">match </span><span class="self">self</span>.message_tx.try_send(message) {
             <span class="prelude-val">Ok</span>(()) =&gt; {
-                <span class="comment">// Wake the agent thread up so it will check its messages soon.</span>
-                <span class="self">self</span>.<span class="ident">waker</span>.<span class="ident">wake_by_ref</span>();
+                <span class="comment">// Wake the agent thread up so it will check its messages soon.
+                </span><span class="self">self</span>.waker.wake_by_ref();
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
-                <span class="ident">JoinResult::Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated with error: {:?}&quot;</span>, <span class="ident">e</span>),
-                <span class="ident">JoinResult::Panic</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
-                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><span class="self">self</span>.try_join() {
+                JoinResult::Err(e) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated with error: {:?}&quot;</span>, e),
+                JoinResult::Panic =&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>),
             },
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">try_join</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">JoinResult</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">option</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+    <span class="kw">fn </span>try_join(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; JoinResult {
+        <span class="kw">let </span><span class="kw-2">mut </span>option = <span class="self">self</span>.join_handle.lock().unwrap();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">join_handle</span>) <span class="op">=</span> <span class="ident">option</span>.<span class="ident">take</span>() {
-            <span class="kw">match</span> <span class="ident">join_handle</span>.<span class="ident">join</span>() {
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(())) =&gt; <span class="ident">JoinResult::Ok</span>,
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="ident">JoinResult::Err</span>(<span class="ident">e</span>),
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">JoinResult::Panic</span>,
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = option.take() {
+            <span class="kw">match </span>join_handle.join() {
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(())) =&gt; JoinResult::Ok,
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(e)) =&gt; JoinResult::Err(e),
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; JoinResult::Panic,
             }
-        } <span class="kw">else</span> {
-            <span class="ident">JoinResult::AlreadyJoined</span>
+        } <span class="kw">else </span>{
+            JoinResult::AlreadyJoined
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Handle</span> {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// Request the agent thread to shut down.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">send_message</span>(<span class="ident">Message::Close</span>).<span class="ident">is_err</span>() {
+<span class="kw">impl </span>Drop <span class="kw">for </span>Handle {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// Request the agent thread to shut down.
+        </span><span class="kw">if </span><span class="self">self</span>.send_message(Message::Close).is_err() {
             <span class="macro">tracing::error!</span>(<span class="string">&quot;agent thread terminated prematurely&quot;</span>);
         }
 
-        <span class="comment">// Wait for the agent thread to shut down before continuing.</span>
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">try_join</span>() {
-            <span class="ident">JoinResult::Ok</span> =&gt; <span class="macro">tracing::trace!</span>(<span class="string">&quot;agent thread joined cleanly&quot;</span>),
-            <span class="ident">JoinResult::Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">tracing::error!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, <span class="ident">e</span>),
-            <span class="ident">JoinResult::Panic</span> =&gt; <span class="macro">tracing::error!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
-            <span class="kw">_</span> =&gt; {}
+        <span class="comment">// Wait for the agent thread to shut down before continuing.
+        </span><span class="kw">match </span><span class="self">self</span>.try_join() {
+            JoinResult::Ok =&gt; <span class="macro">tracing::trace!</span>(<span class="string">&quot;agent thread joined cleanly&quot;</span>),
+            JoinResult::Err(e) =&gt; <span class="macro">tracing::error!</span>(<span class="string">&quot;agent thread terminated with error: {}&quot;</span>, e),
+            JoinResult::Panic =&gt; <span class="macro">tracing::error!</span>(<span class="string">&quot;agent thread panicked&quot;</span>),
+            <span class="kw">_ </span>=&gt; {}
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">AgentContext</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="kw-2">mut</span> <span class="ident">multi</span>: <span class="ident">Multi</span>,
-        <span class="ident">selector</span>: <span class="ident">Selector</span>,
-        <span class="ident">message_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
-        <span class="ident">message_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Timer::new</span>());
-        <span class="kw">let</span> (<span class="ident">socket_updates_tx</span>, <span class="ident">socket_updates_rx</span>) <span class="op">=</span> <span class="ident">async_channel::unbounded</span>();
+<span class="kw">impl </span>AgentContext {
+    <span class="kw">fn </span>new(
+        <span class="kw-2">mut </span>multi: Multi,
+        selector: Selector,
+        message_tx: Sender&lt;Message&gt;,
+        message_rx: Receiver&lt;Message&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+        <span class="kw">let </span>timer = Arc::new(Timer::new());
+        <span class="kw">let </span>(socket_updates_tx, socket_updates_rx) = async_channel::unbounded();
 
-        <span class="ident">multi</span>
-            .<span class="ident">socket_function</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">socket_updates_tx</span>.<span class="ident">try_send</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="ident">key</span>));
+        multi
+            .socket_function(<span class="kw">move </span>|socket, events, key| {
+                <span class="kw">let _ </span>= socket_updates_tx.try_send((socket, events, key));
             })
-            .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+            .map_err(Error::from_any)<span class="question-mark">?</span>;
 
-        <span class="ident">multi</span>
-            .<span class="ident">timer_function</span>({
-                <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">timer</span>.<span class="ident">clone</span>();
+        multi
+            .timer_function({
+                <span class="kw">let </span>timer = timer.clone();
 
-                <span class="kw">move</span> <span class="op">|</span><span class="ident">timeout</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">timeout</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">timeout</span>) =&gt; {
-                        <span class="ident">timer</span>.<span class="ident">start</span>(<span class="ident">timeout</span>);
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="ident">timer</span>.<span class="ident">stop</span>();
-                        <span class="bool-val">true</span>
-                    }
+                <span class="kw">move </span>|timeout| <span class="kw">match </span>timeout {
+                    <span class="prelude-val">Some</span>(timeout) =&gt; {
+                        timer.start(timeout);
+                        <span class="bool-val">true
+                    </span>}
+                    <span class="prelude-val">None </span>=&gt; {
+                        timer.stop();
+                        <span class="bool-val">true
+                    </span>}
                 }
             })
-            .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+            .map_err(Error::from_any)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">multi</span>,
-            <span class="ident">message_tx</span>,
-            <span class="ident">message_rx</span>,
-            <span class="ident">requests</span>: <span class="ident">Slab::new</span>(),
-            <span class="ident">close_requested</span>: <span class="bool-val">false</span>,
-            <span class="ident">waker</span>: <span class="ident">selector</span>.<span class="ident">waker</span>(),
-            <span class="ident">selector</span>,
-            <span class="ident">timer</span>,
-            <span class="ident">socket_updates</span>: <span class="ident">socket_updates_rx</span>,
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            multi,
+            message_tx,
+            message_rx,
+            requests: Slab::new(),
+            close_requested: <span class="bool-val">false</span>,
+            waker: selector.waker(),
+            selector,
+            timer,
+            socket_updates: socket_updates_rx,
         })
     }
 
-    <span class="attribute">#[<span class="ident">tracing::instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">begin_request</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">request</span>: <span class="ident">EasyHandle</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Prepare an entry for storing this request while it executes.</span>
-        <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">vacant_entry</span>();
-        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">key</span>();
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">request</span>.<span class="ident">raw</span>();
+    <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]</span>
+    <span class="kw">fn </span>begin_request(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>request: EasyHandle) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="comment">// Prepare an entry for storing this request while it executes.
+        </span><span class="kw">let </span>entry = <span class="self">self</span>.requests.vacant_entry();
+        <span class="kw">let </span>id = entry.key();
+        <span class="kw">let </span>handle = request.raw();
 
-        <span class="comment">// Initialize the handler.</span>
-        <span class="ident">request</span>.<span class="ident">get_mut</span>().<span class="ident">init</span>(
-            <span class="ident">id</span>,
-            <span class="ident">handle</span>,
+        <span class="comment">// Initialize the handler.
+        </span>request.get_mut().init(
+            id,
+            handle,
             {
-                <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">clone</span>();
+                <span class="kw">let </span>tx = <span class="self">self</span>.message_tx.clone();
 
-                <span class="self">self</span>.<span class="ident">waker</span>
-                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">try_send</span>(<span class="ident">Message::UnpauseRead</span>(<span class="ident">id</span>)) {
-                        <span class="prelude-val">Ok</span>(()) =&gt; <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
+                <span class="self">self</span>.waker
+                    .chain(<span class="kw">move </span>|inner| <span class="kw">match </span>tx.try_send(Message::UnpauseRead(id)) {
+                        <span class="prelude-val">Ok</span>(()) =&gt; inner.wake_by_ref(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">tracing::warn!</span>(<span class="ident">id</span>, <span class="string">&quot;agent went away while resuming read for request&quot;</span>)
+                            <span class="macro">tracing::warn!</span>(id, <span class="string">&quot;agent went away while resuming read for request&quot;</span>)
                         }
                     })
             },
             {
-                <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_tx</span>.<span class="ident">clone</span>();
+                <span class="kw">let </span>tx = <span class="self">self</span>.message_tx.clone();
 
-                <span class="self">self</span>.<span class="ident">waker</span>
-                    .<span class="ident">chain</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">inner</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">try_send</span>(<span class="ident">Message::UnpauseWrite</span>(<span class="ident">id</span>)) {
-                        <span class="prelude-val">Ok</span>(()) =&gt; <span class="ident">inner</span>.<span class="ident">wake_by_ref</span>(),
+                <span class="self">self</span>.waker
+                    .chain(<span class="kw">move </span>|inner| <span class="kw">match </span>tx.try_send(Message::UnpauseWrite(id)) {
+                        <span class="prelude-val">Ok</span>(()) =&gt; inner.wake_by_ref(),
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">tracing::warn!</span>(<span class="ident">id</span>, <span class="string">&quot;agent went away while resuming write for request&quot;</span>)
+                            <span class="macro">tracing::warn!</span>(id, <span class="string">&quot;agent went away while resuming write for request&quot;</span>)
                         }
                     })
             },
         );
 
-        <span class="comment">// Register the request with curl.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">add2</span>(<span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
-        <span class="ident">handle</span>.<span class="ident">set_token</span>(<span class="ident">id</span>).<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Register the request with curl.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>handle = <span class="self">self</span>.multi.add2(request).map_err(Error::from_any)<span class="question-mark">?</span>;
+        handle.set_token(id).map_err(Error::from_any)<span class="question-mark">?</span>;
 
-        <span class="comment">// Add the handle to our bookkeeping structure.</span>
-        <span class="ident">entry</span>.<span class="ident">insert</span>(<span class="ident">handle</span>);
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="attribute">#[<span class="ident">tracing::instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">complete_request</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">token</span>: <span class="ident">usize</span>,
-        <span class="ident">result</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">curl::Error</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">remove</span>(<span class="ident">token</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">remove2</span>(<span class="ident">handle</span>).<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
-
-        <span class="ident">handle</span>.<span class="ident">get_mut</span>().<span class="ident">set_result</span>(<span class="ident">result</span>.<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>));
+        <span class="comment">// Add the handle to our bookkeeping structure.
+        </span>entry.insert(handle);
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Polls the message channel for new messages from any agent handles.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If there are no active requests right now, this function will block</span>
-    <span class="doccomment">/// until a message is received.</span>
-    <span class="attribute">#[<span class="ident">tracing::instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">poll_messages</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">while</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">close_requested</span> {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">is_empty</span>() {
-                <span class="kw">match</span> <span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">recv</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">message</span>) =&gt; <span class="self">self</span>.<span class="ident">handle_message</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
-                    <span class="kw">_</span> =&gt; {
+    <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]</span>
+    <span class="kw">fn </span>complete_request(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        token: usize,
+        result: <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">let </span>handle = <span class="self">self</span>.requests.remove(token);
+        <span class="kw">let </span><span class="kw-2">mut </span>handle = <span class="self">self</span>.multi.remove2(handle).map_err(Error::from_any)<span class="question-mark">?</span>;
+
+        handle.get_mut().set_result(result.map_err(Error::from_any));
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Polls the message channel for new messages from any agent handles.
+    ///
+    /// If there are no active requests right now, this function will block
+    /// until a message is received.
+    </span><span class="attribute">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]</span>
+    <span class="kw">fn </span>poll_messages(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">while </span>!<span class="self">self</span>.close_requested {
+            <span class="kw">if </span><span class="self">self</span>.requests.is_empty() {
+                <span class="kw">match </span>block_on(<span class="self">self</span>.message_rx.recv()) {
+                    <span class="prelude-val">Ok</span>(message) =&gt; <span class="self">self</span>.handle_message(message)<span class="question-mark">?</span>,
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">tracing::warn!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);
-                        <span class="self">self</span>.<span class="ident">close_requested</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                        <span class="self">self</span>.close_requested = <span class="bool-val">true</span>;
                         <span class="kw">break</span>;
                     }
                 }
-            } <span class="kw">else</span> {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">message_rx</span>.<span class="ident">try_recv</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">message</span>) =&gt; <span class="self">self</span>.<span class="ident">handle_message</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">async_channel::TryRecvError::Empty</span>) =&gt; <span class="kw">break</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">async_channel::TryRecvError::Closed</span>) =&gt; {
+            } <span class="kw">else </span>{
+                <span class="kw">match </span><span class="self">self</span>.message_rx.try_recv() {
+                    <span class="prelude-val">Ok</span>(message) =&gt; <span class="self">self</span>.handle_message(message)<span class="question-mark">?</span>,
+                    <span class="prelude-val">Err</span>(async_channel::TryRecvError::Empty) =&gt; <span class="kw">break</span>,
+                    <span class="prelude-val">Err</span>(async_channel::TryRecvError::Closed) =&gt; {
                         <span class="macro">tracing::warn!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);
-                        <span class="self">self</span>.<span class="ident">close_requested</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                        <span class="self">self</span>.close_requested = <span class="bool-val">true</span>;
                         <span class="kw">break</span>;
                     }
                 }
@@ -983,48 +983,48 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">tracing::instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">handle_message</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">message</span>: <span class="ident">Message</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]</span>
+    <span class="kw">fn </span>handle_message(<span class="kw-2">&amp;mut </span><span class="self">self</span>, message: Message) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="macro">tracing::trace!</span>(<span class="string">&quot;received message from agent handle&quot;</span>);
 
-        <span class="kw">match</span> <span class="ident">message</span> {
-            <span class="ident">Message::Close</span> =&gt; <span class="self">self</span>.<span class="ident">close_requested</span> <span class="op">=</span> <span class="bool-val">true</span>,
-            <span class="ident">Message::Execute</span>(<span class="ident">request</span>) =&gt; <span class="self">self</span>.<span class="ident">begin_request</span>(<span class="ident">request</span>)<span class="question-mark">?</span>,
-            <span class="ident">Message::UnpauseRead</span>(<span class="ident">token</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">request</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">get</span>(<span class="ident">token</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">unpause_read</span>() {
-                        <span class="comment">// If unpausing returned an error, it is likely because</span>
-                        <span class="comment">// curl called our callback inline and the callback</span>
-                        <span class="comment">// returned an error. Unfortunately this does not affect</span>
-                        <span class="comment">// the normal state of the transfer, so we need to keep</span>
-                        <span class="comment">// the transfer alive until it errors through the normal</span>
-                        <span class="comment">// means, which is likely to happen this turn of the</span>
-                        <span class="comment">// event loop anyway.</span>
-                        <span class="macro">tracing::debug!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="ident">token</span>, <span class="string">&quot;error unpausing read for request: {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">match </span>message {
+            Message::Close =&gt; <span class="self">self</span>.close_requested = <span class="bool-val">true</span>,
+            Message::Execute(request) =&gt; <span class="self">self</span>.begin_request(request)<span class="question-mark">?</span>,
+            Message::UnpauseRead(token) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(token) {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = request.unpause_read() {
+                        <span class="comment">// If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        </span><span class="macro">tracing::debug!</span>(id = token, <span class="string">&quot;error unpausing read for request: {:?}&quot;</span>, e);
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">tracing::warn!</span>(
                         <span class="string">&quot;received unpause request for unknown request token: {}&quot;</span>,
-                        <span class="ident">token</span>
+                        token
                     );
                 }
             }
-            <span class="ident">Message::UnpauseWrite</span>(<span class="ident">token</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">request</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">get</span>(<span class="ident">token</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">request</span>.<span class="ident">unpause_write</span>() {
-                        <span class="comment">// If unpausing returned an error, it is likely because</span>
-                        <span class="comment">// curl called our callback inline and the callback</span>
-                        <span class="comment">// returned an error. Unfortunately this does not affect</span>
-                        <span class="comment">// the normal state of the transfer, so we need to keep</span>
-                        <span class="comment">// the transfer alive until it errors through the normal</span>
-                        <span class="comment">// means, which is likely to happen this turn of the</span>
-                        <span class="comment">// event loop anyway.</span>
-                        <span class="macro">tracing::debug!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="ident">token</span>, <span class="string">&quot;error unpausing write for request: {:?}&quot;</span>, <span class="ident">e</span>);
+            Message::UnpauseWrite(token) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(token) {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = request.unpause_write() {
+                        <span class="comment">// If unpausing returned an error, it is likely because
+                        // curl called our callback inline and the callback
+                        // returned an error. Unfortunately this does not affect
+                        // the normal state of the transfer, so we need to keep
+                        // the transfer alive until it errors through the normal
+                        // means, which is likely to happen this turn of the
+                        // event loop anyway.
+                        </span><span class="macro">tracing::debug!</span>(id = token, <span class="string">&quot;error unpausing write for request: {:?}&quot;</span>, e);
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">tracing::warn!</span>(
                         <span class="string">&quot;received unpause request for unknown request token: {}&quot;</span>,
-                        <span class="ident">token</span>
+                        token
                     );
                 }
             }
@@ -1033,83 +1033,83 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Run the agent in the current thread until requested to stop.</span>
-    <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multi_messages</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="doccomment">/// Run the agent in the current thread until requested to stop.
+    </span><span class="kw">fn </span>run(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>multi_messages = Vec::new();
 
-        <span class="comment">// Agent main loop.</span>
-        <span class="kw">loop</span> {
-            <span class="self">self</span>.<span class="ident">poll_messages</span>()<span class="question-mark">?</span>;
+        <span class="comment">// Agent main loop.
+        </span><span class="kw">loop </span>{
+            <span class="self">self</span>.poll_messages()<span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">close_requested</span> {
+            <span class="kw">if </span><span class="self">self</span>.close_requested {
                 <span class="kw">break</span>;
             }
 
-            <span class="comment">// Block until activity is detected or the timeout passes.</span>
-            <span class="self">self</span>.<span class="ident">poll</span>()<span class="question-mark">?</span>;
+            <span class="comment">// Block until activity is detected or the timeout passes.
+            </span><span class="self">self</span>.poll()<span class="question-mark">?</span>;
 
-            <span class="comment">// Collect messages from curl about requests that have completed,</span>
-            <span class="comment">// whether successfully or with an error.</span>
-            <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">messages</span>(<span class="op">|</span><span class="ident">message</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">result</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">result</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">token</span>) <span class="op">=</span> <span class="ident">message</span>.<span class="ident">token</span>() {
-                        <span class="ident">multi_messages</span>.<span class="ident">push</span>((<span class="ident">token</span>, <span class="ident">result</span>));
+            <span class="comment">// Collect messages from curl about requests that have completed,
+            // whether successfully or with an error.
+            </span><span class="self">self</span>.multi.messages(|message| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(result) = message.result() {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(token) = message.token() {
+                        multi_messages.push((token, result));
                     }
                 }
             });
 
-            <span class="kw">for</span> (<span class="ident">token</span>, <span class="ident">result</span>) <span class="kw">in</span> <span class="ident">multi_messages</span>.<span class="ident">drain</span>(..) {
-                <span class="self">self</span>.<span class="ident">complete_request</span>(<span class="ident">token</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
+            <span class="kw">for </span>(token, result) <span class="kw">in </span>multi_messages.drain(..) {
+                <span class="self">self</span>.complete_request(token, result)<span class="question-mark">?</span>;
             }
         }
 
         <span class="macro">tracing::debug!</span>(<span class="string">&quot;agent shutting down&quot;</span>);
 
-        <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">clear</span>();
+        <span class="self">self</span>.requests.clear();
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Block until activity is detected or a timeout passes.</span>
-    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">timeout</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">get_remaining</span>(<span class="ident">now</span>);
+    <span class="doccomment">/// Block until activity is detected or a timeout passes.
+    </span><span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">let </span>now = Instant::now();
+        <span class="kw">let </span>timeout = <span class="self">self</span>.timer.get_remaining(now);
 
-        <span class="comment">// Get the latest timeout value from curl that we should use, limited to</span>
-        <span class="comment">// a maximum we chose.</span>
-        <span class="kw">let</span> <span class="ident">poll_timeout</span> <span class="op">=</span> <span class="ident">timeout</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">min</span>(<span class="ident">WAIT_TIMEOUT</span>)).<span class="ident">unwrap_or</span>(<span class="ident">WAIT_TIMEOUT</span>);
+        <span class="comment">// Get the latest timeout value from curl that we should use, limited to
+        // a maximum we chose.
+        </span><span class="kw">let </span>poll_timeout = timeout.map(|t| t.min(WAIT_TIMEOUT)).unwrap_or(WAIT_TIMEOUT);
 
-        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is</span>
-        <span class="comment">// reached, or the agent handle interrupts us.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">poll</span>(<span class="ident">poll_timeout</span>)<span class="question-mark">?</span> {
-            <span class="comment">// At least one I/O event occurred, handle them.</span>
-            <span class="kw">for</span> (<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">events</span>() {
-                <span class="macro">tracing::trace!</span>(<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>, <span class="string">&quot;socket event&quot;</span>);
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">events</span> <span class="op">=</span> <span class="ident">Events::new</span>();
-                <span class="ident">events</span>.<span class="ident">input</span>(<span class="ident">readable</span>);
-                <span class="ident">events</span>.<span class="ident">output</span>(<span class="ident">writable</span>);
-                <span class="self">self</span>.<span class="ident">multi</span>
-                    .<span class="ident">action</span>(<span class="ident">socket</span>, <span class="kw-2">&amp;</span><span class="ident">events</span>)
-                    .<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is
+        // reached, or the agent handle interrupts us.
+        </span><span class="kw">if </span><span class="self">self</span>.selector.poll(poll_timeout)<span class="question-mark">? </span>{
+            <span class="comment">// At least one I/O event occurred, handle them.
+            </span><span class="kw">for </span>(socket, readable, writable) <span class="kw">in </span><span class="self">self</span>.selector.events() {
+                <span class="macro">tracing::trace!</span>(socket, readable, writable, <span class="string">&quot;socket event&quot;</span>);
+                <span class="kw">let </span><span class="kw-2">mut </span>events = Events::new();
+                events.input(readable);
+                events.output(writable);
+                <span class="self">self</span>.multi
+                    .action(socket, <span class="kw-2">&amp;</span>events)
+                    .map_err(Error::from_any)<span class="question-mark">?</span>;
             }
         }
 
-        <span class="comment">// If curl gave us a timeout, check if it has expired.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">is_expired</span>(<span class="ident">now</span>) {
-            <span class="self">self</span>.<span class="ident">timer</span>.<span class="ident">stop</span>();
-            <span class="self">self</span>.<span class="ident">multi</span>.<span class="ident">timeout</span>().<span class="ident">map_err</span>(<span class="ident">Error::from_any</span>)<span class="question-mark">?</span>;
+        <span class="comment">// If curl gave us a timeout, check if it has expired.
+        </span><span class="kw">if </span><span class="self">self</span>.timer.is_expired(now) {
+            <span class="self">self</span>.timer.stop();
+            <span class="self">self</span>.multi.timeout().map_err(Error::from_any)<span class="question-mark">?</span>;
         }
 
-        <span class="comment">// Apply any requested socket updates now.</span>
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">socket</span>, <span class="ident">events</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">socket_updates</span>.<span class="ident">try_recv</span>() {
-            <span class="comment">// Curl is asking us to stop polling this socket.</span>
-            <span class="kw">if</span> <span class="ident">events</span>.<span class="ident">remove</span>() {
-                <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">deregister</span>(<span class="ident">socket</span>).<span class="ident">unwrap</span>();
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">readable</span> <span class="op">=</span> <span class="ident">events</span>.<span class="ident">input</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">events</span>.<span class="ident">input_and_output</span>();
-                <span class="kw">let</span> <span class="ident">writable</span> <span class="op">=</span> <span class="ident">events</span>.<span class="ident">output</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">events</span>.<span class="ident">input_and_output</span>();
+        <span class="comment">// Apply any requested socket updates now.
+        </span><span class="kw">while let </span><span class="prelude-val">Ok</span>((socket, events, <span class="kw">_</span>)) = <span class="self">self</span>.socket_updates.try_recv() {
+            <span class="comment">// Curl is asking us to stop polling this socket.
+            </span><span class="kw">if </span>events.remove() {
+                <span class="self">self</span>.selector.deregister(socket).unwrap();
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>readable = events.input() || events.input_and_output();
+                <span class="kw">let </span>writable = events.output() || events.input_and_output();
 
-                <span class="self">self</span>.<span class="ident">selector</span>.<span class="ident">register</span>(<span class="ident">socket</span>, <span class="ident">readable</span>, <span class="ident">writable</span>).<span class="ident">unwrap</span>();
+                <span class="self">self</span>.selector.register(socket, readable, writable).unwrap();
             }
         }
 
@@ -1117,12 +1117,12 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]</span>
+<span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">Handle</span>: <span class="ident">Send</span>, <span class="ident">Sync</span>);
-    <span class="macro">static_assertions::assert_impl_all!</span>(<span class="ident">Message</span>: <span class="ident">Send</span>);
+    <span class="macro">static_assertions::assert_impl_all!</span>(Handle: Send, Sync);
+    <span class="macro">static_assertions::assert_impl_all!</span>(Message: Send);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (affe0d3a0 2022-08-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>
