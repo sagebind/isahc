@@ -31,7 +31,3 @@ impl fmt::Debug for Context {
         f.debug_struct("Context").finish()
     }
 }
-
-pub(crate) trait Invoke {
-    fn invoke(&self, request: Request<AsyncBody>) -> InterceptorFuture<Error>;
-}

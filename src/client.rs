@@ -21,7 +21,8 @@ use futures_lite::{
 };
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request, Response,
+    Request,
+    Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -1037,6 +1038,80 @@ impl HttpClient {
         ctx.send(request)
     }
 
+    pub(crate) fn invoke(&self, mut request: Request<AsyncBody>) -> InterceptorFuture<Error> {
+        let client = self.clone();
+
+        Box::pin(async move {
+            let is_head_request = request.method() == http::Method::HEAD;
+
+            // Set default user agent if not specified.
+            request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
+
+            // Check if automatic decompression is enabled; we'll need to know
+            // this later after the response is sent.
+            let is_automatic_decompression = request
+                .extensions()
+                .get::<RequestConfig>()
+                .unwrap()
+                .automatic_decompression
+                .unwrap_or(false);
+
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = client
+                .create_easy_handle(request)
+                .map_err(Error::from_any)?;
+
+            // Send the request to the agent to be executed.
+            client.inner.agent.submit_request(easy)?;
+
+            // Await for the response headers.
+            let response = future.await?;
+
+            // If a Content-Length header is present, include that information in
+            // the body as well.
+            let body_len = response.content_length().filter(|_| {
+                // If automatic decompression is enabled, and will likely be
+                // selected, then the value of Content-Length does not indicate
+                // the uncompressed body length and merely the compressed data
+                // length. If it looks like we are in this scenario then we
+                // ignore the Content-Length, since it can only cause confusion
+                // when included with the body.
+                if is_automatic_decompression {
+                    if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
+                        if value != "identity" {
+                            return false;
+                        }
+                    }
+                }
+
+                true
+            });
+
+            // Convert the reader into an opaque Body.
+            Ok(response.map(|reader| {
+                if is_head_request {
+                    AsyncBody::empty()
+                } else {
+                    let body = ResponseBody {
+                        inner: reader,
+                        // Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        _client: client,
+                    };
+
+                    if let Some(len) = body_len {
+                        AsyncBody::from_reader_sized(body, len)
+                    } else {
+                        AsyncBody::from_reader(body)
+                    }
+                }
+            }))
+        })
+    }
+
     fn create_easy_handle(
         &self,
         mut request: Request<AsyncBody>,
@@ -1157,82 +1232,6 @@ impl HttpClient {
         easy.http_headers(headers)?;
 
         Ok((easy, future))
-    }
-}
-
-impl interceptor::Invoke for HttpClient {
-    fn invoke(&self, mut request: Request<AsyncBody>) -> InterceptorFuture<Error> {
-        let client = self.clone();
-
-        Box::pin(async move {
-            let is_head_request = request.method() == http::Method::HEAD;
-
-            // Set default user agent if not specified.
-            request
-                .headers_mut()
-                .entry(http::header::USER_AGENT)
-                .or_insert(USER_AGENT.parse().unwrap());
-
-            // Check if automatic decompression is enabled; we'll need to know
-            // this later after the response is sent.
-            let is_automatic_decompression = request
-                .extensions()
-                .get::<RequestConfig>()
-                .unwrap()
-                .automatic_decompression
-                .unwrap_or(false);
-
-            // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = client
-                .create_easy_handle(request)
-                .map_err(Error::from_any)?;
-
-            // Send the request to the agent to be executed.
-            client.inner.agent.submit_request(easy)?;
-
-            // Await for the response headers.
-            let response = future.await?;
-
-            // If a Content-Length header is present, include that information in
-            // the body as well.
-            let body_len = response.content_length().filter(|_| {
-                // If automatic decompression is enabled, and will likely be
-                // selected, then the value of Content-Length does not indicate
-                // the uncompressed body length and merely the compressed data
-                // length. If it looks like we are in this scenario then we
-                // ignore the Content-Length, since it can only cause confusion
-                // when included with the body.
-                if is_automatic_decompression {
-                    if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
-                        if value != "identity" {
-                            return false;
-                        }
-                    }
-                }
-
-                true
-            });
-
-            // Convert the reader into an opaque Body.
-            Ok(response.map(|reader| {
-                if is_head_request {
-                    AsyncBody::empty()
-                } else {
-                    let body = ResponseBody {
-                        inner: reader,
-                        // Extend the lifetime of the agent by including a reference
-                        // to its handle in the response body.
-                        _client: client,
-                    };
-
-                    if let Some(len) = body_len {
-                        AsyncBody::from_reader_sized(body, len)
-                    } else {
-                        AsyncBody::from_reader(body)
-                    }
-                }
-            }))
-        })
     }
 }
 

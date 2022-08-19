@@ -25,7 +25,7 @@ mod context;
 mod obj;
 
 pub use self::context::Context;
-pub(crate) use self::{context::Invoke, obj::InterceptorObj};
+pub(crate) use self::obj::InterceptorObj;
 
 type InterceptorResult<E> = Result<Response<AsyncBody>, E>;
 
