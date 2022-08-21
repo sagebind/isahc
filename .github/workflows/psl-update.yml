@@ -9,7 +9,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - run: |
+      - id: update
+        name: Update public suffix list file
+        run: |
           echo "::set-output name=old-sha::$(sha256sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
           curl -o src/cookies/psl/list/public_suffix_list.dat https://publicsuffix.org/list/public_suffix_list.dat
           echo "::set-output name=new-sha::$(sha256sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
