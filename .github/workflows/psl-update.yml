@@ -8,16 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - id: update
-        name: Update public suffix list submodule
-        run: |
-          echo "::set-output name=old-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
-          git -C src/cookies/psl/list checkout master
-          git -C src/cookies/psl/list pull
-          echo "::set-output name=new-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v3
