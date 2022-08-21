@@ -9,6 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - run: |
+          echo "::set-output name=old-sha::$(md5sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
+          curl -o src/cookies/psl/list/public_suffix_list.dat https://publicsuffix.org/list/public_suffix_list.dat
+          echo "::set-output name=new-sha::$(md5sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@v3
         with:
@@ -18,6 +23,6 @@ jobs:
           title: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
           labels: dependencies
           body: |
-            Update Public Suffix List from [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }}) to [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).
+            Update Public Suffix List from ${{ steps.update.outputs.old-sha }} to ${{ steps.update.outputs.new-sha }}.
 
             This pull request was generated automatically. If you close this pull request, I won't bother you again until the next automatically scheduled update.
