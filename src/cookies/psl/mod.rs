@@ -23,7 +23,10 @@ use crate::{request::RequestExt, ReadResponseExt};
 use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::{List, Psl};
-use std::{error::Error, time::{Duration, SystemTime}};
+use std::{
+    error::Error,
+    time::{Duration, SystemTime},
+};
 
 /// How long should we use a cached list before refreshing?
 static TTL: Lazy<Duration> = Lazy::new(|| Duration::from_secs(24 * 60 * 60));
@@ -79,7 +82,10 @@ impl ListCache {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
-            request = request.header(http::header::IF_MODIFIED_SINCE, httpdate::fmt_http_date(last_updated));
+            request = request.header(
+                http::header::IF_MODIFIED_SINCE,
+                httpdate::fmt_http_date(last_updated),
+            );
         }
 
         let mut response = request.body(())?.send()?;
@@ -144,8 +150,8 @@ fn with_cache<T>(f: impl FnOnce(&ListCache) -> T) -> T {
             }
         }
 
-        f(&*cache)
+        f(&cache)
     } else {
-        f(&*cache)
+        f(&cache)
     }
 }

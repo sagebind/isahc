@@ -2,6 +2,7 @@
 
 use super::SetOpt;
 use curl::easy::{Easy2, SslOpt};
+use once_cell::sync::Lazy;
 use std::{
     iter::FromIterator,
     ops::{BitOr, BitOrAssign},
@@ -284,12 +285,58 @@ impl SetOpt for PrivateKey {
 /// A public CA certificate bundle file.
 #[derive(Clone, Debug)]
 pub struct CaCertificate {
-    /// Path to the certificate bundle file. Currently only file paths are
-    /// supported.
-    path: PathBuf,
+    /// The certificate data, either a path or a blob.
+    data: PathOrBlob,
 }
 
 impl CaCertificate {
+    /// Use one or more PEM-encoded certificates in the given byte buffer.
+    ///
+    /// The certificate object takes ownership of the byte buffer. If a borrowed
+    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    pub fn pem<B>(bytes: B) -> Self
+    where
+        B: Into<Vec<u8>>,
+    {
+        Self {
+            data: PathOrBlob::Blob(bytes.into()),
+        }
+    }
+
+    /// Use one or more DER-encoded certificates stored in memory.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    #[cfg(feature = "data-encoding")]
+    #[allow(dead_code)]
+    pub(crate) fn der_multiple<I, B>(certificates: I) -> Self
+    where
+        I: IntoIterator<Item = B>,
+        B: AsRef<[u8]>,
+    {
+        let mut base64_spec = data_encoding::BASE64.specification();
+        base64_spec.wrap.width = 64;
+        base64_spec.wrap.separator.push_str("\r\n");
+        let base64 = base64_spec.encoding().unwrap();
+
+        let mut pem = String::new();
+
+        for certificate in certificates {
+            pem.push_str("-----BEGIN CERTIFICATE-----\r\n");
+            base64.encode_append(certificate.as_ref(), &mut pem);
+            pem.push_str("-----END CERTIFICATE-----\r\n");
+        }
+
+        Self::pem(pem)
+    }
+
     /// Get a CA certificate from a path to a certificate bundle file.
     ///
     /// The certificate file is not loaded or validated here. If the file does
@@ -298,14 +345,43 @@ impl CaCertificate {
     /// using the offending certificate.
     pub fn file(ca_bundle_path: impl Into<PathBuf>) -> Self {
         Self {
-            path: ca_bundle_path.into(),
+            data: PathOrBlob::Path(ca_bundle_path.into()),
         }
+    }
+
+    /// Get native root certificates trusted by the operating system, if any.
+    #[allow(unreachable_code)]
+    pub(crate) fn native() -> Option<Self> {
+        static NATIVE: Lazy<Option<CaCertificate>> = Lazy::new(|| {
+            #[cfg(feature = "rustls-native-certs")]
+            {
+                match rustls_native_certs::load_native_certs() {
+                    Ok(certs) => {
+                        if !certs.is_empty() {
+                            return Some(CaCertificate::der_multiple(
+                                certs.into_iter().map(|cert| cert.0),
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("failed to load native certificate chain: {}", e);
+                    }
+                }
+            }
+
+            None
+        });
+
+        NATIVE.clone()
     }
 }
 
 impl SetOpt for CaCertificate {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.cainfo(&self.path)
+        match &self.data {
+            PathOrBlob::Path(path) => easy.cainfo(path.as_path()),
+            PathOrBlob::Blob(bytes) => easy.ssl_cainfo_blob(bytes.as_slice()),
+        }
     }
 }
 

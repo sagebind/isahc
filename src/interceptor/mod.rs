@@ -11,15 +11,6 @@
 //!   generic over a lifetime, there's no way to give the return type the
 //!   correct name using current Rust syntax.
 //! - [`InterceptorObj`] wraps the returned future in an extra box.
-//! - If an interceptor returns a custom error, it is stringified and wrapped in
-//!   `Error::Curl`. We should introduce a new error variant that boxes the
-//!   error and also records the type of the interceptor that created the error
-//!   for visibility. But we can't add a new variant right now without a BC
-//!   break. See [#182](https://github.com/sagebind/isahc/issues/182).
-//! - Automatic redirect following currently bypasses interceptors for
-//!   subsequent requests. This will be fixed when redirect handling is
-//!   rewritten as an interceptor itself. See
-//!   [#232](https://github.com/sagebind/isahc/issues/232).
 ///
 /// # Availability
 ///

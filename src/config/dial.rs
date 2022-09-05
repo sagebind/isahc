@@ -202,9 +202,7 @@ mod tests {
 
     #[test]
     fn parse_invalid_tcp_uri() {
-        let result = "tcp:127.0.0.1-1200".parse::<Dialer>();
-
-        assert!(result.is_err());
+        "tcp:127.0.0.1-1200".parse::<Dialer>().unwrap_err();
     }
 
     #[test]

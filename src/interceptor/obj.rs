@@ -5,13 +5,16 @@ use http::Request;
 /// Type-erased interceptor object.
 pub(crate) struct InterceptorObj(Box<dyn DynInterceptor>);
 
-impl InterceptorObj {
-    pub(crate) fn new(interceptor: impl Interceptor + 'static) -> Self {
+impl<I> From<I> for InterceptorObj
+where
+    I: Interceptor + 'static,
+{
+    fn from(interceptor: I) -> Self {
         Self(Box::new(interceptor))
     }
 }
 
-impl Interceptor for InterceptorObj {
+impl Interceptor for &InterceptorObj {
     type Err = Error;
 
     fn intercept<'a>(

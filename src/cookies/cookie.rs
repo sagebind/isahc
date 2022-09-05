@@ -73,6 +73,10 @@ impl CookieBuilder {
     }
 
     /// Sets the domain the cookie belongs to.
+    ///
+    /// Note that the domain will be preserved exactly as supplied. If the
+    /// string has a `.` prefix that should be ignored (such as allowed by the
+    /// `Set-Cookie` HTTP header), then you must remove it manually first.
     pub fn domain<S>(mut self, domain: S) -> Self
     where
         S: Into<String>,
@@ -438,7 +442,7 @@ mod tests {
     #[test_case("bad_value_comma=bar,")]
     #[test_case("bad_value_space= bar")]
     fn parse_invalid(s: &str) {
-        assert!(Cookie::parse(s).is_err());
+        Cookie::parse(s).unwrap_err();
     }
 
     #[test_case("foo=bar")]

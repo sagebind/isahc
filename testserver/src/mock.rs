@@ -108,8 +108,7 @@ impl Mock {
         if request
             .headers()
             .iter()
-            .find(|h| h.field.as_str() == "host" && h.value == "api.mock.local")
-            .is_some()
+            .any(|h| h.field.as_str() == "host" && h.value == "api.mock.local")
         {
             self.handle_api_request(request);
             return;

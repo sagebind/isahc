@@ -32,19 +32,6 @@ macro_rules! define_request_config {
         }
 
         impl RequestConfig {
-            pub(crate) fn client_defaults() -> Self {
-                Self {
-                    // Always start out with latest compatible HTTP version.
-                    version_negotiation: Some(VersionNegotiation::default()),
-                    // Enable automatic decompression by default for convenience
-                    // (and maintain backwards compatibility).
-                    automatic_decompression: Some(true),
-                    // Erase curl's default auth method of Basic.
-                    authentication: Some(Authentication::default()),
-                    ..Default::default()
-                }
-            }
-
             /// Merge another request configuration into this one. Unspecified
             /// values in this config are replaced with values in the given
             /// config.
@@ -84,7 +71,7 @@ define_request_config! {
     max_download_speed: Option<u64>,
     ssl_client_certificate: Option<ClientCertificate>,
     ssl_ca_certificate: Option<CaCertificate>,
-    ssl_ciphers: Option<ssl::Ciphers>,
+    ssl_ciphers: Option<tls::Ciphers>,
     ssl_options: Option<SslOption>,
     enable_metrics: Option<bool>,
 
@@ -92,6 +79,23 @@ define_request_config! {
     redirect_policy: Option<RedirectPolicy>,
     auto_referer: Option<bool>,
     title_case_headers: Option<bool>,
+}
+
+impl RequestConfig {
+    pub(crate) fn client_defaults() -> Self {
+        Self {
+            // Always start out with latest compatible HTTP version.
+            version_negotiation: Some(VersionNegotiation::default()),
+            // Enable automatic decompression by default for convenience
+            // (and maintain backwards compatibility).
+            automatic_decompression: Some(true),
+            // Erase curl's default auth method of Basic.
+            authentication: Some(Authentication::default()),
+            // Set native root certificates if available.
+            ssl_ca_certificate: CaCertificate::native(),
+            ..Default::default()
+        }
+    }
 }
 
 impl SetOpt for RequestConfig {

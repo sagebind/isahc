@@ -264,7 +264,7 @@ fn auto_referer_sets_expected_header() {
     };
 
     let m1 = {
-        let location = m2.url();
+        let location = format!("{}#foo", m2.url());
         mock! {
             status: 301,
             headers {
@@ -281,8 +281,15 @@ fn auto_referer_sets_expected_header() {
         .send()
         .unwrap();
 
-    m2.request().expect_header("Referer", m1.url());
-    m3.request().expect_header("Referer", m2.url());
+    assert_eq!(m1.request().get_header("Referer").count(), 0);
+    assert_eq!(
+        m2.request().get_header("Referer").collect::<Vec<_>>(),
+        vec![m1.url()]
+    );
+    assert_eq!(
+        m3.request().get_header("Referer").collect::<Vec<_>>(),
+        vec![m2.url()]
+    );
 }
 
 #[test]

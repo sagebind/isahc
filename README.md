@@ -70,7 +70,7 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "1.6"
+isahc = "1.7"
 ```
 
 ### Minimum supported Rust version
@@ -115,7 +115,7 @@ Not every library is perfect for every use-case. While Isahc strives to be a ful
 
 Special thanks to sponsors of my open-source work!
 
-<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
+<!-- sponsors --><!-- sponsors -->
 
 ## License
 

@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Send another request. The cookies previously set will be sent.
     let mut response = Request::get("http://httpbin.org/cookies")
-        .cookie_jar(cookie_jar.clone())
+        .cookie_jar(cookie_jar)
         .body(())?
         .send()?;
 
