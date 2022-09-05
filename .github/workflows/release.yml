@@ -8,8 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
 
       - name: Publish to crates.io
         run: cargo publish --token "${CARGO_TOKEN}" --no-verify
