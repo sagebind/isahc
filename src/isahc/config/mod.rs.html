@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/config/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/config/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
                     <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../isahc/index.html">
                         <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
@@ -1134,8 +1134,8 @@
     ///     .expect_err(&quot;page should time out&quot;);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.timeout = <span class="prelude-val">Some</span>(timeout);
         })
@@ -1144,8 +1144,8 @@
     <span class="doccomment">/// Set a timeout for establishing connections to a host.
     ///
     /// If not set, a default connect timeout of 300 seconds will be used.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>connect_timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>connect_timeout(<span class="self">self</span>, timeout: Duration) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.connect_timeout = <span class="prelude-val">Some</span>(timeout);
         })
@@ -1155,8 +1155,8 @@
     /// a minimum speed limit. `low_speed` is that limit in bytes/s.
     ///
     /// If not set, no low speed limits are imposed.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>low_speed_timeout(<span class="self">self</span>, low_speed: u32, timeout: Duration) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>low_speed_timeout(<span class="self">self</span>, low_speed: u32, timeout: Duration) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.low_speed_timeout = <span class="prelude-val">Some</span>((low_speed, timeout));
         })
@@ -1187,8 +1187,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>version_negotiation(<span class="self">self</span>, negotiation: VersionNegotiation) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>version_negotiation(<span class="self">self</span>, negotiation: VersionNegotiation) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.version_negotiation = <span class="prelude-val">Some</span>(negotiation);
         })
@@ -1217,16 +1217,16 @@
     ///     .expect_err(&quot;too many redirects&quot;);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>redirect_policy(<span class="self">self</span>, policy: RedirectPolicy) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>redirect_policy(<span class="self">self</span>, policy: RedirectPolicy) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.redirect_policy = <span class="prelude-val">Some</span>(policy);
         })
     }
 
     <span class="doccomment">/// Update the `Referer` header automatically when following redirects.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>auto_referer(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>auto_referer(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.auto_referer = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
         })
@@ -1242,9 +1242,9 @@
     ///
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>cookie_jar(<span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self</span>;
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    #[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>cookie_jar(<span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Enable or disable automatic decompression of the response body for
     /// various compression algorithms as returned by the server in the
@@ -1261,8 +1261,8 @@
     /// If you do not specify a specific value for the
     /// [`Accept-Encoding`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding)
     /// header, Isahc will set one for you automatically based on this option.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>automatic_decompression(<span class="self">self</span>, decompress: bool) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>automatic_decompression(<span class="self">self</span>, decompress: bool) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.automatic_decompression = <span class="prelude-val">Some</span>(decompress);
         })
@@ -1326,8 +1326,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>expect_continue&lt;T&gt;(<span class="self">self</span>, expect: T) -&gt; <span class="self">Self
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>expect_continue&lt;T&gt;(<span class="self">self</span>, expect: T) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>T: Into&lt;ExpectContinue&gt;,
     {
@@ -1358,8 +1358,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.authentication = <span class="prelude-val">Some</span>(authentication);
         })
@@ -1369,24 +1369,24 @@
     ///
     /// This setting will do nothing unless you also set one or more
     /// authentication methods using [`Configurable::authentication`].
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.credentials = <span class="prelude-val">Some</span>(credentials);
         })
     }
 
     <span class="doccomment">/// Enable TCP keepalive with a given probe interval.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>tcp_keepalive(<span class="self">self</span>, interval: Duration) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>tcp_keepalive(<span class="self">self</span>, interval: Duration) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.tcp_keepalive = <span class="prelude-val">Some</span>(interval);
         })
     }
 
     <span class="doccomment">/// Enables the `TCP_NODELAY` option on connect.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>tcp_nodelay(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>tcp_nodelay(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.tcp_nodelay = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
         })
@@ -1425,8 +1425,8 @@
     ///     .body(())?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>interface&lt;I&gt;(<span class="self">self</span>, interface: I) -&gt; <span class="self">Self
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>interface&lt;I&gt;(<span class="self">self</span>, interface: I) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>I: Into&lt;NetworkInterface&gt;,
     {
@@ -1442,8 +1442,8 @@
     /// This does not affect requests with an explicit IP address as the host.
     ///
     /// The default is [`IpVersion::Any`].
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>ip_version(<span class="self">self</span>, version: IpVersion) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>ip_version(<span class="self">self</span>, version: IpVersion) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.ip_version = <span class="prelude-val">Some</span>(version);
         })
@@ -1487,8 +1487,8 @@
     ///     .body(())?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>dial&lt;D&gt;(<span class="self">self</span>, dialer: D) -&gt; <span class="self">Self
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>dial&lt;D&gt;(<span class="self">self</span>, dialer: D) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>D: Into&lt;Dialer&gt;,
     {
@@ -1537,8 +1537,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>proxy(<span class="self">self</span>, proxy: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;http::Uri&gt;&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>proxy(<span class="self">self</span>, proxy: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;http::Uri&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.proxy = <span class="prelude-val">Some</span>(proxy.into());
         })
@@ -1557,8 +1557,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>proxy_blacklist&lt;I, T&gt;(<span class="self">self</span>, hosts: I) -&gt; <span class="self">Self
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>proxy_blacklist&lt;I, T&gt;(<span class="self">self</span>, hosts: I) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>I: IntoIterator&lt;Item = T&gt;,
         T: Into&lt;String&gt;,
@@ -1591,8 +1591,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>proxy_authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>proxy_authentication(<span class="self">self</span>, authentication: Authentication) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.proxy_authentication = <span class="prelude-val">Some</span>(Proxy(authentication));
         })
@@ -1603,8 +1603,8 @@
     /// This setting will do nothing unless you also set one or more proxy
     /// authentication methods using
     /// [`Configurable::proxy_authentication`].
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>proxy_credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>proxy_credentials(<span class="self">self</span>, credentials: Credentials) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.proxy_credentials = <span class="prelude-val">Some</span>(Proxy(credentials));
         })
@@ -1613,8 +1613,8 @@
     <span class="doccomment">/// Set a maximum upload speed for the request body, in bytes per second.
     ///
     /// The default is unlimited.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>max_upload_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>max_upload_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.max_upload_speed = <span class="prelude-val">Some</span>(max);
         })
@@ -1623,8 +1623,8 @@
     <span class="doccomment">/// Set a maximum download speed for the response body, in bytes per second.
     ///
     /// The default is unlimited.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>max_download_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>max_download_speed(<span class="self">self</span>, max: u64) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.max_download_speed = <span class="prelude-val">Some</span>(max);
         })
@@ -1672,8 +1672,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>ssl_client_certificate(<span class="self">self</span>, certificate: ClientCertificate) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>ssl_client_certificate(<span class="self">self</span>, certificate: ClientCertificate) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.ssl_client_certificate = <span class="prelude-val">Some</span>(certificate);
         })
@@ -1700,8 +1700,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>ssl_ca_certificate(<span class="self">self</span>, certificate: CaCertificate) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>ssl_ca_certificate(<span class="self">self</span>, certificate: CaCertificate) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.ssl_ca_certificate = <span class="prelude-val">Some</span>(certificate);
         })
@@ -1714,8 +1714,8 @@
     /// at &lt;https://curl.haxx.se/docs/ssl-ciphers.html&gt;.
     ///
     /// The default is unset and will result in the system defaults being used.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>ssl_ciphers&lt;I, T&gt;(<span class="self">self</span>, ciphers: I) -&gt; <span class="self">Self
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>ssl_ciphers&lt;I, T&gt;(<span class="self">self</span>, ciphers: I) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>I: IntoIterator&lt;Item = T&gt;,
         T: Into&lt;String&gt;,
@@ -1759,8 +1759,8 @@
     ///     .build()?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>ssl_options(<span class="self">self</span>, options: SslOption) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>ssl_options(<span class="self">self</span>, options: SslOption) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.ssl_options = <span class="prelude-val">Some</span>(options);
         })
@@ -1776,8 +1776,8 @@
     ///
     /// This option has no effect when using HTTP/2 or newer where headers are
     /// required to be lowercase.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>title_case_headers(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>title_case_headers(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.title_case_headers = <span class="prelude-val">Some</span>(enable);
         })
@@ -1798,8 +1798,8 @@
     /// Disabling metrics may be necessary for absolute peak performance.
     ///
     /// By default metrics are disabled.
-    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-    <span class="kw">fn </span>metrics(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+    </span><span class="kw">fn </span>metrics(<span class="self">self</span>, enable: bool) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_config(<span class="kw">move </span>|config| {
             config.enable_metrics = <span class="prelude-val">Some</span>(enable);
         })
@@ -1817,11 +1817,11 @@
 /// machine may not have an HTTP/2 implementation. Using static linking and the
 /// [`http2`](../index.html#http2) crate feature can help guarantee that HTTP/2
 /// will be available to use.
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub struct </span>VersionNegotiation(VersionNegotiationInner);
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>VersionNegotiation(VersionNegotiationInner);
 
-<span class="attribute">#[derive(Clone, Copy, Debug)]</span>
-<span class="kw">enum </span>VersionNegotiationInner {
+<span class="attribute">#[derive(Clone, Copy, Debug)]
+</span><span class="kw">enum </span>VersionNegotiationInner {
     LatestCompatible,
     Strict(curl::easy::HttpVersion),
 }
@@ -1914,8 +1914,8 @@
 /// Note that this type is &quot;lazy&quot; in the sense that errors are not returned if
 /// the given interfaces are not checked for validity until you actually attempt
 /// to use it in a network request.
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub struct </span>NetworkInterface {
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>NetworkInterface {
     <span class="doccomment">/// Interface in verbose curl format.
     </span>interface: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
@@ -1940,8 +1940,8 @@
     /// let loopback = NetworkInterface::name(&quot;lo&quot;);
     /// let wifi = NetworkInterface::name(&quot;wlan0&quot;);
     /// ```
-    </span><span class="attribute">#[cfg(unix)]</span>
-    <span class="kw">pub fn </span>name(name: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[cfg(unix)]
+    </span><span class="kw">pub fn </span>name(name: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             interface: <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;if!{}&quot;</span>, name.as_ref())),
         }
@@ -1980,8 +1980,8 @@
 
 <span class="kw">impl </span>SetOpt <span class="kw">for </span>NetworkInterface {
     <span class="kw">fn </span>set_opt&lt;H&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, easy: <span class="kw-2">&amp;mut </span>Easy2&lt;H&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt; {
-        <span class="attribute">#[allow(unsafe_code)]</span>
-        <span class="kw">match </span><span class="self">self</span>.interface.as_ref() {
+        <span class="attribute">#[allow(unsafe_code)]
+        </span><span class="kw">match </span><span class="self">self</span>.interface.as_ref() {
             <span class="prelude-val">Some</span>(interface) =&gt; easy.interface(interface),
 
             <span class="comment">// Use raw FFI because safe wrapper doesn&#39;t let us set to null.
@@ -1996,8 +1996,8 @@
 }
 
 <span class="doccomment">/// Supported IP versions that can be used.
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub enum </span>IpVersion {
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub enum </span>IpVersion {
     <span class="doccomment">/// Use IPv4 addresses only. IPv6 addresses will be ignored.
     </span>V4,
 
@@ -2047,8 +2047,8 @@
 /// The `Expect` behavior can also be disabled entirely.
 ///
 /// This configuration only takes effect when using HTTP/1.1.
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub struct </span>ExpectContinue {
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>ExpectContinue {
     timeout: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
 }
 
@@ -2111,4 +2111,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (289279de1 2022-09-04)" ></div></body></html>

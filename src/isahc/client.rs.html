@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../isahc/index.html"><div class="logo-container">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../isahc/index.html"><div class="logo-container">
                     <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../isahc/index.html">
                         <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
@@ -1420,8 +1420,8 @@
 ///     .build()?;
 /// # Ok::&lt;(), isahc::Error&gt;(())
 /// ```
-</span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-<span class="kw">pub struct </span>HttpClientBuilder {
+</span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+</span><span class="kw">pub struct </span>HttpClientBuilder {
     agent_builder: AgentBuilder,
     client_config: ClientConfig,
     request_config: RequestConfig,
@@ -1429,8 +1429,8 @@
     default_headers: HeaderMap&lt;HeaderValue&gt;,
     error: <span class="prelude-ty">Option</span>&lt;Error&gt;,
 
-    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span>cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>HttpClientBuilder {
@@ -1459,8 +1459,8 @@
             default_headers: HeaderMap::new(),
             error: <span class="prelude-val">None</span>,
 
-            <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-            cookie_jar: <span class="prelude-val">None</span>,
+            <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+            </span>cookie_jar: <span class="prelude-val">None</span>,
         }
     }
 
@@ -1495,8 +1495,8 @@
     ///
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">pub fn </span>cookies(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="kw">pub fn </span>cookies(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="comment">// Note: this method is now essentially the same as setting a default
         // cookie jar, but remains for backwards compatibility.
         </span><span class="self">self</span>.cookie_jar(Default::default())
@@ -1509,14 +1509,14 @@
     /// This method is only available when the
     /// [`unstable-interceptors`](index.html#unstable-interceptors) feature is
     /// enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]</span>
-    <span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>interceptor(<span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]
+    #[inline]
+    </span><span class="kw">pub fn </span>interceptor(<span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.interceptor_impl(interceptor)
     }
 
-    <span class="attribute">#[allow(unused)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>interceptor_impl(<span class="kw-2">mut </span><span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
+    <span class="attribute">#[allow(unused)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>interceptor_impl(<span class="kw-2">mut </span><span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.interceptors.push(interceptor.into());
         <span class="self">self
     </span>}
@@ -1785,15 +1785,15 @@
     <span class="doccomment">/// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
-    </span><span class="attribute">#[allow(unused_mut)]</span>
-    <span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;HttpClient, Error&gt; {
+    </span><span class="attribute">#[allow(unused_mut)]
+    </span><span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;HttpClient, Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(err) = <span class="self">self</span>.error {
             <span class="kw">return </span><span class="prelude-val">Err</span>(err);
         }
 
         <span class="comment">// Add cookie interceptor if enabled.
-        </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-        {
+        </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+        </span>{
             <span class="kw">let </span>jar = <span class="self">self</span>.cookie_jar.clone();
             <span class="self">self </span>= <span class="self">self</span>.interceptor_impl(<span class="kw">crate</span>::cookies::interceptor::CookieInterceptor::new(jar));
         }
@@ -1804,8 +1804,8 @@
             <span class="self">self </span>= <span class="self">self</span>.interceptor_impl(DefaultHeadersInterceptor::from(default_headers));
         }
 
-        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;cookies&quot;</span>))]</span>
-        <span class="kw">let </span>inner = Inner {
+        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;cookies&quot;</span>))]
+        </span><span class="kw">let </span>inner = Inner {
             agent: <span class="self">self
                 </span>.agent_builder
                 .spawn()
@@ -1815,8 +1815,8 @@
             interceptors: <span class="self">self</span>.interceptors,
         };
 
-        <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-        <span class="kw">let </span>inner = Inner {
+        <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+        </span><span class="kw">let </span>inner = Inner {
             agent: <span class="self">self
                 </span>.agent_builder
                 .spawn()
@@ -1834,16 +1834,16 @@
 }
 
 <span class="kw">impl </span>Configurable <span class="kw">for </span>HttpClientBuilder {
-    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">fn </span>cookie_jar(<span class="kw-2">mut </span><span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self </span>{
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="kw">fn </span>cookie_jar(<span class="kw-2">mut </span><span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.cookie_jar = <span class="prelude-val">Some</span>(cookie_jar);
         <span class="self">self
     </span>}
 }
 
 <span class="kw">impl </span>WithRequestConfig <span class="kw">for </span>HttpClientBuilder {
-    <span class="attribute">#[inline]</span>
-    <span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>RequestConfig)) -&gt; <span class="self">Self </span>{
+    <span class="attribute">#[inline]
+    </span><span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>RequestConfig)) -&gt; <span class="self">Self </span>{
         f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_config);
         <span class="self">self
     </span>}
@@ -1944,8 +1944,8 @@
 ///
 /// See the documentation on [`HttpClientBuilder`] for a comprehensive look at
 /// what can be configured.
-</span><span class="attribute">#[derive(Clone)]</span>
-<span class="kw">pub struct </span>HttpClient {
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>HttpClient {
     inner: Arc&lt;Inner&gt;,
 }
 
@@ -1963,8 +1963,8 @@
     </span>interceptors: Vec&lt;InterceptorObj&gt;,
 
     <span class="doccomment">/// Configured cookie jar, if any.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span>cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
 }
 
 <span class="kw">impl </span>HttpClient {
@@ -1996,8 +1996,8 @@
     ///
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]</span>
-    <span class="kw">pub fn </span>cookie_jar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::cookies::CookieJar&gt; {
+    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="kw">pub fn </span>cookie_jar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::cookies::CookieJar&gt; {
         <span class="self">self</span>.inner.cookie_jar.as_ref()
     }
 
@@ -2016,8 +2016,8 @@
     /// println!(&quot;{}&quot;, response.text()?);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>get&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>get&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2058,8 +2058,8 @@
     /// println!(&quot;Page size: {:?}&quot;, response.headers()[&quot;content-length&quot;]);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>head&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>head&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2102,8 +2102,8 @@
     ///     &quot;cool_name&quot;: true
     /// }&quot;#)?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>post&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>post&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2150,8 +2150,8 @@
     /// }&quot;#)?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>put&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>put&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2184,8 +2184,8 @@
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::delete_async`].
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>delete&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>delete&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2346,8 +2346,8 @@
     /// assert!(response.status().is_success());
     /// # Ok(()) }
     /// ```
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>send_async&lt;B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;B&gt;) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>send_async&lt;B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;B&gt;) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
     <span class="kw">where
         </span>B: Into&lt;AsyncBody&gt;,
     {
@@ -2428,8 +2428,8 @@
 
         <span class="comment">// Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
-        </span><span class="attribute">#[allow(indirect_structural_match)]</span>
-        <span class="kw">match </span>(request.method(), has_body) {
+        </span><span class="attribute">#[allow(indirect_structural_match)]
+        </span><span class="kw">match </span>(request.method(), has_body) {
             <span class="comment">// Normal GET request.
             </span>(<span class="kw-2">&amp;</span>http::Method::GET, <span class="bool-val">false</span>) =&gt; {
                 easy.get(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
@@ -2591,8 +2591,8 @@
 }
 
 <span class="doccomment">/// A future for a request being executed.
-</span><span class="attribute">#[must_use = <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]</span>
-<span class="kw">pub struct </span>ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt;(Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + <span class="lifetime">&#39;c </span>+ Send&gt;&gt;);
+</span><span class="attribute">#[must_use = <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]
+</span><span class="kw">pub struct </span>ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt;(Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + <span class="lifetime">&#39;c </span>+ Send&gt;&gt;);
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;c</span>&gt; ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt; {
     <span class="kw">fn </span>new&lt;F&gt;(future: F) -&gt; <span class="self">Self
@@ -2663,23 +2663,23 @@
     s
 }
 
-<span class="attribute">#[cfg(test)]</span>
-<span class="kw">mod </span>tests {
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="macro">static_assertions::assert_impl_all!</span>(HttpClient: Send, Sync);
     <span class="macro">static_assertions::assert_impl_all!</span>(HttpClientBuilder: Send);
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>test_default_header() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_default_header() {
         HttpClientBuilder::new()
             .default_header(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
             .build()
             .expect(<span class="string">&quot;build client succeed&quot;</span>);
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>test_default_headers_mut() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_default_headers_mut() {
         <span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClientBuilder::new().default_header(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
         <span class="kw">let </span>headers_map = <span class="kw-2">&amp;mut </span>builder.default_headers;
         <span class="macro">assert!</span>(headers_map.len() == <span class="number">1</span>);
@@ -2697,4 +2697,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (289279de1 2022-09-04)" ></div></body></html>

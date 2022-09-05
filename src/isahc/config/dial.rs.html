@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/config/dial.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dial.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/config/dial.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dial.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
                     <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../isahc/index.html">
                         <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
@@ -233,8 +233,8 @@
 <span class="kw">use </span>std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
 
 <span class="doccomment">/// An error which can be returned when parsing a dial address.
-</span><span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]</span>
-<span class="kw">pub struct </span>DialerParseError(());
+</span><span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]
+</span><span class="kw">pub struct </span>DialerParseError(());
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>DialerParseError {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
@@ -267,17 +267,17 @@
 /// let unix_socket = &quot;unix:/path/to/my.sock&quot;.parse::&lt;Dialer&gt;()?;
 /// # Ok::&lt;(), isahc::config::DialerParseError&gt;(())
 /// ```
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub struct </span>Dialer(Inner);
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>Dialer(Inner);
 
-<span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]</span>
-<span class="kw">enum </span>Inner {
+<span class="attribute">#[derive(Clone, Debug, Eq, PartialEq)]
+</span><span class="kw">enum </span>Inner {
     Default,
 
     IpSocket(String),
 
-    <span class="attribute">#[cfg(unix)]</span>
-    UnixSocket(std::path::PathBuf),
+    <span class="attribute">#[cfg(unix)]
+    </span>UnixSocket(std::path::PathBuf),
 }
 
 <span class="kw">impl </span>Dialer {
@@ -324,8 +324,8 @@
     /// # Availability
     ///
     /// This function is only available on Unix.
-    </span><span class="attribute">#[cfg(unix)]</span>
-    <span class="kw">pub fn </span>unix_socket(path: <span class="kw">impl </span>Into&lt;std::path::PathBuf&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[cfg(unix)]
+    </span><span class="kw">pub fn </span>unix_socket(path: <span class="kw">impl </span>Into&lt;std::path::PathBuf&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(Inner::UnixSocket(path.into()))
     }
 }
@@ -355,8 +355,8 @@
                 .map_err(|<span class="kw">_</span>| DialerParseError(()));
         }
 
-        <span class="attribute">#[cfg(unix)]</span>
-        {
+        <span class="attribute">#[cfg(unix)]
+        </span>{
             <span class="kw">if </span>s.starts_with(<span class="string">&quot;unix:&quot;</span>) {
                 <span class="comment">// URI paths are always absolute.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>path = std::path::PathBuf::from(<span class="string">&quot;/&quot;</span>);
@@ -405,8 +405,8 @@
 
         easy.connect_to(connect_to)<span class="question-mark">?</span>;
 
-        <span class="attribute">#[cfg(unix)]</span>
-        easy.unix_socket_path(<span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
+        <span class="attribute">#[cfg(unix)]
+        </span>easy.unix_socket_path(<span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
             Inner::UnixSocket(path) =&gt; <span class="prelude-val">Some</span>(path),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         })<span class="question-mark">?</span>;
@@ -415,33 +415,33 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]</span>
-<span class="kw">mod </span>tests {
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>parse_tcp_socket_and_port_uri() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>parse_tcp_socket_and_port_uri() {
         <span class="kw">let </span>dialer = <span class="string">&quot;tcp:127.0.0.1:1200&quot;</span>.parse::&lt;Dialer&gt;().unwrap();
 
         <span class="macro">assert_eq!</span>(dialer.<span class="number">0</span>, Inner::IpSocket(<span class="string">&quot;::127.0.0.1:1200&quot;</span>.into()));
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>parse_invalid_tcp_uri() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>parse_invalid_tcp_uri() {
         <span class="string">&quot;tcp:127.0.0.1-1200&quot;</span>.parse::&lt;Dialer&gt;().unwrap_err();
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="attribute">#[cfg(unix)]</span>
-    <span class="kw">fn </span>parse_unix_socket_uri() {
+    <span class="attribute">#[test]
+    #[cfg(unix)]
+    </span><span class="kw">fn </span>parse_unix_socket_uri() {
         <span class="kw">let </span>dialer = <span class="string">&quot;unix:/path/to/my.sock&quot;</span>.parse::&lt;Dialer&gt;().unwrap();
 
         <span class="macro">assert_eq!</span>(dialer.<span class="number">0</span>, Inner::UnixSocket(<span class="string">&quot;/path/to/my.sock&quot;</span>.into()));
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="attribute">#[cfg(unix)]</span>
-    <span class="kw">fn </span>from_unix_socket_uri() {
+    <span class="attribute">#[test]
+    #[cfg(unix)]
+    </span><span class="kw">fn </span>from_unix_socket_uri() {
         <span class="kw">let </span>uri = <span class="string">&quot;unix://path/to/my.sock&quot;</span>.parse::&lt;http::Uri&gt;().unwrap();
         <span class="kw">let </span>dialer = Dialer::try_from(uri).unwrap();
 
@@ -449,4 +449,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (289279de1 2022-09-04)" ></div></body></html>

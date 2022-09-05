@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/cookie.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cookie.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/cookie.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cookie.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../isahc/index.html"><div class="logo-container">
                     <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../isahc/index.html">
                         <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
@@ -538,8 +538,8 @@
 };
 
 <span class="doccomment">/// An error which can occur when attempting to parse a cookie string.
-</span><span class="attribute">#[derive(Debug)]</span>
-<span class="kw">pub struct </span>ParseError(());
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ParseError(());
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>ParseError {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
@@ -563,9 +563,9 @@
 ///     .build()
 ///     .unwrap();
 /// ```
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]</span>
-<span class="kw">pub struct </span>CookieBuilder {
+</span><span class="attribute">#[derive(Clone, Debug)]
+#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+</span><span class="kw">pub struct </span>CookieBuilder {
     <span class="doccomment">/// The name of the cookie.
     </span>name: String,
 
@@ -588,8 +588,8 @@
 
 <span class="kw">impl </span>CookieBuilder {
     <span class="doccomment">/// Create a new cookie builder with a given name and value.
-    </span><span class="attribute">#[allow(unused)]</span>
-    <span class="kw">pub fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="self">Self
+    </span><span class="attribute">#[allow(unused)]
+    </span><span class="kw">pub fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>N: Into&lt;String&gt;,
         V: Into&lt;String&gt;,
@@ -685,8 +685,8 @@
 /// ```ignore
 /// assert_eq!(cookie, &quot;foo&quot;);
 /// ```
-</span><span class="attribute">#[derive(Clone, Debug)]</span>
-<span class="kw">pub struct </span>Cookie {
+</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>Cookie {
     <span class="doccomment">/// The name of the cookie.
     </span>name: String,
 
@@ -713,8 +713,8 @@
     /// Returns an error if either the name or value given contains illegal
     /// characters. In practice, only a subset of US-ASCII characters are
     /// allowed in cookies for maximum compatibility with most web servers.
-    </span><span class="attribute">#[allow(unused)]</span>
-    <span class="kw">fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ParseError&gt;
+    </span><span class="attribute">#[allow(unused)]
+    </span><span class="kw">fn </span>new&lt;N, V&gt;(name: N, value: V) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ParseError&gt;
     <span class="kw">where
         </span>N: Into&lt;String&gt;,
         V: Into&lt;String&gt;,
@@ -739,8 +739,8 @@
 
     <span class="doccomment">/// Create a new cookie builder with a given name and value.
     /// See [`CookieBuilder::new`] for an example.
-    </span><span class="attribute">#[allow(unused)]</span>
-    <span class="kw">pub fn </span>builder&lt;N, V&gt;(name: N, value: V) -&gt; CookieBuilder
+    </span><span class="attribute">#[allow(unused)]
+    </span><span class="kw">pub fn </span>builder&lt;N, V&gt;(name: N, value: V) -&gt; CookieBuilder
     <span class="kw">where
         </span>N: Into&lt;String&gt;,
         V: Into&lt;String&gt;,
@@ -765,40 +765,40 @@
     }
 
     <span class="doccomment">/// Get the name of the cookie.
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="kw-2">&amp;</span><span class="self">self</span>.name
     }
 
     <span class="doccomment">/// Get the value of the cookie.
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="kw-2">&amp;</span><span class="self">self</span>.value
     }
 
     <span class="doccomment">/// Get the domain of the cookie, if specified.
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="self">self</span>.domain.as_deref()
     }
 
     <span class="doccomment">/// Get the path of the cookie, if specified.
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="self">self</span>.path.as_deref()
     }
 
     <span class="doccomment">/// Get whether this cookie was marked as being secure only. If `true`, this
     /// cookie will only be sent to the server for HTTPS requests.
-    </span><span class="attribute">#[inline]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_secure(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_secure(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.secure
     }
 
     <span class="doccomment">/// Get whether this cookie should be persisted across sessions.
-    </span><span class="attribute">#[inline]</span>
-    <span class="attribute">#[allow(unused)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_persistent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="attribute">#[inline]
+    #[allow(unused)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_persistent(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.expiration.is_some()
     }
 
@@ -893,8 +893,8 @@
 // }
 
 // https://tools.ietf.org/html/rfc6265#section-4.1.1
-</span><span class="attribute">#[allow(unsafe_code)]</span>
-<span class="kw">fn </span>parse_cookie_value(<span class="kw-2">mut </span>bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
+</span><span class="attribute">#[allow(unsafe_code)]
+</span><span class="kw">fn </span>parse_cookie_value(<span class="kw-2">mut </span>bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
     <span class="comment">// Strip quotes, but only if in a legal pair.
     </span><span class="kw">if </span>bytes.starts_with(<span class="string">b&quot;\&quot;&quot;</span>) &amp;&amp; bytes.ends_with(<span class="string">b&quot;\&quot;&quot;</span>) {
         bytes = <span class="kw-2">&amp;</span>bytes[<span class="number">1</span>..bytes.len() - <span class="number">1</span>];
@@ -919,8 +919,8 @@
 }
 
 <span class="comment">// https://tools.ietf.org/html/rfc2616#section-2.2
-</span><span class="attribute">#[allow(unsafe_code)]</span>
-<span class="kw">fn </span>parse_token(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
+</span><span class="attribute">#[allow(unsafe_code)]
+</span><span class="kw">fn </span>parse_token(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str, ParseError&gt; {
     <span class="kw">if </span>is_valid_token(bytes) {
         <span class="comment">// Safety: We know that the given bytes are valid US-ASCII at this
         // point, so therefore it is also valid UTF-8.
@@ -957,8 +957,8 @@
     <span class="prelude-val">None
 </span>}
 
-<span class="attribute">#[cfg(test)]</span>
-<span class="kw">mod </span>tests {
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>test_case::test_case;
 
@@ -968,18 +968,18 @@
             .as_secs()
     }
 
-    <span class="attribute">#[test_case(<span class="string">&quot;foo&quot;</span>)]</span>
-    <span class="attribute">#[test_case(<span class="string">&quot;foo;=bar&quot;</span>)]</span>
-    <span class="attribute">#[test_case(<span class="string">&quot;bad_name@?=bar&quot;</span>)]</span>
-    <span class="attribute">#[test_case(<span class="string">&quot;bad_value_comma=bar,&quot;</span>)]</span>
-    <span class="attribute">#[test_case(<span class="string">&quot;bad_value_space= bar&quot;</span>)]</span>
-    <span class="kw">fn </span>parse_invalid(s: <span class="kw-2">&amp;</span>str) {
+    <span class="attribute">#[test_case(<span class="string">&quot;foo&quot;</span>)]
+    #[test_case(<span class="string">&quot;foo;=bar&quot;</span>)]
+    #[test_case(<span class="string">&quot;bad_name@?=bar&quot;</span>)]
+    #[test_case(<span class="string">&quot;bad_value_comma=bar,&quot;</span>)]
+    #[test_case(<span class="string">&quot;bad_value_space= bar&quot;</span>)]
+    </span><span class="kw">fn </span>parse_invalid(s: <span class="kw-2">&amp;</span>str) {
         Cookie::parse(s).unwrap_err();
     }
 
-    <span class="attribute">#[test_case(<span class="string">&quot;foo=bar&quot;</span>)]</span>
-    <span class="attribute">#[test_case(<span class="string">r#&quot;foo=&quot;bar&quot;&quot;#</span>)]</span>
-    <span class="kw">fn </span>parse_simple(s: <span class="kw-2">&amp;</span>str) {
+    <span class="attribute">#[test_case(<span class="string">&quot;foo=bar&quot;</span>)]
+    #[test_case(<span class="string">r#&quot;foo=&quot;bar&quot;&quot;#</span>)]
+    </span><span class="kw">fn </span>parse_simple(s: <span class="kw-2">&amp;</span>str) {
         <span class="kw">let </span>cookie = Cookie::parse(s).unwrap();
 
         <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
@@ -989,8 +989,8 @@
         <span class="macro">assert!</span>(!cookie.is_persistent());
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>parse_persistent() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>parse_persistent() {
         <span class="kw">let </span>cookie = Cookie::parse(<span class="string">&quot;foo=bar; max-age=86400&quot;</span>).unwrap();
 
         <span class="macro">assert_eq!</span>(cookie.name(), <span class="string">&quot;foo&quot;</span>);
@@ -1000,8 +1000,8 @@
         <span class="macro">assert!</span>(cookie.is_persistent());
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>parse_set_cookie_header_expires() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>parse_set_cookie_header_expires() {
         <span class="kw">let </span>cookie = Cookie::parse(
             <span class="string">&quot;foo=bar; path=/sub;Secure; DOMAIN=baz.com;expires=Wed, 21 Oct 2015 07:28:00 GMT&quot;</span>,
         )
@@ -1019,8 +1019,8 @@
         );
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>parse_set_cookie_header_max_age() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>parse_set_cookie_header_max_age() {
         <span class="kw">let </span>cookie =
             Cookie::parse(<span class="string">&quot;foo=bar; path=/sub;Secure; DOMAIN=baz.com; max-age=60&quot;</span>).unwrap();
 
@@ -1040,8 +1040,8 @@
         );
     }
 
-    <span class="attribute">#[test]</span>
-    <span class="kw">fn </span>create_cookie() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>create_cookie() {
         <span class="kw">let </span>exp = SystemTime::now();
 
         <span class="kw">let </span>cookie = Cookie::builder(<span class="string">&quot;foo&quot;</span>, <span class="string">&quot;bar&quot;</span>)
@@ -1061,4 +1061,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (0b79f758c 2022-08-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (289279de1 2022-09-04)" ></div></body></html>
