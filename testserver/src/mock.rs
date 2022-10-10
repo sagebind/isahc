@@ -54,7 +54,7 @@ impl Mock {
 
     /// Get the socket address of this mock server.
     pub fn addr(&self) -> SocketAddr {
-        self.0.server.server_addr()
+        self.0.server.server_addr().to_ip().unwrap()
     }
 
     /// Get the HTTP URL of this mock server.
