@@ -9,7 +9,7 @@ use crate::{
     trailer::TrailerWriter,
 };
 use async_channel::Sender;
-use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
+use curl::easy::{Easy2, InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
@@ -121,7 +121,7 @@ impl RequestHandler {
     pub(crate) fn new(
         request_body: AsyncBody,
     ) -> (
-        Self,
+        Easy2<Self>,
         impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
     ) {
         let (sender, receiver) = async_channel::bounded(1);
@@ -163,7 +163,21 @@ impl RequestHandler {
                 .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
-        (handler, future)
+        // Create a curl handle and populate remaining handler fields from it.
+        let mut easy = Easy2::new(handler);
+        easy.get_mut().handle = easy.raw();
+        let id = easy.get_ref().id();
+        easy.get_mut().span.record("id", &id);
+
+        (easy, future)
+    }
+
+    /// Get a unique identifier for this handler instance.
+    pub(crate) fn id(&self) -> usize {
+        // Use the curl handle to derive a unique ID for this request. The same
+        // handle can only be used for one request at a time, so this is
+        // guaranteed to be unique for the lifetime of this request.
+        self.handle as usize
     }
 
     /// Check whether debug info should be generated. This function is used to
@@ -195,8 +209,6 @@ impl RequestHandler {
     /// request's execution.
     pub(crate) fn init(
         &mut self,
-        id: usize,
-        handle: *mut CURL,
         request_waker: Waker,
         response_waker: Waker,
     ) {
@@ -206,8 +218,6 @@ impl RequestHandler {
         debug_assert!(self.request_body_waker.is_none());
         debug_assert!(self.response_body_waker.is_none());
 
-        self.span.record("id", &id);
-        self.handle = handle;
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);
     }
