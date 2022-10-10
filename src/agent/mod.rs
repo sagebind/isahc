@@ -14,11 +14,12 @@ use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
 use futures_lite::future::block_on;
 use std::{
+    collections::HashMap,
     io,
     sync::{Arc, Mutex},
     task::Waker,
     thread,
-    time::{Duration, Instant}, collections::HashMap,
+    time::{Duration, Instant},
 };
 
 use self::{selector::Selector, timer::Timer};
