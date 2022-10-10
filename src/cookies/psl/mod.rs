@@ -173,6 +173,9 @@ mod tests {
 
     #[test]
     fn refresh_cache() {
+        // Reset cache.
+        *CACHE.write().unwrap() = Default::default();
+
         assert!(CACHE.read().unwrap().last_refreshed.is_none());
         assert!(CACHE.read().unwrap().last_updated.is_none());
         assert!(CACHE.read().unwrap().needs_refreshed());
