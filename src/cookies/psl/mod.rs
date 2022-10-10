@@ -156,13 +156,41 @@ fn refresh_in_background() {
         thread::spawn(|| {
             let mut cache = CACHE.write().unwrap();
 
-            if cache.needs_refreshed() {
-                if let Err(e) = cache.refresh() {
-                    tracing::warn!("could not refresh public suffix list: {}", e);
-                }
+            if let Err(e) = cache.refresh() {
+                tracing::warn!("could not refresh public suffix list: {}", e);
             }
 
             IS_REFRESHING.store(false, Ordering::SeqCst);
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::thread::sleep;
+
+    use super::*;
+
+    #[test]
+    fn refresh_cache() {
+        assert!(CACHE.read().unwrap().last_refreshed.is_none());
+        assert!(CACHE.read().unwrap().last_updated.is_none());
+        assert!(CACHE.read().unwrap().needs_refreshed());
+
+        refresh_in_background();
+        sleep(Duration::from_millis(200));
+
+        assert!(CACHE.read().unwrap().last_refreshed.is_some());
+        assert!(CACHE.read().unwrap().last_updated.is_some());
+        assert!(!CACHE.read().unwrap().needs_refreshed());
+
+        let last_refreshed = CACHE.read().unwrap().last_refreshed.unwrap();
+        let last_updated = CACHE.read().unwrap().last_updated.unwrap();
+
+        refresh_in_background();
+        sleep(Duration::from_millis(200));
+
+        assert!(CACHE.read().unwrap().last_refreshed.unwrap() > last_refreshed);
+        assert!(CACHE.read().unwrap().last_updated.unwrap() > last_updated);
     }
 }
