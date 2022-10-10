@@ -25,7 +25,7 @@ http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
 native-tls = ["curl/ssl", "curl-sys/ssl"]
 nightly = []
-psl = ["httpdate", "parking_lot", "publicsuffix"]
+psl = ["httpdate", "publicsuffix"]
 rustls-tls = ["rustls-ffi", "curl/rustls", "curl/static-curl"]
 rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 spnego = ["curl-sys/spnego"]
@@ -71,10 +71,6 @@ optional = true
 
 [dependencies.mime]
 version = "0.3"
-optional = true
-
-[dependencies.parking_lot]
-version = ">=0.9.0, <0.12.0"
 optional = true
 
 [dependencies.publicsuffix]
