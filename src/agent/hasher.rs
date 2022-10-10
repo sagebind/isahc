@@ -12,7 +12,7 @@ impl Hasher for IntHasher {
         #[cfg(debug_assertions)]
         {
             if self.1 {
-                panic!("socket hash function can only be written to once");
+                panic!("hash function can only be written to once");
             } else {
                 self.1 = true;
             }

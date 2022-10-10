@@ -167,7 +167,7 @@ impl RequestHandler {
         let mut easy = Easy2::new(handler);
         easy.get_mut().handle = easy.raw();
         let id = easy.get_ref().id();
-        easy.get_mut().span.record("id", &id);
+        easy.get_mut().span.record("id", id);
 
         (easy, future)
     }
