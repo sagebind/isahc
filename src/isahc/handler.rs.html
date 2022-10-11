@@ -704,6 +704,16 @@
 <span id="702">702</span>
 <span id="703">703</span>
 <span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
 </pre><pre class="rust"><code><span class="attribute">#![allow(unsafe_code)]
 
 </span><span class="kw">use crate</span>::{
@@ -715,7 +725,7 @@
     trailer::TrailerWriter,
 };
 <span class="kw">use </span>async_channel::Sender;
-<span class="kw">use </span>curl::easy::{InfoType, ReadError, SeekResult, WriteError};
+<span class="kw">use </span>curl::easy::{Easy2, InfoType, ReadError, SeekResult, WriteError};
 <span class="kw">use </span>curl_sys::CURL;
 <span class="kw">use </span>futures_lite::io::{AsyncRead, AsyncWrite};
 <span class="kw">use </span>http::Response;
@@ -827,7 +837,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         request_body: AsyncBody,
     ) -&gt; (
-        <span class="self">Self</span>,
+        Easy2&lt;<span class="self">Self</span>&gt;,
         <span class="kw">impl </span>Future&lt;Output = <span class="prelude-ty">Result</span>&lt;Response&lt;ResponseBodyReader&gt;, Error&gt;&gt;,
     ) {
         <span class="kw">let </span>(sender, receiver) = async_channel::bounded(<span class="number">1</span>);
@@ -869,7 +879,21 @@
                 .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
         };
 
-        (handler, future)
+        <span class="comment">// Create a curl handle and populate remaining handler fields from it.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>easy = Easy2::new(handler);
+        easy.get_mut().handle = easy.raw();
+        <span class="kw">let </span>id = easy.get_ref().id();
+        easy.get_mut().span.record(<span class="string">&quot;id&quot;</span>, <span class="kw-2">&amp;</span>id);
+
+        (easy, future)
+    }
+
+    <span class="doccomment">/// Get a unique identifier for this handler instance.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="comment">// Use the curl handle to derive a unique ID for this request. The same
+        // handle can only be used for one request at a time, so this is
+        // guaranteed to be unique for the lifetime of this request.
+        </span><span class="self">self</span>.handle <span class="kw">as </span>usize
     }
 
     <span class="doccomment">/// Check whether debug info should be generated. This function is used to
@@ -901,8 +925,6 @@
     /// request&#39;s execution.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        id: usize,
-        handle: <span class="kw-2">*mut </span>CURL,
         request_waker: Waker,
         response_waker: Waker,
     ) {
@@ -912,8 +934,6 @@
         </span><span class="macro">debug_assert!</span>(<span class="self">self</span>.request_body_waker.is_none());
         <span class="macro">debug_assert!</span>(<span class="self">self</span>.response_body_waker.is_none());
 
-        <span class="self">self</span>.span.record(<span class="string">&quot;id&quot;</span>, <span class="kw-2">&amp;</span>id);
-        <span class="self">self</span>.handle = handle;
         <span class="self">self</span>.request_body_waker = <span class="prelude-val">Some</span>(request_waker);
         <span class="self">self</span>.response_body_waker = <span class="prelude-val">Some</span>(response_waker);
     }
@@ -1409,4 +1429,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (81f391930 2022-10-09)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>

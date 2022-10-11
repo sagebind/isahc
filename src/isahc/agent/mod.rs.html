@@ -559,9 +559,6 @@
 <span id="557">557</span>
 <span id="558">558</span>
 <span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Curl agent that executes multiple requests simultaneously.
 //!
 //! The agent is implemented as a single background thread attached to a
@@ -577,8 +574,8 @@
 <span class="kw">use </span>crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 <span class="kw">use </span>curl::multi::{Events, Multi, Socket, SocketEvents};
 <span class="kw">use </span>futures_lite::future::block_on;
-<span class="kw">use </span>slab::Slab;
 <span class="kw">use </span>std::{
+    collections::HashMap,
     io,
     sync::{Arc, Mutex},
     task::Waker,
@@ -588,6 +585,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{selector::Selector, timer::Timer};
 
+<span class="kw">mod </span>hasher;
 <span class="kw">mod </span>selector;
 <span class="kw">mod </span>timer;
 
@@ -746,7 +744,7 @@
     </span>message_rx: Receiver&lt;Message&gt;,
 
     <span class="doccomment">/// Contains all of the active requests.
-    </span>requests: Slab&lt;curl::multi::Easy2Handle&lt;RequestHandler&gt;&gt;,
+    </span>requests: HashMap&lt;usize, curl::multi::Easy2Handle&lt;RequestHandler&gt;, hasher::BuildIntHasher&gt;,
 
     <span class="doccomment">/// Indicates if the thread has been requested to stop.
     </span>close_requested: bool,
@@ -883,7 +881,7 @@
             multi,
             message_tx,
             message_rx,
-            requests: Slab::new(),
+            requests: Default::default(),
             close_requested: <span class="bool-val">false</span>,
             waker: selector.waker(),
             selector,
@@ -894,15 +892,10 @@
 
     <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]
     </span><span class="kw">fn </span>begin_request(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>request: EasyHandle) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="comment">// Prepare an entry for storing this request while it executes.
-        </span><span class="kw">let </span>entry = <span class="self">self</span>.requests.vacant_entry();
-        <span class="kw">let </span>id = entry.key();
-        <span class="kw">let </span>handle = request.raw();
+        <span class="kw">let </span>id = request.get_ref().id();
 
         <span class="comment">// Initialize the handler.
         </span>request.get_mut().init(
-            id,
-            handle,
             {
                 <span class="kw">let </span>tx = <span class="self">self</span>.message_tx.clone();
 
@@ -932,7 +925,8 @@
         handle.set_token(id).map_err(Error::from_any)<span class="question-mark">?</span>;
 
         <span class="comment">// Add the handle to our bookkeeping structure.
-        </span>entry.insert(handle);
+        </span><span class="kw">let </span>_previous = <span class="self">self</span>.requests.insert(id, handle);
+        <span class="macro">debug_assert!</span>(_previous.is_none());
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -943,7 +937,7 @@
         token: usize,
         result: <span class="prelude-ty">Result</span>&lt;(), curl::Error&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>handle = <span class="self">self</span>.requests.remove(token);
+        <span class="kw">let </span>handle = <span class="self">self</span>.requests.remove(<span class="kw-2">&amp;</span>token).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>handle = <span class="self">self</span>.multi.remove2(handle).map_err(Error::from_any)<span class="question-mark">?</span>;
 
         handle.get_mut().set_result(result.map_err(Error::from_any));
@@ -991,7 +985,7 @@
             Message::Close =&gt; <span class="self">self</span>.close_requested = <span class="bool-val">true</span>,
             Message::Execute(request) =&gt; <span class="self">self</span>.begin_request(request)<span class="question-mark">?</span>,
             Message::UnpauseRead(token) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(token) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(<span class="kw-2">&amp;</span>token) {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = request.unpause_read() {
                         <span class="comment">// If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
@@ -1010,7 +1004,7 @@
                 }
             }
             Message::UnpauseWrite(token) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(token) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = <span class="self">self</span>.requests.get(<span class="kw-2">&amp;</span>token) {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = request.unpause_write() {
                         <span class="comment">// If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
@@ -1125,4 +1119,4 @@
     <span class="macro">static_assertions::assert_impl_all!</span>(Message: Send);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (81f391930 2022-10-09)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>

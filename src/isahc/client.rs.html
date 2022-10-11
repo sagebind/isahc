@@ -1346,8 +1346,6 @@
 <span id="1344">1344</span>
 <span id="1345">1345</span>
 <span id="1346">1346</span>
-<span id="1347">1347</span>
-<span id="1348">1348</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The HTTP client implementation.
 
 </span><span class="kw">use crate</span>::{
@@ -2400,9 +2398,7 @@
         </span><span class="kw">let </span>body = std::mem::take(request.body_mut());
         <span class="kw">let </span>has_body = !body.is_empty();
         <span class="kw">let </span>body_length = body.len();
-        <span class="kw">let </span>(handler, future) = RequestHandler::new(body);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>easy = curl::easy::Easy2::new(handler);
+        <span class="kw">let </span>(<span class="kw-2">mut </span>easy, future) = RequestHandler::new(body);
 
         <span class="comment">// Set whether curl should generate verbose debug data for us to log.
         </span>easy.verbose(easy.get_ref().is_debug_enabled())<span class="question-mark">?</span>;
@@ -2697,4 +2693,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (81f391930 2022-10-09)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>

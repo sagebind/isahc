@@ -286,45 +286,16 @@
 <span id="284">284</span>
 <span id="285">285</span>
 <span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
 </pre><pre class="rust"><code><span class="kw">use </span>curl::multi::Socket;
 <span class="kw">use </span>polling::{Event, Poller};
 <span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
-    hash::{BuildHasherDefault, Hasher},
     io,
     sync::Arc,
     task::Waker,
     time::Duration,
 };
+<span class="kw">use </span><span class="kw">super</span>::hasher::BuildIntHasher;
 
 <span class="doccomment">/// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -339,11 +310,11 @@
     </span>poller: Arc&lt;Poller&gt;,
 
     <span class="doccomment">/// All of the sockets that we have been asked to keep track of.
-    </span>sockets: HashMap&lt;Socket, Registration, BuildHasherDefault&lt;IntHasher&gt;&gt;,
+    </span>sockets: HashMap&lt;Socket, Registration, BuildIntHasher&gt;,
 
     <span class="doccomment">/// If a socket is currently invalid when it is registered, we put it in this
     /// set and try to register it again later.
-    </span>bad_sockets: HashSet&lt;Socket, BuildHasherDefault&lt;IntHasher&gt;&gt;,
+    </span>bad_sockets: HashSet&lt;Socket, BuildIntHasher&gt;,
 
     <span class="doccomment">/// Socket events that have occurred. We re-use this vec every call for
     /// efficiency.
@@ -601,34 +572,5 @@
         },
     }
 }
-
-<span class="doccomment">/// Trivial hash function to use for our maps and sets that use file descriptors
-/// as keys.
-</span><span class="attribute">#[derive(Default)]
-</span><span class="kw">struct </span>IntHasher([u8; <span class="number">8</span>], <span class="attribute">#[cfg(debug_assertions)] </span>bool);
-
-<span class="kw">impl </span>Hasher <span class="kw">for </span>IntHasher {
-    <span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytes: <span class="kw-2">&amp;</span>[u8]) {
-        <span class="attribute">#[cfg(debug_assertions)]
-        </span>{
-            <span class="kw">if </span><span class="self">self</span>.<span class="number">1 </span>{
-                <span class="macro">panic!</span>(<span class="string">&quot;socket hash function can only be written to once&quot;</span>);
-            } <span class="kw">else </span>{
-                <span class="self">self</span>.<span class="number">1 </span>= <span class="bool-val">true</span>;
-            }
-
-            <span class="kw">if </span>bytes.len() &gt; <span class="number">8 </span>{
-                <span class="macro">panic!</span>(<span class="string">&quot;only a maximum of 8 bytes can be hashed&quot;</span>);
-            }
-        }
-
-        (<span class="self">self</span>.<span class="number">0</span>[..bytes.len()]).copy_from_slice(bytes);
-    }
-
-    <span class="attribute">#[inline]
-    </span><span class="kw">fn </span>finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        u64::from_ne_bytes(<span class="self">self</span>.<span class="number">0</span>)
-    }
-}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (81f391930 2022-10-09)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>
