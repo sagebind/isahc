@@ -165,11 +165,11 @@ fn get_redirect_location<T>(request_uri: &Uri, response: &Response<T>) -> Option
             Ok(location) => match resolve(request_uri, location.as_ref()) {
                 Ok(uri) => return Some(uri),
                 Err(e) => {
-                    tracing::debug!("invalid redirect location: {}", e);
+                    debug!("invalid redirect location: {}", e);
                 }
             },
             Err(e) => {
-                tracing::debug!("invalid redirect location: {}", e);
+                debug!("invalid redirect location: {}", e);
             }
         }
     }

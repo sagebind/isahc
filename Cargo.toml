@@ -32,6 +32,7 @@ spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
+tracing-01 = ["tracing", "tracing-futures"]
 unstable-interceptors = []
 
 [dependencies]
@@ -103,13 +104,15 @@ optional = true
 # tracing ecosystem compatibility
 [dependencies.tracing]
 version = "0.1.17"
-features = ["log"]
+default-features = false
+optional = true
 
 # tracing ecosystem compatibility
 [dependencies.tracing-futures]
 version = "0.2"
 default-features = false
 features = ["std", "std-future"]
+optional = true
 
 [dev-dependencies]
 env_logger = "0.9"

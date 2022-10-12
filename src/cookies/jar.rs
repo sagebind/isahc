@@ -134,7 +134,7 @@ impl CookieJar {
         let request_host = if let Some(host) = request_uri.host() {
             host
         } else {
-            tracing::warn!(
+            warn!(
                 "cookie '{}' dropped, no domain specified in request URI",
                 cookie.name()
             );
@@ -149,7 +149,7 @@ impl CookieJar {
             // The given domain must domain-match the origin.
             // https://tools.ietf.org/html/rfc6265#section-5.3.6
             if !domain_matches(request_host, domain) {
-                tracing::warn!(
+                warn!(
                     "cookie '{}' dropped, domain '{}' not allowed to set cookies for '{}'",
                     cookie.name(),
                     request_host,
@@ -163,7 +163,7 @@ impl CookieJar {
 
             // Drop cookies for top-level domains.
             if !domain.contains('.') {
-                tracing::warn!(
+                warn!(
                     "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                     cookie.name(),
                     domain
@@ -179,7 +179,7 @@ impl CookieJar {
             #[cfg(feature = "psl")]
             {
                 if super::psl::is_public_suffix(domain) {
-                    tracing::warn!(
+                    warn!(
                         "cookie '{}' dropped, setting cookies for domain '{}' is not allowed",
                         cookie.name(),
                         domain

@@ -67,7 +67,7 @@ impl Decoder {
                 {
                     return Self::new(encoding);
                 } else {
-                    tracing::warn!("unknown encoding '{}', falling back to UTF-8", charset);
+                    warn!("unknown encoding '{}', falling back to UTF-8", charset);
                 }
             }
         }

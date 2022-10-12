@@ -184,7 +184,7 @@ impl TrailerWriter {
     #[inline]
     pub(crate) fn flush(&mut self) {
         if !self.flush_impl() {
-            tracing::warn!("tried to flush trailer multiple times");
+            warn!("tried to flush trailer multiple times");
         }
     }
 
