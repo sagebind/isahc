@@ -5,19 +5,27 @@
 pub(crate) type Span = tracing::Span;
 
 #[cfg(not(feature = "tracing"))]
-pub(crate) type Span = ();
+#[derive(Clone)]
+pub(crate) struct Span;
 
-macro_rules! debug_span {
-    ($($t:tt)+) => {{
+macro_rules! span {
+    ($level:ident, $($t:tt)+) => {{
         #[cfg(feature = "tracing")]
-        ::tracing::debug_span!($($t)*)
+        {
+            ::tracing::span!(::tracing::Level::$level, $($t)*)
+        }
+
+        #[cfg(not(feature = "tracing"))]
+        {
+            $crate::log::Span
+        }
     }};
 }
 
-macro_rules! trace_span {
-    ($($t:tt)+) => {{
+macro_rules! span_follows_from_current {
+    ($span:expr) => {{
         #[cfg(feature = "tracing")]
-        ::tracing::trace_span!($($t)*)
+        $span.follows_from(::tracing::Span::current());
     }};
 }
 
@@ -27,7 +35,7 @@ macro_rules! enter_span {
         let _enter = $span.enter();
 
         #[cfg(not(feature = "tracing"))]
-        let _enter = $span;
+        let _enter = &$span;
     }};
 }
 

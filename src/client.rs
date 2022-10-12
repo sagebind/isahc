@@ -909,7 +909,8 @@ impl HttpClient {
     where
         B: Into<Body>,
     {
-        let span = debug_span!(
+        let span = span!(
+            DEBUG,
             "send",
             method = ?request.method(),
             uri = ?request.uri(),
@@ -999,7 +1000,8 @@ impl HttpClient {
     where
         B: Into<AsyncBody>,
     {
-        let span = debug_span!(
+        let span = span!(
+            DEBUG,
             "send_async",
             method = ?request.method(),
             uri = ?request.uri(),

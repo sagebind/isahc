@@ -129,7 +129,7 @@ impl RequestHandler {
         let (response_body_reader, response_body_writer) = pipe::pipe();
 
         let handler = Self {
-            span: debug_span!("handler", id = tracing::field::Empty),
+            span: span!(DEBUG, "handler", id = tracing::field::Empty),
             sender: Some(sender),
             shared: shared.clone(),
             request_body,
@@ -420,8 +420,7 @@ impl curl::easy::Handler for RequestHandler {
             return false;
         }
 
-        let span = trace_span!(parent: &self.span, "header");
-        enter_span!(span);
+        enter_span!(self.span);
 
         // If we already returned the response headers, then this header is from
         // the trailer.
@@ -481,8 +480,7 @@ impl curl::easy::Handler for RequestHandler {
             return Err(ReadError::Abort);
         }
 
-        let span = trace_span!(parent: &self.span, "read");
-        enter_span!(span);
+        enter_span!(self.span);
 
         // Create a task context using a waker provided by the agent so we can
         // do an asynchronous read.
@@ -520,8 +518,7 @@ impl curl::easy::Handler for RequestHandler {
     /// seek, we can't do any async operations in this callback. That's why we
     /// only support trivial types of seeking.
     fn seek(&mut self, whence: io::SeekFrom) -> SeekResult {
-        let span = trace_span!(parent: &self.span, "seek", whence = ?whence);
-        enter_span!(span);
+        enter_span!(self.span);
 
         // If curl wants to seek to the beginning, there's a chance that we
         // can do that.
@@ -536,8 +533,7 @@ impl curl::easy::Handler for RequestHandler {
 
     /// Gets called by curl when bytes from the response body are received.
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        let span = trace_span!(parent: &self.span, "write");
-        enter_span!(span);
+        enter_span!(self.span);
         trace!("received {} bytes of data", data.len());
 
         // Now that we've started receiving the response body, we know no more

@@ -90,9 +90,8 @@ impl AgentBuilder {
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
-        let agent_span = debug_span!("agent_thread", id);
-        #[cfg(feature = "tracing")]
-        agent_span.follows_from(tracing::Span::current());
+        let agent_span = span!(DEBUG, "agent_thread", id);
+        span_follows_from_current!(agent_span);
 
         let waker = selector.waker();
         let message_tx_clone = message_tx.clone();
@@ -332,7 +331,7 @@ impl AgentContext {
     }
 
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
-        let span = trace_span!("begin_request", ?request);
+        let span = span!(TRACE, "begin_request", ?request);
         enter_span!(span);
 
         let id = request.get_ref().id();
@@ -384,7 +383,7 @@ impl AgentContext {
         token: usize,
         result: Result<(), curl::Error>,
     ) -> Result<(), Error> {
-        let span = trace_span!("complete_request", token, ?result);
+        let span = span!(TRACE, "complete_request", token, ?result);
         enter_span!(span);
 
         let handle = self.requests.remove(&token).unwrap();
@@ -400,7 +399,7 @@ impl AgentContext {
     /// If there are no active requests right now, this function will block
     /// until a message is received.
     fn poll_messages(&mut self) -> Result<(), Error> {
-        let span = trace_span!("poll_messages");
+        let span = span!(TRACE, "poll_messages");
         enter_span!(span);
 
         while !self.close_requested {
@@ -430,7 +429,7 @@ impl AgentContext {
     }
 
     fn handle_message(&mut self, message: Message) -> Result<(), Error> {
-        let span = trace_span!("handle_message", ?message);
+        let span = span!(TRACE, "handle_message", ?message);
         enter_span!(span);
         trace!("received message from agent handle");
 
