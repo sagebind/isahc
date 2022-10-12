@@ -1047,9 +1047,7 @@ impl HttpClient {
         let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
-        let (handler, future) = RequestHandler::new(body);
-
-        let mut easy = curl::easy::Easy2::new(handler);
+        let (mut easy, future) = RequestHandler::new(body);
 
         // Set whether curl should generate verbose debug data for us to log.
         easy.verbose(easy.get_ref().is_debug_enabled())?;

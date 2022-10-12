@@ -21,15 +21,19 @@
 
 use crate::{request::RequestExt, ReadResponseExt};
 use once_cell::sync::Lazy;
-use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::{List, Psl};
 use std::{
     error::Error,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        RwLock,
+    },
+    thread,
     time::{Duration, SystemTime},
 };
 
 /// How long should we use a cached list before refreshing?
-static TTL: Lazy<Duration> = Lazy::new(|| Duration::from_secs(24 * 60 * 60));
+static TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Global in-memory PSL cache.
 static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
@@ -62,10 +66,22 @@ impl Default for ListCache {
 }
 
 impl ListCache {
+    // Check if the given domain is a public suffix.
+    fn is_public_suffix(&self, domain: &str) -> bool {
+        let domain = domain.as_bytes();
+
+        self.list
+            .suffix(domain)
+            // We don't want to block unknown hosts like `localhost`
+            .filter(publicsuffix::Suffix::is_known)
+            .filter(|suffix| suffix == &domain)
+            .is_some()
+    }
+
     fn needs_refreshed(&self) -> bool {
         match self.last_refreshed {
             Some(last_refreshed) => match last_refreshed.elapsed() {
-                Ok(elapsed) => elapsed > *TTL,
+                Ok(elapsed) => elapsed > TTL,
                 Err(_) => false,
             },
             None => true,
@@ -118,40 +134,66 @@ impl ListCache {
 /// If the current list information is stale, a background refresh will be
 /// triggered. The current data will be used to respond to this query.
 pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
-    let domain = domain.as_ref().as_bytes();
+    let domain = domain.as_ref();
+    let cache = CACHE.read().unwrap();
 
-    with_cache(|cache| {
-        // Check if the given domain is a public suffix.
-        cache
-            .list
-            .suffix(domain)
-            // We don't want to block unknown hosts like `localhost`
-            .filter(publicsuffix::Suffix::is_known)
-            .filter(|suffix| suffix == &domain)
-            .is_some()
-    })
+    // Check if the list needs to be refreshed.
+    if cache.needs_refreshed() {
+        refresh_in_background();
+    }
+
+    cache.is_public_suffix(domain)
 }
 
-/// Execute a given closure with a reference to the list cache. If the list is
-/// out of date, attempt to refresh it first before continuing.
-fn with_cache<T>(f: impl FnOnce(&ListCache) -> T) -> T {
-    let cache = CACHE.upgradable_read();
+fn refresh_in_background() {
+    static IS_REFRESHING: AtomicBool = AtomicBool::new(false);
 
-    // First check if the list needs to be refreshed.
-    if cache.needs_refreshed() {
-        // Upgrade our lock to gain write access.
-        let mut cache = RwLockUpgradableReadGuard::upgrade(cache);
+    // Only spawn a refresh thread if one isn't already running.
+    if IS_REFRESHING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        thread::spawn(|| {
+            let mut cache = CACHE.write().unwrap();
 
-        // If there was contention then the cache might not need refreshed any
-        // more.
-        if cache.needs_refreshed() {
             if let Err(e) = cache.refresh() {
                 warn!("could not refresh public suffix list: {}", e);
             }
-        }
 
-        f(&cache)
-    } else {
-        f(&cache)
+            IS_REFRESHING.store(false, Ordering::SeqCst);
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::thread::sleep;
+
+    use super::*;
+
+    #[test]
+    fn refresh_cache() {
+        // Reset cache.
+        *CACHE.write().unwrap() = Default::default();
+
+        assert!(CACHE.read().unwrap().last_refreshed.is_none());
+        assert!(CACHE.read().unwrap().last_updated.is_none());
+        assert!(CACHE.read().unwrap().needs_refreshed());
+
+        refresh_in_background();
+        sleep(Duration::from_millis(200));
+
+        assert!(CACHE.read().unwrap().last_refreshed.is_some());
+        assert!(CACHE.read().unwrap().last_updated.is_some());
+        assert!(!CACHE.read().unwrap().needs_refreshed());
+
+        let last_refreshed = CACHE.read().unwrap().last_refreshed.unwrap();
+        let last_updated = CACHE.read().unwrap().last_updated.unwrap();
+
+        refresh_in_background();
+        sleep(Duration::from_millis(200));
+
+        assert!(CACHE.read().unwrap().last_refreshed.unwrap() > last_refreshed);
+        assert!(CACHE.read().unwrap().last_updated.unwrap() > last_updated);
     }
 }

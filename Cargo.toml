@@ -25,8 +25,8 @@ http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
 native-tls = ["curl/ssl", "curl-sys/ssl"]
 nightly = []
-psl = ["httpdate", "parking_lot", "publicsuffix"]
-rustls-tls = ["rustls-ffi", "curl/rustls", "curl/static-curl"]
+psl = ["httpdate", "publicsuffix"]
+rustls-tls = ["curl/rustls", "curl/static-curl"]
 rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
@@ -36,74 +36,78 @@ tracing-01 = ["tracing", "tracing-futures"]
 unstable-interceptors = []
 
 [dependencies]
-async-channel = "1.4.2"
-castaway = "0.1.1"
-crossbeam-utils = ">=0.7.0, <0.9.0"
-event-listener = "2.3.3"
-futures-lite = "1.10.1"
-http = "0.2.1"
-log = "0.4"
-once_cell = "1"
-polling = "2"
-slab = "0.4"
-sluice = "0.5.4"
-url = "2.1"
-waker-fn = "1"
+async-channel = "1.4.2" # channel used for internal communication
+castaway = "0.2" # buffer type specialization
+crossbeam-utils = ">=0.7.0, <0.9.0" # synchronization primitives
+event-listener = "2.3.3" # synchronization primitive
+futures-lite = "1.10.1" # futures-io compatibility plus other helpers
+http = "0.2.1" # http ecosystem compatibility, part of API
+log = "0.4" # log ecosystem compatibility
+once_cell = "1" # used for a few singletons
+polling = "2" # async I/O driver
+sluice = "0.5.4" # byte buffers between curl and Isahc
+url = "2.1" # URL parsing
+waker-fn = "1" # async primitive
 
+# underlying HTTP engine that powers Isahc
 [dependencies.curl]
 version = "0.4.43"
 default-features = false
 
+# access to certain curl APIs not exposed in safe wrapper
 [dependencies.curl-sys]
 version = "0.4.55"
 default-features = false
 
+# used in TLS cert parsing
 [dependencies.data-encoding]
 version = "2"
 optional = true
 
+# used for proper locale-sensitive text decoding
 [dependencies.encoding_rs]
 version = "0.8"
 optional = true
 
+# used in cookie parsing
 [dependencies.httpdate]
 version = "1"
 optional = true
 
+# used to parse content-type header
 [dependencies.mime]
 version = "0.3"
 optional = true
 
-[dependencies.parking_lot]
-version = ">=0.9.0, <0.12.0"
-optional = true
-
+# PSL database parsing
 [dependencies.publicsuffix]
 version = "2.0.6"
 features = ["std"]
 optional = true
 
-[dependencies.rustls-ffi]
-version = "0.8"
-optional = true
-
+# access to native cert store when using rustls
 [dependencies.rustls-native-certs]
 version = "0.6"
 optional = true
 
+# serde ecosystem compatibility for serializing and deserializing requests and
+# responses
 [dependencies.serde]
 version = "1.0"
 optional = true
 
+# conveniences for sending and receiving JSON data
 [dependencies.serde_json]
 version = "1.0"
 optional = true
 
+# tracing ecosystem compatibility
 [dependencies.tracing]
 version = "0.1.17"
 default-features = false
 optional = true
 
+# tracing ecosystem compatibility
 [dependencies.tracing-futures]
 version = "0.2"
 default-features = false
@@ -119,7 +123,7 @@ static_assertions = "1.1"
 structopt = "0.3"
 tempfile = "3.1"
 test-case = "2.0"
-tracing-subscriber = ">=0.2.12, <0.4.0"
+tracing-subscriber = ">=0.3.8, <0.4.0"
 serde_json = "1"
 
 [dev-dependencies.testserver]
