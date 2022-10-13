@@ -1,4 +1,5 @@
-use futures_lite::{future::block_on, AsyncRead};
+use futures_io::AsyncRead;
+use futures_lite::future::block_on;
 use isahc::{prelude::*, AsyncBody, Body, Request};
 use std::{
     error::Error,

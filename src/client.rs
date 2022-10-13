@@ -14,11 +14,10 @@ use crate::{
     headers::HasHeaders,
     interceptor::{self, Interceptor, InterceptorObj},
     parsing::header_to_curl_string,
+    util::future::FutureExt,
 };
-use futures_lite::{
-    future::{block_on, try_zip},
-    io::AsyncRead,
-};
+use futures_io::AsyncRead;
+use futures_lite::future::try_zip;
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request,
@@ -924,28 +923,27 @@ impl HttpClient {
             async_body
         });
 
-        let response = block_on(
-            async move {
-                // Instead of simply blocking the current thread until the response
-                // is received, we can use the current thread to read from the
-                // request body synchronously while concurrently waiting for the
-                // response.
-                if let Some(mut writer) = writer_maybe {
-                    // Note that the `send_async` future is given first; this
-                    // ensures that it is polled first and thus the request is
-                    // initiated before we attempt to write the request body.
-                    let (response, _) = try_zip(self.send_async_inner(request), async move {
-                        writer.write().await.map_err(Error::from)
-                    })
-                    .await?;
+        let response = async move {
+            // Instead of simply blocking the current thread until the response
+            // is received, we can use the current thread to read from the
+            // request body synchronously while concurrently waiting for the
+            // response.
+            if let Some(mut writer) = writer_maybe {
+                // Note that the `send_async` future is given first; this
+                // ensures that it is polled first and thus the request is
+                // initiated before we attempt to write the request body.
+                let (response, _) = try_zip(self.send_async_inner(request), async move {
+                    writer.write().await.map_err(Error::from)
+                })
+                .await?;
 
-                    Ok(response)
-                } else {
-                    self.send_async_inner(request).await
-                }
+                Ok(response)
+            } else {
+                self.send_async_inner(request).await
             }
-            .instrument(span),
-        )?;
+        }
+        .instrument(span)
+        .wait()?;
 
         Ok(response.map(|body| body.into_sync()))
     }

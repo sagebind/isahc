@@ -2,9 +2,9 @@
 
 #![cfg(feature = "text-decoding")]
 
-use crate::headers::HasHeaders;
+use crate::{headers::HasHeaders, util::io::read_async};
 use encoding_rs::{CoderResult, Encoding};
-use futures_lite::io::{AsyncRead, AsyncReadExt};
+use futures_io::AsyncRead;
 use http::Response;
 use std::io;
 
@@ -85,7 +85,7 @@ impl Decoder {
     where
         R: AsyncRead + Unpin + 'r,
     {
-        TextFuture::new(async move { decode_reader!(self, buf, reader.read(buf).await) })
+        TextFuture::new(async move { decode_reader!(self, buf, read_async(&mut reader, buf).await) })
     }
 
     /// Push additional bytes into the decoder, returning any trailing bytes

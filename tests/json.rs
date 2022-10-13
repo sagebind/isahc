@@ -1,6 +1,7 @@
 #![cfg(feature = "json")]
 
-use futures_lite::{future::block_on, io::AsyncRead};
+use futures_io::AsyncRead;
+use futures_lite::future::block_on;
 use isahc::prelude::*;
 use serde_json::Value;
 use std::{

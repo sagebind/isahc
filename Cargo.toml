@@ -39,7 +39,7 @@ async-channel = "1.4.2" # channel used for internal communication
 castaway = "0.2" # buffer type specialization
 crossbeam-utils = ">=0.7.0, <0.9.0" # synchronization primitives
 event-listener = "2.3.3" # synchronization primitive
-futures-lite = "1.10.1" # futures-io compatibility plus other helpers
+futures-io = "0.3.24" # futures-io ecosystem compatibility
 http = "0.2.1" # http ecosystem compatibility, part of API
 log = "0.4" # log ecosystem compatibility
 once_cell = "1" # used for a few singletons
@@ -67,6 +67,11 @@ optional = true
 [dependencies.encoding_rs]
 version = "0.8"
 optional = true
+
+# common futures primitives
+[dependencies.futures-lite]
+version = "1.10.1"
+default-features = false
 
 # used in cookie parsing
 [dependencies.httpdate]
@@ -113,6 +118,7 @@ features = ["std", "std-future"]
 
 [dev-dependencies]
 env_logger = "0.9"
+futures-lite = "1.10.1"
 flate2 = "1.0.3"
 indicatif = "0.15"
 rayon = "1"

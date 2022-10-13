@@ -8,11 +8,10 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::{error::Error, handler::RequestHandler, task::WakerExt};
+use crate::{error::Error, handler::RequestHandler, util::task::WakerExt};
 use async_channel::{Receiver, Sender};
 use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
-use futures_lite::future::block_on;
 use std::{
     collections::HashMap,
     io,
@@ -392,7 +391,7 @@ impl AgentContext {
     fn poll_messages(&mut self) -> Result<(), Error> {
         while !self.close_requested {
             if self.requests.is_empty() {
-                match block_on(self.message_rx.recv()) {
+                match self.message_rx.recv_blocking() {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
                         tracing::warn!("agent handle disconnected without close message");
