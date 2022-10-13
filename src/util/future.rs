@@ -1,5 +1,6 @@
 //! Tiny module containing utilities for working with futures.
 
+use super::MaybeOwned;
 use crossbeam_utils::sync::Parker;
 use futures_lite::pin;
 use std::{
@@ -27,28 +28,20 @@ pub(crate) trait FutureExt: Future {
             static PARKER: RefCell<(Parker, Waker)> = RefCell::new(create_parker());
         }
 
-        let future = self;
-        pin!(future);
-
         PARKER.with(|cell| {
-            if let Ok(borrow) = cell.try_borrow_mut() {
-                let mut cx = Context::from_waker(&borrow.1);
+            let future = self;
+            pin!(future);
 
-                loop {
-                    match future.as_mut().poll(&mut cx) {
-                        Poll::Ready(result) => break result,
-                        Poll::Pending => borrow.0.park(),
-                    }
-                }
-            } else {
-                let (parker, waker) = create_parker();
-                let mut cx = Context::from_waker(&waker);
+            let (ref parker, ref waker) = *cell
+                .try_borrow_mut()
+                .map(MaybeOwned::Borrowed)
+                .unwrap_or_else(|_| MaybeOwned::Owned(create_parker()));
+            let mut cx = Context::from_waker(waker);
 
-                loop {
-                    match future.as_mut().poll(&mut cx) {
-                        Poll::Ready(result) => break result,
-                        Poll::Pending => parker.park(),
-                    }
+            loop {
+                match future.as_mut().poll(&mut cx) {
+                    Poll::Ready(result) => break result,
+                    Poll::Pending => parker.park(),
                 }
             }
         })
