@@ -35,7 +35,7 @@ text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
 [dependencies]
-async-channel = "1.4.2" # channel used for internal communication
+async-channel = "1.7" # channel used for internal communication
 castaway = "0.2" # buffer type specialization
 crossbeam-utils = ">=0.7.0, <0.9.0" # synchronization primitives
 event-listener = "2.3.3" # synchronization primitive
