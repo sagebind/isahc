@@ -11,7 +11,7 @@ use crate::{
 use async_channel::Sender;
 use curl::easy::{Easy2, InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
-use futures_lite::io::{AsyncRead, AsyncWrite};
+use futures_io::{AsyncRead, AsyncWrite};
 use http::Response;
 use once_cell::sync::OnceCell;
 use sluice::pipe;

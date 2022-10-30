@@ -261,9 +261,9 @@ mod parsing;
 mod redirect;
 mod request;
 mod response;
-mod task;
 mod text;
 mod trailer;
+mod util;
 
 pub mod auth;
 pub mod config;

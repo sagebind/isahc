@@ -1,6 +1,7 @@
-//! Helpers for working with tasks and futures.
+//! Helpers for working with tasks.
 
 use std::task::Waker;
+use waker_fn::waker_fn;
 
 /// Helper methods for working with wakers.
 pub(crate) trait WakerExt {
@@ -12,6 +13,6 @@ pub(crate) trait WakerExt {
 impl WakerExt for Waker {
     fn chain(&self, f: impl Fn(&Waker) + Send + Sync + 'static) -> Waker {
         let inner = self.clone();
-        waker_fn::waker_fn(move || (f)(&inner))
+        waker_fn(move || (f)(&inner))
     }
 }
