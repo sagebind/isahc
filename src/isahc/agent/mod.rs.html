@@ -557,7 +557,6 @@
 <span id="556">556</span>
 <span id="557">557</span>
 <span id="558">558</span>
-<span id="559">559</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Curl agent that executes multiple requests simultaneously.
 //!
 //! The agent is implemented as a single background thread attached to a
@@ -568,11 +567,10 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-</span><span class="kw">use crate</span>::{error::Error, handler::RequestHandler, task::WakerExt};
+</span><span class="kw">use crate</span>::{error::Error, handler::RequestHandler, util::task::WakerExt};
 <span class="kw">use </span>async_channel::{Receiver, Sender};
 <span class="kw">use </span>crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 <span class="kw">use </span>curl::multi::{Events, Multi, Socket, SocketEvents};
-<span class="kw">use </span>futures_lite::future::block_on;
 <span class="kw">use </span>std::{
     collections::HashMap,
     io,
@@ -952,7 +950,7 @@
     </span><span class="kw">fn </span>poll_messages(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">while </span>!<span class="self">self</span>.close_requested {
             <span class="kw">if </span><span class="self">self</span>.requests.is_empty() {
-                <span class="kw">match </span>block_on(<span class="self">self</span>.message_rx.recv()) {
+                <span class="kw">match </span><span class="self">self</span>.message_rx.recv_blocking() {
                     <span class="prelude-val">Ok</span>(message) =&gt; <span class="self">self</span>.handle_message(message)<span class="question-mark">?</span>,
                     <span class="kw">_ </span>=&gt; {
                         <span class="macro">tracing::warn!</span>(<span class="string">&quot;agent handle disconnected without close message&quot;</span>);

@@ -156,9 +156,9 @@
 
 </span><span class="attribute">#![cfg(feature = <span class="string">&quot;text-decoding&quot;</span>)]
 
-</span><span class="kw">use </span><span class="kw">crate</span>::headers::HasHeaders;
+</span><span class="kw">use crate</span>::{headers::HasHeaders, util::io::read_async};
 <span class="kw">use </span>encoding_rs::{CoderResult, Encoding};
-<span class="kw">use </span>futures_lite::io::{AsyncRead, AsyncReadExt};
+<span class="kw">use </span>futures_io::AsyncRead;
 <span class="kw">use </span>http::Response;
 <span class="kw">use </span>std::io;
 
@@ -239,7 +239,7 @@
     <span class="kw">where
         </span>R: AsyncRead + Unpin + <span class="lifetime">&#39;r</span>,
     {
-        TextFuture::new(<span class="kw">async move </span>{ <span class="macro">decode_reader!</span>(<span class="self">self</span>, buf, reader.read(buf).<span class="kw">await</span>) })
+        TextFuture::new(<span class="kw">async move </span>{ <span class="macro">decode_reader!</span>(<span class="self">self</span>, buf, read_async(<span class="kw-2">&amp;mut </span>reader, buf).<span class="kw">await</span>) })
     }
 
     <span class="doccomment">/// Push additional bytes into the decoder, returning any trailing bytes

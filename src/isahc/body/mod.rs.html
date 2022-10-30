@@ -348,9 +348,19 @@
 <span id="347">347</span>
 <span id="348">348</span>
 <span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Provides types for working with request and response bodies.
 
-</span><span class="kw">use </span>futures_lite::io::{AsyncRead, BlockOn};
+</span><span class="kw">use </span><span class="kw">crate</span>::util::{future::FutureExt, io::read_async};
+<span class="kw">use </span>futures_io::AsyncRead;
 <span class="kw">use </span>std::{
     borrow::Cow,
     fmt,
@@ -524,13 +534,21 @@
     /// generally if the underlying reader only supports blocking under a
     /// specific runtime.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_sync(<span class="self">self</span>) -&gt; sync::Body {
+        <span class="kw">struct </span>ReadSyncAdapter&lt;T&gt;(T);
+
+        <span class="kw">impl</span>&lt;T: AsyncRead + Unpin&gt; Read <span class="kw">for </span>ReadSyncAdapter&lt;T&gt; {
+            <span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
+                read_async(<span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>, buf).wait()
+            }
+        }
+
         <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
             Inner::Empty =&gt; sync::Body::empty(),
             Inner::Buffer(cursor) =&gt; sync::Body::from_bytes_static(cursor.into_inner()),
             Inner::Reader(reader, <span class="prelude-val">Some</span>(len)) =&gt; {
-                sync::Body::from_reader_sized(BlockOn::new(reader), len)
+                sync::Body::from_reader_sized(ReadSyncAdapter(reader), len)
             }
-            Inner::Reader(reader, <span class="prelude-val">None</span>) =&gt; sync::Body::from_reader(BlockOn::new(reader)),
+            Inner::Reader(reader, <span class="prelude-val">None</span>) =&gt; sync::Body::from_reader(ReadSyncAdapter(reader)),
         }
     }
 }
@@ -608,7 +626,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>futures_lite::{
         future::{block_on, zip},
-        io::AsyncReadExt,
+        io::{empty, AsyncReadExt},
     };
 
     <span class="macro">static_assertions::assert_impl_all!</span>(AsyncBody: Send, Sync);
@@ -631,7 +649,7 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>reader_with_unknown_length() {
-        <span class="kw">let </span>body = AsyncBody::from_reader(futures_lite::io::empty());
+        <span class="kw">let </span>body = AsyncBody::from_reader(empty());
 
         <span class="macro">assert!</span>(!body.is_empty());
         <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">None</span>);
@@ -639,7 +657,7 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>reader_with_known_length() {
-        <span class="kw">let </span>body = AsyncBody::from_reader_sized(futures_lite::io::empty(), <span class="number">0</span>);
+        <span class="kw">let </span>body = AsyncBody::from_reader_sized(empty(), <span class="number">0</span>);
 
         <span class="macro">assert!</span>(!body.is_empty());
         <span class="macro">assert_eq!</span>(body.len(), <span class="prelude-val">Some</span>(<span class="number">0</span>));

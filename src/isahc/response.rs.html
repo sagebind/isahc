@@ -561,8 +561,18 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{metrics::Metrics, redirect::EffectiveUri, trailer::Trailer};
-<span class="kw">use </span>futures_lite::io::{copy <span class="kw">as </span>copy_async, AsyncRead, AsyncWrite};
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    metrics::Metrics,
+    redirect::EffectiveUri,
+    trailer::Trailer,
+    util::io::{copy_async, Sink},
+};
+<span class="kw">use </span>futures_io::{AsyncRead, AsyncWrite};
 <span class="kw">use </span>http::{Response, Uri};
 <span class="kw">use </span>std::{
     fs::File,
@@ -1015,7 +1025,7 @@
 <span class="kw">impl</span>&lt;R: AsyncRead + Unpin&gt; AsyncReadResponseExt&lt;R&gt; <span class="kw">for </span>Response&lt;R&gt; {
     <span class="kw">fn </span>consume(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ConsumeFuture&lt;<span class="lifetime">&#39;_</span>, R&gt; {
         ConsumeFuture::new(<span class="kw">async move </span>{
-            copy_async(<span class="self">self</span>.body_mut(), futures_lite::io::sink()).<span class="kw">await</span><span class="question-mark">?</span>;
+            copy_async(<span class="self">self</span>.body_mut(), Sink).<span class="kw">await</span><span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>(())
         })

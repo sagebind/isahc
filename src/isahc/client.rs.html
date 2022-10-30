@@ -1343,8 +1343,6 @@
 <span id="1342">1342</span>
 <span id="1343">1343</span>
 <span id="1344">1344</span>
-<span id="1345">1345</span>
-<span id="1346">1346</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The HTTP client implementation.
 
 </span><span class="kw">use crate</span>::{
@@ -1361,11 +1359,10 @@
     headers::HasHeaders,
     interceptor::{<span class="self">self</span>, Interceptor, InterceptorObj},
     parsing::header_to_curl_string,
+    util::future::FutureExt,
 };
-<span class="kw">use </span>futures_lite::{
-    future::{block_on, try_zip},
-    io::AsyncRead,
-};
+<span class="kw">use </span>futures_io::AsyncRead;
+<span class="kw">use </span>futures_lite::future::try_zip;
 <span class="kw">use </span>http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request,
@@ -2271,28 +2268,27 @@
             async_body
         });
 
-        <span class="kw">let </span>response = block_on(
-            <span class="kw">async move </span>{
-                <span class="comment">// Instead of simply blocking the current thread until the response
-                // is received, we can use the current thread to read from the
-                // request body synchronously while concurrently waiting for the
-                // response.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>writer) = writer_maybe {
-                    <span class="comment">// Note that the `send_async` future is given first; this
-                    // ensures that it is polled first and thus the request is
-                    // initiated before we attempt to write the request body.
-                    </span><span class="kw">let </span>(response, <span class="kw">_</span>) = try_zip(<span class="self">self</span>.send_async_inner(request), <span class="kw">async move </span>{
-                        writer.write().<span class="kw">await</span>.map_err(Error::from)
-                    })
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>response = <span class="kw">async move </span>{
+            <span class="comment">// Instead of simply blocking the current thread until the response
+            // is received, we can use the current thread to read from the
+            // request body synchronously while concurrently waiting for the
+            // response.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>writer) = writer_maybe {
+                <span class="comment">// Note that the `send_async` future is given first; this
+                // ensures that it is polled first and thus the request is
+                // initiated before we attempt to write the request body.
+                </span><span class="kw">let </span>(response, <span class="kw">_</span>) = try_zip(<span class="self">self</span>.send_async_inner(request), <span class="kw">async move </span>{
+                    writer.write().<span class="kw">await</span>.map_err(Error::from)
+                })
+                .<span class="kw">await</span><span class="question-mark">?</span>;
 
-                    <span class="prelude-val">Ok</span>(response)
-                } <span class="kw">else </span>{
-                    <span class="self">self</span>.send_async_inner(request).<span class="kw">await
-                </span>}
-            }
-            .instrument(span),
-        )<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(response)
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.send_async_inner(request).<span class="kw">await
+            </span>}
+        }
+        .instrument(span)
+        .wait()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(response.map(|body| body.into_sync()))
     }
