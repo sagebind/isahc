@@ -460,6 +460,13 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::Cookie;
 <span class="kw">use </span>http::Uri;
 <span class="kw">use </span>std::{
@@ -475,7 +482,7 @@
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>CookieRejectedError {
     kind: CookieRejectedErrorKind,
-    cookie: Cookie,
+    cookie: Box&lt;Cookie&gt;,
 }
 
 <span class="doccomment">/// The reason why the [`Cookie`] was rejected.
@@ -497,6 +504,13 @@
 }
 
 <span class="kw">impl </span>CookieRejectedError {
+    <span class="kw">fn </span>new(kind: CookieRejectedErrorKind, cookie: Cookie) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            kind,
+            cookie: Box::new(cookie),
+        }
+    }
+
     <span class="doccomment">/// Get the kind of error that occurred.
     </span><span class="kw">pub fn </span>kind(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CookieRejectedErrorKind {
         <span class="self">self</span>.kind
@@ -504,7 +518,7 @@
 
     <span class="doccomment">/// Get back the [`Cookie`] that failed to be set.
     </span><span class="kw">pub fn </span>cookie(<span class="self">self</span>) -&gt; Cookie {
-        <span class="self">self</span>.cookie
+        <span class="kw-2">*</span><span class="self">self</span>.cookie
     }
 }
 
@@ -600,10 +614,10 @@
                 <span class="string">&quot;cookie &#39;{}&#39; dropped, no domain specified in request URI&quot;</span>,
                 cookie.name()
             );
-            <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
-                kind: CookieRejectedErrorKind::InvalidRequestDomain,
+            <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError::new(
+                CookieRejectedErrorKind::InvalidRequestDomain,
                 cookie,
-            });
+            ));
         };
 
         <span class="comment">// Perform some validations on the domain.
@@ -617,10 +631,10 @@
                     request_host,
                     domain
                 );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
-                    kind: CookieRejectedErrorKind::DomainMismatch,
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError::new(
+                    CookieRejectedErrorKind::DomainMismatch,
                     cookie,
-                });
+                ));
             }
 
             <span class="comment">// Drop cookies for top-level domains.
@@ -630,10 +644,10 @@
                     cookie.name(),
                     domain
                 );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
-                    kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError::new(
+                    CookieRejectedErrorKind::InvalidCookieDomain,
                     cookie,
-                });
+                ));
             }
 
             <span class="comment">// Check the PSL for bad domain suffixes if available.
@@ -646,10 +660,10 @@
                         cookie.name(),
                         domain
                     );
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError {
-                        kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(CookieRejectedError::new(
+                        CookieRejectedErrorKind::InvalidCookieDomain,
                         cookie,
-                    });
+                    ));
                 }
             }
         }
