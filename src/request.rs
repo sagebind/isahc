@@ -44,7 +44,7 @@ pub trait RequestExt<T> {
     ///
     /// This is a convenience method that is equivalent to
     /// [`send_async`](crate::send_async).
-    fn send_async(self) -> ResponseFuture<'static>
+    fn send_async(self) -> ResponseFuture
     where
         T: Into<AsyncBody>;
 }
@@ -79,7 +79,7 @@ impl<T> RequestExt<T> for Request<T> {
         crate::send(self)
     }
 
-    fn send_async(self) -> ResponseFuture<'static>
+    fn send_async(self) -> ResponseFuture
     where
         T: Into<AsyncBody>,
     {

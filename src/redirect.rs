@@ -26,11 +26,11 @@ pub(crate) struct RedirectInterceptor;
 impl Interceptor for RedirectInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(
-        &'a self,
+    fn intercept(
+        &self,
         mut request: Request<AsyncBody>,
-        ctx: Context<'a>,
-    ) -> InterceptorFuture<'a, Self::Err> {
+        ctx: Context,
+    ) -> InterceptorFuture<Self::Err> {
         Box::pin(async move {
             // Store the effective URI to include in the response.
             let mut effective_uri = request.uri().clone();

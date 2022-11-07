@@ -28,49 +28,49 @@ impl CookieInterceptor {
 impl Interceptor for CookieInterceptor {
     type Err = Error;
 
-    fn intercept<'a>(
-        &'a self,
+    fn intercept(
+        &self,
         mut request: Request<AsyncBody>,
-        ctx: Context<'a>,
-    ) -> InterceptorFuture<'a, Self::Err> {
-        Box::pin(async move {
-            // Determine the cookie jar to use for this request. If one is
-            // attached to this specific request, use it, otherwise use the
-            // default one.
-            let jar = request
-                .extensions()
-                .get::<CookieJar>()
-                .cloned()
-                .or_else(|| self.cookie_jar.clone());
+        ctx: Context,
+    ) -> InterceptorFuture<Self::Err> {
+        // Determine the cookie jar to use for this request. If one is
+        // attached to this specific request, use it, otherwise use the
+        // default one.
+        let jar = request
+            .extensions()
+            .get::<CookieJar>()
+            .cloned()
+            .or_else(|| self.cookie_jar.clone());
 
-            if let Some(jar) = jar.as_ref() {
-                // Get the outgoing cookie header.
-                let mut cookie_string = request
-                    .headers_mut()
-                    .remove(http::header::COOKIE)
-                    .map(|value| value.as_bytes().to_vec())
-                    .unwrap_or_default();
+        if let Some(jar) = jar.as_ref() {
+            // Get the outgoing cookie header.
+            let mut cookie_string = request
+                .headers_mut()
+                .remove(http::header::COOKIE)
+                .map(|value| value.as_bytes().to_vec())
+                .unwrap_or_default();
 
-                // Append cookies in the jar to the cookie header value.
-                for cookie in jar.get_for_uri(request.uri()) {
-                    if !cookie_string.is_empty() {
-                        cookie_string.extend_from_slice(b"; ");
-                    }
-
-                    cookie_string.extend_from_slice(cookie.name().as_bytes());
-                    cookie_string.push(b'=');
-                    cookie_string.extend_from_slice(cookie.value().as_bytes());
-                }
-
+            // Append cookies in the jar to the cookie header value.
+            for cookie in jar.get_for_uri(request.uri()) {
                 if !cookie_string.is_empty() {
-                    if let Ok(header_value) = cookie_string.try_into() {
-                        request
-                            .headers_mut()
-                            .insert(http::header::COOKIE, header_value);
-                    }
+                    cookie_string.extend_from_slice(b"; ");
                 }
+
+                cookie_string.extend_from_slice(cookie.name().as_bytes());
+                cookie_string.push(b'=');
+                cookie_string.extend_from_slice(cookie.value().as_bytes());
             }
 
+            if !cookie_string.is_empty() {
+                if let Ok(header_value) = cookie_string.try_into() {
+                    request
+                        .headers_mut()
+                        .insert(http::header::COOKIE, header_value);
+                }
+            }
+        }
+
+        Box::pin(async move {
             let request_uri = request.uri().clone();
             let mut response = ctx.send(request).await?;
 

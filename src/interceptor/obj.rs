@@ -17,11 +17,7 @@ where
 impl Interceptor for &InterceptorObj {
     type Err = Error;
 
-    fn intercept<'a>(
-        &'a self,
-        request: Request<AsyncBody>,
-        cx: Context<'a>,
-    ) -> InterceptorFuture<'a, Self::Err> {
+    fn intercept(&self, request: Request<AsyncBody>, cx: Context) -> InterceptorFuture<Self::Err> {
         self.0.dyn_intercept(request, cx)
     }
 }
@@ -29,19 +25,12 @@ impl Interceptor for &InterceptorObj {
 /// Object-safe version of the interceptor used for type erasure. Implementation
 /// detail of [`InterceptorObj`].
 trait DynInterceptor: Send + Sync {
-    fn dyn_intercept<'a>(
-        &'a self,
-        request: Request<AsyncBody>,
-        cx: Context<'a>,
-    ) -> InterceptorFuture<'a, Error>;
+    fn dyn_intercept(&self, request: Request<AsyncBody>, cx: Context) -> InterceptorFuture<Error>;
 }
 
 impl<I: Interceptor> DynInterceptor for I {
-    fn dyn_intercept<'a>(
-        &'a self,
-        request: Request<AsyncBody>,
-        cx: Context<'a>,
-    ) -> InterceptorFuture<'a, Error> {
-        Box::pin(async move { self.intercept(request, cx).await.map_err(Error::from_any) })
+    fn dyn_intercept(&self, request: Request<AsyncBody>, cx: Context) -> InterceptorFuture<Error> {
+        let fut = self.intercept(request, cx);
+        Box::pin(async move { fut.await.map_err(Error::from_any) })
     }
 }
