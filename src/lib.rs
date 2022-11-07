@@ -240,7 +240,11 @@
     clippy::all
 )]
 // These lints suggest to use features not available in our MSRV.
-#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
+#![allow(
+    clippy::manual_strip,
+    clippy::match_like_matches_macro,
+    clippy::needless_borrow
+)]
 
 use std::convert::TryFrom;
 
