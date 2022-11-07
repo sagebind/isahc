@@ -198,8 +198,9 @@
 //! Enable API support for TLS configuration. This feature allows you to use any
 //! TLS-specific features of Isahc without selecting a particular TLS backend,
 //! and is a good choice when writing a library that might require TLS support,
-//! but want to allow the application writer to decide which TLS backend is
-//! used.
+//! but want to allow the application writer to decide which TLS backend to use.
+//! See the documentation for the [`tls`] module for more details on
+//! compile-time and runtime TLS configuration.
 //!
 //! This feature is automatically enabled when enabling a specific TLS backend.
 //! Conversely, if this feature is enabled but no backend feature is enabled, a

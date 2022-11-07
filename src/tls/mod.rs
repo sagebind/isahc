@@ -11,7 +11,8 @@
 //! - macOS and iOS: [Secure Transport]
 //! - Linux and other UNIX-like systems: [OpenSSL] or one of its API-compatible
 //!   forks are usually considered the "default" TLS engine on most Linux
-//!   distributions and are treated as the native backend here.
+//!   distributions and are treated as the native backend here. The library is
+//!   dynamically linked to by default.
 //!
 //! Regardless of platform, support for TLS is gated behind the optional `tls`
 //! crate feature, which while enabled by default can be disabled if you don't
@@ -19,16 +20,26 @@
 //! API module, but does not select which backend to use. To select which
 //! backend to use, additional crate features are provided:
 //!
+//! - `default-tls`: Use whatever Isahc's preferred default TLS engine is for
+//!   the target platform. Currently Isahc defaults to using the platform native
+//!   TLS engine, so this is just an alias for `native-tls`. However, this could
+//!   change in the future. This is the TLS feature that is selected by default.
 //! - `native-tls`: Use the target platform's native TLS engine, as described
-//!   earlier. This is the default.
-//! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library written in Rust.
+//!   earlier. If you explicitly want to use the native TLS backend regardless
+//!   of what Isahc might default to, you should use this feature.
+//! - `native-tls-static`: Use the target platform's native TLS engine, and
+//!   statically link to it where it makes sense. On Windows and macOS this does
+//!   nothing. On platforms using an OpenSSL-compatible library, attempt to
+//!   statically link to the library.
+//! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library
+//!   written in Rust.
 //! - `rustls-tls-native-certs`: Use [rustls] along with the
 //!   [rustls-native-certs] library to allow rustls to use the platform's native
 //!   root certificate store.
 //!
 //! If using rustls without native cert support, your application will need to
-//! provide its own certificates to use for verification, as none are included by
-//! default.
+//! provide its own certificates to use for verification, as none are included
+//! by default.
 //!
 //! There are pros and cons to different backends, and none are best for all use
 //! cases. For a more in-depth look at the available backends see the [wiki

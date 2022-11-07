@@ -19,22 +19,26 @@ features = ["cookies", "json", "nightly"]
 status = "actively-developed"
 
 [features]
-default = ["http2", "native-tls", "static-curl", "text-decoding"]
+default = ["http2", "default-tls", "static-curl", "text-decoding"]
 cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
-native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
 nightly = []
 online-tests = []
 psl = ["httpdate", "publicsuffix"]
-rustls-tls = ["rustls-ffi", "static-curl", "tls", "curl/rustls"]
-rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"] # todo
 text-decoding = ["encoding_rs", "mime"]
-tls = []
 unstable-interceptors = []
+
+# TLS-related features
+tls = []
+default-tls = ["native-tls", "tls"]
+native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
+native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
+rustls-tls = ["static-curl", "tls", "curl/rustls"]
+rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 
 [dependencies]
 async-channel = "1.7" # channel used for internal communication
