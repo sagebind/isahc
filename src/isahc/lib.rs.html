@@ -474,6 +474,10 @@
 <span id="473">473</span>
 <span id="474">474</span>
 <span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The practical HTTP client that is fun to use.
 //!
 //! Here are some of Isahc&#39;s key features:
@@ -716,7 +720,11 @@
     clippy::all
 )]
 </span><span class="comment">// These lints suggest to use features not available in our MSRV.
-</span><span class="attr">#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
+</span><span class="attr">#![allow(
+    clippy::manual_strip,
+    clippy::match_like_matches_macro,
+    clippy::needless_borrow
+)]
 
 </span><span class="kw">use </span>std::convert::TryFrom;
 
