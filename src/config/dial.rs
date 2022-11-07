@@ -134,7 +134,7 @@ impl FromStr for Dialer {
             if s.starts_with("unix:") {
                 // URI paths are always absolute.
                 let mut path = std::path::PathBuf::from("/");
-                path.push(&s[5..].trim_start_matches('/'));
+                path.push(s[5..].trim_start_matches('/'));
 
                 return Ok(Self(Inner::UnixSocket(path)));
             }

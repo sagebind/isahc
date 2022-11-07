@@ -6,6 +6,8 @@
 //! isahc = { version = "*", features = ["json"]}
 //! ```
 
+#![allow(dead_code)]
+
 use isahc::{prelude::*, Request};
 
 #[derive(Debug, serde::Serialize)]
