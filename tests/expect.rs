@@ -1,4 +1,4 @@
-use isahc::{Body, Request, prelude::*};
+use isahc::{prelude::*, Body, Request};
 use testserver::mock;
 
 #[test]

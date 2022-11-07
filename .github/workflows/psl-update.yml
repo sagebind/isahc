@@ -8,16 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
 
       - id: update
-        name: Update public suffix list submodule
+        name: Update public suffix list file
         run: |
-          echo "::set-output name=old-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
-          git -C src/cookies/psl/list checkout master
-          git -C src/cookies/psl/list pull
-          echo "::set-output name=new-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
+          echo "::set-output name=old-sha::$(sha256sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
+          curl -o src/cookies/psl/list/public_suffix_list.dat https://publicsuffix.org/list/public_suffix_list.dat
+          echo "::set-output name=new-sha::$(sha256sum src/cookies/psl/list/public_suffix_list.dat | cut -d " " -f 1)"
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v3
@@ -28,6 +25,6 @@ jobs:
           title: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
           labels: dependencies
           body: |
-            Update Public Suffix List from [${{ steps.update.outputs.old-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.old-sha }}) to [${{ steps.update.outputs.new-sha }}](https://github.com/publicsuffix/list/commit/${{ steps.update.outputs.new-sha }}).
+            Update Public Suffix List from ${{ steps.update.outputs.old-sha }} to ${{ steps.update.outputs.new-sha }}.
 
             This pull request was generated automatically. If you close this pull request, I won't bother you again until the next automatically scheduled update.

@@ -6,8 +6,9 @@
 //! isahc = { version = "*", features = ["json"]}
 //! ```
 
-use isahc::Request;
-use isahc::prelude::*;
+#![allow(dead_code)]
+
+use isahc::{prelude::*, Request};
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "UPPERCASE")]

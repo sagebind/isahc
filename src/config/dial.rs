@@ -134,7 +134,7 @@ impl FromStr for Dialer {
             if s.starts_with("unix:") {
                 // URI paths are always absolute.
                 let mut path = std::path::PathBuf::from("/");
-                path.push(&s[5..].trim_start_matches('/'));
+                path.push(s[5..].trim_start_matches('/'));
 
                 return Ok(Self(Inner::UnixSocket(path)));
             }
@@ -202,9 +202,7 @@ mod tests {
 
     #[test]
     fn parse_invalid_tcp_uri() {
-        let result = "tcp:127.0.0.1-1200".parse::<Dialer>();
-
-        assert!(result.is_err());
+        "tcp:127.0.0.1-1200".parse::<Dialer>().unwrap_err();
     }
 
     #[test]

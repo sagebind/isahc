@@ -1,10 +1,11 @@
 //! This example demonstrates the use of `send_async()` to make a request
 //! asynchronously using the futures-based API.
 
+use futures_lite::future::block_on;
 use isahc::prelude::*;
 
 fn main() -> Result<(), isahc::Error> {
-    futures_lite::future::block_on(async {
+    block_on(async {
         let mut response = isahc::get_async("http://example.org").await?;
 
         println!("Status: {}", response.status());

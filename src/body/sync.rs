@@ -1,5 +1,6 @@
 use super::AsyncBody;
-use futures_lite::{future::yield_now, io::AsyncWriteExt};
+use crate::util::io::write_all_async;
+use futures_lite::future::yield_now;
 use sluice::pipe::{pipe, PipeWriter};
 use std::{
     borrow::Cow,
@@ -275,7 +276,7 @@ impl Writer {
                 Err(e) => return Err(e),
             };
 
-            self.writer.write_all(&buf[..len]).await?;
+            write_all_async(&mut self.writer, &buf[..len]).await?;
         }
     }
 }
@@ -334,6 +335,6 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = Body::from_reader(std::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 }

@@ -246,13 +246,17 @@
     future_incompatible,
     missing_debug_implementations,
     missing_docs,
-    rust_2018_idioms,
     unreachable_pub,
     unused,
+    elided_lifetimes_in_paths,
     clippy::all
 )]
 // These lints suggest to use features not available in our MSRV.
-#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
+#![allow(
+    clippy::manual_strip,
+    clippy::match_like_matches_macro,
+    clippy::needless_borrow
+)]
 
 use std::convert::TryFrom;
 
@@ -271,9 +275,9 @@ mod parsing;
 mod redirect;
 mod request;
 mod response;
-mod task;
 mod text;
 mod trailer;
+mod util;
 
 pub mod auth;
 pub mod config;
@@ -344,7 +348,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::get_async`] for details.
-pub fn get_async<U>(uri: U) -> ResponseFuture<'static>
+pub fn get_async<U>(uri: U) -> ResponseFuture
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -368,7 +372,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::head_async`] for details.
-pub fn head_async<U>(uri: U) -> ResponseFuture<'static>
+pub fn head_async<U>(uri: U) -> ResponseFuture
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -413,7 +417,7 @@ where
 /// println!("{}", msg);
 /// # Ok(()) }
 /// ```
-pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
+pub fn post_async<U, B>(uri: U, body: B) -> ResponseFuture
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -440,7 +444,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::put_async`] for details.
-pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture<'static>
+pub fn put_async<U, B>(uri: U, body: B) -> ResponseFuture
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -465,7 +469,7 @@ where
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::delete_async`] for details.
-pub fn delete_async<U>(uri: U) -> ResponseFuture<'static>
+pub fn delete_async<U>(uri: U) -> ResponseFuture
 where
     http::Uri: TryFrom<U>,
     <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -485,6 +489,6 @@ pub fn send<B: Into<Body>>(request: Request<B>) -> Result<Response<Body>, Error>
 ///
 /// The request is executed using a shared [`HttpClient`] instance. See
 /// [`HttpClient::send_async`] for details.
-pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture<'static> {
+pub fn send_async<B: Into<AsyncBody>>(request: Request<B>) -> ResponseFuture {
     HttpClient::shared().send_async(request)
 }

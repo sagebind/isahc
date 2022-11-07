@@ -1,6 +1,7 @@
 //! Provides types for working with request and response bodies.
 
-use futures_lite::io::{AsyncRead, BlockOn};
+use crate::util::{future::FutureExt, io::read_async};
+use futures_io::AsyncRead;
 use std::{
     borrow::Cow,
     fmt,
@@ -174,13 +175,21 @@ impl AsyncBody {
     /// generally if the underlying reader only supports blocking under a
     /// specific runtime.
     pub(crate) fn into_sync(self) -> sync::Body {
+        struct ReadSyncAdapter<T>(T);
+
+        impl<T: AsyncRead + Unpin> Read for ReadSyncAdapter<T> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                read_async(&mut self.0, buf).wait()
+            }
+        }
+
         match self.0 {
             Inner::Empty => sync::Body::empty(),
             Inner::Buffer(cursor) => sync::Body::from_bytes_static(cursor.into_inner()),
             Inner::Reader(reader, Some(len)) => {
-                sync::Body::from_reader_sized(BlockOn::new(reader), len)
+                sync::Body::from_reader_sized(ReadSyncAdapter(reader), len)
             }
-            Inner::Reader(reader, None) => sync::Body::from_reader(BlockOn::new(reader)),
+            Inner::Reader(reader, None) => sync::Body::from_reader(ReadSyncAdapter(reader)),
         }
     }
 }
@@ -258,7 +267,7 @@ mod tests {
     use super::*;
     use futures_lite::{
         future::{block_on, zip},
-        io::AsyncReadExt,
+        io::{empty, AsyncReadExt},
     };
 
     static_assertions::assert_impl_all!(AsyncBody: Send, Sync);
@@ -281,7 +290,7 @@ mod tests {
 
     #[test]
     fn reader_with_unknown_length() {
-        let body = AsyncBody::from_reader(futures_lite::io::empty());
+        let body = AsyncBody::from_reader(empty());
 
         assert!(!body.is_empty());
         assert_eq!(body.len(), None);
@@ -289,7 +298,7 @@ mod tests {
 
     #[test]
     fn reader_with_known_length() {
-        let body = AsyncBody::from_reader_sized(futures_lite::io::empty(), 0);
+        let body = AsyncBody::from_reader_sized(empty(), 0);
 
         assert!(!body.is_empty());
         assert_eq!(body.len(), Some(0));
@@ -314,7 +323,7 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = AsyncBody::from_reader(futures_lite::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 
     #[test]

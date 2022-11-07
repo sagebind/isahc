@@ -54,7 +54,7 @@ impl Mock {
 
     /// Get the socket address of this mock server.
     pub fn addr(&self) -> SocketAddr {
-        self.0.server.server_addr()
+        self.0.server.server_addr().to_ip().unwrap()
     }
 
     /// Get the HTTP URL of this mock server.
@@ -108,8 +108,7 @@ impl Mock {
         if request
             .headers()
             .iter()
-            .find(|h| h.field.as_str() == "host" && h.value == "api.mock.local")
-            .is_some()
+            .any(|h| h.field.as_str() == "host" && h.value == "api.mock.local")
         {
             self.handle_api_request(request);
             return;

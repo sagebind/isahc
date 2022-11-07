@@ -12,13 +12,12 @@ use crate::{
     error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
     headers::HasHeaders,
-    interceptor::{self, Interceptor, InterceptorObj},
+    interceptor::{self, Interceptor, InterceptorFuture, InterceptorObj},
     parsing::header_to_curl_string,
+    util::future::FutureExt,
 };
-use futures_lite::{
-    future::{block_on, try_zip},
-    io::AsyncRead,
-};
+use futures_io::AsyncRead;
+use futures_lite::future::try_zip;
 use http::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Request,
@@ -104,7 +103,7 @@ impl HttpClientBuilder {
                 // and thus the outermost, interceptor. Also note that this does
                 // not enable redirect following, it just implements support for
                 // it, if a request asks for it.
-                InterceptorObj::new(crate::redirect::RedirectInterceptor),
+                crate::redirect::RedirectInterceptor.into(),
             ],
             default_headers: HeaderMap::new(),
             error: None,
@@ -167,7 +166,7 @@ impl HttpClientBuilder {
 
     #[allow(unused)]
     pub(crate) fn interceptor_impl(mut self, interceptor: impl Interceptor + 'static) -> Self {
-        self.interceptors.push(InterceptorObj::new(interceptor));
+        self.interceptors.push(interceptor.into());
         self
     }
 
@@ -651,6 +650,11 @@ impl HttpClient {
         self.inner.cookie_jar.as_ref()
     }
 
+    /// Get the configured interceptors for this HTTP client.
+    pub(crate) fn interceptors(&self) -> &[InterceptorObj] {
+        &self.inner.interceptors
+    }
+
     /// Send a GET request to the given URI.
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
@@ -682,7 +686,7 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::get`].
-    pub fn get_async<U>(&self, uri: U) -> ResponseFuture<'_>
+    pub fn get_async<U>(&self, uri: U) -> ResponseFuture
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -724,7 +728,7 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::head`].
-    pub fn head_async<U>(&self, uri: U) -> ResponseFuture<'_>
+    pub fn head_async<U>(&self, uri: U) -> ResponseFuture
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -770,7 +774,7 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::post`].
-    pub fn post_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
+    pub fn post_async<U, B>(&self, uri: U, body: B) -> ResponseFuture
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -818,7 +822,7 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::put`].
-    pub fn put_async<U, B>(&self, uri: U, body: B) -> ResponseFuture<'_>
+    pub fn put_async<U, B>(&self, uri: U, body: B) -> ResponseFuture
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -850,7 +854,7 @@ impl HttpClient {
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::delete`].
-    pub fn delete_async<U>(&self, uri: U) -> ResponseFuture<'_>
+    pub fn delete_async<U>(&self, uri: U) -> ResponseFuture
     where
         http::Uri: TryFrom<U>,
         <http::Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -924,28 +928,27 @@ impl HttpClient {
             async_body
         });
 
-        let response = block_on(
-            async move {
-                // Instead of simply blocking the current thread until the response
-                // is received, we can use the current thread to read from the
-                // request body synchronously while concurrently waiting for the
-                // response.
-                if let Some(mut writer) = writer_maybe {
-                    // Note that the `send_async` future is given first; this
-                    // ensures that it is polled first and thus the request is
-                    // initiated before we attempt to write the request body.
-                    let (response, _) = try_zip(self.send_async_inner(request), async move {
-                        writer.write().await.map_err(Error::from)
-                    })
-                    .await?;
+        let response = async move {
+            // Instead of simply blocking the current thread until the response
+            // is received, we can use the current thread to read from the
+            // request body synchronously while concurrently waiting for the
+            // response.
+            if let Some(mut writer) = writer_maybe {
+                // Note that the `send_async` future is given first; this
+                // ensures that it is polled first and thus the request is
+                // initiated before we attempt to write the request body.
+                let (response, _) = try_zip(self.send_async_inner(request), async move {
+                    writer.write().await.map_err(Error::from)
+                })
+                .await?;
 
-                    Ok(response)
-                } else {
-                    self.send_async_inner(request).await
-                }
+                Ok(response)
+            } else {
+                self.send_async_inner(request).await
             }
-            .instrument(span),
-        )?;
+        }
+        .instrument(span)
+        .wait()?;
 
         Ok(response.map(|body| body.into_sync()))
     }
@@ -997,7 +1000,7 @@ impl HttpClient {
     /// # Ok(()) }
     /// ```
     #[inline]
-    pub fn send_async<B>(&self, request: Request<B>) -> ResponseFuture<'_>
+    pub fn send_async<B>(&self, request: Request<B>) -> ResponseFuture
     where
         B: Into<AsyncBody>,
     {
@@ -1014,10 +1017,7 @@ impl HttpClient {
     }
 
     /// Actually send the request. All the public methods go through here.
-    async fn send_async_inner(
-        &self,
-        mut request: Request<AsyncBody>,
-    ) -> Result<Response<AsyncBody>, Error> {
+    fn send_async_inner(&self, mut request: Request<AsyncBody>) -> InterceptorFuture<Error> {
         // Populate request config, creating if necessary.
         if let Some(config) = request.extensions_mut().get_mut::<RequestConfig>() {
             // Merge request configuration with defaults.
@@ -1029,11 +1029,85 @@ impl HttpClient {
         }
 
         let ctx = interceptor::Context {
-            invoker: Arc::new(self),
-            interceptors: &self.inner.interceptors,
+            client: self.clone(),
+            interceptor_offset: 0,
         };
 
-        ctx.send(request).await
+        ctx.send(request)
+    }
+
+    pub(crate) fn invoke(&self, mut request: Request<AsyncBody>) -> InterceptorFuture<Error> {
+        let client = self.clone();
+
+        Box::pin(async move {
+            let is_head_request = request.method() == http::Method::HEAD;
+
+            // Set default user agent if not specified.
+            request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
+
+            // Check if automatic decompression is enabled; we'll need to know
+            // this later after the response is sent.
+            let is_automatic_decompression = request
+                .extensions()
+                .get::<RequestConfig>()
+                .unwrap()
+                .automatic_decompression
+                .unwrap_or(false);
+
+            // Create and configure a curl easy handle to fulfil the request.
+            let (easy, future) = client
+                .create_easy_handle(request)
+                .map_err(Error::from_any)?;
+
+            // Send the request to the agent to be executed.
+            client.inner.agent.submit_request(easy)?;
+
+            // Await for the response headers.
+            let response = future.await?;
+
+            // If a Content-Length header is present, include that information in
+            // the body as well.
+            let body_len = response.content_length().filter(|_| {
+                // If automatic decompression is enabled, and will likely be
+                // selected, then the value of Content-Length does not indicate
+                // the uncompressed body length and merely the compressed data
+                // length. If it looks like we are in this scenario then we
+                // ignore the Content-Length, since it can only cause confusion
+                // when included with the body.
+                if is_automatic_decompression {
+                    if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
+                        if value != "identity" {
+                            return false;
+                        }
+                    }
+                }
+
+                true
+            });
+
+            // Convert the reader into an opaque Body.
+            Ok(response.map(|reader| {
+                if is_head_request {
+                    AsyncBody::empty()
+                } else {
+                    let body = ResponseBody {
+                        inner: reader,
+                        // Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        _client: client,
+                    };
+
+                    if let Some(len) = body_len {
+                        AsyncBody::from_reader_sized(body, len)
+                    } else {
+                        AsyncBody::from_reader(body)
+                    }
+                }
+            }))
+        })
     }
 
     fn create_easy_handle(
@@ -1050,9 +1124,7 @@ impl HttpClient {
         let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
-        let (handler, future) = RequestHandler::new(body);
-
-        let mut easy = curl::easy::Easy2::new(handler);
+        let (mut easy, future) = RequestHandler::new(body);
 
         // Set whether curl should generate verbose debug data for us to log.
         easy.verbose(easy.get_ref().is_debug_enabled())?;
@@ -1064,16 +1136,14 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        let request_config = request
-            .extensions()
-            .get::<RequestConfig>()
-            .unwrap();
+        let request_config = request.extensions().get::<RequestConfig>().unwrap();
 
         request_config.set_opt(&mut easy)?;
         self.inner.client_config.set_opt(&mut easy)?;
 
         // Check if we need to disable the Expect header.
-        let disable_expect_header = request_config.expect_continue
+        let disable_expect_header = request_config
+            .expect_continue
             .as_ref()
             .map(|x| x.is_disabled())
             .unwrap_or_default();
@@ -1161,81 +1231,6 @@ impl HttpClient {
     }
 }
 
-impl crate::interceptor::Invoke for &HttpClient {
-    fn invoke(
-        &self,
-        mut request: Request<AsyncBody>,
-    ) -> crate::interceptor::InterceptorFuture<'_, Error> {
-        Box::pin(async move {
-            let is_head_request = request.method() == http::Method::HEAD;
-
-            // Set default user agent if not specified.
-            request
-                .headers_mut()
-                .entry(http::header::USER_AGENT)
-                .or_insert(USER_AGENT.parse().unwrap());
-
-            // Check if automatic decompression is enabled; we'll need to know
-            // this later after the response is sent.
-            let is_automatic_decompression = request
-                .extensions()
-                .get::<RequestConfig>()
-                .unwrap()
-                .automatic_decompression
-                .unwrap_or(false);
-
-            // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.create_easy_handle(request).map_err(Error::from_any)?;
-
-            // Send the request to the agent to be executed.
-            self.inner.agent.submit_request(easy)?;
-
-            // Await for the response headers.
-            let response = future.await?;
-
-            // If a Content-Length header is present, include that information in
-            // the body as well.
-            let body_len = response.content_length().filter(|_| {
-                // If automatic decompression is enabled, and will likely be
-                // selected, then the value of Content-Length does not indicate
-                // the uncompressed body length and merely the compressed data
-                // length. If it looks like we are in this scenario then we
-                // ignore the Content-Length, since it can only cause confusion
-                // when included with the body.
-                if is_automatic_decompression {
-                    if let Some(value) = response.headers().get(http::header::CONTENT_ENCODING) {
-                        if value != "identity" {
-                            return false;
-                        }
-                    }
-                }
-
-                true
-            });
-
-            // Convert the reader into an opaque Body.
-            Ok(response.map(|reader| {
-                if is_head_request {
-                    AsyncBody::empty()
-                } else {
-                    let body = ResponseBody {
-                        inner: reader,
-                        // Extend the lifetime of the agent by including a reference
-                        // to its handle in the response body.
-                        _client: (*self).clone(),
-                    };
-
-                    if let Some(len) = body_len {
-                        AsyncBody::from_reader_sized(body, len)
-                    } else {
-                        AsyncBody::from_reader(body)
-                    }
-                }
-            }))
-        })
-    }
-}
-
 impl fmt::Debug for HttpClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HttpClient").finish()
@@ -1244,12 +1239,12 @@ impl fmt::Debug for HttpClient {
 
 /// A future for a request being executed.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
-pub struct ResponseFuture<'c>(Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'c + Send>>);
+pub struct ResponseFuture(Pin<Box<dyn Future<Output = <Self as Future>::Output> + 'static + Send>>);
 
-impl<'c> ResponseFuture<'c> {
+impl ResponseFuture {
     fn new<F>(future: F) -> Self
     where
-        F: Future<Output = <Self as Future>::Output> + Send + 'c,
+        F: Future<Output = <Self as Future>::Output> + Send + 'static,
     {
         ResponseFuture(Box::pin(future))
     }
@@ -1259,7 +1254,7 @@ impl<'c> ResponseFuture<'c> {
     }
 }
 
-impl Future for ResponseFuture<'_> {
+impl Future for ResponseFuture {
     type Output = Result<Response<AsyncBody>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -1267,7 +1262,7 @@ impl Future for ResponseFuture<'_> {
     }
 }
 
-impl<'c> fmt::Debug for ResponseFuture<'c> {
+impl fmt::Debug for ResponseFuture {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ResponseFuture").finish()
     }
@@ -1324,13 +1319,10 @@ mod tests {
 
     #[test]
     fn test_default_header() {
-        let client = HttpClientBuilder::new()
+        HttpClientBuilder::new()
             .default_header("some-key", "some-value")
-            .build();
-        match client {
-            Ok(_) => assert!(true),
-            Err(_) => assert!(false),
-        }
+            .build()
+            .expect("build client succeed");
     }
 
     #[test]

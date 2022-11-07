@@ -1,5 +1,10 @@
-use crate::{metrics::Metrics, redirect::EffectiveUri, trailer::Trailer};
-use futures_lite::io::{copy as copy_async, AsyncRead, AsyncWrite};
+use crate::{
+    metrics::Metrics,
+    redirect::EffectiveUri,
+    trailer::Trailer,
+    util::io::{copy_async, Sink},
+};
+use futures_io::{AsyncRead, AsyncWrite};
 use http::{Response, Uri};
 use std::{
     fs::File,
@@ -452,7 +457,7 @@ pub trait AsyncReadResponseExt<R: AsyncRead + Unpin> {
 impl<R: AsyncRead + Unpin> AsyncReadResponseExt<R> for Response<R> {
     fn consume(&mut self) -> ConsumeFuture<'_, R> {
         ConsumeFuture::new(async move {
-            copy_async(self.body_mut(), futures_lite::io::sink()).await?;
+            copy_async(self.body_mut(), Sink).await?;
 
             Ok(())
         })
@@ -520,7 +525,8 @@ fn allocate_buffer<T>(response: &Response<T>) -> Vec<u8> {
 }
 
 fn get_content_length<T>(response: &Response<T>) -> Option<u64> {
-    response.headers()
+    response
+        .headers()
         .get(http::header::CONTENT_LENGTH)?
         .to_str()
         .ok()?

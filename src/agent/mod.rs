@@ -8,13 +8,12 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
-use crate::{error::Error, handler::RequestHandler, task::WakerExt};
+use crate::{error::Error, handler::RequestHandler, util::task::WakerExt};
 use async_channel::{Receiver, Sender};
 use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
 use curl::multi::{Events, Multi, Socket, SocketEvents};
-use futures_lite::future::block_on;
-use slab::Slab;
 use std::{
+    collections::HashMap,
     io,
     sync::{Arc, Mutex},
     task::Waker,
@@ -24,6 +23,7 @@ use std::{
 
 use self::{selector::Selector, timer::Timer};
 
+mod hasher;
 mod selector;
 mod timer;
 
@@ -182,7 +182,7 @@ struct AgentContext {
     message_rx: Receiver<Message>,
 
     /// Contains all of the active requests.
-    requests: Slab<curl::multi::Easy2Handle<RequestHandler>>,
+    requests: HashMap<usize, curl::multi::Easy2Handle<RequestHandler>, hasher::BuildIntHasher>,
 
     /// Indicates if the thread has been requested to stop.
     close_requested: bool,
@@ -319,7 +319,7 @@ impl AgentContext {
             multi,
             message_tx,
             message_rx,
-            requests: Slab::new(),
+            requests: Default::default(),
             close_requested: false,
             waker: selector.waker(),
             selector,
@@ -330,15 +330,10 @@ impl AgentContext {
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn begin_request(&mut self, mut request: EasyHandle) -> Result<(), Error> {
-        // Prepare an entry for storing this request while it executes.
-        let entry = self.requests.vacant_entry();
-        let id = entry.key();
-        let handle = request.raw();
+        let id = request.get_ref().id();
 
         // Initialize the handler.
         request.get_mut().init(
-            id,
-            handle,
             {
                 let tx = self.message_tx.clone();
 
@@ -368,7 +363,8 @@ impl AgentContext {
         handle.set_token(id).map_err(Error::from_any)?;
 
         // Add the handle to our bookkeeping structure.
-        entry.insert(handle);
+        let _previous = self.requests.insert(id, handle);
+        debug_assert!(_previous.is_none());
 
         Ok(())
     }
@@ -379,7 +375,7 @@ impl AgentContext {
         token: usize,
         result: Result<(), curl::Error>,
     ) -> Result<(), Error> {
-        let handle = self.requests.remove(token);
+        let handle = self.requests.remove(&token).unwrap();
         let mut handle = self.multi.remove2(handle).map_err(Error::from_any)?;
 
         handle.get_mut().set_result(result.map_err(Error::from_any));
@@ -395,7 +391,7 @@ impl AgentContext {
     fn poll_messages(&mut self) -> Result<(), Error> {
         while !self.close_requested {
             if self.requests.is_empty() {
-                match block_on(self.message_rx.recv()) {
+                match self.message_rx.recv_blocking() {
                     Ok(message) => self.handle_message(message)?,
                     _ => {
                         tracing::warn!("agent handle disconnected without close message");
@@ -427,7 +423,7 @@ impl AgentContext {
             Message::Close => self.close_requested = true,
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
-                if let Some(request) = self.requests.get(token) {
+                if let Some(request) = self.requests.get(&token) {
                     if let Err(e) = request.unpause_read() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
@@ -446,7 +442,7 @@ impl AgentContext {
                 }
             }
             Message::UnpauseWrite(token) => {
-                if let Some(request) = self.requests.get(token) {
+                if let Some(request) = self.requests.get(&token) {
                     if let Err(e) = request.unpause_write() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback

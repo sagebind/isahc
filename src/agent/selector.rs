@@ -2,12 +2,12 @@ use curl::multi::Socket;
 use polling::{Event, Poller};
 use std::{
     collections::{HashMap, HashSet},
-    hash::{BuildHasherDefault, Hasher},
     io,
     sync::Arc,
     task::Waker,
     time::Duration,
 };
+use super::hasher::BuildIntHasher;
 
 /// Asynchronous I/O selector for sockets. Used by the agent to wait for network
 /// activity asynchronously, as directed by curl.
@@ -22,11 +22,11 @@ pub(crate) struct Selector {
     poller: Arc<Poller>,
 
     /// All of the sockets that we have been asked to keep track of.
-    sockets: HashMap<Socket, Registration, BuildHasherDefault<IntHasher>>,
+    sockets: HashMap<Socket, Registration, BuildIntHasher>,
 
     /// If a socket is currently invalid when it is registered, we put it in this
     /// set and try to register it again later.
-    bad_sockets: HashSet<Socket, BuildHasherDefault<IntHasher>>,
+    bad_sockets: HashSet<Socket, BuildIntHasher>,
 
     /// Socket events that have occurred. We re-use this vec every call for
     /// efficiency.
@@ -282,34 +282,5 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
 
             _ => false,
         },
-    }
-}
-
-/// Trivial hash function to use for our maps and sets that use file descriptors
-/// as keys.
-#[derive(Default)]
-struct IntHasher([u8; 8], #[cfg(debug_assertions)] bool);
-
-impl Hasher for IntHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        #[cfg(debug_assertions)]
-        {
-            if self.1 {
-                panic!("socket hash function can only be written to once");
-            } else {
-                self.1 = true;
-            }
-
-            if bytes.len() > 8 {
-                panic!("only a maximum of 8 bytes can be hashed");
-            }
-        }
-
-        (&mut self.0[..bytes.len()]).copy_from_slice(bytes);
-    }
-
-    #[inline]
-    fn finish(&self) -> u64 {
-        u64::from_ne_bytes(self.0)
     }
 }

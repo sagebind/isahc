@@ -13,7 +13,7 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct CookieRejectedError {
     kind: CookieRejectedErrorKind,
-    cookie: Cookie,
+    cookie: Box<Cookie>,
 }
 
 /// The reason why the [`Cookie`] was rejected.
@@ -35,6 +35,13 @@ pub enum CookieRejectedErrorKind {
 }
 
 impl CookieRejectedError {
+    fn new(kind: CookieRejectedErrorKind, cookie: Cookie) -> Self {
+        Self {
+            kind,
+            cookie: Box::new(cookie),
+        }
+    }
+
     /// Get the kind of error that occurred.
     pub fn kind(&self) -> CookieRejectedErrorKind {
         self.kind
@@ -42,7 +49,7 @@ impl CookieRejectedError {
 
     /// Get back the [`Cookie`] that failed to be set.
     pub fn cookie(self) -> Cookie {
-        self.cookie
+        *self.cookie
     }
 }
 
@@ -138,10 +145,10 @@ impl CookieJar {
                 "cookie '{}' dropped, no domain specified in request URI",
                 cookie.name()
             );
-            return Err(CookieRejectedError {
-                kind: CookieRejectedErrorKind::InvalidRequestDomain,
+            return Err(CookieRejectedError::new(
+                CookieRejectedErrorKind::InvalidRequestDomain,
                 cookie,
-            });
+            ));
         };
 
         // Perform some validations on the domain.
@@ -155,10 +162,10 @@ impl CookieJar {
                     request_host,
                     domain
                 );
-                return Err(CookieRejectedError {
-                    kind: CookieRejectedErrorKind::DomainMismatch,
+                return Err(CookieRejectedError::new(
+                    CookieRejectedErrorKind::DomainMismatch,
                     cookie,
-                });
+                ));
             }
 
             // Drop cookies for top-level domains.
@@ -168,10 +175,10 @@ impl CookieJar {
                     cookie.name(),
                     domain
                 );
-                return Err(CookieRejectedError {
-                    kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                return Err(CookieRejectedError::new(
+                    CookieRejectedErrorKind::InvalidCookieDomain,
                     cookie,
-                });
+                ));
             }
 
             // Check the PSL for bad domain suffixes if available.
@@ -184,10 +191,10 @@ impl CookieJar {
                         cookie.name(),
                         domain
                     );
-                    return Err(CookieRejectedError {
-                        kind: CookieRejectedErrorKind::InvalidCookieDomain,
+                    return Err(CookieRejectedError::new(
+                        CookieRejectedErrorKind::InvalidCookieDomain,
                         cookie,
-                    });
+                    ));
                 }
             }
         }
@@ -347,24 +354,23 @@ mod tests {
     fn cookie_domain_not_allowed() {
         let jar = CookieJar::default();
 
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
-        assert!(jar
-            .set(
-                Cookie::parse("foo=bar; domain=baz.com").unwrap(),
-                &"https://bar.baz.com".parse().unwrap()
-            )
-            .is_ok());
+        jar.set(
+            Cookie::parse("foo=bar").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
+
+        jar.set(
+            Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
+
+        jar.set(
+            Cookie::parse("foo=bar; domain=baz.com").unwrap(),
+            &"https://bar.baz.com".parse().unwrap(),
+        )
+        .unwrap();
 
         assert!(
             jar.set(
