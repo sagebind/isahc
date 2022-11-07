@@ -1,5 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/client.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../isahc/index.html">
+                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1343,6 +1343,7 @@
 <span id="1342">1342</span>
 <span id="1343">1343</span>
 <span id="1344">1344</span>
+<span id="1345">1345</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The HTTP client implementation.
 
 </span><span class="kw">use crate</span>::{
@@ -1357,7 +1358,7 @@
     error::{Error, ErrorKind},
     handler::{RequestHandler, ResponseBodyReader},
     headers::HasHeaders,
-    interceptor::{<span class="self">self</span>, Interceptor, InterceptorObj},
+    interceptor::{<span class="self">self</span>, Interceptor, InterceptorFuture, InterceptorObj},
     parsing::header_to_curl_string,
     util::future::FutureExt,
 };
@@ -1414,7 +1415,7 @@
 ///     .build()?;
 /// # Ok::&lt;(), isahc::Error&gt;(())
 /// ```
-</span><span class="attribute">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
+</span><span class="attr">#[must_use = <span class="string">&quot;builders have no effect if unused&quot;</span>]
 </span><span class="kw">pub struct </span>HttpClientBuilder {
     agent_builder: AgentBuilder,
     client_config: ClientConfig,
@@ -1423,7 +1424,7 @@
     default_headers: HeaderMap&lt;HeaderValue&gt;,
     error: <span class="prelude-ty">Option</span>&lt;Error&gt;,
 
-    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
     </span>cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
 }
 
@@ -1453,7 +1454,7 @@
             default_headers: HeaderMap::new(),
             error: <span class="prelude-val">None</span>,
 
-            <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
             </span>cookie_jar: <span class="prelude-val">None</span>,
         }
     }
@@ -1489,7 +1490,7 @@
     ///
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
     </span><span class="kw">pub fn </span>cookies(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="comment">// Note: this method is now essentially the same as setting a default
         // cookie jar, but remains for backwards compatibility.
@@ -1503,13 +1504,13 @@
     /// This method is only available when the
     /// [`unstable-interceptors`](index.html#unstable-interceptors) feature is
     /// enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]
     #[inline]
     </span><span class="kw">pub fn </span>interceptor(<span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.interceptor_impl(interceptor)
     }
 
-    <span class="attribute">#[allow(unused)]
+    <span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>interceptor_impl(<span class="kw-2">mut </span><span class="self">self</span>, interceptor: <span class="kw">impl </span>Interceptor + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.interceptors.push(interceptor.into());
         <span class="self">self
@@ -1779,14 +1780,14 @@
     <span class="doccomment">/// Build an [`HttpClient`] using the configured options.
     ///
     /// If the client fails to initialize, an error will be returned.
-    </span><span class="attribute">#[allow(unused_mut)]
+    </span><span class="attr">#[allow(unused_mut)]
     </span><span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;HttpClient, Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(err) = <span class="self">self</span>.error {
             <span class="kw">return </span><span class="prelude-val">Err</span>(err);
         }
 
         <span class="comment">// Add cookie interceptor if enabled.
-        </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
         </span>{
             <span class="kw">let </span>jar = <span class="self">self</span>.cookie_jar.clone();
             <span class="self">self </span>= <span class="self">self</span>.interceptor_impl(<span class="kw">crate</span>::cookies::interceptor::CookieInterceptor::new(jar));
@@ -1798,7 +1799,7 @@
             <span class="self">self </span>= <span class="self">self</span>.interceptor_impl(DefaultHeadersInterceptor::from(default_headers));
         }
 
-        <span class="attribute">#[cfg(not(feature = <span class="string">&quot;cookies&quot;</span>))]
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;cookies&quot;</span>))]
         </span><span class="kw">let </span>inner = Inner {
             agent: <span class="self">self
                 </span>.agent_builder
@@ -1809,7 +1810,7 @@
             interceptors: <span class="self">self</span>.interceptors,
         };
 
-        <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
         </span><span class="kw">let </span>inner = Inner {
             agent: <span class="self">self
                 </span>.agent_builder
@@ -1828,7 +1829,7 @@
 }
 
 <span class="kw">impl </span>Configurable <span class="kw">for </span>HttpClientBuilder {
-    <span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
     </span><span class="kw">fn </span>cookie_jar(<span class="kw-2">mut </span><span class="self">self</span>, cookie_jar: <span class="kw">crate</span>::cookies::CookieJar) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.cookie_jar = <span class="prelude-val">Some</span>(cookie_jar);
         <span class="self">self
@@ -1836,7 +1837,7 @@
 }
 
 <span class="kw">impl </span>WithRequestConfig <span class="kw">for </span>HttpClientBuilder {
-    <span class="attribute">#[inline]
+    <span class="attr">#[inline]
     </span><span class="kw">fn </span>with_config(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>RequestConfig)) -&gt; <span class="self">Self </span>{
         f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_config);
         <span class="self">self
@@ -1938,7 +1939,7 @@
 ///
 /// See the documentation on [`HttpClientBuilder`] for a comprehensive look at
 /// what can be configured.
-</span><span class="attribute">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>HttpClient {
     inner: Arc&lt;Inner&gt;,
 }
@@ -1957,7 +1958,7 @@
     </span>interceptors: Vec&lt;InterceptorObj&gt;,
 
     <span class="doccomment">/// Configured cookie jar, if any.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
     </span>cookie_jar: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::cookies::CookieJar&gt;,
 }
 
@@ -1990,9 +1991,14 @@
     ///
     /// This method is only available when the [`cookies`](index.html#cookies)
     /// feature is enabled.
-    </span><span class="attribute">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;cookies&quot;</span>)]
     </span><span class="kw">pub fn </span>cookie_jar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::cookies::CookieJar&gt; {
         <span class="self">self</span>.inner.cookie_jar.as_ref()
+    }
+
+    <span class="doccomment">/// Get the configured interceptors for this HTTP client.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>interceptors(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[InterceptorObj] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.inner.interceptors
     }
 
     <span class="doccomment">/// Send a GET request to the given URI.
@@ -2010,7 +2016,7 @@
     /// println!(&quot;{}&quot;, response.text()?);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>get&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
@@ -2026,7 +2032,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::get`].
-    </span><span class="kw">pub fn </span>get_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="kw">pub fn </span>get_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2052,7 +2058,7 @@
     /// println!(&quot;Page size: {:?}&quot;, response.headers()[&quot;content-length&quot;]);
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>head&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
@@ -2068,7 +2074,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::head`].
-    </span><span class="kw">pub fn </span>head_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="kw">pub fn </span>head_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2096,7 +2102,7 @@
     ///     &quot;cool_name&quot;: true
     /// }&quot;#)?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
-    </span><span class="attribute">#[inline]
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>post&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
@@ -2114,7 +2120,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::post`].
-    </span><span class="kw">pub fn </span>post_async&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="kw">pub fn </span>post_async&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; ResponseFuture
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2144,7 +2150,7 @@
     /// }&quot;#)?;
     /// # Ok::&lt;(), isahc::Error&gt;(())
     /// ```
-    </span><span class="attribute">#[inline]
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>put&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
@@ -2162,7 +2168,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::put`].
-    </span><span class="kw">pub fn </span>put_async&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="kw">pub fn </span>put_async&lt;U, B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U, body: B) -&gt; ResponseFuture
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2178,7 +2184,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send`]. To execute
     /// the request asynchronously, see [`HttpClient::delete_async`].
-    </span><span class="attribute">#[inline]
+    </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>delete&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;Body&gt;, Error&gt;
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
@@ -2194,7 +2200,7 @@
     ///
     /// To customize the request further, see [`HttpClient::send_async`]. To
     /// execute the request synchronously, see [`HttpClient::delete`].
-    </span><span class="kw">pub fn </span>delete_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="kw">pub fn </span>delete_async&lt;U&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, uri: U) -&gt; ResponseFuture
     <span class="kw">where
         </span>http::Uri: TryFrom&lt;U&gt;,
         &lt;http::Uri <span class="kw">as </span>TryFrom&lt;U&gt;&gt;::Error: Into&lt;http::Error&gt;,
@@ -2339,8 +2345,8 @@
     /// assert!(response.status().is_success());
     /// # Ok(()) }
     /// ```
-    </span><span class="attribute">#[inline]
-    </span><span class="kw">pub fn </span>send_async&lt;B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;B&gt;) -&gt; ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt;
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>send_async&lt;B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;B&gt;) -&gt; ResponseFuture
     <span class="kw">where
         </span>B: Into&lt;AsyncBody&gt;,
     {
@@ -2357,10 +2363,7 @@
     }
 
     <span class="doccomment">/// Actually send the request. All the public methods go through here.
-    </span><span class="kw">async fn </span>send_async_inner(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;AsyncBody&gt;, Error&gt; {
+    </span><span class="kw">fn </span>send_async_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;) -&gt; InterceptorFuture&lt;Error&gt; {
         <span class="comment">// Populate request config, creating if necessary.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(config) = request.extensions_mut().get_mut::&lt;RequestConfig&gt;() {
             <span class="comment">// Merge request configuration with defaults.
@@ -2372,12 +2375,86 @@
         }
 
         <span class="kw">let </span>ctx = interceptor::Context {
-            invoker: Arc::new(<span class="self">self</span>),
-            interceptors: <span class="kw-2">&amp;</span><span class="self">self</span>.inner.interceptors,
+            client: <span class="self">self</span>.clone(),
+            interceptor_offset: <span class="number">0</span>,
         };
 
-        ctx.send(request).<span class="kw">await
-    </span>}
+        ctx.send(request)
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;) -&gt; InterceptorFuture&lt;Error&gt; {
+        <span class="kw">let </span>client = <span class="self">self</span>.clone();
+
+        Box::pin(<span class="kw">async move </span>{
+            <span class="kw">let </span>is_head_request = request.method() == http::Method::HEAD;
+
+            <span class="comment">// Set default user agent if not specified.
+            </span>request
+                .headers_mut()
+                .entry(http::header::USER_AGENT)
+                .or_insert(USER_AGENT.parse().unwrap());
+
+            <span class="comment">// Check if automatic decompression is enabled; we&#39;ll need to know
+            // this later after the response is sent.
+            </span><span class="kw">let </span>is_automatic_decompression = request
+                .extensions()
+                .get::&lt;RequestConfig&gt;()
+                .unwrap()
+                .automatic_decompression
+                .unwrap_or(<span class="bool-val">false</span>);
+
+            <span class="comment">// Create and configure a curl easy handle to fulfil the request.
+            </span><span class="kw">let </span>(easy, future) = client
+                .create_easy_handle(request)
+                .map_err(Error::from_any)<span class="question-mark">?</span>;
+
+            <span class="comment">// Send the request to the agent to be executed.
+            </span>client.inner.agent.submit_request(easy)<span class="question-mark">?</span>;
+
+            <span class="comment">// Await for the response headers.
+            </span><span class="kw">let </span>response = future.<span class="kw">await</span><span class="question-mark">?</span>;
+
+            <span class="comment">// If a Content-Length header is present, include that information in
+            // the body as well.
+            </span><span class="kw">let </span>body_len = response.content_length().filter(|<span class="kw">_</span>| {
+                <span class="comment">// If automatic decompression is enabled, and will likely be
+                // selected, then the value of Content-Length does not indicate
+                // the uncompressed body length and merely the compressed data
+                // length. If it looks like we are in this scenario then we
+                // ignore the Content-Length, since it can only cause confusion
+                // when included with the body.
+                </span><span class="kw">if </span>is_automatic_decompression {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = response.headers().get(http::header::CONTENT_ENCODING) {
+                        <span class="kw">if </span>value != <span class="string">&quot;identity&quot; </span>{
+                            <span class="kw">return </span><span class="bool-val">false</span>;
+                        }
+                    }
+                }
+
+                <span class="bool-val">true
+            </span>});
+
+            <span class="comment">// Convert the reader into an opaque Body.
+            </span><span class="prelude-val">Ok</span>(response.map(|reader| {
+                <span class="kw">if </span>is_head_request {
+                    AsyncBody::empty()
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>body = ResponseBody {
+                        inner: reader,
+                        <span class="comment">// Extend the lifetime of the agent by including a reference
+                        // to its handle in the response body.
+                        </span>_client: client,
+                    };
+
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(len) = body_len {
+                        AsyncBody::from_reader_sized(body, len)
+                    } <span class="kw">else </span>{
+                        AsyncBody::from_reader(body)
+                    }
+                }
+            }))
+        })
+    }
 
     <span class="kw">fn </span>create_easy_handle(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -2419,7 +2496,7 @@
 
         <span class="comment">// Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
-        </span><span class="attribute">#[allow(indirect_structural_match)]
+        </span><span class="attr">#[allow(indirect_structural_match)]
         </span><span class="kw">match </span>(request.method(), has_body) {
             <span class="comment">// Normal GET request.
             </span>(<span class="kw-2">&amp;</span>http::Method::GET, <span class="bool-val">false</span>) =&gt; {
@@ -2500,81 +2577,6 @@
     }
 }
 
-<span class="kw">impl </span><span class="kw">crate</span>::interceptor::Invoke <span class="kw">for </span><span class="kw-2">&amp;</span>HttpClient {
-    <span class="kw">fn </span>invoke(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>request: Request&lt;AsyncBody&gt;,
-    ) -&gt; <span class="kw">crate</span>::interceptor::InterceptorFuture&lt;<span class="lifetime">&#39;_</span>, Error&gt; {
-        Box::pin(<span class="kw">async move </span>{
-            <span class="kw">let </span>is_head_request = request.method() == http::Method::HEAD;
-
-            <span class="comment">// Set default user agent if not specified.
-            </span>request
-                .headers_mut()
-                .entry(http::header::USER_AGENT)
-                .or_insert(USER_AGENT.parse().unwrap());
-
-            <span class="comment">// Check if automatic decompression is enabled; we&#39;ll need to know
-            // this later after the response is sent.
-            </span><span class="kw">let </span>is_automatic_decompression = request
-                .extensions()
-                .get::&lt;RequestConfig&gt;()
-                .unwrap()
-                .automatic_decompression
-                .unwrap_or(<span class="bool-val">false</span>);
-
-            <span class="comment">// Create and configure a curl easy handle to fulfil the request.
-            </span><span class="kw">let </span>(easy, future) = <span class="self">self</span>.create_easy_handle(request).map_err(Error::from_any)<span class="question-mark">?</span>;
-
-            <span class="comment">// Send the request to the agent to be executed.
-            </span><span class="self">self</span>.inner.agent.submit_request(easy)<span class="question-mark">?</span>;
-
-            <span class="comment">// Await for the response headers.
-            </span><span class="kw">let </span>response = future.<span class="kw">await</span><span class="question-mark">?</span>;
-
-            <span class="comment">// If a Content-Length header is present, include that information in
-            // the body as well.
-            </span><span class="kw">let </span>body_len = response.content_length().filter(|<span class="kw">_</span>| {
-                <span class="comment">// If automatic decompression is enabled, and will likely be
-                // selected, then the value of Content-Length does not indicate
-                // the uncompressed body length and merely the compressed data
-                // length. If it looks like we are in this scenario then we
-                // ignore the Content-Length, since it can only cause confusion
-                // when included with the body.
-                </span><span class="kw">if </span>is_automatic_decompression {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = response.headers().get(http::header::CONTENT_ENCODING) {
-                        <span class="kw">if </span>value != <span class="string">&quot;identity&quot; </span>{
-                            <span class="kw">return </span><span class="bool-val">false</span>;
-                        }
-                    }
-                }
-
-                <span class="bool-val">true
-            </span>});
-
-            <span class="comment">// Convert the reader into an opaque Body.
-            </span><span class="prelude-val">Ok</span>(response.map(|reader| {
-                <span class="kw">if </span>is_head_request {
-                    AsyncBody::empty()
-                } <span class="kw">else </span>{
-                    <span class="kw">let </span>body = ResponseBody {
-                        inner: reader,
-                        <span class="comment">// Extend the lifetime of the agent by including a reference
-                        // to its handle in the response body.
-                        </span>_client: (<span class="kw-2">*</span><span class="self">self</span>).clone(),
-                    };
-
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(len) = body_len {
-                        AsyncBody::from_reader_sized(body, len)
-                    } <span class="kw">else </span>{
-                        AsyncBody::from_reader(body)
-                    }
-                }
-            }))
-        })
-    }
-}
-
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>HttpClient {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         f.debug_struct(<span class="string">&quot;HttpClient&quot;</span>).finish()
@@ -2582,13 +2584,13 @@
 }
 
 <span class="doccomment">/// A future for a request being executed.
-</span><span class="attribute">#[must_use = <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]
-</span><span class="kw">pub struct </span>ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt;(Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + <span class="lifetime">&#39;c </span>+ Send&gt;&gt;);
+</span><span class="attr">#[must_use = <span class="string">&quot;futures do nothing unless you `.await` or poll them&quot;</span>]
+</span><span class="kw">pub struct </span>ResponseFuture(Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + <span class="lifetime">&#39;static </span>+ Send&gt;&gt;);
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;c</span>&gt; ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt; {
+<span class="kw">impl </span>ResponseFuture {
     <span class="kw">fn </span>new&lt;F&gt;(future: F) -&gt; <span class="self">Self
     </span><span class="kw">where
-        </span>F: Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + Send + <span class="lifetime">&#39;c</span>,
+        </span>F: Future&lt;Output = &lt;<span class="self">Self </span><span class="kw">as </span>Future&gt;::Output&gt; + Send + <span class="lifetime">&#39;static</span>,
     {
         ResponseFuture(Box::pin(future))
     }
@@ -2598,7 +2600,7 @@
     }
 }
 
-<span class="kw">impl </span>Future <span class="kw">for </span>ResponseFuture&lt;<span class="lifetime">&#39;_</span>&gt; {
+<span class="kw">impl </span>Future <span class="kw">for </span>ResponseFuture {
     <span class="kw">type </span>Output = <span class="prelude-ty">Result</span>&lt;Response&lt;AsyncBody&gt;, Error&gt;;
 
     <span class="kw">fn </span>poll(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; Poll&lt;<span class="self">Self</span>::Output&gt; {
@@ -2606,7 +2608,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;c</span>&gt; fmt::Debug <span class="kw">for </span>ResponseFuture&lt;<span class="lifetime">&#39;c</span>&gt; {
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>ResponseFuture {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         f.debug_struct(<span class="string">&quot;ResponseFuture&quot;</span>).finish()
     }
@@ -2654,14 +2656,14 @@
     s
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="macro">static_assertions::assert_impl_all!</span>(HttpClient: Send, Sync);
     <span class="macro">static_assertions::assert_impl_all!</span>(HttpClientBuilder: Send);
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_default_header() {
         HttpClientBuilder::new()
             .default_header(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>)
@@ -2669,7 +2671,7 @@
             .expect(<span class="string">&quot;build client succeed&quot;</span>);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_default_headers_mut() {
         <span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClientBuilder::new().default_header(<span class="string">&quot;some-key&quot;</span>, <span class="string">&quot;some-value&quot;</span>);
         <span class="kw">let </span>headers_map = <span class="kw-2">&amp;mut </span>builder.default_headers;
@@ -2688,4 +2690,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (5e9772042 2022-10-29)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>

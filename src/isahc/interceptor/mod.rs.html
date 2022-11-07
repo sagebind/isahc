@@ -1,5 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/interceptor/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/interceptor/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
+                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -163,13 +163,6 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
 </pre><pre class="rust"><code><span class="doccomment">//! HTTP client interceptor API.
 //!
 //! This module provides the core types and functions for defining and working
@@ -197,20 +190,20 @@
 <span class="kw">mod </span>obj;
 
 <span class="kw">pub use </span><span class="self">self</span>::context::Context;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{context::Invoke, obj::InterceptorObj};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::obj::InterceptorObj;
 
 <span class="kw">type </span>InterceptorResult&lt;E&gt; = <span class="prelude-ty">Result</span>&lt;Response&lt;AsyncBody&gt;, E&gt;;
 
 <span class="doccomment">/// Defines an inline interceptor using a closure-like syntax.
 ///
 /// Closures are not supported due to a limitation in Rust&#39;s type inference.
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;unstable-interceptors&quot;</span>)]
 #[macro_export]
 </span><span class="macro">macro_rules! </span>interceptor {
     (<span class="macro-nonterminal">$request</span>:ident, <span class="macro-nonterminal">$ctx</span>:ident, <span class="macro-nonterminal">$body</span>:expr) =&gt; {{
         <span class="kw">async fn </span>interceptor(
             <span class="kw-2">mut </span><span class="macro-nonterminal">$request</span>: <span class="macro-nonterminal">$crate::http::Request</span>&lt;<span class="macro-nonterminal">$crate::AsyncBody</span>&gt;,
-            <span class="macro-nonterminal">$ctx</span>: <span class="macro-nonterminal">$crate::interceptor::Context</span>&lt;<span class="lifetime">&#39;_</span>&gt;,
+            <span class="macro-nonterminal">$ctx</span>: <span class="macro-nonterminal">$crate::interceptor::Context</span>,
         ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="macro-nonterminal">$crate::http::Response</span>&lt;<span class="macro-nonterminal">$crate::AsyncBody</span>&gt;, <span class="macro-nonterminal">$crate::Error</span>&gt; {
             (<span class="kw">move </span>|| <span class="kw">async move </span>{ <span class="macro-nonterminal">$body </span>})().<span class="kw">await</span>.map_err(Into::into)
         }
@@ -232,20 +225,17 @@
     ///
     /// The returned future is allowed to borrow the interceptor for the
     /// duration of its execution.
-    </span><span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
-        request: Request&lt;AsyncBody&gt;,
-        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
-    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt;;
+    </span><span class="kw">fn </span>intercept(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;AsyncBody&gt;, ctx: Context) -&gt; InterceptorFuture&lt;<span class="self">Self</span>::Err&gt;;
 }
 
 <span class="doccomment">/// The type of future returned by an interceptor.
-</span><span class="kw">pub type </span>InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, E&gt; = Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = InterceptorResult&lt;E&gt;&gt; + Send + <span class="lifetime">&#39;a</span>&gt;&gt;;
+</span><span class="kw">pub type </span>InterceptorFuture&lt;E&gt; =
+    Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = InterceptorResult&lt;E&gt;&gt; + Send + <span class="lifetime">&#39;static</span>&gt;&gt;;
 
 <span class="doccomment">/// Creates an interceptor from an arbitrary closure or function.
 </span><span class="kw">pub fn </span>from_fn&lt;F, E&gt;(f: F) -&gt; InterceptorFn&lt;F&gt;
 <span class="kw">where
-    </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context&lt;<span class="lifetime">&#39;a</span>&gt;, Output = InterceptorResult&lt;E&gt;&gt;
+    </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context, Output = InterceptorResult&lt;E&gt;&gt;
         + Send
         + Sync
         + <span class="lifetime">&#39;static</span>,
@@ -261,18 +251,14 @@
 <span class="kw">impl</span>&lt;E, F&gt; Interceptor <span class="kw">for </span>InterceptorFn&lt;F&gt;
 <span class="kw">where
     </span>E: Error + Send + Sync + <span class="lifetime">&#39;static</span>,
-    F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context&lt;<span class="lifetime">&#39;a</span>&gt;, Output = InterceptorResult&lt;E&gt;&gt;
+    F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; private::AsyncFn2&lt;Request&lt;AsyncBody&gt;, Context, Output = InterceptorResult&lt;E&gt;&gt;
         + Send
         + Sync
         + <span class="lifetime">&#39;static</span>,
 {
     <span class="kw">type </span><span class="prelude-val">Err </span>= E;
 
-    <span class="kw">fn </span>intercept&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        request: Request&lt;AsyncBody&gt;,
-        ctx: Context&lt;<span class="lifetime">&#39;a</span>&gt;,
-    ) -&gt; InterceptorFuture&lt;<span class="lifetime">&#39;a</span>, <span class="self">Self</span>::Err&gt; {
+    <span class="kw">fn </span>intercept(<span class="kw-2">&amp;</span><span class="self">self</span>, request: Request&lt;AsyncBody&gt;, ctx: Context) -&gt; InterceptorFuture&lt;<span class="self">Self</span>::Err&gt; {
         Box::pin(<span class="self">self</span>.<span class="number">0</span>.call(request, ctx))
     }
 }
@@ -284,7 +270,7 @@
 }
 
 <span class="comment">// Workaround for https://github.com/rust-lang/rust/issues/51004
-</span><span class="attribute">#[allow(unreachable_pub)]
+</span><span class="attr">#[allow(unreachable_pub)]
 </span><span class="kw">mod </span>private {
     <span class="kw">use </span>std::future::Future;
 
@@ -342,4 +328,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (5e9772042 2022-10-29)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>

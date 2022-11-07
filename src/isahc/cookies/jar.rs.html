@@ -1,5 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/jar.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>jar.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/jar.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>jar.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
+                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -472,14 +472,14 @@
 };
 
 <span class="doccomment">/// Returned when a [`Cookie`] fails to be added to the [`CookieJar`].
-</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>CookieRejectedError {
     kind: CookieRejectedErrorKind,
     cookie: Cookie,
 }
 
 <span class="doccomment">/// The reason why the [`Cookie`] was rejected.
-</span><span class="attribute">#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 </span><span class="kw">pub enum </span>CookieRejectedErrorKind {
     <span class="doccomment">/// The absolute request URI did not contain a valid host.
@@ -532,7 +532,7 @@
 /// Cookies are isolated from each other based on the domain and path they are
 /// received from. As such, most methods require you to specify a URI, since
 /// unrelated websites can have cookies with the same name without conflict.
-</span><span class="attribute">#[derive(Clone, Debug, Default)]
+</span><span class="attr">#[derive(Clone, Debug, Default)]
 </span><span class="kw">pub struct </span>CookieJar {
     cookies: Arc&lt;RwLock&lt;HashSet&lt;CookieWithContext&gt;&gt;&gt;,
 }
@@ -638,7 +638,7 @@
 
             <span class="comment">// Check the PSL for bad domain suffixes if available.
             // https://tools.ietf.org/html/rfc6265#section-5.3.5
-            </span><span class="attribute">#[cfg(feature = <span class="string">&quot;psl&quot;</span>)]
+            </span><span class="attr">#[cfg(feature = <span class="string">&quot;psl&quot;</span>)]
             </span>{
                 <span class="kw">if </span><span class="kw">super</span>::psl::is_public_suffix(domain) {
                     <span class="macro">tracing::warn!</span>(
@@ -685,7 +685,7 @@
 /// against outgoing requests. This type also implements `Eq` and `Hash` such
 /// that cookies with the same domain, path, and name are considered the same,
 /// as per RFC 6265 semantics.
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>CookieWithContext {
     <span class="doccomment">/// The domain-value of the cookie, as defined in RFC 6265. Will be derived
     /// from the request URI if the cookie did not specify one.
@@ -800,12 +800,12 @@
     </span><span class="kw-2">&amp;</span>uri.path()[..rightmost_slash_idx]
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>test_case::test_case;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>cookie_domain_not_allowed() {
         <span class="kw">let </span>jar = CookieJar::default();
 
@@ -873,7 +873,7 @@
         }
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>expire_a_cookie() {
         <span class="kw">let </span>uri: Uri = <span class="string">&quot;https://example.com/foo&quot;</span>.parse().unwrap();
         <span class="kw">let </span>jar = CookieJar::default();
@@ -891,7 +891,7 @@
         <span class="macro">assert!</span>(jar.get_for_uri(<span class="kw-2">&amp;</span>uri).into_iter().next().is_none());
     }
 
-    <span class="attribute">#[test_case(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>, <span class="bool-val">true</span>)]
+    <span class="attr">#[test_case(<span class="string">&quot;127.0.0.1&quot;</span>, <span class="string">&quot;127.0.0.1&quot;</span>, <span class="bool-val">true</span>)]
     #[test_case(<span class="string">&quot;.127.0.0.2&quot;</span>, <span class="string">&quot;127.0.0.2&quot;</span>, <span class="bool-val">true</span>)]
     #[test_case(<span class="string">&quot;bar.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">true</span>)]
     #[test_case(<span class="string">&quot;baz.com&quot;</span>, <span class="string">&quot;bar.com&quot;</span>, <span class="bool-val">false</span>)]
@@ -902,7 +902,7 @@
         <span class="macro">assert_eq!</span>(domain_matches(string, domain_string), should_match);
     }
 
-    <span class="attribute">#[test_case(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]
+    <span class="attr">#[test_case(<span class="string">&quot;/foo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]
     #[test_case(<span class="string">&quot;/Bar&quot;</span>, <span class="string">&quot;/bar&quot;</span>, <span class="bool-val">false</span>)]
     #[test_case(<span class="string">&quot;/fo&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">false</span>)]
     #[test_case(<span class="string">&quot;/foo/bar&quot;</span>, <span class="string">&quot;/foo&quot;</span>, <span class="bool-val">true</span>)]
@@ -922,4 +922,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="isahc" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (5e9772042 2022-10-29)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
