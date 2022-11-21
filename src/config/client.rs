@@ -1,5 +1,6 @@
 use super::{
     dns::{DnsCache, ResolveMap},
+    host_rule::HostRuleMap,
     request::SetOpt,
 };
 use std::time::Duration;
@@ -10,6 +11,7 @@ pub(crate) struct ClientConfig {
     pub(crate) close_connections: bool,
     pub(crate) dns_cache: Option<DnsCache>,
     pub(crate) dns_resolve: Option<ResolveMap>,
+    pub(crate) host_rule: Option<HostRuleMap>,
 }
 
 impl SetOpt for ClientConfig {
@@ -23,6 +25,10 @@ impl SetOpt for ClientConfig {
         }
 
         if let Some(map) = self.dns_resolve.as_ref() {
+            map.set_opt(easy)?;
+        }
+
+        if let Some(map) = self.host_rule.as_ref() {
             map.set_opt(easy)?;
         }
 

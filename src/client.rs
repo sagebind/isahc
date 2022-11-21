@@ -314,6 +314,28 @@ impl HttpClientBuilder {
         self
     }
 
+    /// Set a mapping of host rule
+    ///
+    /// Entries in the given map will be used first before using the default host
+    /// rules for host+port pairs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{config::HostRuleMap, prelude::*, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .host_rule(HostRuleMap::new()
+    ///         // Send requests for example.org on port 80 to github.com.
+    ///         .add("example.org", 80, "github.com"))
+    ///     .build()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn host_rule(mut self, map: HostRuleMap) -> Self {
+        self.client_config.host_rule = Some(map);
+        self
+    }
+
     /// Add a default header to be passed with every request.
     ///
     /// If a default header value is already defined for the given key, then a
