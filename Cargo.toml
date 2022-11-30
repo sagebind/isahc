@@ -19,20 +19,26 @@ features = ["cookies", "json", "nightly"]
 status = "actively-developed"
 
 [features]
-default = ["http2", "native-tls", "static-curl", "text-decoding"]
+default = ["http2", "default-tls", "static-curl", "text-decoding"]
 cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
-native-tls = ["curl/ssl", "curl-sys/ssl"]
 nightly = []
+online-tests = []
 psl = ["httpdate", "publicsuffix"]
-rustls-tls = ["curl/rustls", "curl/static-curl"]
-rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
-static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
+
+# TLS-related features
+tls = []
+tls-insecure = []
+default-tls = ["native-tls", "tls"]
+native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
+native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
+rustls-tls = ["static-curl", "tls", "curl/rustls"]
+rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
 
 [dependencies]
 async-channel = "1.7" # channel used for internal communication
@@ -50,12 +56,12 @@ waker-fn = "1" # async primitive
 
 # underlying HTTP engine that powers Isahc
 [dependencies.curl]
-version = "0.4.43"
+version = "0.4.44"
 default-features = false
 
 # access to certain curl APIs not exposed in safe wrapper
 [dependencies.curl-sys]
-version = "0.4.55"
+version = "0.4.56"
 default-features = false
 
 # used in TLS cert parsing
@@ -131,6 +137,10 @@ serde_json = "1"
 
 [dev-dependencies.testserver]
 path = "testserver"
+
+[[example]]
+name = "badssl"
+required-features = ["tls-insecure"]
 
 [[example]]
 name = "cookies"

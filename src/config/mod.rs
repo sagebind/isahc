@@ -13,7 +13,7 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::{proxy::Proxy, request::SetOpt};
+use self::request::SetOpt;
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
@@ -27,12 +27,10 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
-pub(crate) mod tls;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use tls::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -537,7 +535,7 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
-            config.proxy_authentication = Some(Proxy(authentication));
+            config.proxy_authentication = Some(authentication);
         })
     }
 
@@ -549,7 +547,7 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
-            config.proxy_credentials = Some(Proxy(credentials));
+            config.proxy_credentials = Some(credentials);
         })
     }
 
@@ -573,108 +571,13 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Set a custom SSL/TLS client certificate to use for client connections.
-    ///
-    /// If a format is not supported by the underlying SSL/TLS engine, an error
-    /// will be returned when attempting to send a request using the offending
-    /// certificate.
-    ///
-    /// The default value is none.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     Request,
-    /// };
-    ///
-    /// let response = Request::get("localhost:3999")
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .body(())?
-    ///     .send()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    ///
-    /// ```
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     HttpClient,
-    /// };
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
-        self.with_config(move |config| {
-            config.ssl_client_certificate = Some(certificate);
-        })
-    }
-
-    /// Set a custom SSL/TLS CA certificate bundle to use for client
-    /// connections.
-    ///
-    /// The default value is none.
-    ///
-    /// # Notes
-    ///
-    /// On Windows it may be necessary to combine this with
-    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
-    /// the contents of your CA bundle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
-        self.with_config(move |config| {
-            config.ssl_ca_certificate = Some(certificate);
-        })
-    }
-
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ciphers<I, T>(self, ciphers: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<String>,
-    {
-        self.with_config(move |config| {
-            config.ssl_ciphers = Some(ciphers.into_iter().map(T::into).collect());
-        })
-    }
-
     /// Set various options for this request that control SSL/TLS behavior.
     ///
     /// Most options are for disabling security checks that introduce security
     /// risks, but may be required as a last resort. Note that the most secure
-    /// options are already the default and do not need to be specified.
+    /// options are typically the default and do not need to be specified.
     ///
-    /// The default value is [`SslOption::NONE`].
+    /// The default value is [`TlsConfig::default`].
     ///
     /// # Warning
     ///
@@ -685,27 +588,125 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::{config::SslOption, prelude::*, Request};
+    /// use isahc::{prelude::*, tls::TlsConfig, Request};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let response = Request::get("https://badssl.com")
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .body(())?
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
     /// ```
-    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let client = HttpClient::builder()
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[cfg(feature = "tls")]
     #[must_use = "builders have no effect if unused"]
-    fn ssl_options(self, options: SslOption) -> Self {
+    fn tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
-            config.ssl_options = Some(options);
+            config.tls_config = Some(tls_config);
+        })
+    }
+
+    /// Set various options that control SSL/TLS behavior for a proxy.
+    ///
+    /// By default, the same TLS configuration is used for validating all
+    /// SSL/TLS connections, but this method allows you to use separate
+    /// configuration specifically for proxy server connections.
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated can introduce
+    /// significant security vulnerabilities.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
+    ///
+    /// # #[cfg(feature = "tls-insecure")]
+    /// let client = HttpClient::builder()
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    #[cfg(feature = "tls")]
+    #[must_use = "builders have no effect if unused"]
+    fn proxy_tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
+        self.with_config(move |config| {
+            config.proxy_tls_config = Some(tls_config);
+        })
+    }
+
+    /// Add a custom client certificate to use for client authentication, also
+    /// known as *mutual TLS*.
+    ///
+    /// SSL/TLS is often used by the client to verify that the server is
+    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
+    /// the server to verify that _you_ are legitimate (two-way). If the server
+    /// asks the client to present an approved certificate before continuing,
+    /// then this sets the certificate chain that will be used to prove
+    /// authenticity.
+    ///
+    /// If a certificate or key format given is not supported by the underlying
+    /// SSL/TLS engine, an error will be returned when attempting to send a
+    /// request using the offending certificate or key.
+    ///
+    /// By default, no client certificate is set.
+    ///
+    /// # Backend support
+    ///
+    /// Support for mutual TLS varies between the available TLS backends. Here
+    /// are some current limitations of note:
+    ///
+    /// - Schannel and Secure Transport require certificates and private keys to
+    ///   be presented together inside a PKCS #12 archive. This can be an actual
+    ///   archive or one in memory.
+    /// - Mutual TLS with Rustls is not supported at all.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::{prelude::*, tls::{Identity, PrivateKey}, HttpClient};
+    ///
+    /// let client = HttpClient::builder()
+    ///     .tls_identity(Identity::from_pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
+    ///     ))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    #[cfg(feature = "tls")]
+    #[must_use = "builders have no effect if unused"]
+    fn tls_identity(self, identity: crate::tls::Identity) -> Self {
+        self.with_config(move |config| {
+            config.identity = Some(identity);
+        })
+    }
+
+    #[cfg(feature = "tls")]
+    #[must_use = "builders have no effect if unused"]
+    fn proxy_tls_identity(self, identity: crate::tls::Identity) -> Self {
+        self.with_config(move |config| {
+            config.proxy_identity = Some(identity);
         })
     }
 

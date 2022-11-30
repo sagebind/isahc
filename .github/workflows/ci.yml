@@ -74,11 +74,11 @@ jobs:
           components: clippy
           default: true
 
-      # openssl-sys <0.9.45 relies on a feature in rustc_version >=0.2.2, but
-      # specifies its dependency as "^0.2".
+      # openssl-sys needs to be new enough to be compatible with system OpenSSL
+      # version
       - name: Override openssl-sys version
         run: |
-          printf '[dependencies.openssl-sys]\nversion = "0.9.45"\n' >> Cargo.toml
+          printf '[dependencies.openssl-sys]\nversion = "0.9.77"\n' >> Cargo.toml
 
       - name: Update Cargo.lock
         run: cargo -Z minimal-versions update

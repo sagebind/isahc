@@ -1,6 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::{proxy::Proxy, *};
+use super::{proxy::SetOptProxy, *};
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
@@ -19,7 +19,10 @@ pub(crate) trait SetOpt {
 
 // Define this struct inside a macro to reduce some boilerplate.
 macro_rules! define_request_config {
-    ($($field:ident: $t:ty,)*) => {
+    ($(
+        $(#[$meta:meta])*
+        $field:ident: $t:ty,
+    )*) => {
         /// Configuration for an HTTP request.
         ///
         /// This struct is not exposed directly, but rather is interacted with
@@ -27,6 +30,7 @@ macro_rules! define_request_config {
         #[derive(Clone, Debug, Default)]
         pub struct RequestConfig {
             $(
+                $(#[$meta])*
                 pub(crate) $field: $t,
             )*
         }
@@ -37,9 +41,12 @@ macro_rules! define_request_config {
             /// config.
             pub(crate) fn merge(&mut self, defaults: &Self) {
                 $(
-                    if self.$field.is_none() {
-                        if let Some(value) = defaults.$field.as_ref() {
-                            self.$field = Some(value.clone());
+                    $(#[$meta])*
+                    {
+                        if self.$field.is_none() {
+                            if let Some(value) = defaults.$field.as_ref() {
+                                self.$field = Some(value.clone());
+                            }
                         }
                     }
                 )*
@@ -65,15 +72,23 @@ define_request_config! {
     dial: Option<Dialer>,
     proxy: Option<Option<http::Uri>>,
     proxy_blacklist: Option<proxy::Blacklist>,
-    proxy_authentication: Option<Proxy<Authentication>>,
-    proxy_credentials: Option<Proxy<Credentials>>,
+    proxy_authentication: Option<Authentication>,
+    proxy_credentials: Option<Credentials>,
     max_upload_speed: Option<u64>,
     max_download_speed: Option<u64>,
-    ssl_client_certificate: Option<ClientCertificate>,
-    ssl_ca_certificate: Option<CaCertificate>,
-    ssl_ciphers: Option<tls::Ciphers>,
-    ssl_options: Option<SslOption>,
     enable_metrics: Option<bool>,
+
+    #[cfg(feature = "tls")]
+    tls_config: Option<crate::tls::TlsConfig>,
+
+    #[cfg(feature = "tls")]
+    identity: Option<crate::tls::Identity>,
+
+    #[cfg(feature = "tls")]
+    proxy_identity: Option<crate::tls::Identity>,
+
+    #[cfg(feature = "tls")]
+    proxy_tls_config: Option<crate::tls::TlsConfig>,
 
     // Used by interceptors
     redirect_policy: Option<RedirectPolicy>,
@@ -91,8 +106,9 @@ impl RequestConfig {
             automatic_decompression: Some(true),
             // Erase curl's default auth method of Basic.
             authentication: Some(Authentication::default()),
-            // Set native root certificates if available.
-            ssl_ca_certificate: CaCertificate::native(),
+            // Use default TLS configuration based on build configuration.
+            #[cfg(feature = "tls")]
+            tls_config: Some(crate::tls::TlsConfig::default()),
             ..Default::default()
         }
     }
@@ -186,11 +202,11 @@ impl SetOpt for RequestConfig {
         }
 
         if let Some(auth) = self.proxy_authentication.as_ref() {
-            auth.set_opt(easy)?;
+            auth.set_opt_proxy(easy)?;
         }
 
         if let Some(credentials) = self.proxy_credentials.as_ref() {
-            credentials.set_opt(easy)?;
+            credentials.set_opt_proxy(easy)?;
         }
 
         if let Some(max) = self.max_upload_speed {
@@ -201,20 +217,24 @@ impl SetOpt for RequestConfig {
             easy.max_recv_speed(max)?;
         }
 
-        if let Some(cert) = self.ssl_client_certificate.as_ref() {
-            cert.set_opt(easy)?;
+        #[cfg(feature = "tls")]
+        if let Some(config) = self.tls_config.as_ref() {
+            config.set_opt(easy)?;
         }
 
-        if let Some(cert) = self.ssl_ca_certificate.as_ref() {
-            cert.set_opt(easy)?;
+        #[cfg(feature = "tls")]
+        if let Some(config) = self.proxy_tls_config.as_ref() {
+            config.set_opt_proxy(easy)?;
         }
 
-        if let Some(ciphers) = self.ssl_ciphers.as_ref() {
-            ciphers.set_opt(easy)?;
+        #[cfg(feature = "tls")]
+        if let Some(identity) = self.identity.as_ref() {
+            identity.set_opt(easy)?;
         }
 
-        if let Some(options) = self.ssl_options.as_ref() {
-            options.set_opt(easy)?;
+        #[cfg(feature = "tls")]
+        if let Some(identity) = self.proxy_identity.as_ref() {
+            identity.set_opt_proxy(easy)?;
         }
 
         if let Some(enable) = self.enable_metrics {

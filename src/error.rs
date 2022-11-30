@@ -521,6 +521,12 @@ impl<T: StdError + Send + Sync + 'static> SourceError for T {
     }
 }
 
+pub(crate) fn create_curl_error(code: curl_sys::CURLcode, extra: impl fmt::Display) -> curl::Error {
+    let mut error = curl::Error::new(code);
+    error.set_extra(extra.to_string());
+    error
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
