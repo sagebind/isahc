@@ -8,6 +8,7 @@ use isahc::{
 };
 
 #[test]
+#[cfg(feature = "tls-insecure")]
 #[cfg_attr(not(feature = "online-tests"), ignore)]
 fn accept_expired_cert() {
     Request::get("https://expired.badssl.com")
@@ -23,6 +24,7 @@ fn accept_expired_cert() {
 }
 
 #[test]
+#[cfg(feature = "tls-insecure")]
 #[cfg_attr(not(feature = "online-tests"), ignore)]
 fn accepting_invalid_certs_alone_does_not_allow_invalid_hosts() {
     let error = Request::get("https://wrong.host.badssl.com")
@@ -40,6 +42,7 @@ fn accepting_invalid_certs_alone_does_not_allow_invalid_hosts() {
 }
 
 #[test]
+#[cfg(feature = "tls-insecure")]
 #[cfg_attr(not(feature = "online-tests"), ignore)]
 fn accept_cert_with_wrong_host() {
     Request::get("https://wrong.host.badssl.com")
@@ -55,6 +58,7 @@ fn accept_cert_with_wrong_host() {
 }
 
 #[test]
+#[cfg(feature = "tls-insecure")]
 #[cfg_attr(not(feature = "online-tests"), ignore)]
 fn accepting_certs_with_wrong_host_alone_does_not_allow_invalid_certs() {
     Request::get("https://expired.badssl.com")

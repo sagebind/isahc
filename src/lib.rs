@@ -206,6 +206,12 @@
 //! Conversely, if this feature is enabled but no backend feature is enabled, a
 //! compile error will be emitted.
 //!
+//! ## `tls-insecure`
+//!
+//! Enable the use of insecure TLS configuration. By default methods that allow
+//! you to create TLS configuration that may introduce security vulnerabilities
+//! into your code are not permitted.
+//!
 //! ## Unstable APIs
 //!
 //! There are also some features that enable new incubating APIs that do not

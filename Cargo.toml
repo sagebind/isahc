@@ -28,12 +28,12 @@ online-tests = []
 psl = ["httpdate", "publicsuffix"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
-static-ssl = ["curl/static-ssl"] # todo
 text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
 # TLS-related features
 tls = []
+tls-insecure = []
 default-tls = ["native-tls", "tls"]
 native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
 native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
@@ -137,6 +137,10 @@ serde_json = "1"
 
 [dev-dependencies.testserver]
 path = "testserver"
+
+[[example]]
+name = "badssl"
+required-features = ["tls-insecure"]
 
 [[example]]
 name = "cookies"

@@ -268,9 +268,10 @@ impl TlsConfigBuilder {
         self
     }
 
-    /// Disables all server certificate validation.
+    /// Disables all server certificate validation. Connections will be accepted
+    /// from servers that present invalid or expired certificates.
     ///
-    /// By default this is enabled.
+    /// By default this is disabled, and invalid certificates are rejected.
     ///
     /// # Warning
     ///
@@ -278,14 +279,18 @@ impl TlsConfigBuilder {
     /// certificates are trusted, *any* certificate for any site will be trusted
     /// for use. This includes expired certificates. This introduces significant
     /// vulnerabilities, and should only be used as a last resort.
+    #[cfg(feature = "tls-insecure")]
     pub fn danger_accept_invalid_certs(mut self, accept: bool) -> Self {
         self.danger_accept_invalid_certs = accept;
         self
     }
 
-    /// Disables hostname verification on server certificates.
+    /// Disables hostname verification on server certificates. Connections will
+    /// be accepted from servers that present certificates that do not match
+    /// their hostname.
     ///
-    /// By default this is enabled.
+    /// By default this is disabled, and connections with servers that return a
+    /// certificate that does not match their hostname are rejected.
     ///
     /// # Warning
     ///
@@ -293,6 +298,7 @@ impl TlsConfigBuilder {
     /// hostname verification is not used, any valid certificate for any site
     /// will be trusted for use from any other. This introduces a significant
     /// vulnerability to man-in-the-middle attacks.
+    #[cfg(feature = "tls-insecure")]
     pub fn danger_accept_invalid_hosts(mut self, accept: bool) -> Self {
         self.danger_accept_invalid_hosts = accept;
         self
@@ -301,7 +307,7 @@ impl TlsConfigBuilder {
     /// Disables certificate revocation checks for backends where such behavior
     /// is present.
     ///
-    /// By default this is enabled.
+    /// By default this is disabled, and revoked certificates are rejected.
     ///
     /// This option is only supported when using the Schannel TLS backend (the
     /// native Windows SSL/TLS implementation). On other backends this option
@@ -313,6 +319,7 @@ impl TlsConfigBuilder {
     /// implementing revocation checks do so to ensure that a certificate that
     /// appears valid has not been reported as compromised. Disabling this can
     /// increase your application's vulnerability to malicious servers.
+    #[cfg(feature = "tls-insecure")]
     pub fn danger_accept_revoked_certs(mut self, accept: bool) -> Self {
         self.danger_accept_revoked_certs = accept;
         self

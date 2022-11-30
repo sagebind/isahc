@@ -590,6 +590,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// ```no_run
     /// use isahc::{prelude::*, tls::TlsConfig, Request};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let response = Request::get("https://badssl.com")
     ///     .tls_config(TlsConfig::builder()
     ///         .danger_accept_invalid_certs(true)
@@ -603,6 +604,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// ```
     /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let client = HttpClient::builder()
     ///     .tls_config(TlsConfig::builder()
     ///         .danger_accept_invalid_certs(true)
@@ -683,6 +685,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// ```
     /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let client = HttpClient::builder()
     ///     .proxy_tls_config(TlsConfig::builder()
     ///         .danger_accept_invalid_certs(true)
