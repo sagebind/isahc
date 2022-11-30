@@ -82,7 +82,7 @@ pub struct TlsConfigBuilder {
     root_cert_store: RootCertStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
-    identity: Option<Identity>,
+    // identity: Option<Identity>,
     ciphers: Option<String>,
     min_version: Option<ProtocolVersion>,
     max_version: Option<ProtocolVersion>,
@@ -148,50 +148,6 @@ impl TlsConfigBuilder {
     /// By default, no issuer certificate is set.
     pub fn issuer_certificate(mut self, cert: Certificate) -> Self {
         self.issuer_cert = Some(cert);
-        self
-    }
-
-    /// Add a custom client certificate to use for client authentication, also
-    /// known as *mutual TLS*.
-    ///
-    /// SSL/TLS is often used by the client to verify that the server is
-    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
-    /// the server to verify that _you_ are legitimate (two-way). If the server
-    /// asks the client to present an approved certificate before continuing,
-    /// then this sets the certificate chain that will be used to prove
-    /// authenticity.
-    ///
-    /// If a certificate or key format given is not supported by the underlying
-    /// SSL/TLS engine, an error will be returned when attempting to send a
-    /// request using the offending certificate or key.
-    ///
-    /// By default, no client certificate is set.
-    ///
-    /// # Backend support
-    ///
-    /// Support for mutual TLS varies between the available TLS backends. Here
-    /// are some current limitations of note:
-    ///
-    /// - Schannel and Secure Transport require certificates and private keys to
-    ///   be presented together inside a PKCS #12 archive. This can be an actual
-    ///   archive or one in memory.
-    /// - Mutual TLS with Rustls is not supported at all.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
-    ///
-    /// let config = TlsConfig::builder()
-    ///     .identity(Identity::from_pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
-    ///     ))
-    ///     .build();
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    pub fn identity(mut self, identity: Identity) -> Self {
-        self.identity = Some(identity);
         self
     }
 
@@ -332,7 +288,6 @@ impl TlsConfigBuilder {
             root_cert_store: self.root_cert_store,
             issuer_cert: self.issuer_cert,
             issuer_cert_path: self.issuer_cert_path,
-            identity: self.identity,
             min_version: self.min_version.as_ref().map(ProtocolVersion::curl_version),
             max_version: self.max_version.as_ref().map(ProtocolVersion::curl_version),
             danger_accept_invalid_certs: self.danger_accept_invalid_certs,
@@ -352,7 +307,6 @@ pub struct TlsConfig {
     root_cert_store: RootCertStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
-    identity: Option<Identity>,
 
     /// List of ciphers to use, in a string format compatible with curl.
     ciphers: Option<String>,
@@ -441,10 +395,6 @@ impl SetOpt for TlsConfig {
             easy.issuer_cert(path)?;
         }
 
-        if let Some(identity) = self.identity.as_ref() {
-            identity.set_opt(easy)?;
-        }
-
         Ok(())
     }
 }
@@ -472,10 +422,6 @@ impl SetOptProxy for TlsConfig {
 
         if let Some(path) = self.issuer_cert_path.as_ref() {
             easy.proxy_issuer_cert(path)?;
-        }
-
-        if let Some(identity) = self.identity.as_ref() {
-            identity.set_opt_proxy(easy)?;
         }
 
         Ok(())
