@@ -74,6 +74,11 @@ jobs:
           components: clippy
           default: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libssl-dev
+
       # openssl-sys <0.9.45 relies on a feature in rustc_version >=0.2.2, but
       # specifies its dependency as "^0.2".
       - name: Override openssl-sys version
