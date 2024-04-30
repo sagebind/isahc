@@ -33,7 +33,7 @@ unstable-interceptors = []
 
 [dependencies]
 async-channel = "1.4.2"
-castaway = "0.1.1"
+castaway = "0.2.2"
 crossbeam-utils = ">=0.7.0, <0.9.0"
 curl = "0.4.36"
 curl-sys = "0.4.55"
