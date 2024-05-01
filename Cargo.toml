@@ -1,6 +1,6 @@
 [package]
 name = "isahc"
-version = "1.7.3"
+version = "1.8.0"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -9,7 +9,8 @@ categories = ["web-programming::http-client"]
 repository = "https://github.com/sagebind/isahc"
 documentation = "https://docs.rs/isahc/"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.63"
 exclude = [".*", "benchmarks", "media", "src/cookies/psl/list/*/"]
 
 [package.metadata.docs.rs]
@@ -90,7 +91,10 @@ features = ["std", "std-future"]
 env_logger = "0.9"
 flate2 = "1.0.3"
 indicatif = "0.15"
-rayon = "1"
+rayon = "1.6.*"
+regex = "1.9.*"
+regex-automata = "0.3.*"
+regex-syntax = "0.7.*"
 static_assertions = "1.1"
 structopt = "0.3"
 tempfile = "3.1"

@@ -21,22 +21,15 @@ jobs:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y libkrb5-dev
         if: matrix.os == 'ubuntu-latest'
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: "1.46.0"
-          default: true
 
       - name: Update Cargo.lock
         run: cargo update
@@ -64,9 +57,9 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -85,7 +78,7 @@ jobs:
         run: cargo -Z minimal-versions update
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -104,9 +97,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -119,7 +112,7 @@ jobs:
         run: cargo update
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
