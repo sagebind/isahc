@@ -125,7 +125,7 @@ impl Selector {
             // error back complaining that the socket is invalid, we can safely
             // ignore it.
             if let Err(e) = self.poller.delete(socket) {
-                if !is_bad_socket_error(&e) && e.kind() != io::ErrorKind::PermissionDenied {
+                if !is_bad_socket_error(&e) {
                     return Err(e);
                 }
             }
@@ -267,7 +267,7 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
 
     match error.kind() {
         // Common error codes std understands.
-        io::ErrorKind::NotFound | io::ErrorKind::InvalidInput => true,
+        io::ErrorKind::NotFound | io::ErrorKind::InvalidInput | io::ErrorKind::PermissionDenied => true,
 
         // Check for OS-specific error codes.
         _ => match error.raw_os_error() {
