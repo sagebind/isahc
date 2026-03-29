@@ -1,12 +1,11 @@
 #![allow(unsafe_code)]
 
 use curl::multi::Socket;
-use polling::{Event, Events, Poller};
+use polling::{AsSource, Event, Events, Poller};
 use std::{
     collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, Hasher},
     io,
-    os::fd::BorrowedFd,
     sync::Arc,
     task::Waker,
     time::Duration,
@@ -130,10 +129,7 @@ impl Selector {
             // forgotten about this socket (e.g. epoll). Therefore if we get an
             // error back complaining that the socket is invalid, we can safely
             // ignore it.
-            if let Err(e) = self
-                .poller
-                .delete(unsafe { BorrowedFd::borrow_raw(socket) })
-            {
+            if let Err(e) = self.poller.delete(unsafe { as_source(socket) }) {
                 if !is_bad_socket_error(&e) && e.kind() != io::ErrorKind::PermissionDenied {
                     return Err(e);
                 }
@@ -230,7 +226,7 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
             e
         );
         poller.modify(
-            unsafe { BorrowedFd::borrow_raw(socket) },
+            unsafe { as_source(socket) },
             Event::new(socket as usize, readable, writable),
         )?;
     }
@@ -247,7 +243,7 @@ fn poller_modify(
     // If this errors, we retry the operation as an add instead. This is done
     // because epoll is weird.
     if let Err(e) = poller.modify(
-        unsafe { BorrowedFd::borrow_raw(socket) },
+        unsafe { as_source(socket) },
         Event::new(socket as usize, readable, writable),
     ) {
         tracing::debug!(
@@ -286,6 +282,17 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
 
             _ => false,
         },
+    }
+}
+
+unsafe fn as_source(socket: Socket) -> impl AsSource {
+    #[cfg(unix)]
+    unsafe {
+        std::os::fd::BorrowedFd::borrow_raw(socket)
+    }
+    #[cfg(windows)]
+    unsafe {
+        std::os::windows::io::BorrowedSocket::borrow_raw(socket)
     }
 }
 
