@@ -54,7 +54,7 @@ jobs:
         run: cargo run --release --example simple
 
   test-minimal-versions:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -125,10 +125,7 @@ jobs:
             cargo-${{ runner.os }}-
 
       - name: Check Clippy lints
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --features ${{ env.FEATURES }},unstable-interceptors
+        run: cargo clippy --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Generate code coverage report
         uses: actions-rs/tarpaulin@v0.1.3
