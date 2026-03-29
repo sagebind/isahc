@@ -2,16 +2,14 @@
 
 Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is fun to use.
 
-_Formerly known as [chttp]._
-
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.63+-yellow.svg)](#minimum-supported-rust-version)
+[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.85+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
-![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
+![Maintenance](https://img.shields.io/badge/maintenance-passively--maintained-brightgreen.svg)
 [![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
-[![codecov](https://codecov.io/gh/sagebind/isahc/branch/master/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
+[![codecov](https://codecov.io/gh/sagebind/isahc/branch/1.x/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
 
 ## Key features
 
@@ -104,7 +102,7 @@ Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. 
 
 Safe Rust bindings to libcurl are provided by the [curl crate], which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
 
-## When would you *not* use Isahc?
+## When would you _not_ use Isahc?
 
 Not every library is perfect for every use-case. While Isahc strives to be a full-featured and general-purpose HTTP client that should work well for many projects, there are a few scenarios that Isahc is not well suited for:
 
@@ -118,10 +116,8 @@ This project's source code and documentation are licensed under the MIT license.
 
 The Isahc logo and related assets are licensed under a [Creative Commons Attribution 4.0 International License][cc-by]. See [LICENSE-CC-BY](LICENSE-CC-BY) for details.
 
-
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
-[chttp]: https://crates.io/crates/chttp
 [curl crate]: https://crates.io/crates/curl
 [discussions]: https://github.com/sagebind/isahc/discussions
 [documentation]: https://docs.rs/isahc
