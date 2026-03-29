@@ -115,7 +115,7 @@ impl Decoder {
         }
 
         // If last is true, buf should always be fully consumed.
-        if cfg!(debug) && last {
+        if cfg!(debug_assertions) && last {
             assert_eq!(buf.len(), 0);
         }
 
