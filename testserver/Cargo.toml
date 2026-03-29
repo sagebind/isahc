@@ -2,7 +2,7 @@
 name = "testserver"
 version = "0.0.0"
 description = "HTTP server for testing."
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]

@@ -20,9 +20,8 @@ use futures_lite::{
     io::AsyncRead,
 };
 use http::{
+    Request, Response,
     header::{HeaderMap, HeaderName, HeaderValue},
-    Request,
-    Response,
 };
 use once_cell::sync::Lazy;
 use std::{
@@ -1064,23 +1063,20 @@ impl HttpClient {
 
         easy.signal(false)?;
 
-        let request_config = request
-            .extensions()
-            .get::<RequestConfig>()
-            .unwrap();
+        let request_config = request.extensions().get::<RequestConfig>().unwrap();
 
         request_config.set_opt(&mut easy)?;
         self.inner.client_config.set_opt(&mut easy)?;
 
         // Check if we need to disable the Expect header.
-        let disable_expect_header = request_config.expect_continue
+        let disable_expect_header = request_config
+            .expect_continue
             .as_ref()
             .map(|x| x.is_disabled())
             .unwrap_or_default();
 
         // Set the HTTP method to use. Curl ties in behavior with the request
         // method, so we need to configure this carefully.
-        #[allow(indirect_structural_match)]
         match (request.method(), has_body) {
             // Normal GET request.
             (&http::Method::GET, false) => {
