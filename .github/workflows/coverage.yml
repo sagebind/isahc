@@ -9,8 +9,9 @@ jobs:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Generate code coverage
         run: |
