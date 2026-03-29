@@ -171,6 +171,11 @@
 //! Additional serialization and deserialization of JSON bodies via
 //! [serde](https://serde.rs). Disabled by default.
 //!
+//! ## `pkcs11`
+//!
+//! Enable certificate and private key configuration for PKCS#11 token
+//! usage. Disabled by default.
+//!
 //! ## `psl`
 //!
 //! Enable use of the Public Suffix List to filter out potentially malicious

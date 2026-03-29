@@ -31,6 +31,9 @@ pub struct ClientCertificate {
 
     /// Password to decrypt the certificate file.
     password: Option<String>,
+
+    /// The crypto engine.
+    engine: Option<&'static str>,
 }
 
 impl ClientCertificate {
@@ -53,6 +56,7 @@ impl ClientCertificate {
             data: PathOrBlob::Blob(bytes.into()),
             private_key: private_key.into(),
             password: None,
+            engine: None,
         }
     }
 
@@ -75,6 +79,7 @@ impl ClientCertificate {
             data: PathOrBlob::Blob(bytes.into()),
             private_key: private_key.into(),
             password: None,
+            engine: None,
         }
     }
 
@@ -98,6 +103,7 @@ impl ClientCertificate {
             data: PathOrBlob::Blob(bytes.into()),
             private_key: None,
             password: password.into(),
+            engine: None,
         }
     }
 
@@ -113,6 +119,7 @@ impl ClientCertificate {
             data: PathOrBlob::Path(path.into()),
             private_key: private_key.into(),
             password: None,
+            engine: None,
         }
     }
 
@@ -128,6 +135,7 @@ impl ClientCertificate {
             data: PathOrBlob::Path(path.into()),
             private_key: private_key.into(),
             password: None,
+            engine: None,
         }
     }
 
@@ -143,6 +151,51 @@ impl ClientCertificate {
             data: PathOrBlob::Path(path.into()),
             private_key: None,
             password: password.into(),
+            engine: None,
+        }
+    }
+
+    /// Get an HSM-bound certificate by way of PKCS#11 URI.
+    ///
+    /// The `pkcs11_uri` is expected to be a [PKCS#11 URI][uri-scheme] whose
+    /// `type` is implicitly understood to be `cert`.
+    ///
+    /// It is expected that your OpenSSL configuration contains an appropriate `pkcs11`
+    /// stanza which properly resolves the PKCS#11 vendor module/shared object.  A
+    /// reasonable way to test this is to *manually* invoke a curl command specifying
+    /// `--cert` and `--key` parameters using the pkcs11 uri values intended to be
+    /// used in your code.
+    ///
+    /// #### Example (these are YubiKey object alias values for slot `9E`)
+    /// ``` terminal
+    /// curl https://www.rust-lang.org \
+    /// --key "pkcs11:object=Private%20key%20for%20Card%20Authentication?pin-value=123456" \
+    /// --cert "pkcs11:object=X.509%20Certificate%20for%20Card%20Authentication"
+    /// ```
+    /// The above key and cert isahc code (minus invocation) would be:
+    /// #### Example
+    /// ```
+    /// use isahc::config::{ClientCertificate, PrivateKey,};
+    /// let private_key: Option<PrivateKey> = PrivateKey::pkcs11(
+    ///     "pkcs11:object=Private%20key%20for%20Card%20Authentication?pin-value=123456",
+    /// )
+    /// .ok();
+    /// let client_cert: ClientCertificate = ClientCertificate::pkcs11(
+    ///     "pkcs11:object=X.509%20Certificate%20for%20Card%20Authentication",
+    ///     private_key,
+    /// );
+    /// ```
+    ///
+    /// [uri-scheme]: https://datatracker.ietf.org/doc/html/rfc7512
+    #[cfg(feature="pkcs11")]
+    pub fn pkcs11(pkcs11_uri: &str, private_key: Option<PrivateKey>) -> Self {
+
+        Self {
+            format: "ENG",
+            data: PathOrBlob::Blob(pkcs11_uri.into()),
+            private_key,
+            password: None,
+            engine: Some("pkcs11"),
         }
     }
 
@@ -169,6 +222,10 @@ impl SetOpt for ClientCertificate {
             PathOrBlob::Blob(bytes) => easy.ssl_cert_blob(bytes.as_slice()),
         }?;
 
+        if let Some(engine) = self.engine.as_ref() {
+            easy.ssl_engine(engine)?;
+        }
+
         if let Some(key) = self.private_key.as_ref() {
             key.set_opt(easy)?;
         }
@@ -192,6 +249,9 @@ pub struct PrivateKey {
 
     /// Password to decrypt the key file.
     password: Option<String>,
+
+    /// The crypto engine.
+    engine: Option<&'static str>,
 }
 
 impl PrivateKey {
@@ -212,6 +272,7 @@ impl PrivateKey {
             format: "PEM",
             data: PathOrBlob::Blob(bytes.into()),
             password: password.into(),
+            engine: None,
         }
     }
 
@@ -232,6 +293,7 @@ impl PrivateKey {
             format: "DER",
             data: PathOrBlob::Blob(bytes.into()),
             password: password.into(),
+            engine: None,
         }
     }
 
@@ -246,6 +308,7 @@ impl PrivateKey {
             format: "PEM",
             data: PathOrBlob::Path(path.into()),
             password: password.into(),
+            engine: None,
         }
     }
 
@@ -260,7 +323,36 @@ impl PrivateKey {
             format: "DER",
             data: PathOrBlob::Path(path.into()),
             password: password.into(),
+            engine: None,
         }
+    }
+
+    /// Use an HSM-bound private key by way of PKCS#11 URI.
+    ///
+    /// The `pkcs11_uri` is expected to be a PKCS#11 URI whose `type` is implicitly
+    /// understood to be `private`.  If the `pin-value` attribute has been included,
+    /// it will effectively be assigned as the password.
+    ///
+    /// It is expected that your OpenSSL configuration contains an appropriate `pkcs11`
+    /// stanza which properly resolves the PKCS#11 vendor module/shared object.
+    ///
+    /// Please be aware we are limited to curl's API so not all PKCS#11 features are supported.
+    ///
+    /// #### Example
+    /// ```
+    /// let pkcs11_uri = "pkcs11:object=Private%20key%20for%20Card%20Authentication?pin-value=123456";
+    /// let private_key = isahc::config::PrivateKey::pkcs11(pkcs11_uri).expect("PrivateKey should be valid.");
+    /// ```
+    #[cfg(feature = "pkcs11")]
+    pub fn pkcs11(pkcs11_uri: &str) -> Result<Self, pk11_uri_parser::PK11URIError> {
+        let mapping = pk11_uri_parser::parse(pkcs11_uri)?;
+
+        Ok(Self {
+            format: "ENG",
+            data: PathOrBlob::Blob(pkcs11_uri.into()),
+            password: mapping.pin_value().map(String::from),
+            engine: Some("pkcs11")
+        })
     }
 }
 
@@ -272,6 +364,10 @@ impl SetOpt for PrivateKey {
             PathOrBlob::Path(path) => easy.ssl_key(path.as_path()),
             PathOrBlob::Blob(bytes) => easy.ssl_key_blob(bytes.as_slice()),
         }?;
+
+        if let Some(engine) = self.engine.as_ref() {
+            easy.ssl_engine(engine)?;
+        }
 
         if let Some(password) = self.password.as_ref() {
             easy.key_password(password)?;
