@@ -15,5 +15,5 @@ pub(crate) fn pool() -> &'static ThreadPool {
         .size(..100)
         .build());
 
-    &*POOL
+    &POOL
 }

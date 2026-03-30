@@ -1,5 +1,7 @@
+#![allow(unsafe_code)]
+
 use curl::multi::Socket;
-use polling::{Event, Poller};
+use polling::{AsSource, Event, Events, Poller};
 use std::{
     collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, Hasher},
@@ -28,9 +30,9 @@ pub(crate) struct Selector {
     /// set and try to register it again later.
     bad_sockets: HashSet<Socket, BuildHasherDefault<IntHasher>>,
 
-    /// Socket events that have occurred. We re-use this vec every call for
+    /// Socket events that have occurred. We re-use this every call for
     /// efficiency.
-    events: Vec<Event>,
+    events: Events,
 
     /// Incrementing counter used to deduplicate registration operations.
     tick: usize,
@@ -50,7 +52,7 @@ impl Selector {
             poller: Arc::new(Poller::new()?),
             sockets: HashMap::with_hasher(Default::default()),
             bad_sockets: HashSet::with_hasher(Default::default()),
-            events: Vec::new(),
+            events: Events::new(),
             tick: 0,
         })
     }
@@ -78,11 +80,14 @@ impl Selector {
         readable: bool,
         writable: bool,
     ) -> io::Result<()> {
-        let previous = self.sockets.insert(socket, Registration {
-            readable,
-            writable,
-            tick: self.tick,
-        });
+        let previous = self.sockets.insert(
+            socket,
+            Registration {
+                readable,
+                writable,
+                tick: self.tick,
+            },
+        );
 
         let result = if previous.is_some() {
             poller_modify(&self.poller, socket, readable, writable)
@@ -124,7 +129,7 @@ impl Selector {
             // forgotten about this socket (e.g. epoll). Therefore if we get an
             // error back complaining that the socket is invalid, we can safely
             // ignore it.
-            if let Err(e) = self.poller.delete(socket) {
+            if let Err(e) = self.poller.delete(unsafe { as_source(socket) }) {
                 if !is_bad_socket_error(&e) && e.kind() != io::ErrorKind::PermissionDenied {
                     return Err(e);
                 }
@@ -144,7 +149,7 @@ impl Selector {
         // We don't do this immediately after polling because the caller may
         // choose to de-register a socket before the next call. That's why we
         // wait until the last minute.
-        for event in self.events.drain(..) {
+        for event in self.events.iter() {
             let socket = event.key as Socket;
             if let Some(registration) = self.sockets.get_mut(&socket) {
                 // If the socket was already re-registered this tick, then we
@@ -160,6 +165,9 @@ impl Selector {
                 }
             }
         }
+
+        // Mark all events as handled.
+        self.events.clear();
 
         // Iterate over sockets that have been registered, but failed to be
         // added to the underlying poller temporarily, and retry adding them.
@@ -211,21 +219,16 @@ fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -
     // operation as a modification is sufficient to handle this.
     //
     // This is especially common with the epoll backend.
-    if let Err(e) = poller.add(socket, Event {
-        key: socket as usize,
-        readable,
-        writable,
-    }) {
+    if let Err(e) = unsafe { poller.add(socket, Event::new(socket as usize, readable, writable)) } {
         tracing::debug!(
             "failed to add interest for socket {}, retrying as a modify: {}",
             socket,
             e
         );
-        poller.modify(socket, Event {
-            key: socket as usize,
-            readable,
-            writable,
-        })?;
+        poller.modify(
+            unsafe { as_source(socket) },
+            Event::new(socket as usize, readable, writable),
+        )?;
     }
 
     Ok(())
@@ -239,21 +242,18 @@ fn poller_modify(
 ) -> io::Result<()> {
     // If this errors, we retry the operation as an add instead. This is done
     // because epoll is weird.
-    if let Err(e) = poller.modify(socket, Event {
-        key: socket as usize,
-        readable,
-        writable,
-    }) {
+    if let Err(e) = poller.modify(
+        unsafe { as_source(socket) },
+        Event::new(socket as usize, readable, writable),
+    ) {
         tracing::debug!(
             "failed to modify interest for socket {}, retrying as an add: {}",
             socket,
             e
         );
-        poller.add(socket, Event {
-            key: socket as usize,
-            readable,
-            writable,
-        })?;
+        unsafe {
+            poller.add(socket, Event::new(socket as usize, readable, writable))?;
+        }
     }
 
     Ok(())
@@ -282,6 +282,17 @@ fn is_bad_socket_error(error: &io::Error) -> bool {
 
             _ => false,
         },
+    }
+}
+
+unsafe fn as_source(socket: Socket) -> impl AsSource {
+    #[cfg(unix)]
+    unsafe {
+        std::os::fd::BorrowedFd::borrow_raw(socket)
+    }
+    #[cfg(windows)]
+    unsafe {
+        std::os::windows::io::BorrowedSocket::borrow_raw(socket)
     }
 }
 

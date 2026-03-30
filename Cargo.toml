@@ -1,6 +1,6 @@
 [package]
 name = "isahc"
-version = "1.7.2"
+version = "1.8.0"
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"
@@ -9,14 +9,15 @@ categories = ["web-programming::http-client"]
 repository = "https://github.com/sagebind/isahc"
 documentation = "https://docs.rs/isahc/"
 readme = "README.md"
-edition = "2018"
+edition = "2024"
+rust-version = "1.85"
 exclude = [".*", "benchmarks", "media", "src/cookies/psl/list/*/"]
 
 [package.metadata.docs.rs]
 features = ["cookies", "json", "nightly"]
 
 [badges.maintenance]
-status = "actively-developed"
+status = "passively-maintained"
 
 [features]
 default = ["http2", "static-curl", "text-decoding"]
@@ -32,17 +33,17 @@ text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
 [dependencies]
-async-channel = "1.4.2"
-castaway = "0.1.1"
+async-channel = ">=1.4.2, <3"
+castaway = "0.2.4"
 crossbeam-utils = ">=0.7.0, <0.9.0"
 curl = "0.4.36"
 curl-sys = "0.4.55"
-event-listener = "2.3.3"
+event-listener = "5"
 futures-lite = "2.3.0"
 http = "0.2.1"
 log = "0.4"
 once_cell = "1"
-polling = "2"
+polling = "3"
 slab = "0.4"
 sluice = "0.5.4"
 url = "2.1"
@@ -87,10 +88,13 @@ default-features = false
 features = ["std", "std-future"]
 
 [dev-dependencies]
-env_logger = "0.9"
+env_logger = "0.11"
 flate2 = "1.0.3"
 indicatif = "0.15"
-rayon = "1"
+rayon = "1.6.*"
+regex = "1.9.*"
+regex-automata = "0.3.*"
+regex-syntax = "0.7.*"
 static_assertions = "1.1"
 structopt = "0.3"
 tempfile = "3.1"

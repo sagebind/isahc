@@ -66,14 +66,14 @@ mod tests {
         let version = version();
 
         assert!(version.starts_with("isahc/1."));
-        assert!(version.contains("curl/7."));
+        assert!(version.contains("curl/7.") || version.contains("curl/8."));
     }
 
     #[test]
     fn curl_version_expected() {
         let (major, minor, _patch) = curl_version();
 
-        assert_eq!(major, 7);
+        assert!(major >= 7);
         assert!(minor > 0);
     }
 

@@ -111,7 +111,7 @@ fn any_ip_version_uses_ipv4_or_ipv6() {
     let server_v6 = TcpListener::bind((Ipv6Addr::LOCALHOST, port)).unwrap();
 
     fn respond(client: &mut TcpStream, response: &[u8]) -> io::Result<()> {
-        client.read(&mut [0; 8192])?;
+        let _ = client.read(&mut [0; 8192])?;
         client.write_all(response)?;
         client.flush()?;
         client.shutdown(Shutdown::Both)

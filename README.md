@@ -2,16 +2,14 @@
 
 Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is fun to use.
 
-_Formerly known as [chttp]._
-
 [![Crates.io](https://img.shields.io/crates/v/isahc.svg)](https://crates.io/crates/isahc)
 [![Documentation](https://docs.rs/isahc/badge.svg)][documentation]
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.46+-yellow.svg)](#minimum-supported-rust-version)
+[![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.85+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
-![Maintenance](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
+![Maintenance](https://img.shields.io/badge/maintenance-passively--maintained-brightgreen.svg)
 [![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
-[![codecov](https://codecov.io/gh/sagebind/isahc/branch/master/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
+[![codecov](https://codecov.io/gh/sagebind/isahc/branch/1.x/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
 
 ## Key features
 
@@ -70,12 +68,12 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "1.7"
+isahc = "1.8"
 ```
 
 ### Minimum supported Rust version
 
-The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.46 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.46. It might compile with older versions but that could change at any time.
+The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.63 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.63. It might compile with older versions but that could change at any time.
 
 This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
 
@@ -104,7 +102,7 @@ Isahc uses [libcurl] under the hood to handle the HTTP protocol and networking. 
 
 Safe Rust bindings to libcurl are provided by the [curl crate], which you can use yourself if you want to use curl directly. Isahc delivers a lot of value on top of vanilla curl, by offering a simpler, more idiomatic API and doing the hard work of turning the powerful [multi interface] into a futures-based API.
 
-## When would you *not* use Isahc?
+## When would you _not_ use Isahc?
 
 Not every library is perfect for every use-case. While Isahc strives to be a full-featured and general-purpose HTTP client that should work well for many projects, there are a few scenarios that Isahc is not well suited for:
 
@@ -112,22 +110,14 @@ Not every library is perfect for every use-case. While Isahc strives to be a ful
 - **WebAssembly support**: If your project needs to be able to be compiled to WebAssembly, then Isahc will probably not work for you. Instead you might like an HTTP client that supports multiple backends such as [Surf].
 - **Rustls support**: We hope to support [rustls] as a TLS backend someday, it is not currently supported directly. If for some reason rustls is a hard requirement for you, you'll need to use a different HTTP client for now.
 
-## Sponsors
-
-Special thanks to sponsors of my open-source work!
-
-<!-- sponsors --><a href="https://github.com/da-moon"><img src="https://github.com/da-moon.png" width="60px" alt="da-moon" /></a><!-- sponsors -->
-
 ## License
 
 This project's source code and documentation are licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
 
 The Isahc logo and related assets are licensed under a [Creative Commons Attribution 4.0 International License][cc-by]. See [LICENSE-CC-BY](LICENSE-CC-BY) for details.
 
-
 [async/await]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
 [cc-by]: http://creativecommons.org/licenses/by/4.0/
-[chttp]: https://crates.io/crates/chttp
 [curl crate]: https://crates.io/crates/curl
 [discussions]: https://github.com/sagebind/isahc/discussions
 [documentation]: https://docs.rs/isahc
