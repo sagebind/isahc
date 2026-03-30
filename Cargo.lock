@@ -1257,7 +1257,7 @@ dependencies = [
  "sha1_smol",
  "threadpool",
  "time",
- "tiny_http 0.12.0",
+ "tiny_http",
  "url",
 ]
 
@@ -1517,7 +1517,7 @@ dependencies = [
  "once_cell",
  "regex",
  "threadfin",
- "tiny_http 0.9.0",
+ "tiny_http",
 ]
 
 [[package]]
@@ -1580,19 +1580,6 @@ name = "time-core"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef927ca75afb808a4d64dd374f00a2adf8d0fcff8e7b184af886c3c87ec4a3f3"
-
-[[package]]
-name = "tiny_http"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96155b5f7149ba7a99ea5d516c538250b26eab60b4485c0f5344432573e7a450"
-dependencies = [
- "ascii",
- "chrono",
- "chunked_transfer",
- "log",
- "url",
-]
 
 [[package]]
 name = "tiny_http"
