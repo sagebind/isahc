@@ -1,4 +1,4 @@
-use event_listener::Event;
+use event_listener::{Event, Listener};
 use http::HeaderMap;
 use once_cell::sync::OnceCell;
 use std::{sync::Arc, time::Duration};
@@ -118,7 +118,7 @@ impl Trailer {
         }
 
         // Otherwise, block with a timeout.
-        if listener.wait_timeout(timeout) {
+        if listener.wait_timeout(timeout).is_some() {
             self.try_get()
         } else {
             None
