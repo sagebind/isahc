@@ -20,7 +20,6 @@
 //! since a stale list is better than no list at all.
 
 use crate::{ReadResponseExt, request::RequestExt};
-use once_cell::sync::Lazy;
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::Psl as _;
 use std::{
