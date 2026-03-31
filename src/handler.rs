@@ -20,8 +20,7 @@ use std::{
     ffi::CStr,
     fmt,
     future::Future,
-    io,
-    mem,
+    io, mem,
     net::SocketAddr,
     os::raw::{c_char, c_long},
     pin::Pin,
@@ -228,6 +227,11 @@ impl RequestHandler {
 
         if self.shared.result.set(result).is_err() {
             tracing::debug!("attempted to set error multiple times");
+        }
+
+        // Update metrics one last time.
+        if let Some(metrics) = self.metrics.as_ref() {
+            metrics.update_from_info_complete(self.handle);
         }
 
         // Flush the trailer, if we haven't already.
@@ -538,7 +542,8 @@ impl curl::easy::Handler for RequestHandler {
                         if !self.disable_connection_reuse_log
                             && self.response_version < Some(http::Version::HTTP_2)
                         {
-                            tracing::info!("\
+                            tracing::info!(
+                                "\
                                 response dropped without fully consuming the response body, connection won't be reused\n\
                                 Aborting a response without fully consuming the response body can result in sub-optimal \
                                 performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early."
@@ -563,69 +568,7 @@ impl curl::easy::Handler for RequestHandler {
         let metrics = self.metrics.get_or_insert_with(Metrics::new);
 
         // Store the progress values given.
-        metrics.inner.upload_progress.store(ulnow);
-        metrics.inner.upload_total.store(ultotal);
-        metrics.inner.download_progress.store(dlnow);
-        metrics.inner.download_total.store(dltotal);
-
-        // Also scrape additional metrics.
-        if !self.handle.is_null() {
-            unsafe {
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_SPEED_UPLOAD,
-                    metrics.inner.upload_speed.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
-                    metrics.inner.download_speed.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
-                    metrics.inner.namelookup_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_CONNECT_TIME,
-                    metrics.inner.connect_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_APPCONNECT_TIME,
-                    metrics.inner.appconnect_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_PRETRANSFER_TIME,
-                    metrics.inner.pretransfer_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
-                    metrics.inner.starttransfer_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_TOTAL_TIME,
-                    metrics.inner.total_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    self.handle,
-                    curl_sys::CURLINFO_REDIRECT_TIME,
-                    metrics.inner.redirect_time.as_ptr(),
-                );
-            }
-        }
+        metrics.update_from_progress(self.handle, dltotal, dlnow, ultotal, ulnow);
 
         true
     }
@@ -698,6 +641,101 @@ impl AsyncRead for ResponseBodyReader {
                 None => Poll::Ready(Err(io::ErrorKind::ConnectionAborted.into())),
             },
             poll => poll,
+        }
+    }
+}
+
+/// Methods for updating a metrics object with current stats from a curl handle.
+impl Metrics {
+    fn update_from_info_complete(&self, handle: *mut CURL) {
+        if handle.is_null() {
+            return;
+        }
+
+        let mut upload_total: f64 = 0.0;
+        let mut download_total: f64 = 0.0;
+
+        unsafe {
+            curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_SIZE_UPLOAD, &mut upload_total);
+            curl_sys::curl_easy_getinfo(
+                handle,
+                curl_sys::CURLINFO_SIZE_DOWNLOAD,
+                &mut download_total,
+            );
+        }
+
+        self.update_from_progress(
+            handle,
+            download_total,
+            download_total,
+            upload_total,
+            upload_total,
+        );
+    }
+
+    fn update_from_progress(
+        &self,
+        handle: *mut CURL,
+        dltotal: f64,
+        dlnow: f64,
+        ultotal: f64,
+        ulnow: f64,
+    ) {
+        // Store the progress values given.
+        self.inner.upload_total.store(ultotal);
+        self.inner.upload_progress.store(ulnow);
+        self.inner.download_total.store(dltotal);
+        self.inner.download_progress.store(dlnow);
+
+        // Also scrape additional metrics.
+        if !handle.is_null() {
+            unsafe {
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_SPEED_UPLOAD,
+                    self.inner.upload_speed.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
+                    self.inner.download_speed.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
+                    self.inner.namelookup_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_CONNECT_TIME,
+                    self.inner.connect_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_APPCONNECT_TIME,
+                    self.inner.appconnect_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_PRETRANSFER_TIME,
+                    self.inner.pretransfer_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
+                    self.inner.starttransfer_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_TOTAL_TIME,
+                    self.inner.total_time.as_ptr(),
+                );
+                curl_sys::curl_easy_getinfo(
+                    handle,
+                    curl_sys::CURLINFO_REDIRECT_TIME,
+                    self.inner.redirect_time.as_ptr(),
+                );
+            }
         }
     }
 }
