@@ -20,7 +20,7 @@ jobs:
           echo "::set-output name=new-sha::$(git -C src/cookies/psl/list rev-parse --short HEAD)"
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GH_PAT }}
           commit-message: Update Public Suffix List to ${{ steps.update.outputs.new-sha }}
