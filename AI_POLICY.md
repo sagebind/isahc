@@ -1,0 +1,9 @@
+# AI Usage Policy
+
+Contributions to Isahc must follow this policy carefully in regards to the use of AI tools.
+
+- **Autonomous submissions are forbidden.** Contributions will only be accepted from humans. Any account or user found to be submitting pull requests or issues without direct human involvement may be blocked for future contributions with no recourse.
+- **Code contributions must be compatible with our project license.** Many Internet-based AI tools are trained on vast collections of code with a mix of licensing. These tools may reproduce code from their training data in a fashion that is possible to legally attribute to their source. If you do not know for certain how code you have provided is licensed, then we cannot accept it. By submitting code, you are indicating that you have the permission and rights to submit that code to be included in the project.
+- **You are responsible for all code you submit.** Regardless of any tools you may have used to assist in writing a code contribution, it is up to you, the submitter, to ensure that all code is correct to the best of your ability, is maintainable, and that you understand how it works. In general, if you cannot explain your changes in your own words, then your code will not be accepted.
+- **Generative AI must not be used for communication.** The issue tracker and discussion forum are places for humans to communicate in relation to the project. Outside of language translation, AI must not be used to generate issue descriptions or conversations. We do not expect perfection; writing with your own words may have mistakes in them, and that's OK.
+- **AI may not be used to generate prose documentation.** It is the project author's opinion that good documentation should be written by humans, for humans. Therefore, no AI must be used to generate any long-form documentation content in any scenario. AI-assistive tools _may_ be used to assist with writing API reference documentation.
