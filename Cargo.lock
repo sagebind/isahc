@@ -910,7 +910,7 @@ dependencies = [
  "rayon",
  "regex",
  "regex-automata 0.3.9",
- "regex-syntax 0.7.5",
+ "regex-syntax 0.8.10",
  "serde",
  "serde_json",
  "slab",
