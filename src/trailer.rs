@@ -1,7 +1,9 @@
 use event_listener::{Event, Listener};
 use http::HeaderMap;
-use once_cell::sync::OnceCell;
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 
 /// Holds the current state of a trailer for a response.
 ///
@@ -27,18 +29,18 @@ pub struct Trailer {
 
 #[derive(Debug)]
 struct Shared {
-    headers: OnceCell<HeaderMap>,
+    headers: OnceLock<HeaderMap>,
     ready: Event,
 }
 
 impl Trailer {
     /// Get a populated trailer handle containing no headers.
     pub(crate) fn empty() -> &'static Self {
-        static EMPTY: OnceCell<Trailer> = OnceCell::new();
+        static EMPTY: OnceLock<Trailer> = OnceLock::new();
 
         EMPTY.get_or_init(|| Self {
             shared: Arc::new(Shared {
-                headers: OnceCell::from(HeaderMap::new()),
+                headers: OnceLock::from(HeaderMap::new()),
                 ready: Event::new(),
             }),
         })

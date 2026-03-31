@@ -19,17 +19,20 @@
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
-use crate::{request::RequestExt, ReadResponseExt};
-use once_cell::sync::Lazy;
+use crate::{ReadResponseExt, request::RequestExt};
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::{List, Psl};
-use std::{error::Error, time::{Duration, SystemTime}};
+use std::{
+    error::Error,
+    sync::LazyLock,
+    time::{Duration, SystemTime},
+};
 
 /// How long should we use a cached list before refreshing?
-static TTL: Lazy<Duration> = Lazy::new(|| Duration::from_secs(24 * 60 * 60));
+static TTL: LazyLock<Duration> = LazyLock::new(|| Duration::from_secs(24 * 60 * 60));
 
 /// Global in-memory PSL cache.
-static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
+static CACHE: LazyLock<RwLock<ListCache>> = LazyLock::new(Default::default);
 
 struct ListCache {
     list: List,
@@ -79,7 +82,10 @@ impl ListCache {
         let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
-            request = request.header(http::header::IF_MODIFIED_SINCE, httpdate::fmt_http_date(last_updated));
+            request = request.header(
+                http::header::IF_MODIFIED_SINCE,
+                httpdate::fmt_http_date(last_updated),
+            );
         }
 
         let mut response = request.body(())?.send()?;

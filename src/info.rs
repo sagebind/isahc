@@ -1,9 +1,9 @@
 //! Runtime support for checking versions and feature availability.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 // Query for curl version info just once since it is immutable.
-static CURL_VERSION: Lazy<curl::Version> = Lazy::new(curl::Version::get);
+static CURL_VERSION: LazyLock<curl::Version> = LazyLock::new(curl::Version::get);
 
 /// Gets a human-readable string with the version number of Isahc and its
 /// dependencies.
@@ -11,7 +11,7 @@ static CURL_VERSION: Lazy<curl::Version> = Lazy::new(curl::Version::get);
 /// This function can be helpful when troubleshooting issues in Isahc or one of
 /// its dependencies.
 pub fn version() -> &'static str {
-    static VERSION_STRING: Lazy<String> = Lazy::new(|| {
+    static VERSION_STRING: LazyLock<String> = LazyLock::new(|| {
         format!(
             "isahc/{} (features:{}) {}",
             env!("CARGO_PKG_VERSION"),

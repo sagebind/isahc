@@ -1,9 +1,12 @@
 //! Types for error handling.
 
-use std::{error::Error as StdError, fmt, io, net::SocketAddr, sync::Arc};
-
 use http::Response;
-use once_cell::sync::OnceCell;
+use std::{
+    error::Error as StdError,
+    fmt, io,
+    net::SocketAddr,
+    sync::{Arc, OnceLock},
+};
 
 use crate::ResponseExt;
 
@@ -170,8 +173,8 @@ struct Inner {
     kind: ErrorKind,
     context: Option<String>,
     source: Option<Box<dyn SourceError>>,
-    local_addr: OnceCell<SocketAddr>,
-    remote_addr: OnceCell<SocketAddr>,
+    local_addr: OnceLock<SocketAddr>,
+    remote_addr: OnceLock<SocketAddr>,
 }
 
 impl Error {
@@ -193,8 +196,8 @@ impl Error {
             kind,
             context,
             source: Some(Box::new(source)),
-            local_addr: OnceCell::new(),
-            remote_addr: OnceCell::new(),
+            local_addr: OnceLock::new(),
+            remote_addr: OnceLock::new(),
         }))
     }
 
@@ -444,8 +447,8 @@ impl From<ErrorKind> for Error {
             kind,
             context: None,
             source: None,
-            local_addr: OnceCell::new(),
-            remote_addr: OnceCell::new(),
+            local_addr: OnceLock::new(),
+            remote_addr: OnceLock::new(),
         }))
     }
 }
