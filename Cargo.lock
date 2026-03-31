@@ -874,6 +874,7 @@ dependencies = [
  "mime",
  "parking_lot",
  "polling",
+ "psl",
  "publicsuffix",
  "rayon",
  "regex",
@@ -1339,6 +1340,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "psl"
+version = "2.1.199"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70b63978a2742d3f662188698ab45854156e7e34658f53fa951e9253a3dfd583"
+dependencies = [
+ "psl-types",
 ]
 
 [[package]]

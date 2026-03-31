@@ -14,14 +14,14 @@
 //!
 //! Despite being in an HTTP client, we can't always assume that the Internet is
 //! available (we might be behind a firewall or offline), we _also_ include an
-//! offline copy of the list, which is embedded here at compile time. If the
+//! offline copy of the list (provided at compile time by another crate). If the
 //! embedded list is stale, then we attempt to download a newer copy of the
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
 use crate::{ReadResponseExt, request::RequestExt};
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
-use publicsuffix::{List, Psl};
+use publicsuffix::Psl as _;
 use std::{
     error::Error,
     sync::LazyLock,
@@ -29,13 +29,13 @@ use std::{
 };
 
 /// How long should we use a cached list before refreshing?
-static TTL: LazyLock<Duration> = LazyLock::new(|| Duration::from_secs(24 * 60 * 60));
+static TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Global in-memory PSL cache.
 static CACHE: LazyLock<RwLock<ListCache>> = LazyLock::new(Default::default);
 
 struct ListCache {
-    list: List,
+    list: Option<publicsuffix::List>,
     last_refreshed: Option<SystemTime>,
     last_updated: Option<SystemTime>,
 }
@@ -43,18 +43,9 @@ struct ListCache {
 impl Default for ListCache {
     fn default() -> Self {
         Self {
-            // Use a bundled version of the list. We bundle using a Git
-            // submodule instead of downloading it from the Internet during the
-            // build, because that would force you to have an active Internet
-            // connection in order to compile. And that would be really
-            // annoying, especially if you are on a slow connection.
-            list: include_str!("list/public_suffix_list.dat")
-                .parse()
-                .expect("could not parse bundled public suffix list"),
-
+            list: None,
             // Refresh the list right away.
             last_refreshed: None,
-
             // Assume the bundled list is always out of date.
             last_updated: None,
         }
@@ -65,7 +56,7 @@ impl ListCache {
     fn needs_refreshed(&self) -> bool {
         match self.last_refreshed {
             Some(last_refreshed) => match last_refreshed.elapsed() {
-                Ok(elapsed) => elapsed > *TTL,
+                Ok(elapsed) => elapsed > TTL,
                 Err(_) => false,
             },
             None => true,
@@ -93,7 +84,7 @@ impl ListCache {
         match response.status() {
             http::StatusCode::OK => {
                 // Parse the suffix list.
-                self.list = response.text()?.parse()?;
+                self.list = Some(response.text()?.parse()?);
                 self.last_updated = Some(SystemTime::now());
                 tracing::debug!("public suffix list updated");
             }
@@ -121,14 +112,21 @@ pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
     let domain = domain.as_ref().as_bytes();
 
     with_cache(|cache| {
-        // Check if the given domain is a public suffix.
-        cache
-            .list
-            .suffix(domain)
-            // We don't want to block unknown hosts like `localhost`
-            .filter(publicsuffix::Suffix::is_known)
-            .filter(|suffix| suffix == &domain)
-            .is_some()
+        // Check using the runtime cache if present.
+        if let Some(list) = cache.list.as_ref() {
+            list.suffix(domain)
+                // We don't want to block unknown hosts like `localhost`
+                .filter(publicsuffix::Suffix::is_known)
+                .filter(|suffix| suffix == &domain)
+                .is_some()
+        } else {
+            // Fall back to compile-time list.
+            psl::suffix(domain)
+                // We don't want to block unknown hosts like `localhost`
+                .filter(psl::Suffix::is_known)
+                .filter(|suffix| suffix == &domain)
+                .is_some()
+        }
     })
 }
 
@@ -153,5 +151,16 @@ fn with_cache<T>(f: impl FnOnce(&ListCache) -> T) -> T {
         f(&*cache)
     } else {
         f(&*cache)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_is_public_suffix() {
+        assert!(is_public_suffix("co.jp"));
+        assert!(!is_public_suffix("google.com"));
     }
 }

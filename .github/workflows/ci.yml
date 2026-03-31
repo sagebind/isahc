@@ -22,8 +22,6 @@ jobs:
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Install system dependencies
         run: |
