@@ -10,8 +10,6 @@ jobs:
       options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Generate code coverage
         run: |
