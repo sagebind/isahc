@@ -8,7 +8,7 @@ Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is 
 [![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.85+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
 ![Maintenance](https://img.shields.io/badge/maintenance-passively--maintained-brightgreen.svg)
-[![Build](https://github.com/sagebind/isahc/workflows/ci/badge.svg)](https://github.com/sagebind/isahc/actions)
+[![Build](https://github.com/sagebind/isahc/actions/workflows/ci.yml/badge.svg?branch=1.x)](https://github.com/sagebind/isahc/actions)
 [![codecov](https://codecov.io/gh/sagebind/isahc/branch/1.x/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
 
 ## Key features
@@ -73,7 +73,7 @@ isahc = "1.8"
 
 ### Minimum supported Rust version
 
-The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.63 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.63. It might compile with older versions but that could change at any time.
+The minimum supported Rust version (or _MSRV_) for Isahc is **stable Rust 1.85 or greater**, meaning we only guarantee that Isahc will compile if you use a rustc version of at least 1.85. It might compile with older versions but that could change at any time.
 
 This version is explicitly tested in CI and may only be bumped in new minor versions. Any changes to the supported minimum version will be called out in the release notes.
 
