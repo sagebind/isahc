@@ -2,25 +2,25 @@
 //! demonstrates how the metrics API can be used to implement an interactive
 //! progress bar.
 //!
-//! Command line options are parsed with [structopt] and the progress bar itself
+//! Command line options are parsed with [clap] and the progress bar itself
 //! rendered with [indicatif], both excellent libraries for writing command line
 //! programs!
 //!
+//! [clap]: https://github.com/clap-rs/clap
 //! [indicatif]: https://github.com/mitsuhiko/indicatif
-//! [structopt]: https://github.com/TeXitoi/structopt
 
+use clap::Parser;
 use indicatif::{FormattedDuration, HumanBytes, ProgressBar, ProgressStyle};
-use isahc::{prelude::*, Request};
+use isahc::{Request, prelude::*};
 use std::io::Read;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Options {
     url: http::Uri,
 }
 
 fn main() -> Result<(), isahc::Error> {
-    let options = Options::from_args();
+    let options = Options::parse();
 
     let bar = ProgressBar::new(0).with_style(
         ProgressStyle::default_bar()
@@ -34,11 +34,7 @@ fn main() -> Result<(), isahc::Error> {
 
     loop {
         match body.read(&mut buf) {
-            Ok(0) => {
-                bar.finish();
-                break;
-            }
-            Ok(_) => {
+            Ok(len) => {
                 bar.set_position(metrics.download_progress().0);
                 bar.set_length(metrics.download_progress().1);
                 bar.set_message(&format!(
@@ -46,6 +42,11 @@ fn main() -> Result<(), isahc::Error> {
                     FormattedDuration(metrics.total_time()),
                     HumanBytes(metrics.download_speed() as u64),
                 ));
+
+                if len == 0 {
+                    bar.finish();
+                    break;
+                }
             }
             Err(e) => {
                 bar.finish_at_current_pos();
