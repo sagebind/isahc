@@ -13,7 +13,6 @@ use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
 use curl_sys::CURL;
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
-use once_cell::sync::OnceCell;
 use sluice::pipe;
 use std::{
     ascii,
@@ -25,7 +24,7 @@ use std::{
     os::raw::{c_char, c_long},
     pin::Pin,
     ptr,
-    sync::Arc,
+    sync::{Arc, OnceLock},
     task::{Context, Poll, Waker},
 };
 
@@ -112,7 +111,7 @@ struct Shared {
     /// Set to the final result of the transfer received from curl. This is used
     /// to communicate an error while reading the response body if the handler
     /// suddenly aborts.
-    result: OnceCell<Result<(), Error>>,
+    result: OnceLock<Result<(), Error>>,
 }
 
 impl RequestHandler {

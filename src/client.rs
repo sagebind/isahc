@@ -23,20 +23,19 @@ use http::{
     Request, Response,
     header::{HeaderMap, HeaderName, HeaderValue},
 };
-use once_cell::sync::Lazy;
 use std::{
     convert::TryFrom,
     fmt,
     future::Future,
     io,
     pin::Pin,
-    sync::Arc,
+    sync::{Arc, LazyLock},
     task::{Context, Poll},
     time::Duration,
 };
 use tracing_futures::Instrument;
 
-static USER_AGENT: Lazy<String> = Lazy::new(|| {
+static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     format!(
         "curl/{} isahc/{}",
         curl::Version::get().version(),
@@ -628,8 +627,8 @@ impl HttpClient {
     ///
     /// TODO: Stabilize.
     pub(crate) fn shared() -> &'static Self {
-        static SHARED: Lazy<HttpClient> =
-            Lazy::new(|| HttpClient::new().expect("shared client failed to initialize"));
+        static SHARED: LazyLock<HttpClient> =
+            LazyLock::new(|| HttpClient::new().expect("shared client failed to initialize"));
 
         &SHARED
     }

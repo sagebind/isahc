@@ -872,7 +872,6 @@ dependencies = [
  "indicatif",
  "log",
  "mime",
- "once_cell",
  "parking_lot",
  "polling",
  "psl",
@@ -1759,7 +1758,6 @@ name = "testserver"
 version = "0.0.0"
 dependencies = [
  "humantime",
- "once_cell",
  "regex",
  "threadfin",
  "tiny_http",

@@ -25,6 +25,7 @@ use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use publicsuffix::Psl as _;
 use std::{
     error::Error,
+    sync::LazyLock,
     time::{Duration, SystemTime},
 };
 
@@ -32,7 +33,7 @@ use std::{
 static TTL: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Global in-memory PSL cache.
-static CACHE: Lazy<RwLock<ListCache>> = Lazy::new(Default::default);
+static CACHE: LazyLock<RwLock<ListCache>> = LazyLock::new(Default::default);
 
 struct ListCache {
     list: Option<publicsuffix::List>,
