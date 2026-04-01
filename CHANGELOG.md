@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [isahc-v1.8.0] - 2026-03-31
+## [1.8.0] - 2026-03-31
 
 This is the first maintenance release in a few years and includes a few housekeeping items. No major changes or additions.
 
@@ -855,7 +855,7 @@ This is the first alpha release for version 0.5! There are a lot of things in th
 - Initial release.
 
 [Unreleased]: https://github.com/sagebind/isahc/compare/isahc-v1.8.0...HEAD
-[isahc-v1.8.0]: https://github.com/sagebind/isahc/compare/1.7.2...isahc-v1.8.0
+[1.8.0]: https://github.com/sagebind/isahc/compare/1.7.2...isahc-v1.8.0
 [1.7.2]: https://github.com/sagebind/isahc/compare/1.7.1...1.7.2
 [1.7.1]: https://github.com/sagebind/isahc/compare/1.7.0...1.7.1
 [1.7.0]: https://github.com/sagebind/isahc/compare/1.6.0...1.7.0
