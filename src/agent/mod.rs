@@ -553,6 +553,18 @@ impl AgentContext {
     }
 }
 
+impl Drop for AgentContext {
+    fn drop(&mut self) {
+        // Due to a bug present in some versions of curl-rust, dropping an
+        // easy handle after its associated multi handle has already been
+        // dropped can cause a segfault. As a workaround, explicitly drop all
+        // easy handles here first before the multi handle is dropped, if any.
+        //
+        // See https://github.com/sagebind/isahc/issues/459 for more details.
+        self.requests.clear();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
