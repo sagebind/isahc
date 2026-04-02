@@ -224,7 +224,6 @@
 )]
 #![deny(unsafe_code)]
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
-#![cfg_attr(feature = "nightly", feature(doc_auto_cfg))]
 #![warn(
     future_incompatible,
     missing_debug_implementations,
