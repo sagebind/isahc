@@ -8,6 +8,7 @@
 //! Since request executions are driven through futures, the agent also acts as
 //! a specialized task executor for tasks related to requests.
 
+use self::{selector::Selector, timer::Timer, util::IntHasher};
 use crate::{error::Error, handler::RequestHandler, task::WakerExt};
 use async_channel::{Receiver, Sender};
 use crossbeam_utils::{atomic::AtomicCell, sync::WaitGroup};
@@ -15,6 +16,8 @@ use curl::multi::{Events, Multi, Socket, SocketEvents};
 use futures_lite::future::block_on;
 use slab::Slab;
 use std::{
+    collections::HashMap,
+    hash::BuildHasherDefault,
     io,
     sync::{Arc, Mutex},
     task::Waker,
@@ -22,10 +25,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use self::{selector::Selector, timer::Timer};
-
 mod selector;
 mod timer;
+mod util;
 
 static NEXT_AGENT_ID: AtomicCell<usize> = AtomicCell::new(0);
 const WAIT_TIMEOUT: Duration = Duration::from_millis(1000);
@@ -83,9 +85,11 @@ impl AgentBuilder {
         let wait_group = WaitGroup::new();
         let wait_group_thread = wait_group.clone();
 
-        let max_connections = self.max_connections;
-        let max_connections_per_host = self.max_connections_per_host;
-        let connection_cache_size = self.connection_cache_size;
+        let AgentBuilder {
+            max_connections,
+            max_connections_per_host,
+            connection_cache_size,
+        } = *self;
 
         // Create a span for the agent thread that outlives this method call,
         // but rather was caused by it.
@@ -126,8 +130,8 @@ impl AgentBuilder {
 
             let result = agent.run();
 
-            if let Err(e) = &result {
-                tracing::error!("agent shut down with error: {:?}", e);
+            if let Err(error) = &result {
+                tracing::error!(?error, "agent shut down with error");
             }
 
             result
@@ -196,8 +200,10 @@ struct AgentContext {
     /// A timer we use to keep track of curl's timeouts.
     timer: Arc<Timer>,
 
-    /// Queue of socket registration updates from the multi handle.
-    socket_updates: Receiver<(Socket, SocketEvents, usize)>,
+    /// Map of socket registration update requests from the multi handle. A map
+    /// is used to deduplicate multiple updates for the same socket that may
+    /// occur in a single turn of the event loop.
+    socket_updates: Arc<Mutex<HashMap<Socket, SocketEvents, BuildHasherDefault<IntHasher>>>>,
 }
 
 /// A message sent from the main thread to the agent thread.
@@ -275,7 +281,7 @@ impl Drop for Handle {
         // Wait for the agent thread to shut down before continuing.
         match self.try_join() {
             JoinResult::Ok => tracing::trace!("agent thread joined cleanly"),
-            JoinResult::Err(e) => tracing::error!("agent thread terminated with error: {}", e),
+            JoinResult::Err(error) => tracing::error!(?error, "agent thread terminated with error"),
             JoinResult::Panic => tracing::error!("agent thread panicked"),
             _ => {}
         }
@@ -290,11 +296,24 @@ impl AgentContext {
         message_rx: Receiver<Message>,
     ) -> Result<Self, Error> {
         let timer = Arc::new(Timer::new());
-        let (socket_updates_tx, socket_updates_rx) = async_channel::unbounded();
+        let socket_updates = Arc::new(Mutex::new(HashMap::with_hasher(Default::default())));
+        let socket_updates_clone = socket_updates.clone();
 
         multi
-            .socket_function(move |socket, events, key| {
-                let _ = socket_updates_tx.try_send((socket, events, key));
+            .socket_function(move |socket, events, _| {
+                // Get mutable access to the map holding pending socket
+                // registration updates that have not been applied yet. Note
+                // that logically this runs on the same thread as the code that
+                // consumes this, so something is very wrong if the lock is
+                // currently being held.
+                let mut socket_updates = socket_updates_clone
+                    .try_lock()
+                    .expect("unexpected socket lock contention");
+
+                // If we have a pending request for this socket that we have not
+                // applied yet, replace it with this new event set. Last word
+                // always wins.
+                socket_updates.insert(socket, events);
             })
             .map_err(Error::from_any)?;
 
@@ -324,7 +343,7 @@ impl AgentContext {
             waker: selector.waker(),
             selector,
             timer,
-            socket_updates: socket_updates_rx,
+            socket_updates,
         })
     }
 
@@ -428,7 +447,7 @@ impl AgentContext {
             Message::Execute(request) => self.begin_request(request)?,
             Message::UnpauseRead(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    if let Err(e) = request.unpause_read() {
+                    if let Err(error) = request.unpause_read() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
                         // returned an error. Unfortunately this does not affect
@@ -436,18 +455,18 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!(id = token, "error unpausing read for request: {:?}", e);
+                        tracing::debug!(id = token, ?error, "error unpausing read for request");
                     }
                 } else {
                     tracing::warn!(
-                        "received unpause request for unknown request token: {}",
-                        token
+                        id = token,
+                        "received unpause request for unknown request token",
                     );
                 }
             }
             Message::UnpauseWrite(token) => {
                 if let Some(request) = self.requests.get(token) {
-                    if let Err(e) = request.unpause_write() {
+                    if let Err(error) = request.unpause_write() {
                         // If unpausing returned an error, it is likely because
                         // curl called our callback inline and the callback
                         // returned an error. Unfortunately this does not affect
@@ -455,12 +474,12 @@ impl AgentContext {
                         // the transfer alive until it errors through the normal
                         // means, which is likely to happen this turn of the
                         // event loop anyway.
-                        tracing::debug!(id = token, "error unpausing write for request: {:?}", e);
+                        tracing::debug!(id = token, ?error, "error unpausing write for request");
                     }
                 } else {
                     tracing::warn!(
-                        "received unpause request for unknown request token: {}",
-                        token
+                        id = token,
+                        "received unpause request for unknown request token",
                     );
                 }
             }
@@ -537,15 +556,20 @@ impl AgentContext {
         }
 
         // Apply any requested socket updates now.
-        while let Ok((socket, events, _)) = self.socket_updates.try_recv() {
+        for (socket, events) in self
+            .socket_updates
+            .try_lock()
+            .expect("unexpected socket lock contention")
+            .drain()
+        {
             // Curl is asking us to stop polling this socket.
             if events.remove() {
-                self.selector.deregister(socket).unwrap();
+                self.selector.deregister(socket)?;
             } else {
                 let readable = events.input() || events.input_and_output();
                 let writable = events.output() || events.input_and_output();
 
-                self.selector.register(socket, readable, writable).unwrap();
+                self.selector.register(socket, readable, writable)?;
             }
         }
 
