@@ -25,7 +25,7 @@ cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
 nightly = []
-psl = ["httpdate", "parking_lot", "dep:psl", "dep:publicsuffix"]
+psl = ["httpdate", "dep:psl", "dep:publicsuffix"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
 static-ssl = ["curl/static-ssl"]
@@ -58,10 +58,6 @@ optional = true
 
 [dependencies.mime]
 version = "0.3"
-optional = true
-
-[dependencies.parking_lot]
-version = ">=0.9.0, <0.12.0"
 optional = true
 
 # Provides a precompiled copy of the PSL
