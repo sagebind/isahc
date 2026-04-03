@@ -11,7 +11,7 @@ documentation = "https://docs.rs/isahc/"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.85"
-exclude = [".*", "benchmarks", "media", "src/cookies/psl/list/*/"]
+exclude = [".*", "benchmarks", "media"]
 
 [package.metadata.docs.rs]
 features = ["cookies", "json", "nightly"]
