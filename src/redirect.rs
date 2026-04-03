@@ -18,6 +18,7 @@ const DEFAULT_REDIRECT_LIMIT: u32 = 1024;
 
 /// Extension containing the final "effective" URI that was visited, after
 /// following any redirects.
+#[derive(Clone)]
 pub(crate) struct EffectiveUri(pub(crate) Uri);
 
 /// Interceptor that implements automatic following of HTTP redirects.

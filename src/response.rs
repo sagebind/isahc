@@ -544,8 +544,10 @@ decl_future! {
     pub type JsonFuture<R, T> = impl Future<Output = Result<T, serde_json::Error>> + SendIf<R, T>;
 }
 
+#[derive(Clone)]
 pub(crate) struct LocalAddr(pub(crate) SocketAddr);
 
+#[derive(Clone)]
 pub(crate) struct RemoteAddr(pub(crate) SocketAddr);
 
 #[cfg(test)]

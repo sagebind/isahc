@@ -28,7 +28,19 @@ use std::{
     task::{Context, Poll, Waker},
 };
 
+/// Stores a copy of the original request body
 pub(crate) struct RequestBody(pub(crate) AsyncBody);
+
+/// The http crate version 1+ requires all extensions to implement `Clone`. This
+/// is problematic for using it to pass around a resource like a request body.
+/// But this particular extension is only used internally and we never clone the
+/// response, so implement it just to satisfy the requirement, but panic if it
+/// ever is used.
+impl Clone for RequestBody {
+    fn clone(&self) -> Self {
+        panic!("RequestBody extension cannot be cloned");
+    }
+}
 
 /// Manages the state of a single request/response life cycle.
 ///
