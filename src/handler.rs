@@ -605,6 +605,14 @@ impl curl::easy::Handler for RequestHandler {
     }
 }
 
+impl Drop for RequestHandler {
+    fn drop(&mut self) {
+        if self.sender.is_some() {
+            tracing::warn!("fixme: request handler dropped before response was completed");
+        }
+    }
+}
+
 impl fmt::Debug for RequestHandler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "RequestHandler")

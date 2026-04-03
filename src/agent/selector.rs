@@ -1,10 +1,11 @@
 #![allow(unsafe_code)]
 
+use super::util::IntHasher;
 use curl::multi::Socket;
 use polling::{AsSource, Event, Events, Poller};
 use std::{
     collections::{HashMap, HashSet},
-    hash::{BuildHasherDefault, Hasher},
+    hash::BuildHasherDefault,
     io,
     sync::Arc,
     task::Waker,
@@ -96,7 +97,7 @@ impl Selector {
         };
 
         match result {
-            Err(e) if is_bad_socket_error(&e) => {
+            Err(error) if is_bad_socket_error(&error) => {
                 // We've been asked to monitor a socket, but the poller thinks
                 // that the socket is invalid or closed. On occasion, curl will
                 // give such sockets with the assumption that we will monitor
@@ -109,7 +110,11 @@ impl Selector {
                 // hold onto this currently invalid socket for later. Whenever
                 // `poll` is called, we retry registering these sockets in the
                 // hope that they will eventually become valid.
-                tracing::debug!(socket, error = ?e, "bad socket registered, will try again later");
+                tracing::debug!(
+                    socket,
+                    ?error,
+                    "bad socket registered, will try again later"
+                );
                 self.bad_sockets.insert(socket);
                 Ok(())
             }
@@ -213,22 +218,21 @@ impl Selector {
 }
 
 fn poller_add(poller: &Poller, socket: Socket, readable: bool, writable: bool) -> io::Result<()> {
+    let interest = Event::new(socket as usize, readable, writable);
+
     // If this errors, we retry the operation as a modification instead. This is
     // because this new socket might re-use a file descriptor that was
     // previously closed, but is still registered with the poller. Retrying the
     // operation as a modification is sufficient to handle this.
     //
     // This is especially common with the epoll backend.
-    if let Err(e) = unsafe { poller.add(socket, Event::new(socket as usize, readable, writable)) } {
+    if let Err(error) = unsafe { poller.add(socket, interest) } {
         tracing::debug!(
-            "failed to add interest for socket {}, retrying as a modify: {}",
             socket,
-            e
+            ?error,
+            "failed to add interest for socket, retrying as a modify",
         );
-        poller.modify(
-            unsafe { as_source(socket) },
-            Event::new(socket as usize, readable, writable),
-        )?;
+        poller.modify(unsafe { as_source(socket) }, interest)?;
     }
 
     Ok(())
@@ -240,19 +244,18 @@ fn poller_modify(
     readable: bool,
     writable: bool,
 ) -> io::Result<()> {
+    let interest = Event::new(socket as usize, readable, writable);
+
     // If this errors, we retry the operation as an add instead. This is done
     // because epoll is weird.
-    if let Err(e) = poller.modify(
-        unsafe { as_source(socket) },
-        Event::new(socket as usize, readable, writable),
-    ) {
+    if let Err(error) = poller.modify(unsafe { as_source(socket) }, interest) {
         tracing::debug!(
-            "failed to modify interest for socket {}, retrying as an add: {}",
             socket,
-            e
+            ?error,
+            "failed to modify interest for socket, retrying as an add",
         );
         unsafe {
-            poller.add(socket, Event::new(socket as usize, readable, writable))?;
+            poller.add(socket, interest)?;
         }
     }
 
@@ -293,34 +296,5 @@ unsafe fn as_source(socket: Socket) -> impl AsSource {
     #[cfg(windows)]
     unsafe {
         std::os::windows::io::BorrowedSocket::borrow_raw(socket)
-    }
-}
-
-/// Trivial hash function to use for our maps and sets that use file descriptors
-/// as keys.
-#[derive(Default)]
-struct IntHasher([u8; 8], #[cfg(debug_assertions)] bool);
-
-impl Hasher for IntHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        #[cfg(debug_assertions)]
-        {
-            if self.1 {
-                panic!("socket hash function can only be written to once");
-            } else {
-                self.1 = true;
-            }
-
-            if bytes.len() > 8 {
-                panic!("only a maximum of 8 bytes can be hashed");
-            }
-        }
-
-        (&mut self.0[..bytes.len()]).copy_from_slice(bytes);
-    }
-
-    #[inline]
-    fn finish(&self) -> u64 {
-        u64::from_ne_bytes(self.0)
     }
 }
