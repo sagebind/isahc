@@ -1,2 +1,6 @@
 [workspace]
 pr_labels = ["release"]
+
+[[changelog.commit_parsers]]
+footer = "Co-authored-by: dependabot"
+group = "Dependency Updates"
