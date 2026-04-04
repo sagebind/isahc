@@ -11,7 +11,7 @@ documentation = "https://docs.rs/isahc/"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.85"
-exclude = [".*", "benchmarks", "media"]
+exclude = [".*", "benchmarks", "media", "Makefile"]
 
 [package.metadata.docs.rs]
 features = ["cookies", "json", "tls-insecure", "trust-webpki-roots"]
@@ -118,8 +118,10 @@ optional = true
 [dev-dependencies]
 clap.version = "4"
 clap.features = ["derive"]
+divan = "0.1"
 env_logger = "0.11"
 flate2 = "1"
+httpmock = "0.8"
 indicatif = "0.15"
 quickcheck = "1"
 quickcheck_macros = "1"
@@ -141,6 +143,9 @@ check-cfg = ["cfg(tarpaulin)"]
 [[example]]
 name = "badssl"
 required-features = ["tls-insecure"]
+[[bench]]
+name = "download"
+harness = false
 
 [[example]]
 name = "cookies"
@@ -151,4 +156,4 @@ name = "json"
 required-features = ["json", "serde/derive"]
 
 [workspace]
-members = ["benchmarks", "testserver"]
+members = ["testserver"]
