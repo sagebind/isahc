@@ -1,5 +1,5 @@
-use futures_lite::{future::block_on, AsyncRead};
-use isahc::{prelude::*, AsyncBody, Body, Request};
+use futures_lite::{AsyncRead, future::block_on};
+use isahc::{AsyncBody, Body, Request, prelude::*};
 use std::{
     error::Error,
     io::{self, Read},
@@ -11,6 +11,65 @@ use testserver::mock;
 
 #[macro_use]
 mod utils;
+
+#[test_case("GET")]
+#[test_case("HEAD")]
+#[test_case("POST")]
+#[test_case("PUT")]
+#[test_case("DELETE")]
+#[test_case("PATCH")]
+#[test_case("FOOBAR")]
+fn request_with_zero_length_body(method: &str) {
+    let m = mock!();
+
+    Request::builder()
+        .method(method)
+        .uri(m.url())
+        .header("Content-Type", "application/json")
+        .body(Body::from(&[] as &[u8]))
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(m.request().method(), method);
+    m.request().expect_header("content-length", "0");
+    m.request()
+        .expect_header("content-type", "application/json");
+    m.request().expect_body(&[]);
+}
+
+#[test_case("GET")]
+#[test_case("HEAD")]
+#[test_case("POST")]
+#[test_case("PUT")]
+#[test_case("DELETE")]
+#[test_case("PATCH")]
+#[test_case("FOOBAR")]
+fn request_with_special_empty_body_does_not_send_a_body(method: &str) {
+    let m = mock!();
+
+    Request::builder()
+        .method(method)
+        .uri(m.url())
+        .header("Content-Type", "application/json")
+        .body(Body::empty())
+        .unwrap()
+        .send()
+        .unwrap();
+
+    assert_eq!(m.request().method(), method);
+
+    // There should be no headers sent to the server to indicate that a body
+    // will be sent.
+    assert_eq!(m.request().get_header("content-length").count(), 0);
+    assert_eq!(m.request().get_header("transfer-encoding").count(), 0);
+
+    m.request()
+        .expect_header("content-type", "application/json");
+
+    // For HTTP/1.1, reading after the header should just be an immediate EOF.
+    m.request().expect_body(&[]);
+}
 
 #[test_case("GET")]
 #[test_case("HEAD")]
