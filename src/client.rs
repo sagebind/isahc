@@ -1086,11 +1086,11 @@ impl HttpClient {
                 easy.nobody(true)?;
             }
             // POST requests have special redirect behavior.
-            (&http::Method::POST, _) => {
+            (&http::Method::POST, true) => {
                 easy.post(true)?;
             }
             // Normal PUT request.
-            (&http::Method::PUT, _) => {
+            (&http::Method::PUT, true) => {
                 easy.upload(true)?;
             }
             // Default case is to either treat request like a GET or PUT.
