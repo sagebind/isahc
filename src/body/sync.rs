@@ -234,9 +234,13 @@ impl From<File> for Body {
 
 impl fmt::Debug for Body {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.len() {
-            Some(len) => write!(f, "Body({})", len),
-            None => write!(f, "Body(?)"),
+        if self.is_empty() {
+            write!(f, "Body(Empty)")
+        } else {
+            match self.len() {
+                Some(len) => write!(f, "Body({})", len),
+                None => write!(f, "Body(?)"),
+            }
         }
     }
 }

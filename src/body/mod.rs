@@ -246,9 +246,13 @@ impl<T: Into<Self>> From<Option<T>> for AsyncBody {
 
 impl fmt::Debug for AsyncBody {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.len() {
-            Some(len) => write!(f, "AsyncBody({})", len),
-            None => write!(f, "AsyncBody(?)"),
+        if self.is_empty() {
+            write!(f, "AsyncBody(Empty)")
+        } else {
+            match self.len() {
+                Some(len) => write!(f, "AsyncBody({})", len),
+                None => write!(f, "AsyncBody(?)"),
+            }
         }
     }
 }
