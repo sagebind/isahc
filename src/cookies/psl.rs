@@ -163,12 +163,14 @@ mod tests {
     use std::thread::sleep;
 
     #[test]
+    #[serial_test::serial]
     fn basic_is_public_suffix() {
         assert!(is_public_suffix("co.jp"));
         assert!(!is_public_suffix("google.com"));
     }
 
     #[test]
+    #[serial_test::serial]
     fn refresh_cache() {
         // Reset cache.
         *CACHE.write().unwrap() = Default::default();
