@@ -9,20 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.8.1](https://github.com/sagebind/isahc/compare/isahc-v1.8.0...isahc-v1.8.1) - 2026-04-11
 
-### Chore
+### Fixed
 
-- *(deps)* remove parking lot dependency
-- categorize dependabot PRs in changelog
+- Fix an agent panic in selector that would sometimes be triggered by multiple socket interests communicated from libcurl for the same socket. Error handling for the agent thread has also been improved in general. ([#460](https://github.com/sagebind/isahc/issues/460), [#481](https://github.com/sagebind/isahc/pull/481))
+- Fix a segfault that can occur when the agent thread panics and drops a curl multi handle before its easy handles. This is a bug in the curl-rust project, but we have implemented a workaround that should prevent this from happening for any version of curl-rust you might be using. ([#459](https://github.com/sagebind/isahc/issues/459), [#461](https://github.com/sagebind/isahc/pull/461), [#480](https://github.com/sagebind/isahc/pull/480))
+- Rewrite PSL cache test to not use globals so that they don't randomly fail in CI. ([#485](https://github.com/sagebind/isahc/pull/485))
+- Improve `Debug` impl for empty request bodies to distinguish between an empty body and no body.
+- Fix docs.rs failing builds.
 
-### Ci
+### Dependency Updates
 
-- Add release tag to release-plz PRs
-
-### Fix
-
-- rewrite PSL cache test to not use globals
-- PSL cache tests sometimes failing in parallel ([#485](https://github.com/sagebind/isahc/pull/485))
-- agent panic in selector ([#481](https://github.com/sagebind/isahc/pull/481))
+- Remove parking lot dependency.
+- Bump psl from 2.1.200 to 2.1.202 (#484, #486)
 
 ## [1.8.0] - 2026-03-31
 
