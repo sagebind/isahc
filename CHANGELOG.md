@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.1](https://github.com/sagebind/isahc/compare/isahc-v1.8.0...isahc-v1.8.1) - 2026-04-11
+
+### Chore
+
+- *(deps)* remove parking lot dependency
+- categorize dependabot PRs in changelog
+
+### Ci
+
+- Add release tag to release-plz PRs
+
+### Fix
+
+- rewrite PSL cache test to not use globals
+- PSL cache tests sometimes failing in parallel ([#485](https://github.com/sagebind/isahc/pull/485))
+- agent panic in selector ([#481](https://github.com/sagebind/isahc/pull/481))
+
 ## [1.8.0] - 2026-03-31
 
 This is the first maintenance release in a few years and includes a few housekeeping items. No major changes or additions.
