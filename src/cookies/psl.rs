@@ -56,6 +56,18 @@ impl Default for ListCache {
 }
 
 impl ListCache {
+    fn is_public_suffix(&self, domain: &[u8]) -> Option<bool> {
+        Some(
+            self.list
+                .as_ref()?
+                .suffix(domain)
+                // We don't want to block unknown hosts like `localhost`
+                .filter(publicsuffix::Suffix::is_known)
+                .filter(|suffix| suffix == &domain)
+                .is_some(),
+        )
+    }
+
     fn needs_refreshed(&self) -> bool {
         match self.last_refreshed {
             Some(last_refreshed) => match last_refreshed.elapsed() {
@@ -121,20 +133,18 @@ pub(crate) fn is_public_suffix(domain: impl AsRef<str>) -> bool {
     }
 
     // Check using the runtime cache if present.
-    if let Some(list) = cache.list.as_ref() {
-        list.suffix(domain)
-            // We don't want to block unknown hosts like `localhost`
-            .filter(publicsuffix::Suffix::is_known)
-            .filter(|suffix| suffix == &domain)
-            .is_some()
-    } else {
-        // Fall back to compile-time list.
-        psl::suffix(domain)
-            // We don't want to block unknown hosts like `localhost`
-            .filter(psl::Suffix::is_known)
-            .filter(|suffix| suffix == &domain)
-            .is_some()
+    if let Some(v) = cache.is_public_suffix(domain) {
+        return v;
     }
+
+    drop(cache);
+
+    // Fall back to compile-time list.
+    psl::suffix(domain)
+        // We don't want to block unknown hosts like `localhost`
+        .filter(psl::Suffix::is_known)
+        .filter(|suffix| suffix == &domain)
+        .is_some()
 }
 
 fn refresh_in_background() {
@@ -160,39 +170,34 @@ fn refresh_in_background() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread::sleep;
 
     #[test]
-    #[serial_test::serial]
     fn basic_is_public_suffix() {
         assert!(is_public_suffix("co.jp"));
         assert!(!is_public_suffix("google.com"));
     }
 
     #[test]
-    #[serial_test::serial]
     fn refresh_cache() {
         // Reset cache.
-        *CACHE.write().unwrap() = Default::default();
+        let mut cache = ListCache::default();
 
-        assert!(CACHE.read().unwrap().last_refreshed.is_none());
-        assert!(CACHE.read().unwrap().last_updated.is_none());
-        assert!(CACHE.read().unwrap().needs_refreshed());
+        assert!(cache.last_refreshed.is_none());
+        assert!(cache.last_updated.is_none());
+        assert!(cache.needs_refreshed());
 
-        refresh_in_background();
-        sleep(Duration::from_millis(200));
+        cache.refresh().unwrap();
 
-        assert!(CACHE.read().unwrap().last_refreshed.is_some());
-        assert!(CACHE.read().unwrap().last_updated.is_some());
-        assert!(!CACHE.read().unwrap().needs_refreshed());
+        assert!(cache.last_refreshed.is_some());
+        assert!(cache.last_updated.is_some());
+        assert!(!cache.needs_refreshed());
 
-        let last_refreshed = CACHE.read().unwrap().last_refreshed.unwrap();
-        let last_updated = CACHE.read().unwrap().last_updated.unwrap();
+        let last_refreshed = cache.last_refreshed.unwrap();
+        let last_updated = cache.last_updated.unwrap();
 
-        refresh_in_background();
-        sleep(Duration::from_millis(200));
+        cache.refresh().unwrap();
 
-        assert!(CACHE.read().unwrap().last_refreshed.unwrap() > last_refreshed);
-        assert!(CACHE.read().unwrap().last_updated.unwrap() > last_updated);
+        assert!(cache.last_refreshed.unwrap() > last_refreshed);
+        assert!(cache.last_updated.unwrap() > last_updated);
     }
 }
