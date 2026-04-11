@@ -1377,9 +1377,9 @@ dependencies = [
 
 [[package]]
 name = "psl"
-version = "2.1.201"
+version = "2.1.202"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffebce17cdf2466ec6802e98d089d397d16578916162101eada345390be6f66b"
+checksum = "56fd0182df6313fbbf2d223aca9056ffd9ebf4d8c44d3215064f7b41de8756f9"
 dependencies = [
  "psl-types",
 ]
