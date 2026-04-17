@@ -1,7 +1,7 @@
 //! This example contains a number of manual tests against badssl.com
 //! demonstrating several dangerous SSL/TLS options.
 
-use isahc::{error::ErrorKind, prelude::*, tls::TlsConfig, Request};
+use isahc::{Request, error::ErrorKind, prelude::*, tls::TlsConfig};
 
 fn main() {
     println!("ssl: {:?}", curl::Version::get().ssl_version());

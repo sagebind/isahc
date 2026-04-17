@@ -13,12 +13,12 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::request::SetOpt;
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
 };
 use curl::easy::Easy2;
+use setopt::{SetOpt, SetOptError};
 use std::{net::IpAddr, time::Duration};
 
 pub(crate) mod client;
@@ -27,6 +27,7 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
+pub(crate) mod setopt;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
@@ -831,7 +832,7 @@ impl VersionNegotiation {
 }
 
 impl SetOpt for VersionNegotiation {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match self.0 {
             VersionNegotiationInner::LatestCompatible => {
                 // If HTTP/2 support is available, this basically the most
@@ -843,11 +844,14 @@ impl SetOpt for VersionNegotiation {
                 // the ideal behavior.
                 if is_http_version_supported(http::Version::HTTP_2) {
                     easy.http_version(curl::easy::HttpVersion::V2TLS)
+                        .map_err(Into::into)
                 } else {
                     Ok(())
                 }
             }
-            VersionNegotiationInner::Strict(version) => easy.http_version(version),
+            VersionNegotiationInner::Strict(version) => {
+                easy.http_version(version).map_err(Into::into)
+            }
         }
     }
 }
@@ -921,16 +925,16 @@ impl From<IpAddr> for NetworkInterface {
 }
 
 impl SetOpt for NetworkInterface {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         #[allow(unsafe_code)]
         match self.interface.as_ref() {
-            Some(interface) => easy.interface(interface),
+            Some(interface) => easy.interface(interface).map_err(Into::into),
 
             // Use raw FFI because safe wrapper doesn't let us set to null.
             None => unsafe {
                 match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_INTERFACE, 0) {
                     curl_sys::CURLE_OK => Ok(()),
-                    code => Err(curl::Error::new(code)),
+                    code => Err(curl::Error::new(code).into()),
                 }
             },
         }
@@ -960,12 +964,14 @@ impl Default for IpVersion {
 }
 
 impl SetOpt for IpVersion {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.ip_resolve(match &self {
             IpVersion::V4 => curl::easy::IpResolve::V4,
             IpVersion::V6 => curl::easy::IpResolve::V6,
             IpVersion::Any => curl::easy::IpResolve::Any,
-        })
+        })?;
+
+        Ok(())
     }
 }
 
@@ -1042,11 +1048,11 @@ impl From<Duration> for ExpectContinue {
 }
 
 impl SetOpt for ExpectContinue {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         if let Some(timeout) = self.timeout {
-            easy.expect_100_timeout(timeout)
-        } else {
-            Ok(())
+            easy.expect_100_timeout(timeout)?;
         }
+
+        Ok(())
     }
 }

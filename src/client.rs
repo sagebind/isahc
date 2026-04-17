@@ -5,7 +5,8 @@ use crate::{
     body::{AsyncBody, Body},
     config::{
         client::ClientConfig,
-        request::{RequestConfig, SetOpt, WithRequestConfig},
+        request::{RequestConfig, WithRequestConfig},
+        setopt::{SetOpt, SetOptError},
         *,
     },
     default_headers::DefaultHeadersInterceptor,
@@ -1042,7 +1043,7 @@ impl HttpClient {
             curl::easy::Easy2<RequestHandler>,
             impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
         ),
-        curl::Error,
+        SetOptError,
     > {
         // Prepare the request plumbing.
         let body = std::mem::take(request.body_mut());
@@ -1180,7 +1181,7 @@ impl crate::interceptor::Invoke for &HttpClient {
                 .unwrap_or(false);
 
             // Create and configure a curl easy handle to fulfil the request.
-            let (easy, future) = self.create_easy_handle(request).map_err(Error::from_any)?;
+            let (easy, future) = self.create_easy_handle(request)?;
 
             // Send the request to the agent to be executed.
             self.inner.agent.submit_request(easy)?;

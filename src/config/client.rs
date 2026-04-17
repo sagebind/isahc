@@ -1,6 +1,6 @@
 use super::{
     dns::{DnsCache, ResolveMap},
-    request::SetOpt,
+    setopt::{SetOpt, SetOptError},
 };
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ pub(crate) struct ClientConfig {
 }
 
 impl SetOpt for ClientConfig {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         if let Some(ttl) = self.connection_cache_ttl {
             easy.maxage_conn(ttl)?;
         }
@@ -26,6 +26,8 @@ impl SetOpt for ClientConfig {
             map.set_opt(easy)?;
         }
 
-        easy.forbid_reuse(self.close_connections)
+        easy.forbid_reuse(self.close_connections)?;
+
+        Ok(())
     }
 }

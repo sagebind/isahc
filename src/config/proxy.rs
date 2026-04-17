@@ -1,4 +1,4 @@
-use super::SetOpt;
+use super::setopt::{SetOpt, SetOptError};
 use curl::easy::Easy2;
 use std::iter::FromIterator;
 
@@ -22,13 +22,8 @@ impl FromIterator<String> for Blacklist {
 }
 
 impl SetOpt for Blacklist {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.noproxy(&self.skip)
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+        easy.noproxy(&self.skip)?;
+        Ok(())
     }
-}
-
-/// Like [`SetOpt`], but applies the configuration specifically for proxy
-/// connections rather than the origin itself.
-pub(crate) trait SetOptProxy: SetOpt {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
 }

@@ -1,4 +1,4 @@
-use crate::config::{proxy::SetOptProxy, request::SetOpt};
+use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
 use curl::easy::Easy2;
 use std::path::PathBuf;
 
@@ -146,7 +146,7 @@ impl Identity {
 }
 
 impl SetOpt for Identity {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.ssl_cert_type(self.format)?;
 
         match &self.data {
@@ -167,7 +167,7 @@ impl SetOpt for Identity {
 }
 
 impl SetOptProxy for Identity {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.proxy_sslcert_type(self.format)?;
 
         match &self.data {
@@ -271,7 +271,7 @@ impl PrivateKey {
 }
 
 impl SetOpt for PrivateKey {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.ssl_key_type(self.format)?;
 
         match &self.data {
@@ -288,7 +288,7 @@ impl SetOpt for PrivateKey {
 }
 
 impl SetOptProxy for PrivateKey {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.proxy_sslkey_type(self.format)?;
 
         match &self.data {

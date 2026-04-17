@@ -1,6 +1,7 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::{proxy::SetOptProxy, *};
+use super::{setopt::*, *};
+use crate::error::Error;
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
@@ -9,12 +10,6 @@ use curl::easy::Easy2;
 pub trait WithRequestConfig: Sized {
     /// Invoke a function to mutate the request configuration for this object.
     fn with_config(self, f: impl FnOnce(&mut RequestConfig)) -> Self;
-}
-
-/// A helper trait for applying a configuration value to a given curl handle.
-pub(crate) trait SetOpt {
-    /// Apply this configuration property to the given curl handle.
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error>;
 }
 
 // Define this struct inside a macro to reduce some boilerplate.
@@ -115,7 +110,7 @@ impl RequestConfig {
 }
 
 impl SetOpt for RequestConfig {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         if let Some(timeout) = self.timeout {
             easy.timeout(timeout)?;
         }
@@ -150,7 +145,7 @@ impl SetOpt for RequestConfig {
                             0,
                         ) {
                             curl_sys::CURLE_OK => {}
-                            code => return Err(curl::Error::new(code)),
+                            code => return Err(curl::Error::new(code).into()),
                         }
                     }
                 }

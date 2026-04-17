@@ -1,6 +1,6 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::{proxy::SetOptProxy, request::SetOpt};
+use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
 use std::{
     fmt,
     ops::{BitOr, BitOrAssign},
@@ -25,16 +25,18 @@ impl Credentials {
 }
 
 impl SetOpt for Credentials {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         easy.username(&self.username)?;
-        easy.password(&self.password)
+        easy.password(&self.password)?;
+        Ok(())
     }
 }
 
 impl SetOptProxy for Credentials {
-    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         easy.proxy_username(&self.username)?;
-        easy.proxy_password(&self.password)
+        easy.proxy_password(&self.password)?;
+        Ok(())
     }
 }
 
@@ -158,7 +160,7 @@ impl BitOrAssign for Authentication {
 }
 
 impl SetOpt for Authentication {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         #[cfg(feature = "spnego")]
         {
             if self.contains(Authentication::negotiate()) {
@@ -169,12 +171,14 @@ impl SetOpt for Authentication {
             }
         }
 
-        easy.http_auth(&self.as_auth())
+        easy.http_auth(&self.as_auth())?;
+
+        Ok(())
     }
 }
 
 impl SetOptProxy for Authentication {
-    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         #[cfg(feature = "spnego")]
         {
             if self.contains(Authentication::negotiate()) {
@@ -185,7 +189,9 @@ impl SetOptProxy for Authentication {
             }
         }
 
-        easy.proxy_auth(&self.as_auth())
+        easy.proxy_auth(&self.as_auth())?;
+
+        Ok(())
     }
 }
 

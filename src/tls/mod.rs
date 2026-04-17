@@ -55,22 +55,28 @@
 //!     https://developer.apple.com/documentation/security/secure_transport
 
 use crate::{
-    config::{proxy::SetOptProxy, request::SetOpt},
-    error::create_curl_error,
+    config::setopt::{SetOpt, SetOptError, SetOptProxy},
+    error::{Error, ErrorKind},
+    info::curl_info,
 };
 use curl::easy::{Easy2, SslOpt, SslVersion};
-use std::path::PathBuf;
+use std::{fmt, path::PathBuf};
 
+mod cert;
 mod identity;
 mod roots;
 
+#[cfg(feature = "rustls-tls")]
+mod rustls;
+
 pub use self::{
+    cert::Certificate,
     identity::{Identity, PrivateKey},
     roots::RootCertStore,
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
-compile_error!("`tls` feature is enabled, but no TLS backend was selected.");
+compile_error!("`tls` feature is enabled, but no TLS backend was selected");
 
 #[cfg(all(feature = "native-tls", feature = "rustls-tls"))]
 compile_error!("multiple TLS engines cannot be enabled at the same time");
@@ -284,19 +290,26 @@ impl TlsConfigBuilder {
     /// Create a new [`TlsConfig`] based on this builder.
     pub fn build(self) -> TlsConfig {
         TlsConfig {
+            curl_flags: {
+                let mut options = SslOpt::new();
+                options.no_revoke(self.danger_accept_revoked_certs);
+                self.root_cert_store.configure_ssl_options(&mut options);
+                options
+            },
             ciphers: self.ciphers,
             root_cert_store: self.root_cert_store,
             issuer_cert: self.issuer_cert,
             issuer_cert_path: self.issuer_cert_path,
-            min_version: self.min_version.as_ref().map(ProtocolVersion::curl_version),
-            max_version: self.max_version.as_ref().map(ProtocolVersion::curl_version),
+            min_version: self
+                .min_version
+                .as_ref()
+                .map(ProtocolVersion::as_curl_ssl_version),
+            max_version: self
+                .max_version
+                .as_ref()
+                .map(ProtocolVersion::as_curl_ssl_version),
             danger_accept_invalid_certs: self.danger_accept_invalid_certs,
             danger_accept_invalid_hosts: self.danger_accept_invalid_hosts,
-            curl_flags: {
-                let mut options = SslOpt::new();
-                options.no_revoke(self.danger_accept_revoked_certs);
-                options
-            },
         }
     }
 }
@@ -353,7 +366,7 @@ impl Default for TlsConfig {
 }
 
 impl SetOpt for TlsConfig {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         if let Some(ciphers) = self.ciphers.as_ref() {
             easy.ssl_cipher_list(ciphers)?;
         }
@@ -374,10 +387,14 @@ impl SetOpt for TlsConfig {
                     | None
             )
         {
-            return Err(create_curl_error(
-                curl_sys::CURLE_SSL_ENGINE_INITFAILED,
-                "rustls only supports TLS 1.2+",
-            ));
+            return Err(Error::new(
+                ErrorKind::TlsEngine,
+                MaximumTlsVersionNotSupportedByEngineError {
+                    max_requested: self.max_version.unwrap(),
+                    engine: TlsEngine::Rustls,
+                },
+            )
+            .into());
         }
 
         easy.ssl_min_max_version(
@@ -388,7 +405,7 @@ impl SetOpt for TlsConfig {
         self.root_cert_store.set_opt(easy)?;
 
         if let Some(cert) = self.issuer_cert.as_ref() {
-            easy.issuer_cert_blob(cert.pem.as_bytes())?;
+            easy.issuer_cert_blob(cert.as_pem_bytes())?;
         }
 
         if let Some(path) = self.issuer_cert_path.as_ref() {
@@ -400,7 +417,7 @@ impl SetOpt for TlsConfig {
 }
 
 impl SetOptProxy for TlsConfig {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         if let Some(ciphers) = self.ciphers.as_ref() {
             easy.proxy_ssl_cipher_list(ciphers)?;
         }
@@ -417,7 +434,7 @@ impl SetOptProxy for TlsConfig {
         self.root_cert_store.set_opt_proxy(easy)?;
 
         if let Some(cert) = self.issuer_cert.as_ref() {
-            easy.proxy_issuer_cert_blob(cert.pem.as_bytes())?;
+            easy.proxy_issuer_cert_blob(cert.as_pem_bytes())?;
         }
 
         if let Some(path) = self.issuer_cert_path.as_ref() {
@@ -460,7 +477,7 @@ pub enum ProtocolVersion {
 }
 
 impl ProtocolVersion {
-    const fn curl_version(&self) -> SslVersion {
+    const fn as_curl_ssl_version(&self) -> SslVersion {
         match self {
             Self::Sslv2 => SslVersion::Sslv2,
             Self::Sslv3 => SslVersion::Sslv3,
@@ -468,52 +485,6 @@ impl ProtocolVersion {
             Self::Tlsv11 => SslVersion::Tlsv11,
             Self::Tlsv12 => SslVersion::Tlsv12,
             Self::Tlsv13 => SslVersion::Tlsv13,
-        }
-    }
-}
-
-/// An X.509 digital certificate.
-#[derive(Clone, Debug)]
-pub struct Certificate {
-    /// Curl prefers to work in the PEM format, so internally we do as well.
-    pem: String,
-}
-
-impl Certificate {
-    /// Use one or more DER-encoded certificates stored in memory.
-    ///
-    /// The certificates are not parsed or validated here. If a certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    #[cfg(feature = "data-encoding")]
-    pub fn from_der<B: AsRef<[u8]>>(der: B) -> Self {
-        let mut base64_spec = data_encoding::BASE64.specification();
-        base64_spec.wrap.width = 64;
-        base64_spec.wrap.separator.push_str("\r\n");
-        let base64 = base64_spec.encoding().unwrap();
-
-        let mut pem = String::new();
-
-        pem.push_str("-----BEGIN CERTIFICATE-----\r\n");
-        base64.encode_append(der.as_ref(), &mut pem);
-        pem.push_str("-----END CERTIFICATE-----\r\n");
-
-        Self::from_pem(pem)
-    }
-
-    /// Use one or more PEM-encoded certificates in the given byte buffer.
-    ///
-    /// The certificate object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The certificates are not parsed or validated here. If a certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn from_pem<B: AsRef<[u8]>>(pem: B) -> Self {
-        Self {
-            pem: String::from_utf8(pem.as_ref().to_vec()).unwrap(),
         }
     }
 }
@@ -527,7 +498,7 @@ enum TlsEngine {
 }
 
 fn has_tls_engine(engine: TlsEngine) -> bool {
-    if let Some(version) = crate::curl_info().ssl_version() {
+    if let Some(version) = curl_info().ssl_version() {
         match engine {
             TlsEngine::Rustls => version.contains("rustls/"),
             TlsEngine::Schannel => version.contains("Schannel"),
@@ -535,5 +506,26 @@ fn has_tls_engine(engine: TlsEngine) -> bool {
         }
     } else {
         false
+    }
+}
+
+/// A highly specific error type that is returned when a user attempts to set a
+/// maximum TLS version that is known to not be supported by the configured TLS
+/// engine.
+#[derive(Clone, Debug)]
+struct MaximumTlsVersionNotSupportedByEngineError {
+    max_requested: SslVersion,
+    engine: TlsEngine,
+}
+
+impl std::error::Error for MaximumTlsVersionNotSupportedByEngineError {}
+
+impl fmt::Display for MaximumTlsVersionNotSupportedByEngineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TLS version {:?} is not supported by the {:?} TLS engine",
+            self.max_requested, self.engine
+        )
     }
 }

@@ -241,7 +241,6 @@
     html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png",
     html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"
 )]
-#![deny(unsafe_code)]
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 #![warn(
     future_incompatible,
@@ -297,7 +296,7 @@ pub use crate::{
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
     http::{request::Request, response::Response},
-    info::*,
+    info::{is_http_version_supported, version},
     metrics::Metrics,
     request::RequestExt,
     response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},

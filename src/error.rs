@@ -90,7 +90,7 @@ pub enum ErrorKind {
     /// A request or operation took longer than the configured timeout time.
     Timeout,
 
-    /// An error ocurred in the secure socket engine.
+    /// An error occurred in the secure socket engine.
     TlsEngine,
 
     /// Number of redirects hit the maximum configured amount.
