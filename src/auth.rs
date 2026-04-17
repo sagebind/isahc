@@ -1,6 +1,6 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::{proxy::Proxy, request::SetOpt};
+use crate::config::{proxy::SetOptProxy, request::SetOpt};
 use std::{
     fmt,
     ops::{BitOr, BitOrAssign},
@@ -31,10 +31,10 @@ impl SetOpt for Credentials {
     }
 }
 
-impl SetOpt for Proxy<Credentials> {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
-        easy.proxy_username(&self.0.username)?;
-        easy.proxy_password(&self.0.password)
+impl SetOptProxy for Credentials {
+    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+        easy.proxy_username(&self.username)?;
+        easy.proxy_password(&self.password)
     }
 }
 
@@ -173,11 +173,11 @@ impl SetOpt for Authentication {
     }
 }
 
-impl SetOpt for Proxy<Authentication> {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+impl SetOptProxy for Authentication {
+    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
         #[cfg(feature = "spnego")]
         {
-            if self.0.contains(Authentication::negotiate()) {
+            if self.contains(Authentication::negotiate()) {
                 // Ensure auth engine is enabled, even though credentials do not
                 // need to be specified.
                 easy.proxy_username("")?;
@@ -185,7 +185,7 @@ impl SetOpt for Proxy<Authentication> {
             }
         }
 
-        easy.proxy_auth(&self.0.as_auth())
+        easy.proxy_auth(&self.as_auth())
     }
 }
 

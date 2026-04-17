@@ -20,7 +20,7 @@ features = ["cookies", "json", "nightly"]
 status = "passively-maintained"
 
 [features]
-default = ["http2", "static-curl", "text-decoding"]
+default = ["default-tls", "http2", "static-curl", "text-decoding"]
 cookies = ["httpdate"]
 http2 = ["curl/http2"]
 json = ["serde", "serde_json"]
@@ -32,12 +32,19 @@ static-ssl = ["curl/static-ssl"]
 text-decoding = ["encoding_rs", "mime"]
 unstable-interceptors = []
 
+# TLS-related features
+tls = []
+tls-insecure = []
+default-tls = ["rustls-tls-native-certs"]
+native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
+native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
+rustls-tls = ["static-curl", "tls", "curl/rustls"]
+rustls-tls-native-certs = ["rustls-tls", "data-encoding", "rustls-native-certs"]
+
 [dependencies]
 async-channel = ">=1.4.2, <3"
 castaway = "0.2"
 crossbeam-utils = ">=0.7.0, <0.9.0"
-curl = "0.4.36"
-curl-sys = "0.4.55"
 event-listener = "5"
 futures-lite = ">=1.10.1, <3"
 http = ">=0.2.1, <2"
@@ -47,6 +54,18 @@ slab = "0.4"
 sluice = "0.6"
 url = "2.1"
 waker-fn = "1"
+
+[dependencies.curl]
+version = "0.4.43"
+default-features = false
+
+[dependencies.curl-sys]
+version = "0.4.55"
+default-features = false
+
+[dependencies.data-encoding]
+version = "2"
+optional = true
 
 [dependencies.encoding_rs]
 version = "0.8"
@@ -69,6 +88,14 @@ optional = true
 [dependencies.publicsuffix]
 version = "2"
 features = ["std"]
+optional = true
+
+[dependencies.rustls-ffi]
+version = "0.15"
+optional = true
+
+[dependencies.rustls-native-certs]
+version = "0.8"
 optional = true
 
 [dependencies.serde]

@@ -1,12 +1,6 @@
-//! Configuration options related to SSL/TLS.
-
-use super::SetOpt;
-use curl::easy::{Easy2, SslOpt};
-use std::{
-    iter::FromIterator,
-    ops::{BitOr, BitOrAssign},
-    path::PathBuf,
-};
+use crate::config::{proxy::SetOptProxy, request::SetOpt};
+use curl::easy::Easy2;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 enum PathOrBlob {
@@ -14,12 +8,10 @@ enum PathOrBlob {
     Blob(Vec<u8>),
 }
 
-/// A client certificate for SSL/TLS client validation.
-///
-/// Note that this isn't merely an X.509 certificate, but rather a certificate
-/// and private key pair.
+/// Holds a X.509 certificate along with potentially other certificates in its
+/// chain of trust and a corresponding private key.
 #[derive(Clone, Debug)]
-pub struct ClientCertificate {
+pub struct Identity {
     /// Name of the cert format.
     format: &'static str,
 
@@ -33,7 +25,7 @@ pub struct ClientCertificate {
     password: Option<String>,
 }
 
-impl ClientCertificate {
+impl Identity {
     /// Use a PEM-encoded certificate stored in the given byte buffer.
     ///
     /// The certificate object takes ownership of the byte buffer. If a borrowed
@@ -43,7 +35,7 @@ impl ClientCertificate {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pem<B, P>(bytes: B, private_key: P) -> Self
+    pub fn from_pem<B, P>(bytes: B, private_key: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<PrivateKey>>,
@@ -65,7 +57,7 @@ impl ClientCertificate {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn der<B, P>(bytes: B, private_key: P) -> Self
+    pub fn from_der<B, P>(bytes: B, private_key: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<PrivateKey>>,
@@ -88,7 +80,7 @@ impl ClientCertificate {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pkcs12<B, P>(bytes: B, password: P) -> Self
+    pub fn from_pkcs12<B, P>(bytes: B, password: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<String>>,
@@ -107,7 +99,10 @@ impl ClientCertificate {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pem_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+    pub fn from_pem_file(
+        path: impl Into<PathBuf>,
+        private_key: impl Into<Option<PrivateKey>>,
+    ) -> Self {
         Self {
             format: "PEM",
             data: PathOrBlob::Path(path.into()),
@@ -122,7 +117,10 @@ impl ClientCertificate {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn der_file(path: impl Into<PathBuf>, private_key: impl Into<Option<PrivateKey>>) -> Self {
+    pub fn from_der_file(
+        path: impl Into<PathBuf>,
+        private_key: impl Into<Option<PrivateKey>>,
+    ) -> Self {
         Self {
             format: "DER",
             data: PathOrBlob::Path(path.into()),
@@ -137,7 +135,7 @@ impl ClientCertificate {
     /// not exist or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+    pub fn from_pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
             format: "P12",
             data: PathOrBlob::Path(path.into()),
@@ -145,22 +143,9 @@ impl ClientCertificate {
             password: password.into(),
         }
     }
-
-    /// Get a certificate and private key from a PKCS #12-encoded file.
-    ///
-    /// Use [`pkcs12_file`][ClientCertificate::pkcs12_file] instead.
-    #[inline]
-    #[doc(hidden)]
-    #[deprecated(
-        since = "1.4.0",
-        note = "please use the more clearly-named `pkcs12_file` instead"
-    )]
-    pub fn p12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
-        Self::pkcs12_file(path, password)
-    }
 }
 
-impl SetOpt for ClientCertificate {
+impl SetOpt for Identity {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
         easy.ssl_cert_type(self.format)?;
 
@@ -175,6 +160,27 @@ impl SetOpt for ClientCertificate {
 
         if let Some(password) = self.password.as_ref() {
             easy.key_password(password)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl SetOptProxy for Identity {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.proxy_sslcert_type(self.format)?;
+
+        match &self.data {
+            PathOrBlob::Path(path) => easy.proxy_sslcert(path.to_str().unwrap()),
+            PathOrBlob::Blob(bytes) => easy.proxy_sslcert_blob(bytes.as_slice()),
+        }?;
+
+        if let Some(key) = self.private_key.as_ref() {
+            key.set_opt_proxy(easy)?;
+        }
+
+        if let Some(password) = self.password.as_ref() {
+            easy.proxy_key_password(password)?;
         }
 
         Ok(())
@@ -281,147 +287,19 @@ impl SetOpt for PrivateKey {
     }
 }
 
-/// A public CA certificate bundle file.
-#[derive(Clone, Debug)]
-pub struct CaCertificate {
-    /// Path to the certificate bundle file. Currently only file paths are
-    /// supported.
-    path: PathBuf,
-}
+impl SetOptProxy for PrivateKey {
+    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+        easy.proxy_sslkey_type(self.format)?;
 
-impl CaCertificate {
-    /// Get a CA certificate from a path to a certificate bundle file.
-    ///
-    /// The certificate file is not loaded or validated here. If the file does
-    /// not exist or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn file(ca_bundle_path: impl Into<PathBuf>) -> Self {
-        Self {
-            path: ca_bundle_path.into(),
+        match &self.data {
+            PathOrBlob::Path(path) => easy.proxy_sslkey(path.to_str().unwrap()),
+            PathOrBlob::Blob(bytes) => easy.proxy_sslkey_blob(bytes.as_slice()),
+        }?;
+
+        if let Some(password) = self.password.as_ref() {
+            easy.proxy_key_password(password)?;
         }
-    }
-}
 
-impl SetOpt for CaCertificate {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.cainfo(&self.path)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Ciphers(String);
-
-impl FromIterator<String> for Ciphers {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
-        Ciphers(iter.into_iter().collect::<Vec<_>>().join(":"))
-    }
-}
-
-impl SetOpt for Ciphers {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        easy.ssl_cipher_list(&self.0)
-    }
-}
-
-/// A flag that can be used to alter the behavior of SSL/TLS connections.
-///
-/// Most options are for disabling security checks that introduce security
-/// risks, but may be required as a last resort.
-#[derive(Clone, Copy, Debug)]
-pub struct SslOption(usize);
-
-impl Default for SslOption {
-    fn default() -> Self {
-        Self::NONE
-    }
-}
-
-impl SslOption {
-    /// An empty set of options. This is the default.
-    pub const NONE: Self = SslOption(0);
-
-    /// Disables certificate validation.
-    ///
-    /// # Warning
-    ///
-    /// You should think very carefully before using this method. If invalid
-    /// certificates are trusted, *any* certificate for any site will be trusted
-    /// for use. This includes expired certificates. This introduces significant
-    /// vulnerabilities, and should only be used as a last resort.
-    pub const DANGER_ACCEPT_INVALID_CERTS: Self = SslOption(0b0001);
-
-    /// Disables hostname verification on certificates.
-    ///
-    /// # Warning
-    ///
-    /// You should think very carefully before you use this method. If hostname
-    /// verification is not used, any valid certificate for any site will be
-    /// trusted for use from any other. This introduces a significant
-    /// vulnerability to man-in-the-middle attacks.
-    pub const DANGER_ACCEPT_INVALID_HOSTS: Self = SslOption(0b0010);
-
-    /// Disables certificate revocation checks for backends where such behavior
-    /// is present.
-    ///
-    /// This option is only supported for Schannel (the native Windows SSL
-    /// library).
-    pub const DANGER_ACCEPT_REVOKED_CERTS: Self = SslOption(0b0100);
-
-    const fn contains(self, other: Self) -> bool {
-        (self.0 & other.0) == other.0
-    }
-}
-
-impl BitOr for SslOption {
-    type Output = Self;
-
-    fn bitor(mut self, other: Self) -> Self {
-        self |= other;
-        self
-    }
-}
-
-impl BitOrAssign for SslOption {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.0 |= rhs.0;
-    }
-}
-
-impl SetOpt for SslOption {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
-        let mut opt = SslOpt::new();
-        opt.no_revoke(self.contains(Self::DANGER_ACCEPT_REVOKED_CERTS));
-
-        easy.ssl_options(&opt)?;
-        easy.ssl_verify_peer(!self.contains(Self::DANGER_ACCEPT_INVALID_CERTS))?;
-        easy.ssl_verify_host(!self.contains(Self::DANGER_ACCEPT_INVALID_HOSTS))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::SslOption;
-
-    #[test]
-    fn default_ssl_options() {
-        let options = SslOption::default();
-
-        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
-        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
-        assert!(!options.contains(SslOption::DANGER_ACCEPT_REVOKED_CERTS));
-    }
-
-    #[test]
-    fn ssl_option_invalid_certs() {
-        let options = SslOption::DANGER_ACCEPT_INVALID_CERTS;
-
-        assert!(options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
-        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
-
-        let options = SslOption::DANGER_ACCEPT_INVALID_HOSTS;
-
-        assert!(!options.contains(SslOption::DANGER_ACCEPT_INVALID_CERTS));
-        assert!(options.contains(SslOption::DANGER_ACCEPT_INVALID_HOSTS));
+        Ok(())
     }
 }
