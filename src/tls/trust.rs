@@ -25,11 +25,10 @@ use std::{env, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 /// Isahc supports multiple kinds of stores, though the default is to use the
 /// shared store provided by the operating system (if any).
 #[derive(Clone, Debug)]
-pub struct RootCertStore(TrustConfigurer);
+pub struct TrustStore(Repr);
 
-/// Applies a desired trust configuration for TLS to each request.
 #[derive(Clone, Debug)]
-enum TrustConfigurer {
+enum Repr {
     /// Do nothing to configure trust, and rely on curl's default behavior.
     NoOp,
 
@@ -57,19 +56,12 @@ enum TrustConfigurer {
     NativeCa,
 }
 
-impl RootCertStore {
-    /// Create an empty certificate store.
+impl TrustStore {
+    /// Use the operating system's native APIs for verifying certificate trust,
+    /// if possible.
     ///
-    /// Using this store will result in all server certificates being considered
-    /// untrusted, and is generally useful only for testing.
-    pub const fn empty() -> Self {
-        Self(TrustConfigurer::PemBundle(String::new()))
-    }
-
-    /// Use the platform's native certificate store, if any.
-    ///
-    /// This is normally the default certificate store used for most typical
-    /// applications.
+    /// This is normally the trust method used for most typical applications.
+    /// This is also returned as the [`Default`] implementation.
     ///
     /// On Windows, macOS, and iOS this involves using the certificate
     /// management features provided by the operating system. On Linux and other
@@ -87,13 +79,13 @@ impl RootCertStore {
     ///
     /// If the system store is simply empty or at least *appears* to be empty,
     /// the TLS backend will probably not consider this an inherent error,
-    /// though naturally you will likely encounter certificate errors since the
-    /// store will basically behave like [`RootCertStore::empty`].
+    /// though naturally you will likely encounter certificate errors since no
+    /// certificates will be considered trusted.
     pub fn native() -> Self {
         /// To determine how to access the native store we have to perform some
         /// runtime checks and probing, so we only do this once and cache the
         /// result.
-        static NATIVE_STORE: LazyLock<RootCertStore> = LazyLock::new(RootCertStore::new_native);
+        static NATIVE_STORE: LazyLock<TrustStore> = LazyLock::new(TrustStore::new_native);
 
         NATIVE_STORE.clone()
     }
@@ -119,7 +111,7 @@ impl RootCertStore {
                     "using certificate file from SSL_CERT_FILE environment variable: {:?}",
                     path
                 );
-                return RootCertStore::from_file(path);
+                return TrustStore::from_file(path);
             }
         }
 
@@ -127,7 +119,7 @@ impl RootCertStore {
         // ensure no paths are set. They shouldn't be when curl is statically
         // linked, but they might be if using a system curl.
         if has_tls_engine(TlsEngine::Schannel) || has_tls_engine(TlsEngine::SecureTransport) {
-            return RootCertStore(TrustConfigurer::Unset);
+            return TrustStore(Repr::Unset);
         }
 
         // If we are using curl 8.13.0+ with rustls, then we can ask for
@@ -135,11 +127,11 @@ impl RootCertStore {
         // using the OS-native certificate store.
         if has_tls_engine(TlsEngine::Rustls) && curl_version() >= (8, 13, 0) {
             tracing::debug!("using platform verifier with rustls");
-            return RootCertStore(TrustConfigurer::NativeCa);
+            return TrustStore(Repr::NativeCa);
         }
 
         // If all else fails, use whatever curl wants to fall back to, if any.
-        RootCertStore(TrustConfigurer::NoOp)
+        TrustStore(Repr::NoOp)
     }
 
     /// Use a file containing a bundle of certificates in PEM format.
@@ -152,12 +144,12 @@ impl RootCertStore {
     /// # Examples
     ///
     /// ```
-    /// use isahc::tls::RootCertStore;
+    /// use isahc::tls::TrustStore;
     ///
-    /// let store = RootCertStore::from_file("/etc/certs/cabundle.pem");
+    /// let store = TrustStore::from_file("/etc/certs/cabundle.pem");
     /// ```
     pub fn from_file<P: Into<PathBuf>>(path: P) -> Self {
-        Self(TrustConfigurer::FilePath(path.into()))
+        Self(Repr::FilePath(path.into()))
     }
 
     /// Create a custom certificate store containing exactly the given
@@ -177,37 +169,35 @@ impl RootCertStore {
             .map(|cert| cert.into_pem_string())
             .collect();
 
-        Self(TrustConfigurer::PemBundle(bundle))
+        Self(Repr::PemBundle(bundle))
     }
 
     pub(super) fn configure_ssl_options(&self, ssl_opt: &mut SslOpt) {
-        if let TrustConfigurer::NativeCa = &self.0 {
+        if let Repr::NativeCa = &self.0 {
             ssl_opt.native_ca(true);
         }
     }
 }
 
-impl Default for RootCertStore {
+impl Default for TrustStore {
     fn default() -> Self {
         Self::native()
     }
 }
 
-impl From<Certificate> for RootCertStore {
+impl From<Certificate> for TrustStore {
     fn from(certificate: Certificate) -> Self {
         Self::custom([certificate])
     }
 }
 
-impl SetOpt for RootCertStore {
+impl SetOpt for TrustStore {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match &self.0 {
-            TrustConfigurer::NativeCa | TrustConfigurer::NoOp => Ok(()),
-            TrustConfigurer::FilePath(path) => easy.cainfo(path).map_err(Into::into),
-            TrustConfigurer::PemBundle(bundle) => {
-                easy.ssl_cainfo_blob(bundle.as_bytes()).map_err(Into::into)
-            }
-            TrustConfigurer::Unset => {
+            Repr::NativeCa | Repr::NoOp => Ok(()),
+            Repr::FilePath(path) => easy.cainfo(path).map_err(Into::into),
+            Repr::PemBundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()).map_err(Into::into),
+            Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
                     curl_sys::curl_easy_setopt(
@@ -228,11 +218,11 @@ impl SetOpt for RootCertStore {
     }
 }
 
-impl SetOptProxy for RootCertStore {
+impl SetOptProxy for TrustStore {
     fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match &self.0 {
-            TrustConfigurer::NativeCa | TrustConfigurer::NoOp => Ok(()),
-            TrustConfigurer::FilePath(path) => {
+            Repr::NativeCa | Repr::NoOp => Ok(()),
+            Repr::FilePath(path) => {
                 if let Some(path) = path.to_str() {
                     easy.proxy_cainfo(path).map_err(Into::into)
                 } else {
@@ -243,10 +233,10 @@ impl SetOptProxy for RootCertStore {
                     .into())
                 }
             }
-            TrustConfigurer::PemBundle(bundle) => easy
+            Repr::PemBundle(bundle) => easy
                 .proxy_ssl_cainfo_blob(bundle.as_bytes())
                 .map_err(Into::into),
-            TrustConfigurer::Unset => {
+            Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
                     curl_sys::curl_easy_setopt(

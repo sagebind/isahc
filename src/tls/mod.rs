@@ -1,4 +1,4 @@
-//! Configuration options related to SSL/TLS for supporting [HTTPS] requests.
+//! Configuration options related to SSL/TLS for supporting HTTPS requests.
 //!
 //! # Backends
 //!
@@ -46,7 +46,6 @@
 //! article on TLS
 //! backends](https://github.com/sagebind/isahc/wiki/TLS-Backends).
 //!
-//! [HTTPS]: https://en.wikipedia.org/wiki/HTTPS
 //! [OpenSSL]: https://www.openssl.org
 //! [rustls]: https://github.com/rustls/rustls
 //! [rustls-native-certs]: https://github.com/rustls/rustls-native-certs
@@ -69,7 +68,7 @@ mod trust;
 pub use self::{
     cert::Certificate,
     identity::{Identity, PrivateKey},
-    trust::RootCertStore,
+    trust::TrustStore,
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
@@ -82,10 +81,10 @@ compile_error!("multiple TLS engines cannot be enabled at the same time");
 #[derive(Debug, Default)]
 #[must_use = "builders have no effect if unused"]
 pub struct TlsConfigBuilder {
-    root_cert_store: RootCertStore,
+    trust_store: TrustStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
-    // identity: Option<Identity>,
+    identity: Option<Identity>,
     ciphers: Option<String>,
     min_version: Option<ProtocolVersion>,
     max_version: Option<ProtocolVersion>,
@@ -108,33 +107,33 @@ impl TlsConfigBuilder {
     /// The default setting varies on how Isahc is compiled:
     ///
     /// - When using the native TLS API the default is
-    ///   [`RootCertStore::native`].
+    ///   [`TrustStore::native`].
     /// - When using rustls, the default is an empty store, unless the
     ///   `rustls-tls-native-certs` crate feature is enabled, in which case the
-    ///   default is [`RootCertStore::native`].
+    ///   default is [`TrustStore::native`].
     ///
     /// # Examples
     ///
     /// ```
-    /// use isahc::tls::{Certificate, RootCertStore, TlsConfig};
+    /// use isahc::tls::{Certificate, TrustStore, TlsConfig};
     ///
     /// let config = TlsConfig::builder()
     ///     // Use the native certificate store
-    ///     .root_cert_store(RootCertStore::native())
+    ///     .root_cert_store(TrustStore::native())
     ///     // Use a specific certificate bundle file
-    ///     .root_cert_store(RootCertStore::from_file("/etc/certs/cabundle.pem"))
+    ///     .root_cert_store(TrustStore::from_file("/etc/certs/cabundle.pem"))
     ///     // Use custom certs in memory
-    ///     .root_cert_store(RootCertStore::custom([
+    ///     .root_cert_store(TrustStore::custom([
     ///         Certificate::from_pem("(some long PEM string)"),
     ///     ]))
     ///     // You could even include a certificate bundle in your binary
-    ///     .root_cert_store(RootCertStore::custom([
+    ///     .root_cert_store(TrustStore::custom([
     ///         Certificate::from_pem(include_str!("../../tests/certs/isrgrootx1.pem")),
     ///     ]))
     ///     .build();
     /// ```
-    pub fn root_cert_store(mut self, store: RootCertStore) -> Self {
-        self.root_cert_store = store;
+    pub fn root_cert_store(mut self, store: TrustStore) -> Self {
+        self.trust_store = store;
         self
     }
 
@@ -151,6 +150,49 @@ impl TlsConfigBuilder {
     /// By default, no issuer certificate is set.
     pub fn issuer_certificate(mut self, cert: Certificate) -> Self {
         self.issuer_cert = Some(cert);
+        self
+    }
+
+    /// Add a custom client certificate to use for client authentication, also
+    /// known as *mutual TLS* (mTLS).
+    ///
+    /// SSL/TLS is often used by the client to verify that the server is
+    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
+    /// the server to verify that _you_ are legitimate (two-way). If the server
+    /// asks the client to present an approved certificate before continuing,
+    /// then this sets the certificate chain that will be used to prove
+    /// authenticity.
+    ///
+    /// If a certificate or key format given is not supported by the underlying
+    /// SSL/TLS engine, an error will be returned when attempting to send a
+    /// request using the offending certificate or key.
+    ///
+    /// By default, no identity is set.
+    ///
+    /// # Backend support
+    ///
+    /// Support for mutual TLS varies between the available TLS backends. Here
+    /// are some current limitations of note:
+    ///
+    /// - Schannel and Secure Transport require certificates and private keys to
+    ///   be presented together inside a PKCS #12 archive. This can be an actual
+    ///   archive or one in memory.
+    /// - Mutual TLS with Rustls is not supported at all.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
+    ///
+    /// let config = TlsConfig::builder()
+    ///     .identity(Identity::from_pem_file(
+    ///         "client.pem",
+    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
+    ///     ))
+    ///     .build();
+    /// ```
+    pub fn identity(mut self, identity: Identity) -> Self {
+        self.identity = Some(identity);
         self
     }
 
@@ -290,13 +332,14 @@ impl TlsConfigBuilder {
             curl_flags: {
                 let mut options = SslOpt::new();
                 options.no_revoke(self.danger_accept_revoked_certs);
-                self.root_cert_store.configure_ssl_options(&mut options);
+                self.trust_store.configure_ssl_options(&mut options);
                 options
             },
-            ciphers: self.ciphers,
-            root_cert_store: self.root_cert_store,
+            root_cert_store: self.trust_store,
             issuer_cert: self.issuer_cert,
             issuer_cert_path: self.issuer_cert_path,
+            identity: self.identity,
+            ciphers: self.ciphers,
             min_version: self
                 .min_version
                 .as_ref()
@@ -314,9 +357,10 @@ impl TlsConfigBuilder {
 /// Configuration for making SSL/TLS connections.
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
-    root_cert_store: RootCertStore,
+    root_cert_store: TrustStore,
     issuer_cert: Option<Certificate>,
     issuer_cert_path: Option<PathBuf>,
+    identity: Option<Identity>,
 
     /// List of ciphers to use, in a string format compatible with curl.
     ciphers: Option<String>,
@@ -409,6 +453,10 @@ impl SetOpt for TlsConfig {
             easy.issuer_cert(path)?;
         }
 
+        if let Some(identity) = self.identity.as_ref() {
+            identity.set_opt(easy)?;
+        }
+
         Ok(())
     }
 }
@@ -436,6 +484,10 @@ impl SetOptProxy for TlsConfig {
 
         if let Some(path) = self.issuer_cert_path.as_ref() {
             easy.proxy_issuer_cert(path)?;
+        }
+
+        if let Some(identity) = self.identity.as_ref() {
+            identity.set_opt_proxy(easy)?;
         }
 
         Ok(())

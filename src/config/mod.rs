@@ -574,7 +574,7 @@ pub trait Configurable: request::WithRequestConfig {
 
     /// Set various options for this request that control SSL/TLS behavior.
     ///
-    /// Most options are for disabling security checks that introduce security
+    /// Some options are for disabling security checks that introduce security
     /// risks, but may be required as a last resort. Note that the most secure
     /// options are typically the default and do not need to be specified.
     ///
@@ -583,7 +583,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Warning
     ///
     /// You should think very carefully before using this method. Using *any*
-    /// options that alter how certificates are validated can introduce
+    /// options that alter how certificates are validated might introduce
     /// significant security vulnerabilities.
     ///
     /// # Examples
@@ -656,65 +656,10 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Add a custom client certificate to use for client authentication, also
-    /// known as *mutual TLS*.
-    ///
-    /// SSL/TLS is often used by the client to verify that the server is
-    /// legitimate (one-way), but with *mutual TLS* (mTLS)  it is _also_ used by
-    /// the server to verify that _you_ are legitimate (two-way). If the server
-    /// asks the client to present an approved certificate before continuing,
-    /// then this sets the certificate chain that will be used to prove
-    /// authenticity.
-    ///
-    /// If a certificate or key format given is not supported by the underlying
-    /// SSL/TLS engine, an error will be returned when attempting to send a
-    /// request using the offending certificate or key.
-    ///
-    /// By default, no client certificate is set.
-    ///
-    /// # Backend support
-    ///
-    /// Support for mutual TLS varies between the available TLS backends. Here
-    /// are some current limitations of note:
-    ///
-    /// - Schannel and Secure Transport require certificates and private keys to
-    ///   be presented together inside a PKCS #12 archive. This can be an actual
-    ///   archive or one in memory.
-    /// - Mutual TLS with Rustls is not supported at all.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{prelude::*, tls::{Identity, PrivateKey}, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .tls_identity(Identity::from_pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
-    ///     ))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[cfg(feature = "tls")]
-    #[must_use = "builders have no effect if unused"]
-    fn tls_identity(self, identity: crate::tls::Identity) -> Self {
-        self.with_config(move |config| {
-            config.identity = Some(identity);
-        })
-    }
-
-    #[cfg(feature = "tls")]
-    #[must_use = "builders have no effect if unused"]
-    fn proxy_tls_identity(self, identity: crate::tls::Identity) -> Self {
-        self.with_config(move |config| {
-            config.proxy_identity = Some(identity);
-        })
-    }
-
     /// Enable or disable sending HTTP header names in Title-Case instead of
     /// lowercase form.
     ///
-    /// This option only affects user-supplied headers and does not affect
+    /// This option only affects ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++user-supplied headers and does not affect
     /// low-level headers that are automatically supplied for HTTP protocol
     /// details, such as `Connection` and `Host` (unless you override such a
     /// header yourself).

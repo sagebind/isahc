@@ -1,7 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
 use super::{setopt::*, *};
-use crate::error::Error;
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
@@ -75,12 +74,6 @@ define_request_config! {
 
     #[cfg(feature = "tls")]
     tls_config: Option<crate::tls::TlsConfig>,
-
-    #[cfg(feature = "tls")]
-    identity: Option<crate::tls::Identity>,
-
-    #[cfg(feature = "tls")]
-    proxy_identity: Option<crate::tls::Identity>,
 
     #[cfg(feature = "tls")]
     proxy_tls_config: Option<crate::tls::TlsConfig>,
@@ -220,16 +213,6 @@ impl SetOpt for RequestConfig {
         #[cfg(feature = "tls")]
         if let Some(config) = self.proxy_tls_config.as_ref() {
             config.set_opt_proxy(easy)?;
-        }
-
-        #[cfg(feature = "tls")]
-        if let Some(identity) = self.identity.as_ref() {
-            identity.set_opt(easy)?;
-        }
-
-        #[cfg(feature = "tls")]
-        if let Some(identity) = self.proxy_identity.as_ref() {
-            identity.set_opt_proxy(easy)?;
         }
 
         if let Some(enable) = self.enable_metrics {

@@ -1,10 +1,10 @@
 //! These tests exercise various SSL/TLS options while making requests to [badssl.com](https://badssl.com).
 
 use isahc::{
+    Request,
     error::ErrorKind,
     prelude::*,
     tls::{ProtocolVersion, TlsConfig},
-    Request,
 };
 
 #[test]
