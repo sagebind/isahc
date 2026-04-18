@@ -2,18 +2,15 @@ use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
 use curl::easy::Easy2;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug)]
-enum PathOrBlob {
-    Path(PathBuf),
-    Blob(Vec<u8>),
-}
-
 /// Holds a X.509 certificate along with potentially other certificates in its
-/// chain of trust and a corresponding private key.
+/// chain of trust and a corresponding private key. This collection of
+/// certificates is used to authenticate the client to the server if the server
+/// requests client authentication during the SSL/TLS handshake. This process is
+/// also known as mutual TLS (mTLS).
 #[derive(Clone, Debug)]
 pub struct Identity {
-    /// Name of the cert format.
-    format: &'static str,
+    /// The format of the client certificate.
+    format: CertFormat,
 
     /// The certificate data, either a path or a blob.
     data: PathOrBlob,
@@ -41,7 +38,7 @@ impl Identity {
         P: Into<Option<PrivateKey>>,
     {
         Self {
-            format: "PEM",
+            format: CertFormat::Pem,
             data: PathOrBlob::Blob(bytes.into()),
             private_key: private_key.into(),
             password: None,
@@ -63,7 +60,7 @@ impl Identity {
         P: Into<Option<PrivateKey>>,
     {
         Self {
-            format: "DER",
+            format: CertFormat::Der,
             data: PathOrBlob::Blob(bytes.into()),
             private_key: private_key.into(),
             password: None,
@@ -86,7 +83,7 @@ impl Identity {
         P: Into<Option<String>>,
     {
         Self {
-            format: "P12",
+            format: CertFormat::Pkcs12,
             data: PathOrBlob::Blob(bytes.into()),
             private_key: None,
             password: password.into(),
@@ -104,7 +101,7 @@ impl Identity {
         private_key: impl Into<Option<PrivateKey>>,
     ) -> Self {
         Self {
-            format: "PEM",
+            format: CertFormat::Pem,
             data: PathOrBlob::Path(path.into()),
             private_key: private_key.into(),
             password: None,
@@ -122,7 +119,7 @@ impl Identity {
         private_key: impl Into<Option<PrivateKey>>,
     ) -> Self {
         Self {
-            format: "DER",
+            format: CertFormat::Der,
             data: PathOrBlob::Path(path.into()),
             private_key: private_key.into(),
             password: None,
@@ -137,7 +134,7 @@ impl Identity {
     /// using the offending certificate.
     pub fn from_pkcs12_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
-            format: "P12",
+            format: CertFormat::Pkcs12,
             data: PathOrBlob::Path(path.into()),
             private_key: None,
             password: password.into(),
@@ -147,7 +144,7 @@ impl Identity {
 
 impl SetOpt for Identity {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        easy.ssl_cert_type(self.format)?;
+        easy.ssl_cert_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.ssl_cert(path.as_path()),
@@ -168,7 +165,7 @@ impl SetOpt for Identity {
 
 impl SetOptProxy for Identity {
     fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        easy.proxy_sslcert_type(self.format)?;
+        easy.proxy_sslcert_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.proxy_sslcert(path.to_str().unwrap()),
@@ -190,8 +187,8 @@ impl SetOptProxy for Identity {
 /// A private key file.
 #[derive(Clone, Debug)]
 pub struct PrivateKey {
-    /// Key format name.
-    format: &'static str,
+    /// The format of the private key.
+    format: CertFormat,
 
     /// The certificate data, either a path or a blob.
     data: PathOrBlob,
@@ -215,7 +212,7 @@ impl PrivateKey {
         P: Into<Option<String>>,
     {
         Self {
-            format: "PEM",
+            format: CertFormat::Pem,
             data: PathOrBlob::Blob(bytes.into()),
             password: password.into(),
         }
@@ -235,7 +232,7 @@ impl PrivateKey {
         P: Into<Option<String>>,
     {
         Self {
-            format: "DER",
+            format: CertFormat::Der,
             data: PathOrBlob::Blob(bytes.into()),
             password: password.into(),
         }
@@ -249,7 +246,7 @@ impl PrivateKey {
     /// offending key.
     pub fn pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
-            format: "PEM",
+            format: CertFormat::Pem,
             data: PathOrBlob::Path(path.into()),
             password: password.into(),
         }
@@ -263,7 +260,7 @@ impl PrivateKey {
     /// offending key.
     pub fn der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
-            format: "DER",
+            format: CertFormat::Der,
             data: PathOrBlob::Path(path.into()),
             password: password.into(),
         }
@@ -272,7 +269,7 @@ impl PrivateKey {
 
 impl SetOpt for PrivateKey {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        easy.ssl_key_type(self.format)?;
+        easy.ssl_key_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.ssl_key(path.as_path()),
@@ -289,7 +286,7 @@ impl SetOpt for PrivateKey {
 
 impl SetOptProxy for PrivateKey {
     fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        easy.proxy_sslkey_type(self.format)?;
+        easy.proxy_sslkey_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.proxy_sslkey(path.to_str().unwrap()),
@@ -301,5 +298,31 @@ impl SetOptProxy for PrivateKey {
         }
 
         Ok(())
+    }
+}
+
+/// curl supports both in-memory certs and certs loaded from files for mTLS.
+/// This holds one or the other, depending on which the user has provided.
+#[derive(Clone, Debug)]
+enum PathOrBlob {
+    Path(PathBuf),
+    Blob(Vec<u8>),
+}
+
+/// Possible formats for certificates supported by curl.
+#[derive(Clone, Copy, Debug)]
+enum CertFormat {
+    Pem,
+    Der,
+    Pkcs12,
+}
+
+impl CertFormat {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CertFormat::Pem => "PEM",
+            CertFormat::Der => "DER",
+            CertFormat::Pkcs12 => "P12",
+        }
     }
 }

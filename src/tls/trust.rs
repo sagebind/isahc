@@ -1,4 +1,9 @@
-//! Trusted root certificate discovery and handling.
+//! This module provides the API used to configure how trust of TLS server
+//! certificates and certificate authorities should be determined.
+//!
+//! This API is called "trust" because it might not be as simple as a list of
+//! root certificates. You can delegate to other verifier APIs to determine
+//! which certificates you trust, for example.
 
 use super::{Certificate, TlsEngine, has_tls_engine};
 use crate::{
@@ -22,16 +27,34 @@ use std::{env, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 #[derive(Clone, Debug)]
 pub struct RootCertStore(TrustConfigurer);
 
+/// Applies a desired trust configuration for TLS to each request.
 #[derive(Clone, Debug)]
 enum TrustConfigurer {
+    /// Do nothing to configure trust, and rely on curl's default behavior.
     NoOp,
-    Unset,
-    FilePath(PathBuf),
-    PemBundle(String),
-    NativeCa,
 
-    #[cfg(feature = "rustls-tls-native-certs")]
-    RustlsNativeTls,
+    Unset,
+
+    /// Use a certificate bundle from a file path.
+    ///
+    /// This may or may not be combined with OS-native certificate stores,
+    /// depending on the TLS backend.
+    FilePath(PathBuf),
+
+    /// Use an in-memory bundle of certificates.
+    ///
+    /// This may or may not be combined with OS-native certificate stores,
+    /// depending on the TLS backend.
+    PemBundle(String),
+
+    /// Sets the `CURLSSLOPT_NATIVE_CA` flag, which asks curl to use the OS
+    /// native CA store, if possible and supported by the current TLS backend.
+    ///
+    /// When using rustls, this will cause curl to use the
+    /// rustls-platform-verifier crate (via rustls-ffi) to verify any certs.
+    ///
+    /// See <https://curl.se/libcurl/c/CURLOPT_SSL_OPTIONS.html>.
+    NativeCa,
 }
 
 impl RootCertStore {
@@ -115,18 +138,8 @@ impl RootCertStore {
             return RootCertStore(TrustConfigurer::NativeCa);
         }
 
-        // Use the rustls-native-certs crate if enabled. Note this already
-        // implies using a statically-linked curl with rustls.
-        #[cfg(feature = "rustls-tls-native-certs")]
-        {
-            RootCertStore(TrustConfigurer::RustlsNativeTls)
-        }
-
         // If all else fails, use whatever curl wants to fall back to, if any.
-        #[cfg(not(feature = "rustls-tls-native-certs"))]
-        {
-            RootCertStore(TrustConfigurer::NoOp)
-        }
+        RootCertStore(TrustConfigurer::NoOp)
     }
 
     /// Use a file containing a bundle of certificates in PEM format.
@@ -176,20 +189,7 @@ impl RootCertStore {
 
 impl Default for RootCertStore {
     fn default() -> Self {
-        // If we were configured to use rustls without native cert support, use
-        // an empty store as the default.
-        //
-        // Note that if we are dynamically linked to a curl that was built using
-        // rustls, then it is still possible to use the native store if that
-        // curl was built that way.
-        if cfg!(feature = "rustls-tls")
-            && !cfg!(feature = "rustls-tls-native-certs")
-            && !cfg!(feature = "rustls-tls-platform-verifier")
-        {
-            Self(TrustConfigurer::NoOp)
-        } else {
-            Self::native()
-        }
+        Self::native()
     }
 }
 
@@ -202,12 +202,11 @@ impl From<Certificate> for RootCertStore {
 impl SetOpt for RootCertStore {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match &self.0 {
+            TrustConfigurer::NativeCa | TrustConfigurer::NoOp => Ok(()),
             TrustConfigurer::FilePath(path) => easy.cainfo(path).map_err(Into::into),
             TrustConfigurer::PemBundle(bundle) => {
                 easy.ssl_cainfo_blob(bundle.as_bytes()).map_err(Into::into)
             }
-
-            #[allow(unsafe_code)]
             TrustConfigurer::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
@@ -225,27 +224,6 @@ impl SetOpt for RootCertStore {
 
                 Ok(())
             }
-
-            #[cfg(feature = "rustls-tls-native-certs")]
-            #[allow(unsafe_code)]
-            TrustConfigurer::RustlsNativeTls => {
-                // let mut result = rustls_native_certs::load_native_certs();
-
-                // if let Some(e) = result.errors.pop() {
-                //     return Err(create_curl_error(curl_sys::CURLE_SSL_CACERT_BADFILE, e).into());
-                // }
-
-                // RootCertStore::custom(
-                //     result
-                //         .certs
-                //         .into_iter()
-                //         .map(|cert| Certificate::from_der(cert)),
-                // )
-                // .set_opt(easy)
-                Ok(())
-            }
-
-            _ => Ok(()),
         }
     }
 }
@@ -253,6 +231,7 @@ impl SetOpt for RootCertStore {
 impl SetOptProxy for RootCertStore {
     fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match &self.0 {
+            TrustConfigurer::NativeCa | TrustConfigurer::NoOp => Ok(()),
             TrustConfigurer::FilePath(path) => {
                 if let Some(path) = path.to_str() {
                     easy.proxy_cainfo(path).map_err(Into::into)
@@ -267,8 +246,6 @@ impl SetOptProxy for RootCertStore {
             TrustConfigurer::PemBundle(bundle) => easy
                 .proxy_ssl_cainfo_blob(bundle.as_bytes())
                 .map_err(Into::into),
-
-            #[allow(unsafe_code)]
             TrustConfigurer::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
@@ -286,25 +263,6 @@ impl SetOptProxy for RootCertStore {
 
                 Ok(())
             }
-
-            #[cfg(feature = "rustls-tls-native-certs")]
-            TrustConfigurer::RustlsNativeTls => {
-                let mut result = rustls_native_certs::load_native_certs();
-
-                if let Some(e) = result.errors.pop() {
-                    return Err(create_curl_error(curl_sys::CURLE_SSL_CACERT_BADFILE, e).into());
-                }
-
-                RootCertStore::custom(
-                    result
-                        .certs
-                        .into_iter()
-                        .map(|cert| Certificate::from_der(cert)),
-                )
-                .set_opt_proxy(easy)
-            }
-
-            _ => Ok(()),
         }
     }
 }

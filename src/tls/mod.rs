@@ -64,15 +64,12 @@ use std::{fmt, path::PathBuf};
 
 mod cert;
 mod identity;
-mod roots;
-
-#[cfg(feature = "rustls-tls")]
-mod rustls;
+mod trust;
 
 pub use self::{
     cert::Certificate,
     identity::{Identity, PrivateKey},
-    roots::RootCertStore,
+    trust::RootCertStore,
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]

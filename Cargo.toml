@@ -34,12 +34,10 @@ unstable-interceptors = []
 # TLS-related features
 tls = []
 tls-insecure = []
-default-tls = ["rustls-tls-platform-verifier"]
+default-tls = ["rustls-tls"]
 native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
 native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
 rustls-tls = ["static-curl", "tls", "curl/rustls", "curl-sys/rustls"]
-rustls-tls-native-certs = ["rustls-tls", "dep:rustls-native-certs"]
-rustls-tls-platform-verifier = ["rustls-tls"]
 
 [dependencies]
 async-channel = ">=1.4.2, <3"
