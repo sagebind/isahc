@@ -32,7 +32,19 @@ enum Repr {
     /// Do nothing to configure trust, and rely on curl's default behavior.
     NoOp,
 
+    // Unset CA-related options in case they are set by default. Usually this is
+    // a way of asking to use the OS root certificate store for certain
+    // backends.+++++++++++++++++++++++++++++++++++
     Unset,
+
+    /// Sets the `CURLSSLOPT_NATIVE_CA` flag, which asks curl to use the OS
+    /// native CA store, if possible and supported by the current TLS backend.
+    ///
+    /// When using rustls, this will cause curl to use the
+    /// rustls-platform-verifier crate (via rustls-ffi) to verify any certs.
+    ///
+    /// See <https://curl.se/libcurl/c/CURLOPT_SSL_OPTIONS.html>.
+    NativeCa,
 
     /// Use a certificate bundle from a file path.
     ///
@@ -45,15 +57,6 @@ enum Repr {
     /// This may or may not be combined with OS-native certificate stores,
     /// depending on the TLS backend.
     PemBundle(String),
-
-    /// Sets the `CURLSSLOPT_NATIVE_CA` flag, which asks curl to use the OS
-    /// native CA store, if possible and supported by the current TLS backend.
-    ///
-    /// When using rustls, this will cause curl to use the
-    /// rustls-platform-verifier crate (via rustls-ffi) to verify any certs.
-    ///
-    /// See <https://curl.se/libcurl/c/CURLOPT_SSL_OPTIONS.html>.
-    NativeCa,
 }
 
 impl TrustStore {
@@ -108,18 +111,11 @@ impl TrustStore {
         if let Some(path) = env::var_os("SSL_CERT_FILE") {
             if !path.is_empty() {
                 tracing::debug!(
-                    "using certificate file from SSL_CERT_FILE environment variable: {:?}",
-                    path
+                    ?path,
+                    "using certificate bundle from SSL_CERT_FILE environment variable",
                 );
                 return TrustStore::from_file(path);
             }
-        }
-
-        // These backends will use the store built into the OS as long as we
-        // ensure no paths are set. They shouldn't be when curl is statically
-        // linked, but they might be if using a system curl.
-        if has_tls_engine(TlsEngine::Schannel) || has_tls_engine(TlsEngine::SecureTransport) {
-            return TrustStore(Repr::Unset);
         }
 
         // If we are using curl 8.13.0+ with rustls, then we can ask for
@@ -128,6 +124,13 @@ impl TrustStore {
         if has_tls_engine(TlsEngine::Rustls) && curl_version() >= (8, 13, 0) {
             tracing::debug!("using platform verifier with rustls");
             return TrustStore(Repr::NativeCa);
+        }
+
+        // These backends will use the store built into the OS as long as we
+        // ensure no paths are set. They shouldn't be when curl is statically
+        // linked, but they might be if using a system curl.
+        if has_tls_engine(TlsEngine::Schannel) || has_tls_engine(TlsEngine::SecureTransport) {
+            return TrustStore(Repr::Unset);
         }
 
         // If all else fails, use whatever curl wants to fall back to, if any.
