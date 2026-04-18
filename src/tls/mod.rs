@@ -77,6 +77,10 @@ compile_error!("`tls` feature is enabled, but no TLS backend was selected");
 #[cfg(all(feature = "native-tls", feature = "rustls-tls"))]
 compile_error!("multiple TLS engines cannot be enabled at the same time");
 
+// SPNEGO is only supported with native TLS.
+#[cfg(all(not(feature = "native-tls"), feature = "spnego"))]
+compile_error!("spnego must be used with native-tls");
+
 /// A builder for creating a custom SSL/TLS connector configuration.
 #[derive(Debug, Default)]
 #[must_use = "builders have no effect if unused"]
