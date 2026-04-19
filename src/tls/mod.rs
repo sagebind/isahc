@@ -288,6 +288,11 @@ impl TlsConfigBuilder {
     /// By default this is disabled, and connections with servers that return a
     /// certificate that does not match their hostname are rejected.
     ///
+    /// # Backend support
+    ///
+    /// This option is **not supported** when using the Rustls TLS backend and
+    /// will have no effect.
+    ///
     /// # Warning
     ///
     /// **You should think very carefully before you use this method.** If
@@ -305,9 +310,11 @@ impl TlsConfigBuilder {
     ///
     /// By default this is disabled, and revoked certificates are rejected.
     ///
-    /// This option is only supported when using the Schannel TLS backend (the
-    /// native Windows SSL/TLS implementation). On other backends this option
-    /// will likely have no effect regardless of setting.
+    /// # Backend support
+    ///
+    /// This option is **only supported** when using the Schannel TLS backend
+    /// (the native Windows SSL/TLS implementation). On other backends this
+    /// option will likely have no effect regardless of setting.
     ///
     /// # Warning
     ///

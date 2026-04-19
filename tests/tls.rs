@@ -40,7 +40,7 @@ fn accepting_invalid_certs_alone_does_not_allow_invalid_hosts() {
 }
 
 #[test]
-#[cfg(feature = "tls-insecure")]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
 fn accept_cert_with_wrong_host() {
     Request::get("https://wrong.host.badssl.com")
         .tls_config(
@@ -55,7 +55,7 @@ fn accept_cert_with_wrong_host() {
 }
 
 #[test]
-#[cfg(feature = "tls-insecure")]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
 fn accepting_certs_with_wrong_host_alone_does_not_allow_invalid_certs() {
     Request::get("https://expired.badssl.com")
         .tls_config(
