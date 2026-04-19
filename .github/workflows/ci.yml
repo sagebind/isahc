@@ -86,4 +86,4 @@ jobs:
             cargo-${{ runner.os }}-
 
       - name: Run tests
-        run: cargo test --no-default-features --features native-tls,spnego
+        run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
