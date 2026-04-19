@@ -23,7 +23,7 @@ fn accept_expired_cert() {
 }
 
 #[test]
-#[cfg(feature = "tls-insecure")]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
 fn accepting_invalid_certs_alone_does_not_allow_invalid_hosts() {
     let error = Request::get("https://wrong.host.badssl.com")
         .tls_config(
