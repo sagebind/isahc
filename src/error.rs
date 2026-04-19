@@ -56,6 +56,10 @@ pub enum ErrorKind {
     /// server, then the server's response will likely indicate as such.
     InvalidRequest,
 
+    /// An error occurred when attempting to establish a TLS connection due to a
+    /// problem with the TLS configuration.
+    InvalidTlsConfiguration,
+
     /// An I/O error either sending the request or reading the response. This
     /// could be caused by a problem on the client machine, a problem on the
     /// server machine, or a problem with the network between the two.
@@ -90,7 +94,7 @@ pub enum ErrorKind {
     /// A request or operation took longer than the configured timeout time.
     Timeout,
 
-    /// An error ocurred in the secure socket engine.
+    /// An error occurred in the secure socket engine.
     TlsEngine,
 
     /// Number of redirects hit the maximum configured amount.
@@ -120,6 +124,9 @@ impl ErrorKind {
                 Some("provided authentication credentials were rejected by the server")
             }
             Self::InvalidRequest => Some("invalid HTTP request"),
+            Self::InvalidTlsConfiguration => Some(
+                "an error occurred when attempting to establish a TLS connection due to a problem with the TLS configuration",
+            ),
             Self::NameResolution => Some("failed to resolve host name"),
             Self::ProtocolViolation => {
                 Some("the server made an unrecoverable HTTP protocol violation")
@@ -231,7 +238,7 @@ impl Error {
             std::io::Error as error => error.into(),
             curl::Error as error => {
                 Self::with_context(
-                    if error.is_ssl_certproblem() || error.is_ssl_cacert_badfile() {
+                    if error.is_ssl_certproblem() {
                         ErrorKind::BadClientCertificate
                     } else if error.is_peer_failed_verification()
                         || error.is_ssl_cacert()
@@ -249,6 +256,8 @@ impl Error {
                         ErrorKind::InvalidCredentials
                     } else if error.is_url_malformed() {
                         ErrorKind::InvalidRequest
+                    } else if error.is_ssl_cacert_badfile() {
+                        ErrorKind::InvalidTlsConfiguration
                     } else if error.is_couldnt_resolve_host() || error.is_couldnt_resolve_proxy() {
                         ErrorKind::NameResolution
                     } else if error.is_got_nothing()

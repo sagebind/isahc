@@ -194,6 +194,25 @@
 //! Enable support for decoding text-based responses in various charsets into
 //! strings. Enabled by default.
 //!
+//! ## `tls`
+//!
+//! Enable API support for TLS configuration. This feature allows you to use any
+//! TLS-specific features of Isahc without selecting a particular TLS backend,
+//! and is a good choice when writing a library that might require TLS support,
+//! but want to allow the application writer to decide which TLS backend to use.
+//! See the documentation for the [`tls`] module for more details on
+//! compile-time and runtime TLS configuration.
+//!
+//! This feature is automatically enabled when enabling a specific TLS backend.
+//! Conversely, if this feature is enabled but no backend feature is enabled, a
+//! compile error will be emitted.
+//!
+//! ## `tls-insecure`
+//!
+//! Enable the use of insecure TLS configuration. By default methods that allow
+//! you to create TLS configuration that may introduce security vulnerabilities
+//! into your code are not permitted.
+//!
 //! ## Unstable APIs
 //!
 //! There are also some features that enable new incubating APIs that do not
@@ -222,7 +241,6 @@
     html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png",
     html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"
 )]
-#![deny(unsafe_code)]
 #![cfg_attr(feature = "nightly", feature(doc_cfg))]
 #![warn(
     future_incompatible,
@@ -240,9 +258,6 @@ use std::convert::TryFrom;
 
 #[macro_use]
 mod macros;
-
-#[cfg(feature = "cookies")]
-pub mod cookies;
 
 mod agent;
 mod body;
@@ -264,6 +279,12 @@ pub mod auth;
 pub mod config;
 pub mod error;
 
+#[cfg(feature = "cookies")]
+pub mod cookies;
+
+#[cfg(feature = "tls")]
+pub mod tls;
+
 #[cfg(feature = "unstable-interceptors")]
 pub mod interceptor;
 #[cfg(not(feature = "unstable-interceptors"))]
@@ -275,7 +296,7 @@ pub use crate::{
     client::{HttpClient, HttpClientBuilder, ResponseFuture},
     error::Error,
     http::{request::Request, response::Response},
-    info::*,
+    info::{is_http_version_supported, version},
     metrics::Metrics,
     request::RequestExt,
     response::{AsyncReadResponseExt, ReadResponseExt, ResponseExt},
@@ -299,11 +320,7 @@ pub use http;
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        config::Configurable,
-        AsyncReadResponseExt,
-        ReadResponseExt,
-        RequestExt,
-        ResponseExt,
+        AsyncReadResponseExt, ReadResponseExt, RequestExt, ResponseExt, config::Configurable,
     };
 }
 

@@ -1,12 +1,15 @@
-//! This example contains a number of manual tests against badssl.com
-//! demonstrating several dangerous SSL/TLS options.
+//! These tests exercise various SSL/TLS options while making requests to [badssl.com](https://badssl.com).
 
-use isahc::{Request, error::ErrorKind, prelude::*, tls::TlsConfig};
+use isahc::{
+    Request,
+    error::ErrorKind,
+    prelude::*,
+    tls::{ProtocolVersion, TlsConfig},
+};
 
-fn main() {
-    println!("ssl: {:?}", curl::Version::get().ssl_version());
-
-    // accept expired cert
+#[test]
+#[cfg(feature = "tls-insecure")]
+fn accept_expired_cert() {
     Request::get("https://expired.badssl.com")
         .tls_config(
             TlsConfig::builder()
@@ -17,8 +20,11 @@ fn main() {
         .unwrap()
         .send()
         .expect("cert should have been accepted");
+}
 
-    // accepting invalid certs alone does not allow invalid hosts
+#[test]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
+fn accepting_invalid_certs_alone_does_not_allow_invalid_hosts() {
     let error = Request::get("https://wrong.host.badssl.com")
         .tls_config(
             TlsConfig::builder()
@@ -29,9 +35,13 @@ fn main() {
         .unwrap()
         .send()
         .expect_err("cert should have been rejected");
-    assert_eq!(error, ErrorKind::BadServerCertificate);
 
-    // accept cert with wrong host
+    assert_eq!(error, ErrorKind::BadServerCertificate);
+}
+
+#[test]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
+fn accept_cert_with_wrong_host() {
     Request::get("https://wrong.host.badssl.com")
         .tls_config(
             TlsConfig::builder()
@@ -42,8 +52,11 @@ fn main() {
         .unwrap()
         .send()
         .expect("cert should have been accepted");
+}
 
-    // accepting certs with wrong host alone does not allow invalid certs
+#[test]
+#[cfg(all(feature = "tls-insecure", not(feature = "rustls-tls")))]
+fn accepting_certs_with_wrong_host_alone_does_not_allow_invalid_certs() {
     Request::get("https://expired.badssl.com")
         .tls_config(
             TlsConfig::builder()
@@ -54,4 +67,20 @@ fn main() {
         .unwrap()
         .send()
         .expect_err("cert should have been rejected");
+}
+
+#[test]
+fn tls_less_than_min_version_is_rejected() {
+    let error = Request::get("https://tls-v1-0.badssl.com:1010")
+        .tls_config(
+            TlsConfig::builder()
+                .min_version(ProtocolVersion::Tlsv12)
+                .build(),
+        )
+        .body(())
+        .unwrap()
+        .send()
+        .expect_err("cert should have been rejected");
+
+    assert_eq!(error, ErrorKind::ConnectionFailed);
 }

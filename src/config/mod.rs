@@ -13,12 +13,12 @@
 // to update the client code to apply the option when configuring an easy
 // handle.
 
-use self::{proxy::Proxy, request::SetOpt};
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
 };
 use curl::easy::Easy2;
+use setopt::{SetOpt, SetOptError};
 use std::{net::IpAddr, time::Duration};
 
 pub(crate) mod client;
@@ -27,12 +27,11 @@ pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
-pub(crate) mod ssl;
+pub(crate) mod setopt;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
-pub use ssl::{CaCertificate, ClientCertificate, PrivateKey, SslOption};
 
 /// Provides additional methods when building a request for configuring various
 /// execution-related options on how the request should be sent.
@@ -537,7 +536,7 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_authentication(self, authentication: Authentication) -> Self {
         self.with_config(move |config| {
-            config.proxy_authentication = Some(Proxy(authentication));
+            config.proxy_authentication = Some(authentication);
         })
     }
 
@@ -549,7 +548,7 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn proxy_credentials(self, credentials: Credentials) -> Self {
         self.with_config(move |config| {
-            config.proxy_credentials = Some(Proxy(credentials));
+            config.proxy_credentials = Some(credentials);
         })
     }
 
@@ -573,108 +572,73 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Set a custom SSL/TLS client certificate to use for client connections.
+    /// Set various options for this request that control SSL/TLS behavior.
     ///
-    /// If a format is not supported by the underlying SSL/TLS engine, an error
-    /// will be returned when attempting to send a request using the offending
-    /// certificate.
+    /// Some options are for disabling security checks that introduce security
+    /// risks, but may be required as a last resort. Note that the most secure
+    /// options are typically the default and do not need to be specified.
     ///
-    /// The default value is none.
+    /// The default value is [`TlsConfig::default`].
+    ///
+    /// # Warning
+    ///
+    /// You should think very carefully before using this method. Using *any*
+    /// options that alter how certificates are validated might introduce
+    /// significant security vulnerabilities.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     Request,
-    /// };
+    /// use isahc::{prelude::*, tls::{TlsConfig, TrustStore}, Request};
     ///
-    /// let response = Request::get("localhost:3999")
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
+    /// let response = Request::get("https://example.org")
+    ///     .tls_config(TlsConfig::builder()
+    ///         .trust_store(TrustStore::native())
+    ///         .build())
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// ```no_run
+    /// use isahc::{prelude::*, tls::TlsConfig, Request};
+    ///
+    /// # #[cfg(feature = "tls-insecure")]
+    /// let response = Request::get("https://badssl.com")
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .body(())?
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
     /// ```
-    /// use isahc::{
-    ///     config::{ClientCertificate, PrivateKey},
-    ///     prelude::*,
-    ///     HttpClient,
-    /// };
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let client = HttpClient::builder()
-    ///     .ssl_client_certificate(ClientCertificate::pem_file(
-    ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret")),
-    ///     ))
+    ///     .tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[cfg(feature = "tls")]
     #[must_use = "builders have no effect if unused"]
-    fn ssl_client_certificate(self, certificate: ClientCertificate) -> Self {
+    fn tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
-            config.ssl_client_certificate = Some(certificate);
+            config.tls_config = Some(tls_config);
         })
     }
 
-    /// Set a custom SSL/TLS CA certificate bundle to use for client
-    /// connections.
+    /// Set various options that control SSL/TLS behavior for a proxy.
     ///
-    /// The default value is none.
-    ///
-    /// # Notes
-    ///
-    /// On Windows it may be necessary to combine this with
-    /// [`SslOption::DANGER_ACCEPT_REVOKED_CERTS`] in order to work depending on
-    /// the contents of your CA bundle.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use isahc::{config::CaCertificate, prelude::*, HttpClient};
-    ///
-    /// let client = HttpClient::builder()
-    ///     .ssl_ca_certificate(CaCertificate::file("ca.pem"))
-    ///     .build()?;
-    /// # Ok::<(), isahc::Error>(())
-    /// ```
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ca_certificate(self, certificate: CaCertificate) -> Self {
-        self.with_config(move |config| {
-            config.ssl_ca_certificate = Some(certificate);
-        })
-    }
-
-    /// Set a list of ciphers to use for SSL/TLS connections.
-    ///
-    /// The list of valid cipher names is dependent on the underlying SSL/TLS
-    /// engine in use. You can find an up-to-date list of potential cipher names
-    /// at <https://curl.haxx.se/docs/ssl-ciphers.html>.
-    ///
-    /// The default is unset and will result in the system defaults being used.
-    #[must_use = "builders have no effect if unused"]
-    fn ssl_ciphers<I, T>(self, ciphers: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<String>,
-    {
-        self.with_config(move |config| {
-            config.ssl_ciphers = Some(ciphers.into_iter().map(T::into).collect());
-        })
-    }
-
-    /// Set various options for this request that control SSL/TLS behavior.
-    ///
-    /// Most options are for disabling security checks that introduce security
-    /// risks, but may be required as a last resort. Note that the most secure
-    /// options are already the default and do not need to be specified.
-    ///
-    /// The default value is [`SslOption::NONE`].
+    /// By default, the same TLS configuration is used for validating all
+    /// SSL/TLS connections, but this method allows you to use separate
+    /// configuration specifically for proxy server connections.
     ///
     /// # Warning
     ///
@@ -685,34 +649,45 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Examples
     ///
     /// ```no_run
-    /// use isahc::{config::SslOption, prelude::*, Request};
+    /// use isahc::{prelude::*, tls::{Identity, PrivateKey, TlsConfig, TrustStore}, Request};
     ///
-    /// let response = Request::get("https://badssl.com")
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    /// let response = Request::get("https://example.org")
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .trust_store(TrustStore::native())
+    ///         .identity(Identity::from_pem_file(
+    ///             "client.pem",
+    ///             PrivateKey::from_pem_file("key.pem", String::from("secret"))
+    ///         ))
+    ///         .build())
     ///     .body(())?
     ///     .send()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
     /// ```
-    /// use isahc::{config::SslOption, prelude::*, HttpClient};
+    /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};
     ///
+    /// # #[cfg(feature = "tls-insecure")]
     /// let client = HttpClient::builder()
-    ///     .ssl_options(SslOption::DANGER_ACCEPT_INVALID_CERTS | SslOption::DANGER_ACCEPT_REVOKED_CERTS)
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .danger_accept_invalid_certs(true)
+    ///         .danger_accept_revoked_certs(true)
+    ///         .build())
     ///     .build()?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
+    #[cfg(feature = "tls")]
     #[must_use = "builders have no effect if unused"]
-    fn ssl_options(self, options: SslOption) -> Self {
+    fn proxy_tls_config(self, tls_config: crate::tls::TlsConfig) -> Self {
         self.with_config(move |config| {
-            config.ssl_options = Some(options);
+            config.proxy_tls_config = Some(tls_config);
         })
     }
 
     /// Enable or disable sending HTTP header names in Title-Case instead of
     /// lowercase form.
     ///
-    /// This option only affects user-supplied headers and does not affect
+    /// This option only affects ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++user-supplied headers and does not affect
     /// low-level headers that are automatically supplied for HTTP protocol
     /// details, such as `Connection` and `Host` (unless you override such a
     /// header yourself).
@@ -830,7 +805,7 @@ impl VersionNegotiation {
 }
 
 impl SetOpt for VersionNegotiation {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match self.0 {
             VersionNegotiationInner::LatestCompatible => {
                 // If HTTP/2 support is available, this basically the most
@@ -842,11 +817,14 @@ impl SetOpt for VersionNegotiation {
                 // the ideal behavior.
                 if is_http_version_supported(http::Version::HTTP_2) {
                     easy.http_version(curl::easy::HttpVersion::V2TLS)
+                        .map_err(Into::into)
                 } else {
                     Ok(())
                 }
             }
-            VersionNegotiationInner::Strict(version) => easy.http_version(version),
+            VersionNegotiationInner::Strict(version) => {
+                easy.http_version(version).map_err(Into::into)
+            }
         }
     }
 }
@@ -867,9 +845,7 @@ impl NetworkInterface {
     /// Bind to whatever the networking stack finds suitable. This is the
     /// default behavior.
     pub fn any() -> Self {
-        Self {
-            interface: None,
-        }
+        Self { interface: None }
     }
 
     /// Bind to the interface with the given name (such as `eth0`). This method
@@ -922,16 +898,16 @@ impl From<IpAddr> for NetworkInterface {
 }
 
 impl SetOpt for NetworkInterface {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         #[allow(unsafe_code)]
         match self.interface.as_ref() {
-            Some(interface) => easy.interface(interface),
+            Some(interface) => easy.interface(interface).map_err(Into::into),
 
             // Use raw FFI because safe wrapper doesn't let us set to null.
             None => unsafe {
                 match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_INTERFACE, 0) {
                     curl_sys::CURLE_OK => Ok(()),
-                    code => Err(curl::Error::new(code)),
+                    code => Err(curl::Error::new(code).into()),
                 }
             },
         }
@@ -961,12 +937,14 @@ impl Default for IpVersion {
 }
 
 impl SetOpt for IpVersion {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         easy.ip_resolve(match &self {
             IpVersion::V4 => curl::easy::IpResolve::V4,
             IpVersion::V6 => curl::easy::IpResolve::V6,
             IpVersion::Any => curl::easy::IpResolve::Any,
-        })
+        })?;
+
+        Ok(())
     }
 }
 
@@ -1012,9 +990,7 @@ impl ExpectContinue {
 
     /// Disable the use and handling of the `Expect` request header.
     pub const fn disabled() -> Self {
-        Self {
-            timeout: None,
-        }
+        Self { timeout: None }
     }
 
     pub(crate) fn is_disabled(&self) -> bool {
@@ -1045,11 +1021,11 @@ impl From<Duration> for ExpectContinue {
 }
 
 impl SetOpt for ExpectContinue {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         if let Some(timeout) = self.timeout {
-            easy.expect_100_timeout(timeout)
-        } else {
-            Ok(())
+            easy.expect_100_timeout(timeout)?;
         }
+
+        Ok(())
     }
 }

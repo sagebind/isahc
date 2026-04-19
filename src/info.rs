@@ -2,9 +2,6 @@
 
 use std::sync::LazyLock;
 
-// Query for curl version info just once since it is immutable.
-static CURL_VERSION: LazyLock<curl::Version> = LazyLock::new(curl::Version::get);
-
 /// Gets a human-readable string with the version number of Isahc and its
 /// dependencies.
 ///
@@ -38,21 +35,30 @@ pub fn is_http_version_supported(version: http::Version) -> bool {
         // HTTP/0.9 was disabled by default as of 7.66.0. See also
         // https://github.com/sagebind/isahc/issues/310 if we ever decide to
         // allow enabling it again.
-        http::Version::HTTP_09 => match curl_version() {
-            (7, minor, _) if minor < 66 => true,
-            (major, _, _) if major < 7 => true,
-            _ => false,
-        },
+        http::Version::HTTP_09 => curl_version() < (7, 66, 0),
         http::Version::HTTP_10 => true,
         http::Version::HTTP_11 => true,
-        http::Version::HTTP_2 => CURL_VERSION.feature_http2(),
-        http::Version::HTTP_3 => CURL_VERSION.feature_http3(),
+        http::Version::HTTP_2 => curl_info().feature_http2(),
+        http::Version::HTTP_3 => curl_info().feature_http3(),
         _ => false,
     }
 }
 
-fn curl_version() -> (u8, u8, u8) {
-    let bits = CURL_VERSION.version_num();
+/// Get version and runtime information about the instance of curl Isahc is
+/// linked to.
+#[inline]
+pub(crate) fn curl_info() -> &'static curl::Version {
+    // Query for curl version info just once since it is immutable.
+    static CURL_VERSION: LazyLock<curl::Version> = LazyLock::new(curl::Version::get);
+
+    &CURL_VERSION
+}
+
+/// Get the major, minor, and patch version numbers of the instance of curl
+/// Isahc is linked to. Regardless of how Isahc is compiled, this will return
+/// the actual library version being used.
+pub(crate) fn curl_version() -> (u8, u8, u8) {
+    let bits = curl_info().version_num();
 
     ((bits >> 16) as u8, (bits >> 8) as u8, bits as u8)
 }

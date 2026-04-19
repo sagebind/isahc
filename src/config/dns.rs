@@ -1,6 +1,6 @@
 //! Configuration of DNS resolution.
 
-use super::SetOpt;
+use super::setopt::{SetOpt, SetOptError};
 use curl::easy::Easy2;
 use std::{net::IpAddr, time::Duration};
 
@@ -38,7 +38,7 @@ impl From<Duration> for DnsCache {
 
 impl SetOpt for DnsCache {
     #[allow(unsafe_code)]
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         let value = match self {
             DnsCache::Disable => 0,
             DnsCache::Timeout(duration) => duration.as_secs() as i64,
@@ -50,7 +50,7 @@ impl SetOpt for DnsCache {
             match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_DNS_CACHE_TIMEOUT, value)
             {
                 curl_sys::CURLE_OK => Ok(()),
-                code => Err(curl::Error::new(code)),
+                code => Err(curl::Error::new(code).into()),
             }
         }
     }
@@ -84,13 +84,15 @@ impl ResolveMap {
 }
 
 impl SetOpt for ResolveMap {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), curl::Error> {
+    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
         let mut list = curl::easy::List::new();
 
         for entry in self.0.iter() {
             list.append(entry)?;
         }
 
-        easy.resolve(list)
+        easy.resolve(list)?;
+
+        Ok(())
     }
 }

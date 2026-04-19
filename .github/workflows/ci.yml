@@ -5,10 +5,10 @@ on:
   pull_request:
 
 env:
-  FEATURES: cookies,psl
+  FEATURES: cookies,psl,tls-insecure
 
 jobs:
-  test:
+  test-rustls:
     strategy:
       matrix:
         os:
@@ -22,12 +22,6 @@ jobs:
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libkrb5-dev
-        if: matrix.os == 'ubuntu-latest'
 
       - name: Update Cargo.lock
         run: cargo update
@@ -49,7 +43,35 @@ jobs:
         run: cargo clippy --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Run tests
-        run: cargo test --features ${{ env.FEATURES }},spnego,unstable-interceptors
+        run: cargo test --features ${{ env.FEATURES }},unstable-interceptors
 
       - name: Run example program
         run: cargo run --release --example simple
+
+  test-windows-native-tls:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      RUST_BACKTRACE: 1
+      RUST_LOG: isahc=debug
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Update Cargo.lock
+        run: cargo update
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Run tests
+        run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
