@@ -8,7 +8,7 @@ env:
   FEATURES: cookies,psl
 
 jobs:
-  test:
+  test-rustls:
     strategy:
       matrix:
         os:
@@ -22,12 +22,6 @@ jobs:
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libkrb5-dev
-        if: matrix.os == 'ubuntu-latest'
 
       - name: Update Cargo.lock
         run: cargo update
@@ -62,12 +56,6 @@ jobs:
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libkrb5-dev
-        if: matrix.os == 'ubuntu-latest'
 
       - name: Update Cargo.lock
         run: cargo update

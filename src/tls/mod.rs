@@ -61,14 +61,12 @@ use crate::{
 use curl::easy::{Easy2, SslOpt, SslVersion};
 use std::{fmt, path::PathBuf};
 
-mod cert;
 mod identity;
 mod trust;
 
 pub use self::{
-    cert::Certificate,
     identity::{Identity, PrivateKey},
-    trust::TrustStore,
+    trust::{Certificate, TrustStore},
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]

@@ -2,11 +2,13 @@ use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
 use curl::easy::Easy2;
 use std::path::PathBuf;
 
+/// A cryptographic identity used to authenticate the client with a server.
+///
 /// Holds a X.509 certificate along with potentially other certificates in its
 /// chain of trust and a corresponding private key. This collection of
 /// certificates is used to authenticate the client to the server if the server
 /// requests client authentication during the SSL/TLS handshake. This process is
-/// also known as mutual TLS (mTLS).
+/// also known as *mutual TLS* (mTLS).
 #[derive(Clone, Debug)]
 pub struct Identity {
     /// The format of the client certificate.
