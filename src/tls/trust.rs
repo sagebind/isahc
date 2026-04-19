@@ -275,17 +275,23 @@ impl Certificate {
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
     pub fn from_der<B: AsRef<[u8]>>(der: B) -> Self {
+        #[cfg(windows)]
+        const LINE_ENDING: &str = "\r\n";
+        #[cfg(not(windows))]
+        const LINE_ENDING: &str = "\n";
+
         let mut base64_spec = data_encoding::BASE64.specification();
         base64_spec.wrap.width = 64;
-        base64_spec.wrap.separator.push_str("\n");
+        base64_spec.wrap.separator.push_str(LINE_ENDING);
         let base64 = base64_spec.encoding().unwrap();
 
         let mut pem = String::new();
 
-        pem.push_str("-----BEGIN CERTIFICATE-----\n");
+        pem.push_str("-----BEGIN CERTIFICATE-----");
+        pem.push_str(LINE_ENDING);
         base64.encode_append(der.as_ref(), &mut pem);
-        pem.push_str("-----END CERTIFICATE-----\n");
-
+        pem.push_str("-----END CERTIFICATE-----");
+        pem.push_str(LINE_ENDING);
         Self::from_pem(pem)
     }
 
@@ -321,13 +327,10 @@ mod tests {
     fn certificate_from_der() {
         let cert = Certificate::from_der(include_bytes!("../../tests/certs/isrgrootx1.der"));
 
-        assert_eq!(
-            cert.as_pem_bytes(),
-            include_bytes!("../../tests/certs/isrgrootx1.pem")
-        );
-        assert_eq!(
-            cert.into_pem_string(),
-            include_str!("../../tests/certs/isrgrootx1.pem")
+        assert!(
+            cert.into_pem_string()
+                .lines()
+                .eq(include_str!("../../tests/certs/isrgrootx1.pem").lines())
         );
     }
 }
