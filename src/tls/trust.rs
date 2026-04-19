@@ -5,14 +5,14 @@
 //! root certificates. You can delegate to other verifier APIs to determine
 //! which certificates you trust, for example.
 
-use super::{TlsEngine, has_tls_engine};
+use super::TlsEngine;
 use crate::{
     config::setopt::{SetOpt, SetOptError, SetOptProxy},
-    error::create_curl_error,
+    error::{Error, ErrorKind},
     info::curl_version,
 };
 use curl::easy::{Easy2, SslOpt};
-use std::{env, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
+use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 
 /// A store that provides a collection of trusted root certificates.
 ///
@@ -34,7 +34,7 @@ enum Repr {
 
     // Unset CA-related options in case they are set by default. Usually this is
     // a way of asking to use the OS root certificate store for certain
-    // backends.+++++++++++++++++++++++++++++++++++
+    // backends.
     Unset,
 
     /// Sets the `CURLSSLOPT_NATIVE_CA` flag, which asks curl to use the OS
@@ -121,7 +121,7 @@ impl TrustStore {
         // If we are using curl 8.13.0+ with rustls, then we can ask for
         // rustls-platform-verifier to be used to verify server certificates
         // using the OS-native certificate store.
-        if has_tls_engine(TlsEngine::Rustls) && curl_version() >= (8, 13, 0) {
+        if TlsEngine::Rustls.is_available() && curl_version() >= (8, 13, 0) {
             tracing::debug!("using platform verifier with rustls");
             return TrustStore(Repr::NativeCa);
         }
@@ -129,7 +129,7 @@ impl TrustStore {
         // These backends will use the store built into the OS as long as we
         // ensure no paths are set. They shouldn't be when curl is statically
         // linked, but they might be if using a system curl.
-        if has_tls_engine(TlsEngine::Schannel) || has_tls_engine(TlsEngine::SecureTransport) {
+        if TlsEngine::Schannel.is_available() || TlsEngine::SecureTransport.is_available() {
             return TrustStore(Repr::Unset);
         }
 
@@ -188,12 +188,6 @@ impl Default for TrustStore {
     }
 }
 
-impl From<Certificate> for TrustStore {
-    fn from(certificate: Certificate) -> Self {
-        Self::custom([certificate])
-    }
-}
-
 impl SetOpt for TrustStore {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
         match &self.0 {
@@ -229,9 +223,9 @@ impl SetOptProxy for TrustStore {
                 if let Some(path) = path.to_str() {
                     easy.proxy_cainfo(path).map_err(Into::into)
                 } else {
-                    Err(create_curl_error(
-                        curl_sys::CURLE_SSL_CACERT_BADFILE,
-                        "path is not valid UTF-8",
+                    Err(Error::new(
+                        ErrorKind::InvalidTlsConfiguration,
+                        CertificatePathNotUtf8Error { path: path.clone() },
                     )
                     .into())
                 }
@@ -316,6 +310,23 @@ impl Certificate {
 
     pub(crate) fn into_pem_string(self) -> String {
         self.pem
+    }
+}
+
+#[derive(Clone, Debug)]
+struct CertificatePathNotUtf8Error {
+    path: PathBuf,
+}
+
+impl std::error::Error for CertificatePathNotUtf8Error {}
+
+impl fmt::Display for CertificatePathNotUtf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "certificate path is not valid UTF-8: {}",
+            self.path.display()
+        )
     }
 }
 

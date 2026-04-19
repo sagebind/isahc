@@ -59,7 +59,7 @@ use crate::{
     info::curl_info,
 };
 use curl::easy::{Easy2, SslOpt, SslVersion};
-use std::{fmt, path::PathBuf};
+use std::fmt;
 
 mod identity;
 mod trust;
@@ -85,7 +85,6 @@ compile_error!("spnego must be used with native-tls");
 pub struct TlsConfigBuilder {
     trust_store: TrustStore,
     issuer_cert: Option<Certificate>,
-    issuer_cert_path: Option<PathBuf>,
     identity: Option<Identity>,
     ciphers: Option<String>,
     min_version: Option<ProtocolVersion>,
@@ -106,13 +105,7 @@ impl TlsConfigBuilder {
     /// another certificate in the store, then the server is considered to be
     /// legitimate.
     ///
-    /// The default setting varies on how Isahc is compiled:
-    ///
-    /// - When using the native TLS API the default is
-    ///   [`TrustStore::native`].
-    /// - When using rustls, the default is an empty store, unless the
-    ///   `rustls-tls-native-certs` crate feature is enabled, in which case the
-    ///   default is [`TrustStore::native`].
+    /// The default setting is [`TrustStore::native`].
     ///
     /// # Examples
     ///
@@ -121,20 +114,20 @@ impl TlsConfigBuilder {
     ///
     /// let config = TlsConfig::builder()
     ///     // Use the native certificate store
-    ///     .root_cert_store(TrustStore::native())
+    ///     .trust_store(TrustStore::native())
     ///     // Use a specific certificate bundle file
-    ///     .root_cert_store(TrustStore::from_file("/etc/certs/cabundle.pem"))
+    ///     .trust_store(TrustStore::from_file("/etc/certs/cabundle.pem"))
     ///     // Use custom certs in memory
-    ///     .root_cert_store(TrustStore::custom([
+    ///     .trust_store(TrustStore::custom([
     ///         Certificate::from_pem("(some long PEM string)"),
     ///     ]))
     ///     // You could even include a certificate bundle in your binary
-    ///     .root_cert_store(TrustStore::custom([
+    ///     .trust_store(TrustStore::custom([
     ///         Certificate::from_pem(include_str!("../../tests/certs/isrgrootx1.pem")),
     ///     ]))
     ///     .build();
     /// ```
-    pub fn root_cert_store(mut self, store: TrustStore) -> Self {
+    pub fn trust_store(mut self, store: TrustStore) -> Self {
         self.trust_store = store;
         self
     }
@@ -189,7 +182,7 @@ impl TlsConfigBuilder {
     /// let config = TlsConfig::builder()
     ///     .identity(Identity::from_pem_file(
     ///         "client.pem",
-    ///         PrivateKey::pem_file("key.pem", String::from("secret"))
+    ///         PrivateKey::from_pem_file("key.pem", String::from("secret"))
     ///     ))
     ///     .build();
     /// ```
@@ -337,9 +330,8 @@ impl TlsConfigBuilder {
                 self.trust_store.configure_ssl_options(&mut options);
                 options
             },
-            root_cert_store: self.trust_store,
+            trust_store: self.trust_store,
             issuer_cert: self.issuer_cert,
-            issuer_cert_path: self.issuer_cert_path,
             identity: self.identity,
             ciphers: self.ciphers,
             min_version: self
@@ -359,9 +351,8 @@ impl TlsConfigBuilder {
 /// Configuration for making SSL/TLS connections.
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
-    root_cert_store: TrustStore,
+    trust_store: TrustStore,
     issuer_cert: Option<Certificate>,
-    issuer_cert_path: Option<PathBuf>,
     identity: Option<Identity>,
 
     /// List of ciphers to use, in a string format compatible with curl.
@@ -421,7 +412,7 @@ impl SetOpt for TlsConfig {
         // Rustls only supports TLS 1.2+. Currently the backend in curl just
         // ignores this option entirely, so give a more helpful message if the
         // user tries to explicitly use something older.
-        if has_tls_engine(TlsEngine::Rustls)
+        if TlsEngine::Rustls.is_available()
             && !matches!(
                 self.max_version,
                 Some(SslVersion::Tlsv12)
@@ -445,14 +436,10 @@ impl SetOpt for TlsConfig {
             self.max_version.unwrap_or(SslVersion::Default),
         )?;
 
-        self.root_cert_store.set_opt(easy)?;
+        self.trust_store.set_opt(easy)?;
 
         if let Some(cert) = self.issuer_cert.as_ref() {
             easy.issuer_cert_blob(cert.as_pem_bytes())?;
-        }
-
-        if let Some(path) = self.issuer_cert_path.as_ref() {
-            easy.issuer_cert(path)?;
         }
 
         if let Some(identity) = self.identity.as_ref() {
@@ -478,14 +465,10 @@ impl SetOptProxy for TlsConfig {
             self.max_version.unwrap_or(SslVersion::Default),
         )?;
 
-        self.root_cert_store.set_opt_proxy(easy)?;
+        self.trust_store.set_opt_proxy(easy)?;
 
         if let Some(cert) = self.issuer_cert.as_ref() {
             easy.proxy_issuer_cert_blob(cert.as_pem_bytes())?;
-        }
-
-        if let Some(path) = self.issuer_cert_path.as_ref() {
-            easy.proxy_issuer_cert(path)?;
         }
 
         if let Some(identity) = self.identity.as_ref() {
@@ -540,6 +523,7 @@ impl ProtocolVersion {
     }
 }
 
+/// Known TLS engines that curl might be compiled with for detection at runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 enum TlsEngine {
@@ -548,15 +532,17 @@ enum TlsEngine {
     SecureTransport,
 }
 
-fn has_tls_engine(engine: TlsEngine) -> bool {
-    if let Some(version) = curl_info().ssl_version() {
-        match engine {
-            TlsEngine::Rustls => version.contains("rustls/"),
-            TlsEngine::Schannel => version.contains("Schannel"),
-            TlsEngine::SecureTransport => version.contains("SecureTransport"),
+impl TlsEngine {
+    fn is_available(&self) -> bool {
+        if let Some(version) = curl_info().ssl_version() {
+            match self {
+                TlsEngine::Rustls => version.contains("rustls/"),
+                TlsEngine::Schannel => version.contains("Schannel"),
+                TlsEngine::SecureTransport => version.contains("SecureTransport"),
+            }
+        } else {
+            false
         }
-    } else {
-        false
     }
 }
 

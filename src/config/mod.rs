@@ -589,6 +589,18 @@ pub trait Configurable: request::WithRequestConfig {
     /// # Examples
     ///
     /// ```no_run
+    /// use isahc::{prelude::*, tls::{TlsConfig, TrustStore}, Request};
+    ///
+    /// let response = Request::get("https://example.org")
+    ///     .tls_config(TlsConfig::builder()
+    ///         .trust_store(TrustStore::native())
+    ///         .build())
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// ```no_run
     /// use isahc::{prelude::*, tls::TlsConfig, Request};
     ///
     /// # #[cfg(feature = "tls-insecure")]
@@ -635,6 +647,22 @@ pub trait Configurable: request::WithRequestConfig {
     /// significant security vulnerabilities.
     ///
     /// # Examples
+    ///
+    /// ```no_run
+    /// use isahc::{prelude::*, tls::{Identity, PrivateKey, TlsConfig, TrustStore}, Request};
+    ///
+    /// let response = Request::get("https://example.org")
+    ///     .proxy_tls_config(TlsConfig::builder()
+    ///         .trust_store(TrustStore::native())
+    ///         .identity(Identity::from_pem_file(
+    ///             "client.pem",
+    ///             PrivateKey::from_pem_file("key.pem", String::from("secret"))
+    ///         ))
+    ///         .build())
+    ///     .body(())?
+    ///     .send()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     ///
     /// ```
     /// use isahc::{prelude::*, tls::TlsConfig, HttpClient};

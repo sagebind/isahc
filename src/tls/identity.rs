@@ -208,7 +208,7 @@ impl PrivateKey {
     /// The key is not parsed or validated here. If the key is malformed or the
     /// format is not supported by the underlying SSL/TLS engine, an error will
     /// be returned when attempting to send a request using the offending key.
-    pub fn pem<B, P>(bytes: B, password: P) -> Self
+    pub fn from_pem<B, P>(bytes: B, password: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<String>>,
@@ -228,7 +228,7 @@ impl PrivateKey {
     /// The key is not parsed or validated here. If the key is malformed or the
     /// format is not supported by the underlying SSL/TLS engine, an error will
     /// be returned when attempting to send a request using the offending key.
-    pub fn der<B, P>(bytes: B, password: P) -> Self
+    pub fn from_der<B, P>(bytes: B, password: P) -> Self
     where
         B: Into<Vec<u8>>,
         P: Into<Option<String>>,
@@ -246,7 +246,7 @@ impl PrivateKey {
     /// or the format is not supported by the underlying SSL/TLS engine, an
     /// error will be returned when attempting to send a request using the
     /// offending key.
-    pub fn pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+    pub fn from_pem_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
             format: CertFormat::Pem,
             data: PathOrBlob::Path(path.into()),
@@ -260,7 +260,7 @@ impl PrivateKey {
     /// or the format is not supported by the underlying SSL/TLS engine, an
     /// error will be returned when attempting to send a request using the
     /// offending key.
-    pub fn der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
+    pub fn from_der_file(path: impl Into<PathBuf>, password: impl Into<Option<String>>) -> Self {
         Self {
             format: CertFormat::Der,
             data: PathOrBlob::Path(path.into()),
