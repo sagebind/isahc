@@ -61,7 +61,7 @@ define_request_config! {
     credentials: Option<Credentials>,
     tcp_keepalive: Option<Duration>,
     tcp_nodelay: Option<bool>,
-    interface: Option<NetworkInterface>,
+    interface: Option<ComputedNetworkInterfaceSelector>,
     ip_version: Option<IpVersion>,
     dial: Option<Dialer>,
     proxy: Option<Option<http::Uri>>,

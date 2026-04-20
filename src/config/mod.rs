@@ -19,11 +19,12 @@ use crate::{
 };
 use curl::easy::Easy2;
 use setopt::{SetOpt, SetOptError};
-use std::{net::IpAddr, time::Duration};
+use std::time::Duration;
 
 pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
+pub(crate) mod interface;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
@@ -31,6 +32,7 @@ pub(crate) mod setopt;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
+pub use interface::*;
 pub use redirect::RedirectPolicy;
 
 /// Provides additional methods when building a request for configuring various
@@ -334,7 +336,12 @@ pub trait Configurable: request::WithRequestConfig {
         })
     }
 
-    /// Bind local socket connections to a particular network interface.
+    /// Configure which network interface local sockets should be bound to for sending
+    /// network traffic from.
+    ///
+    /// Note that interface selection is not performed until you actually
+    /// attempt to send a request, so the validity of your selection is not
+    /// checked here.
     ///
     /// # Examples
     ///
@@ -357,23 +364,23 @@ pub trait Configurable: request::WithRequestConfig {
     /// // Bind to an interface by name (not supported on Windows).
     /// # #[cfg(unix)]
     /// let client = HttpClient::builder()
-    ///     .interface(NetworkInterface::name("eth0"))
+    ///     .interface(InterfaceName("eth0"))
     ///     .build()?;
     ///
     /// // Reset to using whatever interface the TCP stack finds suitable (the
     /// // default).
     /// let request = Request::get("https://example.org")
-    ///     .interface(NetworkInterface::any())
+    ///     .interface(AnyInterface)
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[must_use = "builders have no effect if unused"]
     fn interface<I>(self, interface: I) -> Self
     where
-        I: Into<NetworkInterface>,
+        I: NetworkInterfaceSelector,
     {
         self.with_config(move |config| {
-            config.interface = Some(interface.into());
+            config.interface = Some(interface.to_selector());
         })
     }
 
@@ -825,91 +832,6 @@ impl SetOpt for VersionNegotiation {
             VersionNegotiationInner::Strict(version) => {
                 easy.http_version(version).map_err(Into::into)
             }
-        }
-    }
-}
-
-/// Used to configure which local addresses or interfaces should be used to send
-/// network traffic from.
-///
-/// Note that this type is "lazy" in the sense that errors are not returned if
-/// the given interfaces are not checked for validity until you actually attempt
-/// to use it in a network request.
-#[derive(Clone, Debug)]
-pub struct NetworkInterface {
-    /// Interface in verbose curl format.
-    interface: Option<String>,
-}
-
-impl NetworkInterface {
-    /// Bind to whatever the networking stack finds suitable. This is the
-    /// default behavior.
-    pub fn any() -> Self {
-        Self { interface: None }
-    }
-
-    /// Bind to the interface with the given name (such as `eth0`). This method
-    /// is not available on Windows as it does not really have names for network
-    /// devices.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::NetworkInterface;
-    /// let loopback = NetworkInterface::name("lo");
-    /// let wifi = NetworkInterface::name("wlan0");
-    /// ```
-    #[cfg(unix)]
-    pub fn name(name: impl AsRef<str>) -> Self {
-        Self {
-            interface: Some(format!("if!{}", name.as_ref())),
-        }
-    }
-
-    /// Bind to the given local host or address. This can either be a host name
-    /// or an IP address.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use isahc::config::NetworkInterface;
-    /// let local = NetworkInterface::host("server.local");
-    /// let addr = NetworkInterface::host("192.168.1.2");
-    /// ```
-    pub fn host(host: impl AsRef<str>) -> Self {
-        Self {
-            interface: Some(format!("host!{}", host.as_ref())),
-        }
-    }
-}
-
-impl Default for NetworkInterface {
-    fn default() -> Self {
-        Self::any()
-    }
-}
-
-impl From<IpAddr> for NetworkInterface {
-    fn from(ip: IpAddr) -> Self {
-        Self {
-            interface: Some(format!("host!{}", ip)),
-        }
-    }
-}
-
-impl SetOpt for NetworkInterface {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        #[allow(unsafe_code)]
-        match self.interface.as_ref() {
-            Some(interface) => easy.interface(interface).map_err(Into::into),
-
-            // Use raw FFI because safe wrapper doesn't let us set to null.
-            None => unsafe {
-                match curl_sys::curl_easy_setopt(easy.raw(), curl_sys::CURLOPT_INTERFACE, 0) {
-                    curl_sys::CURLE_OK => Ok(()),
-                    code => Err(curl::Error::new(code).into()),
-                }
-            },
         }
     }
 }
