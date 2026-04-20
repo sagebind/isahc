@@ -64,6 +64,9 @@ use std::fmt;
 mod identity;
 mod trust;
 
+#[cfg(feature = "webpki-roots")]
+mod webpki_roots;
+
 pub use self::{
     identity::{Identity, PrivateKey},
     trust::{Certificate, TrustStore},

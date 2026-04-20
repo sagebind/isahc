@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  FEATURES: cookies,psl,tls-insecure
+  FEATURES: cookies,psl,tls-insecure,webpki-roots
 
 jobs:
   test-rustls:

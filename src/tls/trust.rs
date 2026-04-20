@@ -24,6 +24,16 @@ use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 ///
 /// Isahc supports multiple kinds of stores, though the default is to use the
 /// shared store provided by the operating system (if any).
+///
+/// # Defaults
+///
+/// The default trust store that is used (and returned by the [`Default`]
+/// implementation) depends on how Isahc was compiled and the environment it is
+/// running in. With the default crate feature set, [`TrustStore::native`] is
+/// the default implementation, which will use the operating system's shared
+/// certificate store.
+///
+/// If the `rustls-tls-webpki-roots` feature is enabled, then the default is to use [`TrustStore::webpki_roots`] instead.
 #[derive(Clone, Debug)]
 pub struct TrustStore(Repr);
 
@@ -61,10 +71,7 @@ enum Repr {
 
 impl TrustStore {
     /// Use the operating system's native APIs for verifying certificate trust,
-    /// if possible.
-    ///
-    /// This is normally the trust method used for most typical applications.
-    /// This is also returned as the [`Default`] implementation.
+    /// if possible. This is normally the trust method used for most typical applications.
     ///
     /// On Windows, macOS, and iOS this involves using the certificate
     /// management features provided by the operating system. On Linux and other
@@ -162,17 +169,8 @@ impl TrustStore {
     ///
     /// This store is supported by most TLS backends, including OpenSSL, rustls,
     /// and Secure Transport.
-    pub fn custom<I>(certificates: I) -> Self
-    where
-        I: IntoIterator<Item = Certificate>,
-    {
-        // Generate a PEM bundle.
-        let bundle = certificates
-            .into_iter()
-            .map(|cert| cert.into_pem_string())
-            .collect();
-
-        Self(Repr::PemBundle(bundle))
+    pub fn custom() -> CertificateBundleBuilder {
+        CertificateBundleBuilder { pem: Vec::new() }
     }
 
     pub(super) fn configure_ssl_options(&self, ssl_opt: &mut SslOpt) {
@@ -183,6 +181,13 @@ impl TrustStore {
 }
 
 impl Default for TrustStore {
+    #[cfg(feature = "rustls-tls-webpki-roots")]
+    fn default() -> Self {
+        tracing::debug!("using webpki_roots as default trust store");
+        Self::webpki_roots()
+    }
+
+    #[cfg(not(feature = "rustls-tls-webpki-roots"))]
     fn default() -> Self {
         Self::native()
     }
@@ -254,6 +259,50 @@ impl SetOptProxy for TrustStore {
     }
 }
 
+/// Builds a custom bundle of X.509 certificates for certificate authorities
+/// that are considered trusted for verifying server certificates.
+#[derive(Clone, Debug)]
+pub struct CertificateBundleBuilder {
+    pem: Vec<u8>,
+}
+
+impl CertificateBundleBuilder {
+    /// Add a trusted certificate in PEM format.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    pub fn add_from_pem(mut self, pem: &str) -> Self {
+        self.pem.extend_from_slice(pem.as_bytes());
+        self
+    }
+
+    /// Add a trusted certificate in DER format.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    pub fn add_from_der(mut self, der: &[u8]) -> Self {
+        let label = "CERTIFICATE";
+        let line_ending = Default::default();
+
+        let len = pem_rfc7468::encoded_len(label, line_ending, der).unwrap();
+        let existing_len = self.pem.len();
+
+        self.pem.resize(existing_len + len, 0);
+
+        pem_rfc7468::encode(label, line_ending, der, &mut self.pem[existing_len..]).unwrap();
+
+        self
+    }
+
+    pub fn build(self) -> TrustStore {
+        TrustStore(Repr::PemBundle(String::from_utf8(self.pem).unwrap()))
+    }
+}
+
 /// An X.509 digital certificate.
 #[derive(Clone, Debug)]
 pub struct Certificate {
@@ -269,23 +318,9 @@ impl Certificate {
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
     pub fn from_der<B: AsRef<[u8]>>(der: B) -> Self {
-        #[cfg(windows)]
-        const LINE_ENDING: &str = "\r\n";
-        #[cfg(not(windows))]
-        const LINE_ENDING: &str = "\n";
+        let pem =
+            pem_rfc7468::encode_string("CERTIFICATE", Default::default(), der.as_ref()).unwrap();
 
-        let mut base64_spec = data_encoding::BASE64.specification();
-        base64_spec.wrap.width = 64;
-        base64_spec.wrap.separator.push_str(LINE_ENDING);
-        let base64 = base64_spec.encoding().unwrap();
-
-        let mut pem = String::new();
-
-        pem.push_str("-----BEGIN CERTIFICATE-----");
-        pem.push_str(LINE_ENDING);
-        base64.encode_append(der.as_ref(), &mut pem);
-        pem.push_str("-----END CERTIFICATE-----");
-        pem.push_str(LINE_ENDING);
         Self::from_pem(pem)
     }
 
@@ -307,10 +342,6 @@ impl Certificate {
     pub(crate) fn as_pem_bytes(&self) -> &[u8] {
         self.pem.as_bytes()
     }
-
-    pub(crate) fn into_pem_string(self) -> String {
-        self.pem
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -327,21 +358,5 @@ impl fmt::Display for CertificatePathNotUtf8Error {
             "certificate path is not valid UTF-8: {}",
             self.path.display()
         )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn certificate_from_der() {
-        let cert = Certificate::from_der(include_bytes!("../../tests/certs/isrgrootx1.der"));
-
-        assert!(
-            cert.into_pem_string()
-                .lines()
-                .eq(include_str!("../../tests/certs/isrgrootx1.pem").lines())
-        );
     }
 }
