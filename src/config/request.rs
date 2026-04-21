@@ -1,6 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::{setopt::*, *};
+use super::{interface::InterfaceString, setopt::*, *};
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
@@ -61,7 +61,7 @@ define_request_config! {
     credentials: Option<Credentials>,
     tcp_keepalive: Option<Duration>,
     tcp_nodelay: Option<bool>,
-    interface: Option<NetworkInterface>,
+    interface: Option<InterfaceString>,
     ip_version: Option<IpVersion>,
     dial: Option<Dialer>,
     proxy: Option<Option<http::Uri>>,
