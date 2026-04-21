@@ -29,6 +29,8 @@ impl TrustStore {
     /// via [`TrustStore::native`] instead, which will receive updates as part
     /// of the operating system's regular update process.
     pub fn webpki_roots() -> Self {
+        // The list can't change, so generate our representation of it only once
+        // and reuse it.
         static WEBPKI_ROOTS: LazyLock<TrustStore> = LazyLock::new(|| {
             webpki_root_certs::TLS_SERVER_ROOT_CERTS
                 .iter()

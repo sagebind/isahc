@@ -113,7 +113,7 @@ impl TlsConfigBuilder {
     /// # Examples
     ///
     /// ```
-    /// use isahc::tls::{Certificate, TrustStore, TlsConfig};
+    /// use isahc::tls::{TlsConfig, TrustStore};
     ///
     /// let config = TlsConfig::builder()
     ///     // Use the native certificate store
@@ -121,13 +121,13 @@ impl TlsConfigBuilder {
     ///     // Use a specific certificate bundle file
     ///     .trust_store(TrustStore::from_file("/etc/certs/cabundle.pem"))
     ///     // Use custom certs in memory
-    ///     .trust_store(TrustStore::custom([
-    ///         Certificate::from_pem("(some long PEM string)"),
-    ///     ]))
+    ///     .trust_store(TrustStore::custom()
+    ///         .add_from_pem("(some long PEM string)")
+    ///         .build())
     ///     // You could even include a certificate bundle in your binary
-    ///     .trust_store(TrustStore::custom([
-    ///         Certificate::from_pem(include_str!("../../tests/certs/isrgrootx1.pem")),
-    ///     ]))
+    ///     .trust_store(TrustStore::custom()
+    ///         .add_from_pem(include_str!("../../tests/certs/isrgrootx1.pem"))
+    ///         .build())
     ///     .build();
     /// ```
     pub fn trust_store(mut self, store: TrustStore) -> Self {

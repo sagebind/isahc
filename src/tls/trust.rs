@@ -10,9 +10,17 @@ use crate::{
     config::setopt::{SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
     info::curl_version,
+    util::set_blob_nocopy,
 };
 use curl::easy::{Easy2, SslOpt};
-use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
+use curl_sys::{CURL_BLOB_NOCOPY, curl_blob};
+use std::{
+    env, fmt,
+    os::raw::c_char,
+    path::PathBuf,
+    ptr,
+    sync::{Arc, LazyLock},
+};
 
 /// A store that provides a collection of trusted root certificates.
 ///
@@ -33,11 +41,18 @@ use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 /// the default implementation, which will use the operating system's shared
 /// certificate store.
 ///
-/// If the `rustls-tls-webpki-roots` feature is enabled, then the default is to use [`TrustStore::webpki_roots`] instead.
-#[derive(Clone, Debug)]
+/// If the `rustls-tls-webpki-roots` feature is enabled, then the default is to
+/// use [`TrustStore::webpki_roots`] instead.
+///
+/// # Cloning
+///
+/// A trust store can be expensive to create, but once created, it should be
+/// considered cheap to clone. This allows you to easily reuse it across
+/// multiple requests or multiple HTTP clients.
+#[derive(Clone)]
 pub struct TrustStore(Repr);
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 enum Repr {
     /// Do nothing to configure trust, and rely on curl's default behavior.
     NoOp,
@@ -66,7 +81,19 @@ enum Repr {
     ///
     /// This may or may not be combined with OS-native certificate stores,
     /// depending on the TLS backend.
-    PemBundle(String),
+    ///
+    /// Since the bundle could be very large, it would be extremely wasteful to
+    /// have curl copy the bundle into its own memory every time a request is
+    /// made. So to deal with this, we use the C API to allocate a single "blob"
+    /// that can be reused with multiple parallel easy handles and does not need
+    /// to be copied.
+    ///
+    /// This requires some `unsafe` because we must be very careful to ensure
+    /// this blob is not freed until it is no longer in use.
+    PemBundle {
+        // TODO: How to track when it is safe to free this?
+        bytes: Arc<[u8]>,
+    },
 }
 
 impl TrustStore {
@@ -198,7 +225,10 @@ impl SetOpt for TrustStore {
         match &self.0 {
             Repr::NativeCa | Repr::NoOp => Ok(()),
             Repr::FilePath(path) => easy.cainfo(path).map_err(Into::into),
-            Repr::PemBundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()).map_err(Into::into),
+            Repr::PemBundle { bytes } => {
+                unsafe { set_blob_nocopy(easy, curl_sys::CURLOPT_CAINFO_BLOB, bytes) }
+                    .map_err(Into::into)
+            }
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
@@ -235,9 +265,10 @@ impl SetOptProxy for TrustStore {
                     .into())
                 }
             }
-            Repr::PemBundle(bundle) => easy
-                .proxy_ssl_cainfo_blob(bundle.as_bytes())
-                .map_err(Into::into),
+            Repr::PemBundle { bytes } => {
+                unsafe { set_blob_nocopy(easy, curl_sys::CURLOPT_PROXY_CAINFO_BLOB, bytes) }
+                    .map_err(Into::into)
+            }
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
@@ -255,6 +286,18 @@ impl SetOptProxy for TrustStore {
 
                 Ok(())
             }
+        }
+    }
+}
+
+impl fmt::Debug for TrustStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Repr::NativeCa => f.debug_tuple("TrustStore::NativeCa").finish(),
+            Repr::FilePath(path) => f.debug_tuple("TrustStore::FilePath").field(path).finish(),
+            Repr::PemBundle { .. } => f.debug_tuple("TrustStore::PemBundle").finish(),
+            Repr::Unset => f.debug_tuple("TrustStore::Unset").finish(),
+            Repr::NoOp => f.debug_tuple("TrustStore::NoOp").finish(),
         }
     }
 }
@@ -299,7 +342,9 @@ impl CertificateBundleBuilder {
     }
 
     pub fn build(self) -> TrustStore {
-        TrustStore(Repr::PemBundle(String::from_utf8(self.pem).unwrap()))
+        TrustStore(Repr::PemBundle {
+            bytes: self.pem.into(),
+        })
     }
 }
 
