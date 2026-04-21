@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The practical HTTP client that is fun to use."><meta name="keywords" content="rust, rustlang, rust-lang, isahc"><title>isahc - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../isahc/index.html"><div class="logo-container"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../isahc/index.html"><div class="logo-container">
-                    <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></div></a><h2 class="location"><a href="#">Crate isahc</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 1.7.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn">Crate <a class="mod" href="#">isahc</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../src/isahc/lib.rs.html#1-479">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The practical HTTP client that is fun to use.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The practical HTTP client that is fun to use."><title>isahc - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (66da6cae1 2026-04-20)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-41dd4d93.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc mod crate"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate isahc</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../isahc/index.html"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><h2><a href="../isahc/index.html">isahc</a><span class="version">1.8.1</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#getting-started" title="Getting started">Getting started</a></li><li><a href="#feature-tour" title="Feature tour">Feature tour</a><ul><li><a href="#easy-request-functions" title="Easy request functions">Easy request functions</a></li><li><a href="#request-and-response-traits" title="Request and response traits">Request and response traits</a></li><li><a href="#custom-clients" title="Custom clients">Custom clients</a></li><li><a href="#asynchronous-requests" title="Asynchronous requests">Asynchronous requests</a></li></ul></li><li><a href="#feature-flags" title="Feature flags">Feature flags</a><ul><li><a href="#cookies" title="`cookies`"><code>cookies</code></a></li><li><a href="#http2" title="`http2`"><code>http2</code></a></li><li><a href="#json" title="`json`"><code>json</code></a></li><li><a href="#psl" title="`psl`"><code>psl</code></a></li><li><a href="#spnego" title="`spnego`"><code>spnego</code></a></li><li><a href="#static-curl" title="`static-curl`"><code>static-curl</code></a></li><li><a href="#text-decoding" title="`text-decoding`"><code>text-decoding</code></a></li><li><a href="#tls" title="`tls`"><code>tls</code></a></li><li><a href="#tls-insecure" title="`tls-insecure`"><code>tls-insecure</code></a></li><li><a href="#unstable-apis" title="Unstable APIs">Unstable APIs</a></li></ul></li><li><a href="#logging-and-tracing" title="Logging and tracing">Logging and tracing</a></li></ul><h3><a href="#reexports">Crate Items</a></h3><ul class="block"><li><a href="#reexports" title="Re-exports">Re-exports</a></li><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>isahc</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/isahc/lib.rs.html#1-486">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The practical HTTP client that is fun to use.</p>
 <p>Here are some of Isahc’s key features:</p>
 <ul>
 <li>Full support for HTTP/1.1 and HTTP/2.</li>
@@ -12,75 +11,75 @@ and response bodies and connection multiplexing.</li>
 <li>Sessions and cookie persistence.</li>
 <li>Automatic request cancellation on drop.</li>
 </ul>
-<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
+<h2 id="getting-started"><a class="doc-anchor" href="#getting-started">§</a>Getting started</h2>
 <p>Sending requests is as easy as calling a single function. Let’s make a
 simple GET request to an example website:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get(<span class="string">&quot;https://example.org&quot;</span>)<span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, response.text()<span class="question-mark">?</span>);</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get(<span class="string">"https://example.org"</span>)<span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">"{}"</span>, response.text()<span class="question-mark">?</span>);</code></pre></div>
 <p>By default, sending a request will wait for the response, up until the
 response headers are received. The returned response struct includes the
-response body as an open stream implementing <a href="https://doc.rust-lang.org/nightly/std/io/trait.Read.html"><code>Read</code></a>.</p>
+response body as an open stream implementing <a href="https://doc.rust-lang.org/nightly/std/io/trait.Read.html" title="trait std::io::Read"><code>Read</code></a>.</p>
 <p>Sending a POST request is also easy, and takes an additional argument for
 the request body:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>response = isahc::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>, <span class="string">&quot;make me a salad&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>response = isahc::post(<span class="string">"https://httpbin.org/post"</span>, <span class="string">"make me a salad"</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>Isahc provides several other simple functions for common HTTP request types:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code>isahc::put(<span class="string">&quot;https://httpbin.org/put&quot;</span>, <span class="string">&quot;have a salad&quot;</span>)<span class="question-mark">?</span>;
-isahc::head(<span class="string">&quot;https://httpbin.org/get&quot;</span>)<span class="question-mark">?</span>;
-isahc::delete(<span class="string">&quot;https://httpbin.org/delete&quot;</span>)<span class="question-mark">?</span>;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>isahc::put(<span class="string">"https://httpbin.org/put"</span>, <span class="string">"have a salad"</span>)<span class="question-mark">?</span>;
+isahc::head(<span class="string">"https://httpbin.org/get"</span>)<span class="question-mark">?</span>;
+isahc::delete(<span class="string">"https://httpbin.org/delete"</span>)<span class="question-mark">?</span>;</code></pre></div>
 <p>If you want to customize the request by adding headers, setting timeouts,
-etc, then you can create a <a href="struct.Request.html" title="Request"><code>Request</code></a> using a builder-style fluent
-interface, then finishing it off with a <a href="trait.RequestExt.html#tymethod.send" title="RequestExt::send"><code>send</code></a>:</p>
+etc, then you can create a <a href="struct.Request.html" title="struct isahc::Request"><code>Request</code></a> using a builder-style fluent
+interface, then finishing it off with a <a href="trait.RequestExt.html#tymethod.send" title="method isahc::RequestExt::send"><code>send</code></a>:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::{prelude::<span class="kw-2">*</span>, Request};
 <span class="kw">use </span>std::time::Duration;
 
-<span class="kw">let </span>response = Request::post(<span class="string">&quot;https://httpbin.org/post&quot;</span>)
-    .header(<span class="string">&quot;Content-Type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+<span class="kw">let </span>response = Request::post(<span class="string">"https://httpbin.org/post"</span>)
+    .header(<span class="string">"Content-Type"</span>, <span class="string">"application/json"</span>)
     .timeout(Duration::from_secs(<span class="number">5</span>))
-    .body(<span class="string">r#&quot;{
-        &quot;speed&quot;: &quot;fast&quot;,
-        &quot;cool_name&quot;: true
-    }&quot;#</span>)<span class="question-mark">?
+    .body(<span class="string">r#"{
+        "speed": "fast",
+        "cool_name": true
+    }"#</span>)<span class="question-mark">?
     </span>.send()<span class="question-mark">?</span>;</code></pre></div>
 <p>For even more examples used in complete programs, please check out the
 <a href="https://github.com/sagebind/isahc/tree/master/examples">examples</a> directory
 in the project repo.</p>
-<h2 id="feature-tour"><a href="#feature-tour">Feature tour</a></h2>
+<h2 id="feature-tour"><a class="doc-anchor" href="#feature-tour">§</a>Feature tour</h2>
 <p>Below is a brief overview of some notable features of Isahc. Check out the
 rest of the documentation for even more guides and examples.</p>
-<h3 id="easy-request-functions"><a href="#easy-request-functions">Easy request functions</a></h3>
+<h3 id="easy-request-functions"><a class="doc-anchor" href="#easy-request-functions">§</a>Easy request functions</h3>
 <p>You can start sending requests without any configuration by using the global
-functions in this module, including <a href="fn.get.html" title="get"><code>get</code></a>, <a href="fn.post.html" title="post"><code>post</code></a>, and <a href="fn.send.html" title="send"><code>send</code></a>. These
+functions in this module, including <a href="fn.get.html" title="fn isahc::get"><code>get</code></a>, <a href="fn.post.html" title="fn isahc::post"><code>post</code></a>, and <a href="fn.send.html" title="fn isahc::send"><code>send</code></a>. These
 use a shared HTTP client instance with sane defaults, so it is easy to get
 up and running. They should work perfectly fine for many use-cases, so don’t
 worry about graduating to more complex APIs if you don’t need them.</p>
-<h3 id="request-and-response-traits"><a href="#request-and-response-traits">Request and response traits</a></h3>
-<p>Isahc includes a number of traits in the <a href="prelude/index.html" title="prelude"><code>prelude</code></a> module that extend the
-<a href="struct.Request.html" title="Request"><code>Request</code></a> and <a href="struct.Response.html" title="Response"><code>Response</code></a> types with a plethora of extra methods that
+<h3 id="request-and-response-traits"><a class="doc-anchor" href="#request-and-response-traits">§</a>Request and response traits</h3>
+<p>Isahc includes a number of traits in the <a href="prelude/index.html" title="mod isahc::prelude"><code>prelude</code></a> module that extend the
+<a href="struct.Request.html" title="struct isahc::Request"><code>Request</code></a> and <a href="struct.Response.html" title="struct isahc::Response"><code>Response</code></a> types with a plethora of extra methods that
 make common tasks convenient and allow you to configure more advanced
 connection and protocol details.</p>
 <p>Here are some of the key traits to read about:</p>
 <ul>
-<li><a href="config/trait.Configurable.html"><code>Configurable</code></a>: Configure request parameters.</li>
-<li><a href="trait.RequestExt.html" title="RequestExt"><code>RequestExt</code></a>: Manipulate and send requests.</li>
-<li><a href="trait.ResponseExt.html" title="ResponseExt"><code>ResponseExt</code></a>: Get information about the corresponding request or
+<li><a href="config/trait.Configurable.html" title="trait isahc::config::Configurable"><code>Configurable</code></a>: Configure request parameters.</li>
+<li><a href="trait.RequestExt.html" title="trait isahc::RequestExt"><code>RequestExt</code></a>: Manipulate and send requests.</li>
+<li><a href="trait.ResponseExt.html" title="trait isahc::ResponseExt"><code>ResponseExt</code></a>: Get information about the corresponding request or
 response statistics.</li>
-<li><a href="trait.ReadResponseExt.html" title="ReadResponseExt"><code>ReadResponseExt</code></a>: Consume a response body in a variety of ways.</li>
-<li><a href="trait.AsyncReadResponseExt.html" title="AsyncReadResponseExt"><code>AsyncReadResponseExt</code></a>: Consume an asynchronous response body in a
+<li><a href="trait.ReadResponseExt.html" title="trait isahc::ReadResponseExt"><code>ReadResponseExt</code></a>: Consume a response body in a variety of ways.</li>
+<li><a href="trait.AsyncReadResponseExt.html" title="trait isahc::AsyncReadResponseExt"><code>AsyncReadResponseExt</code></a>: Consume an asynchronous response body in a
 variety of ways.</li>
 </ul>
-<h3 id="custom-clients"><a href="#custom-clients">Custom clients</a></h3>
-<p>The free-standing functions for sending requests use a shared <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a>
+<h3 id="custom-clients"><a class="doc-anchor" href="#custom-clients">§</a>Custom clients</h3>
+<p>The free-standing functions for sending requests use a shared <a href="struct.HttpClient.html" title="struct isahc::HttpClient"><code>HttpClient</code></a>
 instance, but you can also create your own client instances, which allows
 you to customize the default behavior for requests that use it.</p>
-<p>See the documentation for <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a> and <a href="struct.HttpClientBuilder.html" title="HttpClientBuilder"><code>HttpClientBuilder</code></a> for more
+<p>See the documentation for <a href="struct.HttpClient.html" title="struct isahc::HttpClient"><code>HttpClient</code></a> and <a href="struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder"><code>HttpClientBuilder</code></a> for more
 information on creating custom clients.</p>
-<h3 id="asynchronous-requests"><a href="#asynchronous-requests">Asynchronous requests</a></h3>
+<h3 id="asynchronous-requests"><a class="doc-anchor" href="#asynchronous-requests">§</a>Asynchronous requests</h3>
 <p>Requests are always executed asynchronously under the hood. This allows a
 single client to execute a large number of requests concurrently with
 minimal overhead. Even synchronous applications can benefit!</p>
@@ -92,61 +91,71 @@ Here is our first example rewritten to use async/await syntax:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>isahc::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get_async(<span class="string">&quot;https://httpbin.org/get&quot;</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, response.text().<span class="kw">await</span><span class="question-mark">?</span>);</code></pre></div>
-<p>Since we sent our request using <a href="fn.get_async.html" title="get_async"><code>get_async</code></a>, no blocking will occur, and
+<span class="kw">let </span><span class="kw-2">mut </span>response = isahc::get_async(<span class="string">"https://httpbin.org/get"</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+<span class="macro">println!</span>(<span class="string">"{}"</span>, response.text().<span class="kw">await</span><span class="question-mark">?</span>);</code></pre></div>
+<p>Since we sent our request using <a href="fn.get_async.html" title="fn isahc::get_async"><code>get_async</code></a>, no blocking will occur, and
 the asynchronous versions of all response methods (such as
-<a href="trait.AsyncReadResponseExt.html#tymethod.text"><code>text</code></a>) will also automatically be selected by
+<a href="trait.AsyncReadResponseExt.html#tymethod.text" title="method isahc::AsyncReadResponseExt::text"><code>text</code></a>) will also automatically be selected by
 the compiler.</p>
-<h2 id="feature-flags"><a href="#feature-flags">Feature flags</a></h2>
+<h2 id="feature-flags"><a class="doc-anchor" href="#feature-flags">§</a>Feature flags</h2>
 <p>Isahc is designed to be as “pay-as-you-need” as possible using Cargo feature
 flags and optional dependencies. Unstable features are also initially
 released behind feature flags until they are stabilized. You can add the
 feature names below to your <code>Cargo.toml</code> file to enable them:</p>
 <div class="example-wrap"><pre class="language-toml"><code>[dependencies.isahc]
-version = &quot;1.7&quot;
+version = &quot;1.8&quot;
 features = [&quot;psl&quot;]</code></pre></div>
 <p>Below is a list of all available feature flags and their meanings.</p>
-<h3 id="cookies"><a href="#cookies"><code>cookies</code></a></h3>
+<h3 id="cookies"><a class="doc-anchor" href="#cookies">§</a><code>cookies</code></h3>
 <p>Enable persistent HTTP cookie support. Disabled by default.</p>
-<h3 id="http2"><a href="#http2"><code>http2</code></a></h3>
+<h3 id="http2"><a class="doc-anchor" href="#http2">§</a><code>http2</code></h3>
 <p>Enable compile-time support for HTTP/2 in libcurl via libnghttp2. This does
 not actually affect whether HTTP/2 is used for a given request, but simply
 makes it available. To configure which HTTP versions to use in a request,
-see <a href="config/struct.VersionNegotiation.html"><code>VersionNegotiation</code></a>.</p>
+see <a href="config/struct.VersionNegotiation.html" title="struct isahc::config::VersionNegotiation"><code>VersionNegotiation</code></a>.</p>
 <p>To check which HTTP versions are supported at runtime, you can use
-<a href="fn.is_http_version_supported.html" title="is_http_version_supported"><code>is_http_version_supported</code></a>.</p>
+<a href="fn.is_http_version_supported.html" title="fn isahc::is_http_version_supported"><code>is_http_version_supported</code></a>.</p>
 <p>Enabled by default.</p>
-<h3 id="json"><a href="#json"><code>json</code></a></h3>
+<h3 id="json"><a class="doc-anchor" href="#json">§</a><code>json</code></h3>
 <p>Additional serialization and deserialization of JSON bodies via
 <a href="https://serde.rs">serde</a>. Disabled by default.</p>
-<h3 id="psl"><a href="#psl"><code>psl</code></a></h3>
+<h3 id="psl"><a class="doc-anchor" href="#psl">§</a><code>psl</code></h3>
 <p>Enable use of the Public Suffix List to filter out potentially malicious
 cross-domain cookies. Implies <code>cookies</code>, disabled by default.</p>
-<h3 id="spnego"><a href="#spnego"><code>spnego</code></a></h3>
+<h3 id="spnego"><a class="doc-anchor" href="#spnego">§</a><code>spnego</code></h3>
 <p>Enable support for <a href="https://tools.ietf.org/html/rfc4559">SPNEGO-based HTTP
 authentication</a> (<code>negotiate</code> auth
 scheme). This makes the <code>negotiate</code> scheme available in the API and, if
 <code>static-curl</code> is enabled, compiles libcurl with GSS-API APIs. The <a href="https://web.mit.edu/kerberos/">MIT
 Kerberos</a> headers must be pre-installed at
 compile time.</p>
-<h3 id="static-curl"><a href="#static-curl"><code>static-curl</code></a></h3>
+<h3 id="static-curl"><a class="doc-anchor" href="#static-curl">§</a><code>static-curl</code></h3>
 <p>Use a bundled libcurl version and statically link to it. Enabled by default.</p>
-<h3 id="text-decoding"><a href="#text-decoding"><code>text-decoding</code></a></h3>
+<h3 id="text-decoding"><a class="doc-anchor" href="#text-decoding">§</a><code>text-decoding</code></h3>
 <p>Enable support for decoding text-based responses in various charsets into
 strings. Enabled by default.</p>
-<h3 id="unstable-apis"><a href="#unstable-apis">Unstable APIs</a></h3>
+<h3 id="tls"><a class="doc-anchor" href="#tls">§</a><code>tls</code></h3>
+<p>Enable API support for TLS configuration. This feature allows you to use any
+TLS-specific features of Isahc without selecting a particular TLS backend,
+and is a good choice when writing a library that might require TLS support,
+but want to allow the application writer to decide which TLS backend to use.
+See the documentation for the <a href="tls/index.html" title="mod isahc::tls"><code>tls</code></a> module for more details on
+compile-time and runtime TLS configuration.</p>
+<p>This feature is automatically enabled when enabling a specific TLS backend.
+Conversely, if this feature is enabled but no backend feature is enabled, a
+compile error will be emitted.</p>
+<h3 id="tls-insecure"><a class="doc-anchor" href="#tls-insecure">§</a><code>tls-insecure</code></h3>
+<p>Enable the use of insecure TLS configuration. By default methods that allow
+you to create TLS configuration that may introduce security vulnerabilities
+into your code are not permitted.</p>
+<h3 id="unstable-apis"><a class="doc-anchor" href="#unstable-apis">§</a>Unstable APIs</h3>
 <p>There are also some features that enable new incubating APIs that do not
 have stability guarantees:</p>
-<h4 id="unstable-interceptors"><a href="#unstable-interceptors"><code>unstable-interceptors</code></a></h4>
+<h4 id="unstable-interceptors"><a class="doc-anchor" href="#unstable-interceptors">§</a><code>unstable-interceptors</code></h4>
 <p>Enable the new interceptors API (replaces the old unstable middleware API).
 Unstable until the API is finalized. This an unstable feature whose
 interface may change between patch releases.</p>
-<h4 id="unstable-rustls-tls"><a href="#unstable-rustls-tls"><code>unstable-rustls-tls</code></a></h4>
-<p>Use <a href="https://github.com/rustls/rustls">rustls</a> as the TLS backend for HTTPS
-requests. Currently unstable as the rustls backend in libcurl currently has
-some known issues and is not yet recommended for production use.</p>
-<h2 id="logging-and-tracing"><a href="#logging-and-tracing">Logging and tracing</a></h2>
+<h2 id="logging-and-tracing"><a class="doc-anchor" href="#logging-and-tracing">§</a>Logging and tracing</h2>
 <p>Isahc logs quite a bit of useful information at various levels compatible
 with the <a href="https://docs.rs/log">log</a> crate. For even more in-depth
 diagnostics, you can use a <a href="https://docs.rs/tracing">tracing</a> subscriber to
@@ -156,11 +165,11 @@ useful if you are sending multiple requests concurrently.</p>
 also log all incoming and outgoing data while in flight. This may come in
 handy if you are debugging code and need to see the exact data being sent to
 the server and being received.</p>
-</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><div class="item-table"><div class="item-row"><div class="item-left import-item" id="reexport.Error"><code>pub use crate::error::<a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>;</code></div></div><div class="item-row"><div class="item-left import-item" id="reexport.http"><code>pub use <a class="mod" href="https://docs.rs/http/0.2.8/http/index.html" title="mod http">http</a>;</code></div></div></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="auth/index.html" title="isahc::auth mod">auth</a></div><div class="item-right docblock-short">Types for working with HTTP authentication methods.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="config/index.html" title="isahc::config mod">config</a></div><div class="item-right docblock-short">Definition of all client and request configuration options.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="cookies/index.html" title="isahc::cookies mod">cookies</a><span class="stab portability" title="Available on crate feature `cookies` only"><code>cookies</code></span></div><div class="item-right docblock-short">Types for cookie state management.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="error/index.html" title="isahc::error mod">error</a></div><div class="item-right docblock-short">Types for error handling.</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="prelude/index.html" title="isahc::prelude mod">prelude</a></div><div class="item-right docblock-short">A “prelude” for importing commonly used Isahc types and traits.</div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncBody.html" title="isahc::AsyncBody struct">AsyncBody</a></div><div class="item-right docblock-short">Contains the body of an asynchronous HTTP request or response.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Body.html" title="isahc::Body struct">Body</a></div><div class="item-right docblock-short">Contains the body of a synchronous HTTP request or response.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.HttpClient.html" title="isahc::HttpClient struct">HttpClient</a></div><div class="item-right docblock-short">An HTTP client for making requests.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.HttpClientBuilder.html" title="isahc::HttpClientBuilder struct">HttpClientBuilder</a></div><div class="item-right docblock-short">An HTTP client builder, capable of creating custom <a href="struct.HttpClient.html" title="HttpClient"><code>HttpClient</code></a> instances
-with customized behavior.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Metrics.html" title="isahc::Metrics struct">Metrics</a></div><div class="item-right docblock-short">An object that holds status updates and progress statistics on a particular
-request. A <a href="struct.Metrics.html" title="Metrics"><code>Metrics</code></a> can be shared between threads, which allows an agent
+</div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.Error"><code>pub use crate::error::<a class="struct" href="error/struct.Error.html" title="struct isahc::error::Error">Error</a>;</code></dt><dt id="reexport.http"><code>pub use http;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="auth/index.html" title="mod isahc::auth">auth</a></dt><dd>Types for working with HTTP authentication methods.</dd><dt><a class="mod" href="config/index.html" title="mod isahc::config">config</a></dt><dd>Definition of all client and request configuration options.</dd><dt><a class="mod" href="cookies/index.html" title="mod isahc::cookies">cookies</a><wbr><span class="stab portability" title="Available on crate feature `cookies` only"><code>cookies</code></span></dt><dd>Types for cookie state management.</dd><dt><a class="mod" href="error/index.html" title="mod isahc::error">error</a></dt><dd>Types for error handling.</dd><dt><a class="mod" href="net/index.html" title="mod isahc::net">net</a></dt><dd>Types for configuring how HTTP connections interact with the network.</dd><dt><a class="mod" href="prelude/index.html" title="mod isahc::prelude">prelude</a></dt><dd>A “prelude” for importing commonly used Isahc types and traits.</dd><dt><a class="mod" href="tls/index.html" title="mod isahc::tls">tls</a><wbr><span class="stab portability" title="Available on crate feature `tls` only"><code>tls</code></span></dt><dd>Configuration options related to SSL/TLS for supporting HTTPS requests.</dd></dl><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.AsyncBody.html" title="struct isahc::AsyncBody">Async<wbr>Body</a></dt><dd>Contains the body of an asynchronous HTTP request or response.</dd><dt><a class="struct" href="struct.Body.html" title="struct isahc::Body">Body</a></dt><dd>Contains the body of a synchronous HTTP request or response.</dd><dt><a class="struct" href="struct.HttpClient.html" title="struct isahc::HttpClient">Http<wbr>Client</a></dt><dd>An HTTP client for making requests.</dd><dt><a class="struct" href="struct.HttpClientBuilder.html" title="struct isahc::HttpClientBuilder">Http<wbr>Client<wbr>Builder</a></dt><dd>An HTTP client builder, capable of creating custom <a href="struct.HttpClient.html" title="struct isahc::HttpClient"><code>HttpClient</code></a> instances
+with customized behavior.</dd><dt><a class="struct" href="struct.Metrics.html" title="struct isahc::Metrics">Metrics</a></dt><dd>An object that holds status updates and progress statistics on a particular
+request. A <a href="struct.Metrics.html" title="struct isahc::Metrics"><code>Metrics</code></a> can be shared between threads, which allows an agent
 thread to post updates to the object while consumers can read from the
-object simultaneously.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Request.html" title="isahc::Request struct">Request</a></div><div class="item-right docblock-short">Represents an HTTP request.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Response.html" title="isahc::Response struct">Response</a></div><div class="item-right docblock-short">Represents an HTTP response</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ResponseFuture.html" title="isahc::ResponseFuture struct">ResponseFuture</a></div><div class="item-right docblock-short">A future for a request being executed.</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Trailer.html" title="isahc::Trailer struct">Trailer</a></div><div class="item-right docblock-short">Holds the current state of a trailer for a response.</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.AsyncReadResponseExt.html" title="isahc::AsyncReadResponseExt trait">AsyncReadResponseExt</a></div><div class="item-right docblock-short">Provides extension methods for consuming asynchronous HTTP response streams.</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ReadResponseExt.html" title="isahc::ReadResponseExt trait">ReadResponseExt</a></div><div class="item-right docblock-short">Provides extension methods for consuming HTTP response streams.</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.RequestExt.html" title="isahc::RequestExt trait">RequestExt</a></div><div class="item-right docblock-short">Extension methods on an HTTP request.</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ResponseExt.html" title="isahc::ResponseExt trait">ResponseExt</a></div><div class="item-right docblock-short">Provides extension methods for working with HTTP responses.</div></div></div><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.delete.html" title="isahc::delete fn">delete</a></div><div class="item-right docblock-short">Send a DELETE request to the given URI.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.delete_async.html" title="isahc::delete_async fn">delete_async</a></div><div class="item-right docblock-short">Send a DELETE request to the given URI asynchronously.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.get.html" title="isahc::get fn">get</a></div><div class="item-right docblock-short">Send a GET request to the given URI.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.get_async.html" title="isahc::get_async fn">get_async</a></div><div class="item-right docblock-short">Send a GET request to the given URI asynchronously.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.head.html" title="isahc::head fn">head</a></div><div class="item-right docblock-short">Send a HEAD request to the given URI.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.head_async.html" title="isahc::head_async fn">head_async</a></div><div class="item-right docblock-short">Send a HEAD request to the given URI asynchronously.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.is_http_version_supported.html" title="isahc::is_http_version_supported fn">is_http_version_supported</a></div><div class="item-right docblock-short">Check if runtime support is available for the given HTTP version.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.post.html" title="isahc::post fn">post</a></div><div class="item-right docblock-short">Send a POST request to the given URI with a given request body.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.post_async.html" title="isahc::post_async fn">post_async</a></div><div class="item-right docblock-short">Send a POST request to the given URI asynchronously with a given request
-body.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.put.html" title="isahc::put fn">put</a></div><div class="item-right docblock-short">Send a PUT request to the given URI with a given request body.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.put_async.html" title="isahc::put_async fn">put_async</a></div><div class="item-right docblock-short">Send a PUT request to the given URI asynchronously with a given request
-body.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.send.html" title="isahc::send fn">send</a></div><div class="item-right docblock-short">Send an HTTP request and return the HTTP response.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.send_async.html" title="isahc::send_async fn">send_async</a></div><div class="item-right docblock-short">Send an HTTP request and return the HTTP response asynchronously.</div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.version.html" title="isahc::version fn">version</a></div><div class="item-right docblock-short">Gets a human-readable string with the version number of Isahc and its
-dependencies.</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
+object simultaneously.</dd><dt><a class="struct" href="struct.Request.html" title="struct isahc::Request">Request</a></dt><dd>Represents an HTTP request.</dd><dt><a class="struct" href="struct.Response.html" title="struct isahc::Response">Response</a></dt><dd>Represents an HTTP response</dd><dt><a class="struct" href="struct.ResponseFuture.html" title="struct isahc::ResponseFuture">Response<wbr>Future</a></dt><dd>A future for a request being executed.</dd><dt><a class="struct" href="struct.Trailer.html" title="struct isahc::Trailer">Trailer</a></dt><dd>Holds the current state of a trailer for a response.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.AsyncReadResponseExt.html" title="trait isahc::AsyncReadResponseExt">Async<wbr>Read<wbr>Response<wbr>Ext</a></dt><dd>Provides extension methods for consuming asynchronous HTTP response streams.</dd><dt><a class="trait" href="trait.ReadResponseExt.html" title="trait isahc::ReadResponseExt">Read<wbr>Response<wbr>Ext</a></dt><dd>Provides extension methods for consuming HTTP response streams.</dd><dt><a class="trait" href="trait.RequestExt.html" title="trait isahc::RequestExt">Request<wbr>Ext</a></dt><dd>Extension methods on an HTTP request.</dd><dt><a class="trait" href="trait.ResponseExt.html" title="trait isahc::ResponseExt">Response<wbr>Ext</a></dt><dd>Provides extension methods for working with HTTP responses.</dd></dl><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.delete.html" title="fn isahc::delete">delete</a></dt><dd>Send a DELETE request to the given URI.</dd><dt><a class="fn" href="fn.delete_async.html" title="fn isahc::delete_async">delete_<wbr>async</a></dt><dd>Send a DELETE request to the given URI asynchronously.</dd><dt><a class="fn" href="fn.get.html" title="fn isahc::get">get</a></dt><dd>Send a GET request to the given URI.</dd><dt><a class="fn" href="fn.get_async.html" title="fn isahc::get_async">get_<wbr>async</a></dt><dd>Send a GET request to the given URI asynchronously.</dd><dt><a class="fn" href="fn.head.html" title="fn isahc::head">head</a></dt><dd>Send a HEAD request to the given URI.</dd><dt><a class="fn" href="fn.head_async.html" title="fn isahc::head_async">head_<wbr>async</a></dt><dd>Send a HEAD request to the given URI asynchronously.</dd><dt><a class="fn" href="fn.is_http_version_supported.html" title="fn isahc::is_http_version_supported">is_<wbr>http_<wbr>version_<wbr>supported</a></dt><dd>Check if runtime support is available for the given HTTP version.</dd><dt><a class="fn" href="fn.post.html" title="fn isahc::post">post</a></dt><dd>Send a POST request to the given URI with a given request body.</dd><dt><a class="fn" href="fn.post_async.html" title="fn isahc::post_async">post_<wbr>async</a></dt><dd>Send a POST request to the given URI asynchronously with a given request
+body.</dd><dt><a class="fn" href="fn.put.html" title="fn isahc::put">put</a></dt><dd>Send a PUT request to the given URI with a given request body.</dd><dt><a class="fn" href="fn.put_async.html" title="fn isahc::put_async">put_<wbr>async</a></dt><dd>Send a PUT request to the given URI asynchronously with a given request
+body.</dd><dt><a class="fn" href="fn.send.html" title="fn isahc::send">send</a></dt><dd>Send an HTTP request and return the HTTP response.</dd><dt><a class="fn" href="fn.send_async.html" title="fn isahc::send_async">send_<wbr>async</a></dt><dd>Send an HTTP request and return the HTTP response asynchronously.</dd><dt><a class="fn" href="fn.version.html" title="fn isahc::version">version</a></dt><dd>Gets a human-readable string with the version number of Isahc and its
+dependencies.</dd></dl></section></div></main></body></html>

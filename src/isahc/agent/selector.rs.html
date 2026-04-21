@@ -1,575 +1,301 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/agent/selector.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>selector.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
-<span id="2">2</span>
-<span id="3">3</span>
-<span id="4">4</span>
-<span id="5">5</span>
-<span id="6">6</span>
-<span id="7">7</span>
-<span id="8">8</span>
-<span id="9">9</span>
-<span id="10">10</span>
-<span id="11">11</span>
-<span id="12">12</span>
-<span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-<span id="23">23</span>
-<span id="24">24</span>
-<span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
-<span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
-<span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
-<span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
-<span id="74">74</span>
-<span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-</pre><pre class="rust"><code><span class="kw">use </span>curl::multi::Socket;
-<span class="kw">use </span>polling::{Event, Poller};
-<span class="kw">use </span>std::{
-    collections::{HashMap, HashSet},
-    io,
-    sync::Arc,
-    task::Waker,
-    time::Duration,
-};
-<span class="kw">use </span><span class="kw">super</span>::hasher::BuildIntHasher;
-
-<span class="doccomment">/// Asynchronous I/O selector for sockets. Used by the agent to wait for network
-/// activity asynchronously, as directed by curl.
-///
-/// Provides an abstraction layer on a bare poller that manages the bookkeeping
-/// of socket registration and translating oneshot registrations into persistent
-/// registrations.
-///
-/// Events are level-triggered, since that is what curl wants.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Selector {
-    <span class="doccomment">/// This is the poller we use to poll for socket activity!
-    </span>poller: Arc&lt;Poller&gt;,
-
-    <span class="doccomment">/// All of the sockets that we have been asked to keep track of.
-    </span>sockets: HashMap&lt;Socket, Registration, BuildIntHasher&gt;,
-
-    <span class="doccomment">/// If a socket is currently invalid when it is registered, we put it in this
-    /// set and try to register it again later.
-    </span>bad_sockets: HashSet&lt;Socket, BuildIntHasher&gt;,
-
-    <span class="doccomment">/// Socket events that have occurred. We re-use this vec every call for
-    /// efficiency.
-    </span>events: Vec&lt;Event&gt;,
-
-    <span class="doccomment">/// Incrementing counter used to deduplicate registration operations.
-    </span>tick: usize,
-}
-
-<span class="doccomment">/// Information stored about each registered socket.
-</span><span class="kw">struct </span>Registration {
-    readable: bool,
-    writable: bool,
-    tick: usize,
-}
-
-<span class="kw">impl </span>Selector {
-    <span class="doccomment">/// Create a new socket selector.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; io::Result&lt;<span class="self">Self</span>&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            poller: Arc::new(Poller::new()<span class="question-mark">?</span>),
-            sockets: HashMap::with_hasher(Default::default()),
-            bad_sockets: HashSet::with_hasher(Default::default()),
-            events: Vec::new(),
-            tick: <span class="number">0</span>,
-        })
-    }
-
-    <span class="doccomment">/// Get a task waker that will interrupt this selector whenever it is
-    /// waiting for activity.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Waker {
-        waker_fn::waker_fn({
-            <span class="kw">let </span>poller_ref = <span class="self">self</span>.poller.clone();
-
-            <span class="kw">move </span>|| {
-                <span class="kw">let _ </span>= poller_ref.notify();
-            }
-        })
-    }
-
-    <span class="doccomment">/// Register a socket with the selector to begin receiving readiness events
-    /// for it.
-    ///
-    /// This method can also be used to update/modify the readiness events you
-    /// are interested in for a previously registered socket.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        socket: Socket,
-        readable: bool,
-        writable: bool,
-    ) -&gt; io::Result&lt;()&gt; {
-        <span class="kw">let </span>previous = <span class="self">self</span>.sockets.insert(socket, Registration {
-            readable,
-            writable,
-            tick: <span class="self">self</span>.tick,
-        });
-
-        <span class="kw">let </span>result = <span class="kw">if </span>previous.is_some() {
-            poller_modify(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
-        } <span class="kw">else </span>{
-            poller_add(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
-        };
-
-        <span class="kw">match </span>result {
-            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>is_bad_socket_error(<span class="kw-2">&amp;</span>e) =&gt; {
-                <span class="comment">// We&#39;ve been asked to monitor a socket, but the poller thinks
-                // that the socket is invalid or closed. On occasion, curl will
-                // give such sockets with the assumption that we will monitor
-                // them until curl tells us to stop. With stateless pollers such
-                // as `select(2)` this is not a problem, but most
-                // high-performance stateless pollers need the socket to be
-                // valid in order to monitor them.
-                //
-                // To get around this problem, we return `Ok` to the caller and
-                // hold onto this currently invalid socket for later. Whenever
-                // `poll` is called, we retry registering these sockets in the
-                // hope that they will eventually become valid.
-                </span><span class="macro">tracing::debug!</span>(socket, error = <span class="question-mark">?</span>e, <span class="string">&quot;bad socket registered, will try again later&quot;</span>);
-                <span class="self">self</span>.bad_sockets.insert(socket);
-                <span class="prelude-val">Ok</span>(())
-            }
-            result =&gt; result,
-        }
-    }
-
-    <span class="doccomment">/// Remove a socket from the selector and stop receiving events for it.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deregister(<span class="kw-2">&amp;mut </span><span class="self">self</span>, socket: Socket) -&gt; io::Result&lt;()&gt; {
-        <span class="comment">// Remove this socket from our bookkeeping. If we recognize it, also
-        // remove it from the underlying poller.
-        </span><span class="kw">if </span><span class="self">self</span>.sockets.remove(<span class="kw-2">&amp;</span>socket).is_some() {
-            <span class="self">self</span>.bad_sockets.remove(<span class="kw-2">&amp;</span>socket);
-
-            <span class="comment">// There&#39;s a good chance that the socket has already been closed.
-            // Depending on the poller implementation, it may have already
-            // forgotten about this socket (e.g. epoll). Therefore if we get an
-            // error back complaining that the socket is invalid, we can safely
-            // ignore it.
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.poller.delete(socket) {
-                <span class="kw">if </span>!is_bad_socket_error(<span class="kw-2">&amp;</span>e) &amp;&amp; e.kind() != io::ErrorKind::PermissionDenied {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-                }
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Block until socket activity is detected or a timeout passes.
-    ///
-    /// Returns `true` if one or more socket events occurred.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timeout: Duration) -&gt; io::Result&lt;bool&gt; {
-        <span class="comment">// Since our I/O events are oneshot, make sure we re-register sockets
-        // with the poller that previously were triggered last time we polled.
-        //
-        // We don&#39;t do this immediately after polling because the caller may
-        // choose to de-register a socket before the next call. That&#39;s why we
-        // wait until the last minute.
-        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.drain(..) {
-            <span class="kw">let </span>socket = event.key <span class="kw">as </span>Socket;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = <span class="self">self</span>.sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
-                <span class="comment">// If the socket was already re-registered this tick, then we
-                // don&#39;t need to do this.
-                </span><span class="kw">if </span>registration.tick != <span class="self">self</span>.tick {
-                    poller_modify(
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.poller,
-                        socket,
-                        registration.readable,
-                        registration.writable,
-                    )<span class="question-mark">?</span>;
-                    registration.tick = <span class="self">self</span>.tick;
-                }
-            }
-        }
-
-        <span class="comment">// Iterate over sockets that have been registered, but failed to be
-        // added to the underlying poller temporarily, and retry adding them.
-        </span><span class="self">self</span>.bad_sockets.retain({
-            <span class="kw">let </span>sockets = <span class="kw-2">&amp;mut </span><span class="self">self</span>.sockets;
-            <span class="kw">let </span>poller = <span class="kw-2">&amp;</span><span class="self">self</span>.poller;
-            <span class="kw">let </span>tick = <span class="self">self</span>.tick;
-
-            <span class="kw">move </span>|<span class="kw-2">&amp;</span>socket| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
-                    <span class="kw">if </span>registration.tick != tick {
-                        registration.tick = tick;
-                        poller_add(poller, socket, registration.readable, registration.writable)
-                            .is_err()
-                    } <span class="kw">else </span>{
-                        <span class="bool-val">true
-                    </span>}
-                } <span class="kw">else </span>{
-                    <span class="bool-val">false
-                </span>}
-            }
-        });
-
-        <span class="self">self</span>.tick = <span class="self">self</span>.tick.wrapping_add(<span class="number">1</span>);
-
-        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is
-        // reached, or the agent handle interrupts us.
-        </span><span class="kw">match </span><span class="self">self</span>.poller.wait(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">Some</span>(timeout)) {
-            <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::Interrupted =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-        }
-    }
-
-    <span class="doccomment">/// Get an iterator over the socket events that occurred during the most
-    /// recent call to `poll`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>events(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (Socket, bool, bool)&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.events
-            .iter()
-            .map(|event| (event.key <span class="kw">as </span>Socket, event.readable, event.writable))
-    }
-}
-
-<span class="kw">fn </span>poller_add(poller: <span class="kw-2">&amp;</span>Poller, socket: Socket, readable: bool, writable: bool) -&gt; io::Result&lt;()&gt; {
-    <span class="comment">// If this errors, we retry the operation as a modification instead. This is
-    // because this new socket might re-use a file descriptor that was
-    // previously closed, but is still registered with the poller. Retrying the
-    // operation as a modification is sufficient to handle this.
-    //
-    // This is especially common with the epoll backend.
-    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = poller.add(socket, Event {
-        key: socket <span class="kw">as </span>usize,
-        readable,
-        writable,
-    }) {
-        <span class="macro">tracing::debug!</span>(
-            <span class="string">&quot;failed to add interest for socket {}, retrying as a modify: {}&quot;</span>,
-            socket,
-            e
-        );
-        poller.modify(socket, Event {
-            key: socket <span class="kw">as </span>usize,
-            readable,
-            writable,
-        })<span class="question-mark">?</span>;
-    }
-
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="kw">fn </span>poller_modify(
-    poller: <span class="kw-2">&amp;</span>Poller,
-    socket: Socket,
-    readable: bool,
-    writable: bool,
-) -&gt; io::Result&lt;()&gt; {
-    <span class="comment">// If this errors, we retry the operation as an add instead. This is done
-    // because epoll is weird.
-    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = poller.modify(socket, Event {
-        key: socket <span class="kw">as </span>usize,
-        readable,
-        writable,
-    }) {
-        <span class="macro">tracing::debug!</span>(
-            <span class="string">&quot;failed to modify interest for socket {}, retrying as an add: {}&quot;</span>,
-            socket,
-            e
-        );
-        poller.add(socket, Event {
-            key: socket <span class="kw">as </span>usize,
-            readable,
-            writable,
-        })<span class="question-mark">?</span>;
-    }
-
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="kw">fn </span>is_bad_socket_error(error: <span class="kw-2">&amp;</span>io::Error) -&gt; bool {
-    <span class="comment">// OS-specific error codes that aren&#39;t mapped to an `std::io::ErrorKind`.
-    </span><span class="kw">const </span>EBADF: i32 = <span class="number">9</span>;
-    <span class="kw">const </span>ERROR_INVALID_HANDLE: i32 = <span class="number">6</span>;
-    <span class="kw">const </span>ERROR_NOT_FOUND: i32 = <span class="number">1168</span>;
-
-    <span class="kw">match </span>error.kind() {
-        <span class="comment">// Common error codes std understands.
-        </span>io::ErrorKind::NotFound | io::ErrorKind::InvalidInput =&gt; <span class="bool-val">true</span>,
-
-        <span class="comment">// Check for OS-specific error codes.
-        </span><span class="kw">_ </span>=&gt; <span class="kw">match </span>error.raw_os_error() {
-            <span class="comment">// kqueue likes to return EBADF, especially on removal, since it
-            // automatically removes sockets when they are closed.
-            </span><span class="prelude-val">Some</span>(EBADF) <span class="kw">if </span><span class="macro">cfg!</span>(unix) =&gt; <span class="bool-val">true</span>,
-
-            <span class="comment">// IOCP can return these in rare circumstances. Typically these just
-            // indicate that the socket is no longer registered with the
-            // completion port or was already closed.
-            </span><span class="prelude-val">Some</span>(ERROR_INVALID_HANDLE) | <span class="prelude-val">Some</span>(ERROR_NOT_FOUND) <span class="kw">if </span><span class="macro">cfg!</span>(windows) =&gt; <span class="bool-val">true</span>,
-
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        },
-    }
-}
-</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/agent/selector.rs`."><title>selector.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (66da6cae1 2026-04-20)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">isahc/agent/</div>selector.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(unsafe_code)]
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span><span class="kw">super</span>::util::IntHasher;
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>curl::multi::Socket;
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>polling::{AsSource, Event, Events, Poller};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::{
+<a href=#7 id=7 data-nosnippet>7</a>    collections::{HashMap, HashSet},
+<a href=#8 id=8 data-nosnippet>8</a>    hash::BuildHasherDefault,
+<a href=#9 id=9 data-nosnippet>9</a>    io,
+<a href=#10 id=10 data-nosnippet>10</a>    sync::Arc,
+<a href=#11 id=11 data-nosnippet>11</a>    task::Waker,
+<a href=#12 id=12 data-nosnippet>12</a>    time::Duration,
+<a href=#13 id=13 data-nosnippet>13</a>};
+<a href=#14 id=14 data-nosnippet>14</a>
+<a href=#15 id=15 data-nosnippet>15</a><span class="doccomment">/// Asynchronous I/O selector for sockets. Used by the agent to wait for network
+<a href=#16 id=16 data-nosnippet>16</a>/// activity asynchronously, as directed by curl.
+<a href=#17 id=17 data-nosnippet>17</a>///
+<a href=#18 id=18 data-nosnippet>18</a>/// Provides an abstraction layer on a bare poller that manages the bookkeeping
+<a href=#19 id=19 data-nosnippet>19</a>/// of socket registration and translating oneshot registrations into persistent
+<a href=#20 id=20 data-nosnippet>20</a>/// registrations.
+<a href=#21 id=21 data-nosnippet>21</a>///
+<a href=#22 id=22 data-nosnippet>22</a>/// Events are level-triggered, since that is what curl wants.
+<a href=#23 id=23 data-nosnippet>23</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Selector {
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="doccomment">/// This is the poller we use to poll for socket activity!
+<a href=#25 id=25 data-nosnippet>25</a>    </span>poller: Arc&lt;Poller&gt;,
+<a href=#26 id=26 data-nosnippet>26</a>
+<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// All of the sockets that we have been asked to keep track of.
+<a href=#28 id=28 data-nosnippet>28</a>    </span>sockets: HashMap&lt;Socket, Registration, BuildHasherDefault&lt;IntHasher&gt;&gt;,
+<a href=#29 id=29 data-nosnippet>29</a>
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// If a socket is currently invalid when it is registered, we put it in this
+<a href=#31 id=31 data-nosnippet>31</a>    /// set and try to register it again later.
+<a href=#32 id=32 data-nosnippet>32</a>    </span>bad_sockets: HashSet&lt;Socket, BuildHasherDefault&lt;IntHasher&gt;&gt;,
+<a href=#33 id=33 data-nosnippet>33</a>
+<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// Socket events that have occurred. We re-use this every call for
+<a href=#35 id=35 data-nosnippet>35</a>    /// efficiency.
+<a href=#36 id=36 data-nosnippet>36</a>    </span>events: Events,
+<a href=#37 id=37 data-nosnippet>37</a>
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="doccomment">/// Incrementing counter used to deduplicate registration operations.
+<a href=#39 id=39 data-nosnippet>39</a>    </span>tick: usize,
+<a href=#40 id=40 data-nosnippet>40</a>}
+<a href=#41 id=41 data-nosnippet>41</a>
+<a href=#42 id=42 data-nosnippet>42</a><span class="doccomment">/// Information stored about each registered socket.
+<a href=#43 id=43 data-nosnippet>43</a></span><span class="kw">struct </span>Registration {
+<a href=#44 id=44 data-nosnippet>44</a>    readable: bool,
+<a href=#45 id=45 data-nosnippet>45</a>    writable: bool,
+<a href=#46 id=46 data-nosnippet>46</a>    tick: usize,
+<a href=#47 id=47 data-nosnippet>47</a>}
+<a href=#48 id=48 data-nosnippet>48</a>
+<a href=#49 id=49 data-nosnippet>49</a><span class="kw">impl </span>Selector {
+<a href=#50 id=50 data-nosnippet>50</a>    <span class="doccomment">/// Create a new socket selector.
+<a href=#51 id=51 data-nosnippet>51</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; io::Result&lt;<span class="self">Self</span>&gt; {
+<a href=#52 id=52 data-nosnippet>52</a>        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+<a href=#53 id=53 data-nosnippet>53</a>            poller: Arc::new(Poller::new()<span class="question-mark">?</span>),
+<a href=#54 id=54 data-nosnippet>54</a>            sockets: HashMap::with_hasher(Default::default()),
+<a href=#55 id=55 data-nosnippet>55</a>            bad_sockets: HashSet::with_hasher(Default::default()),
+<a href=#56 id=56 data-nosnippet>56</a>            events: Events::new(),
+<a href=#57 id=57 data-nosnippet>57</a>            tick: <span class="number">0</span>,
+<a href=#58 id=58 data-nosnippet>58</a>        })
+<a href=#59 id=59 data-nosnippet>59</a>    }
+<a href=#60 id=60 data-nosnippet>60</a>
+<a href=#61 id=61 data-nosnippet>61</a>    <span class="doccomment">/// Get a task waker that will interrupt this selector whenever it is
+<a href=#62 id=62 data-nosnippet>62</a>    /// waiting for activity.
+<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Waker {
+<a href=#64 id=64 data-nosnippet>64</a>        waker_fn::waker_fn({
+<a href=#65 id=65 data-nosnippet>65</a>            <span class="kw">let </span>poller_ref = <span class="self">self</span>.poller.clone();
+<a href=#66 id=66 data-nosnippet>66</a>
+<a href=#67 id=67 data-nosnippet>67</a>            <span class="kw">move </span>|| {
+<a href=#68 id=68 data-nosnippet>68</a>                <span class="kw">let _ </span>= poller_ref.notify();
+<a href=#69 id=69 data-nosnippet>69</a>            }
+<a href=#70 id=70 data-nosnippet>70</a>        })
+<a href=#71 id=71 data-nosnippet>71</a>    }
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="doccomment">/// Register a socket with the selector to begin receiving readiness events
+<a href=#74 id=74 data-nosnippet>74</a>    /// for it.
+<a href=#75 id=75 data-nosnippet>75</a>    ///
+<a href=#76 id=76 data-nosnippet>76</a>    /// This method can also be used to update/modify the readiness events you
+<a href=#77 id=77 data-nosnippet>77</a>    /// are interested in for a previously registered socket.
+<a href=#78 id=78 data-nosnippet>78</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register(
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#80 id=80 data-nosnippet>80</a>        socket: Socket,
+<a href=#81 id=81 data-nosnippet>81</a>        readable: bool,
+<a href=#82 id=82 data-nosnippet>82</a>        writable: bool,
+<a href=#83 id=83 data-nosnippet>83</a>    ) -&gt; io::Result&lt;()&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span>previous = <span class="self">self</span>.sockets.insert(
+<a href=#85 id=85 data-nosnippet>85</a>            socket,
+<a href=#86 id=86 data-nosnippet>86</a>            Registration {
+<a href=#87 id=87 data-nosnippet>87</a>                readable,
+<a href=#88 id=88 data-nosnippet>88</a>                writable,
+<a href=#89 id=89 data-nosnippet>89</a>                tick: <span class="self">self</span>.tick,
+<a href=#90 id=90 data-nosnippet>90</a>            },
+<a href=#91 id=91 data-nosnippet>91</a>        );
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>result = <span class="kw">if </span>previous.is_some() {
+<a href=#94 id=94 data-nosnippet>94</a>            poller_modify(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
+<a href=#95 id=95 data-nosnippet>95</a>        } <span class="kw">else </span>{
+<a href=#96 id=96 data-nosnippet>96</a>            poller_add(<span class="kw-2">&amp;</span><span class="self">self</span>.poller, socket, readable, writable)
+<a href=#97 id=97 data-nosnippet>97</a>        };
+<a href=#98 id=98 data-nosnippet>98</a>
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">match </span>result {
+<a href=#100 id=100 data-nosnippet>100</a>            <span class="prelude-val">Err</span>(error) <span class="kw">if </span>is_bad_socket_error(<span class="kw-2">&amp;</span>error) =&gt; {
+<a href=#101 id=101 data-nosnippet>101</a>                <span class="comment">// We've been asked to monitor a socket, but the poller thinks
+<a href=#102 id=102 data-nosnippet>102</a>                // that the socket is invalid or closed. On occasion, curl will
+<a href=#103 id=103 data-nosnippet>103</a>                // give such sockets with the assumption that we will monitor
+<a href=#104 id=104 data-nosnippet>104</a>                // them until curl tells us to stop. With stateless pollers such
+<a href=#105 id=105 data-nosnippet>105</a>                // as `select(2)` this is not a problem, but most
+<a href=#106 id=106 data-nosnippet>106</a>                // high-performance stateless pollers need the socket to be
+<a href=#107 id=107 data-nosnippet>107</a>                // valid in order to monitor them.
+<a href=#108 id=108 data-nosnippet>108</a>                //
+<a href=#109 id=109 data-nosnippet>109</a>                // To get around this problem, we return `Ok` to the caller and
+<a href=#110 id=110 data-nosnippet>110</a>                // hold onto this currently invalid socket for later. Whenever
+<a href=#111 id=111 data-nosnippet>111</a>                // `poll` is called, we retry registering these sockets in the
+<a href=#112 id=112 data-nosnippet>112</a>                // hope that they will eventually become valid.
+<a href=#113 id=113 data-nosnippet>113</a>                </span><span class="macro">tracing::debug!</span>(
+<a href=#114 id=114 data-nosnippet>114</a>                    socket,
+<a href=#115 id=115 data-nosnippet>115</a>                    <span class="question-mark">?</span>error,
+<a href=#116 id=116 data-nosnippet>116</a>                    <span class="string">"bad socket registered, will try again later"
+<a href=#117 id=117 data-nosnippet>117</a>                </span>);
+<a href=#118 id=118 data-nosnippet>118</a>                <span class="self">self</span>.bad_sockets.insert(socket);
+<a href=#119 id=119 data-nosnippet>119</a>                <span class="prelude-val">Ok</span>(())
+<a href=#120 id=120 data-nosnippet>120</a>            }
+<a href=#121 id=121 data-nosnippet>121</a>            result =&gt; result,
+<a href=#122 id=122 data-nosnippet>122</a>        }
+<a href=#123 id=123 data-nosnippet>123</a>    }
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>    <span class="doccomment">/// Remove a socket from the selector and stop receiving events for it.
+<a href=#126 id=126 data-nosnippet>126</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deregister(<span class="kw-2">&amp;mut </span><span class="self">self</span>, socket: Socket) -&gt; io::Result&lt;()&gt; {
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="comment">// Remove this socket from our bookkeeping. If we recognize it, also
+<a href=#128 id=128 data-nosnippet>128</a>        // remove it from the underlying poller.
+<a href=#129 id=129 data-nosnippet>129</a>        </span><span class="kw">if </span><span class="self">self</span>.sockets.remove(<span class="kw-2">&amp;</span>socket).is_some() {
+<a href=#130 id=130 data-nosnippet>130</a>            <span class="self">self</span>.bad_sockets.remove(<span class="kw-2">&amp;</span>socket);
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a>            <span class="comment">// There's a good chance that the socket has already been closed.
+<a href=#133 id=133 data-nosnippet>133</a>            // Depending on the poller implementation, it may have already
+<a href=#134 id=134 data-nosnippet>134</a>            // forgotten about this socket (e.g. epoll). Therefore if we get an
+<a href=#135 id=135 data-nosnippet>135</a>            // error back complaining that the socket is invalid, we can safely
+<a href=#136 id=136 data-nosnippet>136</a>            // ignore it.
+<a href=#137 id=137 data-nosnippet>137</a>            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.poller.delete(<span class="kw">unsafe </span>{ as_source(socket) }) {
+<a href=#138 id=138 data-nosnippet>138</a>                <span class="kw">if </span>!is_bad_socket_error(<span class="kw-2">&amp;</span>e) &amp;&amp; e.kind() != io::ErrorKind::PermissionDenied {
+<a href=#139 id=139 data-nosnippet>139</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+<a href=#140 id=140 data-nosnippet>140</a>                }
+<a href=#141 id=141 data-nosnippet>141</a>            }
+<a href=#142 id=142 data-nosnippet>142</a>        }
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>        <span class="prelude-val">Ok</span>(())
+<a href=#145 id=145 data-nosnippet>145</a>    }
+<a href=#146 id=146 data-nosnippet>146</a>
+<a href=#147 id=147 data-nosnippet>147</a>    <span class="doccomment">/// Block until socket activity is detected or a timeout passes.
+<a href=#148 id=148 data-nosnippet>148</a>    ///
+<a href=#149 id=149 data-nosnippet>149</a>    /// Returns `true` if one or more socket events occurred.
+<a href=#150 id=150 data-nosnippet>150</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>, timeout: Duration) -&gt; io::Result&lt;bool&gt; {
+<a href=#151 id=151 data-nosnippet>151</a>        <span class="comment">// Since our I/O events are oneshot, make sure we re-register sockets
+<a href=#152 id=152 data-nosnippet>152</a>        // with the poller that previously were triggered last time we polled.
+<a href=#153 id=153 data-nosnippet>153</a>        //
+<a href=#154 id=154 data-nosnippet>154</a>        // We don't do this immediately after polling because the caller may
+<a href=#155 id=155 data-nosnippet>155</a>        // choose to de-register a socket before the next call. That's why we
+<a href=#156 id=156 data-nosnippet>156</a>        // wait until the last minute.
+<a href=#157 id=157 data-nosnippet>157</a>        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.iter() {
+<a href=#158 id=158 data-nosnippet>158</a>            <span class="kw">let </span>socket = event.key <span class="kw">as </span>Socket;
+<a href=#159 id=159 data-nosnippet>159</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = <span class="self">self</span>.sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
+<a href=#160 id=160 data-nosnippet>160</a>                <span class="comment">// If the socket was already re-registered this tick, then we
+<a href=#161 id=161 data-nosnippet>161</a>                // don't need to do this.
+<a href=#162 id=162 data-nosnippet>162</a>                </span><span class="kw">if </span>registration.tick != <span class="self">self</span>.tick {
+<a href=#163 id=163 data-nosnippet>163</a>                    poller_modify(
+<a href=#164 id=164 data-nosnippet>164</a>                        <span class="kw-2">&amp;</span><span class="self">self</span>.poller,
+<a href=#165 id=165 data-nosnippet>165</a>                        socket,
+<a href=#166 id=166 data-nosnippet>166</a>                        registration.readable,
+<a href=#167 id=167 data-nosnippet>167</a>                        registration.writable,
+<a href=#168 id=168 data-nosnippet>168</a>                    )<span class="question-mark">?</span>;
+<a href=#169 id=169 data-nosnippet>169</a>                    registration.tick = <span class="self">self</span>.tick;
+<a href=#170 id=170 data-nosnippet>170</a>                }
+<a href=#171 id=171 data-nosnippet>171</a>            }
+<a href=#172 id=172 data-nosnippet>172</a>        }
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a>        <span class="comment">// Mark all events as handled.
+<a href=#175 id=175 data-nosnippet>175</a>        </span><span class="self">self</span>.events.clear();
+<a href=#176 id=176 data-nosnippet>176</a>
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="comment">// Iterate over sockets that have been registered, but failed to be
+<a href=#178 id=178 data-nosnippet>178</a>        // added to the underlying poller temporarily, and retry adding them.
+<a href=#179 id=179 data-nosnippet>179</a>        </span><span class="self">self</span>.bad_sockets.retain({
+<a href=#180 id=180 data-nosnippet>180</a>            <span class="kw">let </span>sockets = <span class="kw-2">&amp;mut </span><span class="self">self</span>.sockets;
+<a href=#181 id=181 data-nosnippet>181</a>            <span class="kw">let </span>poller = <span class="kw-2">&amp;</span><span class="self">self</span>.poller;
+<a href=#182 id=182 data-nosnippet>182</a>            <span class="kw">let </span>tick = <span class="self">self</span>.tick;
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>            <span class="kw">move </span>|<span class="kw-2">&amp;</span>socket| {
+<a href=#185 id=185 data-nosnippet>185</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(registration) = sockets.get_mut(<span class="kw-2">&amp;</span>socket) {
+<a href=#186 id=186 data-nosnippet>186</a>                    <span class="kw">if </span>registration.tick != tick {
+<a href=#187 id=187 data-nosnippet>187</a>                        registration.tick = tick;
+<a href=#188 id=188 data-nosnippet>188</a>                        poller_add(poller, socket, registration.readable, registration.writable)
+<a href=#189 id=189 data-nosnippet>189</a>                            .is_err()
+<a href=#190 id=190 data-nosnippet>190</a>                    } <span class="kw">else </span>{
+<a href=#191 id=191 data-nosnippet>191</a>                        <span class="bool-val">true
+<a href=#192 id=192 data-nosnippet>192</a>                    </span>}
+<a href=#193 id=193 data-nosnippet>193</a>                } <span class="kw">else </span>{
+<a href=#194 id=194 data-nosnippet>194</a>                    <span class="bool-val">false
+<a href=#195 id=195 data-nosnippet>195</a>                </span>}
+<a href=#196 id=196 data-nosnippet>196</a>            }
+<a href=#197 id=197 data-nosnippet>197</a>        });
+<a href=#198 id=198 data-nosnippet>198</a>
+<a href=#199 id=199 data-nosnippet>199</a>        <span class="self">self</span>.tick = <span class="self">self</span>.tick.wrapping_add(<span class="number">1</span>);
+<a href=#200 id=200 data-nosnippet>200</a>
+<a href=#201 id=201 data-nosnippet>201</a>        <span class="comment">// Block until either an I/O event occurs on a socket, the timeout is
+<a href=#202 id=202 data-nosnippet>202</a>        // reached, or the agent handle interrupts us.
+<a href=#203 id=203 data-nosnippet>203</a>        </span><span class="kw">match </span><span class="self">self</span>.poller.wait(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">Some</span>(timeout)) {
+<a href=#204 id=204 data-nosnippet>204</a>            <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+<a href=#205 id=205 data-nosnippet>205</a>            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+<a href=#206 id=206 data-nosnippet>206</a>            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::Interrupted =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+<a href=#207 id=207 data-nosnippet>207</a>            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
+<a href=#208 id=208 data-nosnippet>208</a>        }
+<a href=#209 id=209 data-nosnippet>209</a>    }
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="doccomment">/// Get an iterator over the socket events that occurred during the most
+<a href=#212 id=212 data-nosnippet>212</a>    /// recent call to `poll`.
+<a href=#213 id=213 data-nosnippet>213</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>events(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (Socket, bool, bool)&gt; + <span class="lifetime">'_ </span>{
+<a href=#214 id=214 data-nosnippet>214</a>        <span class="self">self</span>.events
+<a href=#215 id=215 data-nosnippet>215</a>            .iter()
+<a href=#216 id=216 data-nosnippet>216</a>            .map(|event| (event.key <span class="kw">as </span>Socket, event.readable, event.writable))
+<a href=#217 id=217 data-nosnippet>217</a>    }
+<a href=#218 id=218 data-nosnippet>218</a>}
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a><span class="kw">fn </span>poller_add(poller: <span class="kw-2">&amp;</span>Poller, socket: Socket, readable: bool, writable: bool) -&gt; io::Result&lt;()&gt; {
+<a href=#221 id=221 data-nosnippet>221</a>    <span class="kw">let </span>interest = Event::new(socket <span class="kw">as </span>usize, readable, writable);
+<a href=#222 id=222 data-nosnippet>222</a>
+<a href=#223 id=223 data-nosnippet>223</a>    <span class="comment">// If this errors, we retry the operation as a modification instead. This is
+<a href=#224 id=224 data-nosnippet>224</a>    // because this new socket might re-use a file descriptor that was
+<a href=#225 id=225 data-nosnippet>225</a>    // previously closed, but is still registered with the poller. Retrying the
+<a href=#226 id=226 data-nosnippet>226</a>    // operation as a modification is sufficient to handle this.
+<a href=#227 id=227 data-nosnippet>227</a>    //
+<a href=#228 id=228 data-nosnippet>228</a>    // This is especially common with the epoll backend.
+<a href=#229 id=229 data-nosnippet>229</a>    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error) = <span class="kw">unsafe </span>{ poller.add(socket, interest) } {
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="macro">tracing::debug!</span>(
+<a href=#231 id=231 data-nosnippet>231</a>            socket,
+<a href=#232 id=232 data-nosnippet>232</a>            <span class="question-mark">?</span>error,
+<a href=#233 id=233 data-nosnippet>233</a>            <span class="string">"failed to add interest for socket, retrying as a modify"</span>,
+<a href=#234 id=234 data-nosnippet>234</a>        );
+<a href=#235 id=235 data-nosnippet>235</a>        poller.modify(<span class="kw">unsafe </span>{ as_source(socket) }, interest)<span class="question-mark">?</span>;
+<a href=#236 id=236 data-nosnippet>236</a>    }
+<a href=#237 id=237 data-nosnippet>237</a>
+<a href=#238 id=238 data-nosnippet>238</a>    <span class="prelude-val">Ok</span>(())
+<a href=#239 id=239 data-nosnippet>239</a>}
+<a href=#240 id=240 data-nosnippet>240</a>
+<a href=#241 id=241 data-nosnippet>241</a><span class="kw">fn </span>poller_modify(
+<a href=#242 id=242 data-nosnippet>242</a>    poller: <span class="kw-2">&amp;</span>Poller,
+<a href=#243 id=243 data-nosnippet>243</a>    socket: Socket,
+<a href=#244 id=244 data-nosnippet>244</a>    readable: bool,
+<a href=#245 id=245 data-nosnippet>245</a>    writable: bool,
+<a href=#246 id=246 data-nosnippet>246</a>) -&gt; io::Result&lt;()&gt; {
+<a href=#247 id=247 data-nosnippet>247</a>    <span class="kw">let </span>interest = Event::new(socket <span class="kw">as </span>usize, readable, writable);
+<a href=#248 id=248 data-nosnippet>248</a>
+<a href=#249 id=249 data-nosnippet>249</a>    <span class="comment">// If this errors, we retry the operation as an add instead. This is done
+<a href=#250 id=250 data-nosnippet>250</a>    // because epoll is weird.
+<a href=#251 id=251 data-nosnippet>251</a>    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error) = poller.modify(<span class="kw">unsafe </span>{ as_source(socket) }, interest) {
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="macro">tracing::debug!</span>(
+<a href=#253 id=253 data-nosnippet>253</a>            socket,
+<a href=#254 id=254 data-nosnippet>254</a>            <span class="question-mark">?</span>error,
+<a href=#255 id=255 data-nosnippet>255</a>            <span class="string">"failed to modify interest for socket, retrying as an add"</span>,
+<a href=#256 id=256 data-nosnippet>256</a>        );
+<a href=#257 id=257 data-nosnippet>257</a>        <span class="kw">unsafe </span>{
+<a href=#258 id=258 data-nosnippet>258</a>            poller.add(socket, interest)<span class="question-mark">?</span>;
+<a href=#259 id=259 data-nosnippet>259</a>        }
+<a href=#260 id=260 data-nosnippet>260</a>    }
+<a href=#261 id=261 data-nosnippet>261</a>
+<a href=#262 id=262 data-nosnippet>262</a>    <span class="prelude-val">Ok</span>(())
+<a href=#263 id=263 data-nosnippet>263</a>}
+<a href=#264 id=264 data-nosnippet>264</a>
+<a href=#265 id=265 data-nosnippet>265</a><span class="kw">fn </span>is_bad_socket_error(error: <span class="kw-2">&amp;</span>io::Error) -&gt; bool {
+<a href=#266 id=266 data-nosnippet>266</a>    <span class="comment">// OS-specific error codes that aren't mapped to an `std::io::ErrorKind`.
+<a href=#267 id=267 data-nosnippet>267</a>    </span><span class="kw">const </span>EBADF: i32 = <span class="number">9</span>;
+<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">const </span>ERROR_INVALID_HANDLE: i32 = <span class="number">6</span>;
+<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">const </span>ERROR_NOT_FOUND: i32 = <span class="number">1168</span>;
+<a href=#270 id=270 data-nosnippet>270</a>
+<a href=#271 id=271 data-nosnippet>271</a>    <span class="kw">match </span>error.kind() {
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="comment">// Common error codes std understands.
+<a href=#273 id=273 data-nosnippet>273</a>        </span>io::ErrorKind::NotFound | io::ErrorKind::InvalidInput =&gt; <span class="bool-val">true</span>,
+<a href=#274 id=274 data-nosnippet>274</a>
+<a href=#275 id=275 data-nosnippet>275</a>        <span class="comment">// Check for OS-specific error codes.
+<a href=#276 id=276 data-nosnippet>276</a>        </span><span class="kw">_ </span>=&gt; <span class="kw">match </span>error.raw_os_error() {
+<a href=#277 id=277 data-nosnippet>277</a>            <span class="comment">// kqueue likes to return EBADF, especially on removal, since it
+<a href=#278 id=278 data-nosnippet>278</a>            // automatically removes sockets when they are closed.
+<a href=#279 id=279 data-nosnippet>279</a>            </span><span class="prelude-val">Some</span>(EBADF) <span class="kw">if </span><span class="macro">cfg!</span>(unix) =&gt; <span class="bool-val">true</span>,
+<a href=#280 id=280 data-nosnippet>280</a>
+<a href=#281 id=281 data-nosnippet>281</a>            <span class="comment">// IOCP can return these in rare circumstances. Typically these just
+<a href=#282 id=282 data-nosnippet>282</a>            // indicate that the socket is no longer registered with the
+<a href=#283 id=283 data-nosnippet>283</a>            // completion port or was already closed.
+<a href=#284 id=284 data-nosnippet>284</a>            </span><span class="prelude-val">Some</span>(ERROR_INVALID_HANDLE) | <span class="prelude-val">Some</span>(ERROR_NOT_FOUND) <span class="kw">if </span><span class="macro">cfg!</span>(windows) =&gt; <span class="bool-val">true</span>,
+<a href=#285 id=285 data-nosnippet>285</a>
+<a href=#286 id=286 data-nosnippet>286</a>            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+<a href=#287 id=287 data-nosnippet>287</a>        },
+<a href=#288 id=288 data-nosnippet>288</a>    }
+<a href=#289 id=289 data-nosnippet>289</a>}
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a><span class="kw">unsafe fn </span>as_source(socket: Socket) -&gt; <span class="kw">impl </span>AsSource {
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="attr">#[cfg(unix)]
+<a href=#293 id=293 data-nosnippet>293</a>    </span><span class="kw">unsafe </span>{
+<a href=#294 id=294 data-nosnippet>294</a>        std::os::fd::BorrowedFd::borrow_raw(socket)
+<a href=#295 id=295 data-nosnippet>295</a>    }
+<a href=#296 id=296 data-nosnippet>296</a>    <span class="attr">#[cfg(windows)]
+<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">unsafe </span>{
+<a href=#298 id=298 data-nosnippet>298</a>        std::os::windows::io::BorrowedSocket::borrow_raw(socket)
+<a href=#299 id=299 data-nosnippet>299</a>    }
+<a href=#300 id=300 data-nosnippet>300</a>}
+</code></pre></div></section></main></body></html>

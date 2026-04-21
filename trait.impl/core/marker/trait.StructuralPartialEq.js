@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["isahc",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.StructuralPartialEq.html\" title=\"trait core::marker::StructuralPartialEq\">StructuralPartialEq</a> for <a class=\"enum\" href=\"isahc/config/enum.RedirectPolicy.html\" title=\"enum isahc::config::RedirectPolicy\">RedirectPolicy</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.StructuralPartialEq.html\" title=\"trait core::marker::StructuralPartialEq\">StructuralPartialEq</a> for <a class=\"enum\" href=\"isahc/cookies/enum.CookieRejectedErrorKind.html\" title=\"enum isahc::cookies::CookieRejectedErrorKind\">CookieRejectedErrorKind</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.StructuralPartialEq.html\" title=\"trait core::marker::StructuralPartialEq\">StructuralPartialEq</a> for <a class=\"enum\" href=\"isahc/error/enum.ErrorKind.html\" title=\"enum isahc::error::ErrorKind\">ErrorKind</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.StructuralPartialEq.html\" title=\"trait core::marker::StructuralPartialEq\">StructuralPartialEq</a> for <a class=\"enum\" href=\"isahc/tls/enum.ProtocolVersion.html\" title=\"enum isahc::tls::ProtocolVersion\">ProtocolVersion</a>",0],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.StructuralPartialEq.html\" title=\"trait core::marker::StructuralPartialEq\">StructuralPartialEq</a> for <a class=\"struct\" href=\"isahc/config/struct.DialerParseError.html\" title=\"struct isahc::config::DialerParseError\">DialerParseError</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1647]}

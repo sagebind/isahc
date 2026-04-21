@@ -1,1431 +1,761 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/handler.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>handler.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
-<span id="2">2</span>
-<span id="3">3</span>
-<span id="4">4</span>
-<span id="5">5</span>
-<span id="6">6</span>
-<span id="7">7</span>
-<span id="8">8</span>
-<span id="9">9</span>
-<span id="10">10</span>
-<span id="11">11</span>
-<span id="12">12</span>
-<span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-<span id="23">23</span>
-<span id="24">24</span>
-<span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
-<span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
-<span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
-<span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
-<span id="74">74</span>
-<span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
-<span id="674">674</span>
-<span id="675">675</span>
-<span id="676">676</span>
-<span id="677">677</span>
-<span id="678">678</span>
-<span id="679">679</span>
-<span id="680">680</span>
-<span id="681">681</span>
-<span id="682">682</span>
-<span id="683">683</span>
-<span id="684">684</span>
-<span id="685">685</span>
-<span id="686">686</span>
-<span id="687">687</span>
-<span id="688">688</span>
-<span id="689">689</span>
-<span id="690">690</span>
-<span id="691">691</span>
-<span id="692">692</span>
-<span id="693">693</span>
-<span id="694">694</span>
-<span id="695">695</span>
-<span id="696">696</span>
-<span id="697">697</span>
-<span id="698">698</span>
-<span id="699">699</span>
-<span id="700">700</span>
-<span id="701">701</span>
-<span id="702">702</span>
-<span id="703">703</span>
-<span id="704">704</span>
-<span id="705">705</span>
-<span id="706">706</span>
-<span id="707">707</span>
-<span id="708">708</span>
-<span id="709">709</span>
-<span id="710">710</span>
-<span id="711">711</span>
-<span id="712">712</span>
-<span id="713">713</span>
-<span id="714">714</span>
-</pre><pre class="rust"><code><span class="attr">#![allow(unsafe_code)]
-
-</span><span class="kw">use crate</span>::{
-    body::AsyncBody,
-    error::{Error, ErrorKind},
-    metrics::Metrics,
-    parsing::{parse_header, parse_status_line},
-    response::{LocalAddr, RemoteAddr},
-    trailer::TrailerWriter,
-};
-<span class="kw">use </span>async_channel::Sender;
-<span class="kw">use </span>curl::easy::{Easy2, InfoType, ReadError, SeekResult, WriteError};
-<span class="kw">use </span>curl_sys::CURL;
-<span class="kw">use </span>futures_io::{AsyncRead, AsyncWrite};
-<span class="kw">use </span>http::Response;
-<span class="kw">use </span>once_cell::sync::OnceCell;
-<span class="kw">use </span>sluice::pipe;
-<span class="kw">use </span>std::{
-    ascii,
-    ffi::CStr,
-    fmt,
-    future::Future,
-    io,
-    mem,
-    net::SocketAddr,
-    os::raw::{c_char, c_long},
-    pin::Pin,
-    ptr,
-    sync::Arc,
-    task::{Context, Poll, Waker},
-};
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestBody(<span class="kw">pub</span>(<span class="kw">crate</span>) AsyncBody);
-
-<span class="doccomment">/// Manages the state of a single request/response life cycle.
-///
-/// During the lifetime of a handler, it will receive callbacks from curl about
-/// the progress of the request, and the handler will incrementally build up a
-/// response struct as the response is received.
-///
-/// Every request handler has an associated [`Future`] that can be used to poll
-/// the state of the response. The handler will complete the future once the
-/// final HTTP response headers are received. The body of the response (if any)
-/// is made available to the consumer of the future, and is also driven by the
-/// request handler until the response body is fully consumed or discarded.
-///
-/// If dropped before the response is finished, the associated future will be
-/// completed with an error.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestHandler {
-    <span class="doccomment">/// A tracing span for grouping log events under. Since a request is
-    /// processed asynchronously inside an agent thread, this span helps
-    /// maintain a link to the parent context where the request is actually
-    /// initiated.
-    ///
-    /// We enter and exit this span whenever curl invokes one of our callbacks
-    /// to make progress on this request.
-    </span>span: tracing::Span,
-
-    <span class="doccomment">/// State shared by the handler and its future.
-    </span>shared: Arc&lt;Shared&gt;,
-
-    <span class="doccomment">/// Sender for the associated future.
-    </span>sender: <span class="prelude-ty">Option</span>&lt;Sender&lt;<span class="prelude-ty">Result</span>&lt;http::response::Builder, Error&gt;&gt;&gt;,
-
-    <span class="doccomment">/// The body to be sent in the request.
-    </span>request_body: AsyncBody,
-
-    <span class="doccomment">/// A waker used with reading the request body asynchronously. Populated by
-    /// an agent when the request is initialized.
-    </span>request_body_waker: <span class="prelude-ty">Option</span>&lt;Waker&gt;,
-
-    <span class="doccomment">/// Status code of the response.
-    </span>response_status_code: <span class="prelude-ty">Option</span>&lt;http::StatusCode&gt;,
-
-    <span class="doccomment">/// HTTP version of the response.
-    </span>response_version: <span class="prelude-ty">Option</span>&lt;http::Version&gt;,
-
-    <span class="doccomment">/// Response headers received so far.
-    </span>response_headers: http::HeaderMap,
-
-    <span class="doccomment">/// Writing end of the pipe where the response body is written.
-    </span>response_body_writer: pipe::PipeWriter,
-
-    <span class="doccomment">/// A waker used with writing the response body asynchronously. Populated by
-    /// an agent when the request is initialized.
-    </span>response_body_waker: <span class="prelude-ty">Option</span>&lt;Waker&gt;,
-
-    <span class="doccomment">/// Holds the response trailer, if any. Used to communicate the trailer
-    /// headers out-of-band from the response headers and body.
-    </span>response_trailer_writer: TrailerWriter,
-
-    <span class="doccomment">/// Metrics object for publishing metrics data to. Lazily initialized.
-    </span>metrics: <span class="prelude-ty">Option</span>&lt;Metrics&gt;,
-
-    <span class="doccomment">/// Raw pointer to the associated curl easy handle. The pointer is not owned
-    /// by this struct, but the parent struct to this one, so we know it will be
-    /// valid at least for the lifetime of this struct (assuming all other
-    /// invariants are upheld).
-    </span>handle: <span class="kw-2">*mut </span>CURL,
-
-    <span class="doccomment">/// If true, do not warn about prematurely closed responses.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) disable_connection_reuse_log: bool,
-}
-
-<span class="comment">// Would be send implicitly except for the raw CURL pointer.
-</span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>RequestHandler {}
-
-<span class="doccomment">/// State shared by the handler and its future.
-///
-/// This is also used to keep track of the lifetime of the request.
-</span><span class="attr">#[derive(Debug, Default)]
-</span><span class="kw">struct </span>Shared {
-    <span class="doccomment">/// Set to the final result of the transfer received from curl. This is used
-    /// to communicate an error while reading the response body if the handler
-    /// suddenly aborts.
-    </span>result: OnceCell&lt;<span class="prelude-ty">Result</span>&lt;(), Error&gt;&gt;,
-}
-
-<span class="kw">impl </span>RequestHandler {
-    <span class="doccomment">/// Create a new request handler and an associated response future.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        request_body: AsyncBody,
-    ) -&gt; (
-        Easy2&lt;<span class="self">Self</span>&gt;,
-        <span class="kw">impl </span>Future&lt;Output = <span class="prelude-ty">Result</span>&lt;Response&lt;ResponseBodyReader&gt;, Error&gt;&gt;,
-    ) {
-        <span class="kw">let </span>(sender, receiver) = async_channel::bounded(<span class="number">1</span>);
-        <span class="kw">let </span>shared = Arc::new(Shared::default());
-        <span class="kw">let </span>(response_body_reader, response_body_writer) = pipe::pipe();
-
-        <span class="kw">let </span>handler = <span class="self">Self </span>{
-            span: <span class="macro">tracing::debug_span!</span>(<span class="string">&quot;handler&quot;</span>, id = tracing::field::Empty),
-            sender: <span class="prelude-val">Some</span>(sender),
-            shared: shared.clone(),
-            request_body,
-            request_body_waker: <span class="prelude-val">None</span>,
-            response_status_code: <span class="prelude-val">None</span>,
-            response_version: <span class="prelude-val">None</span>,
-            response_headers: http::HeaderMap::new(),
-            response_body_writer,
-            response_body_waker: <span class="prelude-val">None</span>,
-            response_trailer_writer: TrailerWriter::new(),
-            metrics: <span class="prelude-val">None</span>,
-            handle: ptr::null_mut(),
-            disable_connection_reuse_log: <span class="bool-val">false</span>,
-        };
-
-        <span class="comment">// Create a future that resolves when the handler receives the response
-        // headers.
-        </span><span class="kw">let </span>future = <span class="kw">async move </span>{
-            <span class="kw">let </span>builder = receiver
-                .recv()
-                .<span class="kw">await
-                </span>.map_err(|e| Error::new(ErrorKind::Unknown, e))<span class="question-mark">??</span>;
-
-            <span class="kw">let </span>reader = ResponseBodyReader {
-                inner: response_body_reader,
-                shared,
-            };
-
-            builder
-                .body(reader)
-                .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
-        };
-
-        <span class="comment">// Create a curl handle and populate remaining handler fields from it.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>easy = Easy2::new(handler);
-        easy.get_mut().handle = easy.raw();
-        <span class="kw">let </span>id = easy.get_ref().id();
-        easy.get_mut().span.record(<span class="string">&quot;id&quot;</span>, <span class="kw-2">&amp;</span>id);
-
-        (easy, future)
-    }
-
-    <span class="doccomment">/// Get a unique identifier for this handler instance.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="comment">// Use the curl handle to derive a unique ID for this request. The same
-        // handle can only be used for one request at a time, so this is
-        // guaranteed to be unique for the lifetime of this request.
-        </span><span class="self">self</span>.handle <span class="kw">as </span>usize
-    }
-
-    <span class="doccomment">/// Check whether debug info should be generated. This function is used to
-    /// determine whether to set the `verbose` curl option to true.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_debug_enabled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="comment">// To avoid having curl generate debug strings unnecessarily, we want to
-        // enable debug info only if:
-        //
-        // - a tracing subscriber is set and is interested in the current span,
-        // - or a logger is set that is enabled at debug or higher.
-        //
-        // This logic seems a little screwy when comparing to what the docs say,
-        // but it works.
-        </span><span class="kw">if </span><span class="self">self</span>.span.is_none() {
-            <span class="bool-val">false
-        </span>} <span class="kw">else </span>{
-            <span class="macro">log::log_enabled!</span>(log::Level::Debug)
-        }
-    }
-
-    <span class="kw">fn </span>is_future_canceled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.sender.as_ref().map(Sender::is_closed).unwrap_or(<span class="bool-val">false</span>)
-    }
-
-    <span class="doccomment">/// Initialize the handler and prepare it for the request to begin.
-    ///
-    /// This is called from within the agent thread when it registers the
-    /// request handled by this handler with the multi handle and begins the
-    /// request&#39;s execution.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        request_waker: Waker,
-        response_waker: Waker,
-    ) {
-        <span class="kw">let </span>_enter = <span class="self">self</span>.span.enter();
-
-        <span class="comment">// Init should not be called more than once.
-        </span><span class="macro">debug_assert!</span>(<span class="self">self</span>.request_body_waker.is_none());
-        <span class="macro">debug_assert!</span>(<span class="self">self</span>.response_body_waker.is_none());
-
-        <span class="self">self</span>.request_body_waker = <span class="prelude-val">Some</span>(request_waker);
-        <span class="self">self</span>.response_body_waker = <span class="prelude-val">Some</span>(response_waker);
-    }
-
-    <span class="doccomment">/// Set the final result for this transfer.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_result(<span class="kw-2">&amp;mut </span><span class="self">self</span>, result: <span class="prelude-ty">Result</span>&lt;(), Error&gt;) {
-        <span class="kw">let </span>result = result.map_err(|<span class="kw-2">mut </span>e| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_local_addr() {
-                e = e.with_local_addr(addr);
-            }
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_primary_addr() {
-                e = e.with_remote_addr(addr);
-            }
-
-            e
-        });
-
-        <span class="kw">if </span><span class="self">self</span>.shared.result.set(result).is_err() {
-            <span class="macro">tracing::debug!</span>(<span class="string">&quot;attempted to set error multiple times&quot;</span>);
-        }
-
-        <span class="comment">// Flush the trailer, if we haven&#39;t already.
-        </span><span class="self">self</span>.response_trailer_writer.flush();
-
-        <span class="comment">// Complete the response future, if we haven&#39;t already.
-        </span><span class="self">self</span>.complete_response_future();
-    }
-
-    <span class="doccomment">/// Mark the future as completed successfully with the response headers
-    /// received so far.
-    </span><span class="kw">fn </span>complete_response_future(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// If the sender has been taken already, then the future has already
-        // been completed.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="self">self</span>.sender.take() {
-            <span class="comment">// If our request has already failed early with an error, return that instead.
-            </span><span class="kw">let </span>result = <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)) = <span class="self">self</span>.shared.result.get() {
-                <span class="macro">tracing::warn!</span>(<span class="string">&quot;request completed with error: {}&quot;</span>, e);
-                <span class="prelude-val">Err</span>(e.clone())
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(<span class="self">self</span>.build_response())
-            };
-
-            <span class="kw">if </span>sender.try_send(result).is_err() {
-                <span class="macro">tracing::debug!</span>(<span class="string">&quot;request canceled by user&quot;</span>);
-            }
-        }
-    }
-
-    <span class="kw">fn </span>build_response(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; http::response::Builder {
-        <span class="kw">let </span><span class="kw-2">mut </span>builder = http::Response::builder();
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(status) = <span class="self">self</span>.response_status_code {
-            builder = builder.status(status);
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(version) = <span class="self">self</span>.response_version {
-            builder = builder.version(version);
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = builder.headers_mut() {
-            headers.extend(<span class="self">self</span>.response_headers.drain());
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_local_addr() {
-            builder = builder.extension(LocalAddr(addr));
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_primary_addr() {
-            builder = builder.extension(RemoteAddr(addr));
-        }
-
-        <span class="comment">// Keep the request body around in case interceptors need access to
-        // it. Otherwise we&#39;re just going to drop it later.
-        </span>builder = builder.extension(RequestBody(mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_body)));
-
-        <span class="comment">// Include a handle to the trailer headers. We won&#39;t know if there
-        // are any until we reach the end of the response body.
-        </span>builder = builder.extension(<span class="self">self</span>.response_trailer_writer.trailer());
-
-        <span class="comment">// Include metrics in response, but only if it was created. If
-        // metrics are disabled then it won&#39;t have been created.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(metrics) = <span class="self">self</span>.metrics.clone() {
-            builder = builder.extension(metrics);
-        }
-
-        builder
-    }
-
-    <span class="kw">fn </span>get_primary_addr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
-        <span class="kw">let </span>ip = <span class="self">self</span>.get_primary_ip()<span class="question-mark">?</span>.parse().ok()<span class="question-mark">?</span>;
-        <span class="kw">let </span>port = <span class="self">self</span>.get_primary_port()<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Some</span>(SocketAddr::new(ip, port))
-    }
-
-    <span class="kw">fn </span>get_primary_ip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
-        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null::&lt;c_char&gt;();
-
-        <span class="kw">unsafe </span>{
-            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_PRIMARY_IP, <span class="kw-2">&amp;mut </span>ptr)
-                != curl_sys::CURLE_OK
-            {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
-        }
-
-        <span class="kw">if </span>ptr.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">unsafe </span>{ CStr::from_ptr(ptr) }.to_str().ok()
-    }
-
-    <span class="kw">fn </span>get_primary_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u16&gt; {
-        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">let </span><span class="kw-2">mut </span>port: c_long = <span class="number">0</span>;
-
-        <span class="kw">unsafe </span>{
-            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_PRIMARY_PORT, <span class="kw-2">&amp;mut </span>port)
-                != curl_sys::CURLE_OK
-            {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
-        }
-
-        <span class="prelude-val">Some</span>(port <span class="kw">as </span>u16)
-    }
-
-    <span class="kw">fn </span>get_local_addr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
-        <span class="kw">let </span>ip = <span class="self">self</span>.get_local_ip()<span class="question-mark">?</span>.parse().ok()<span class="question-mark">?</span>;
-        <span class="kw">let </span>port = <span class="self">self</span>.get_local_port()<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Some</span>(SocketAddr::new(ip, port))
-    }
-
-    <span class="kw">fn </span>get_local_ip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
-        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null::&lt;c_char&gt;();
-
-        <span class="kw">unsafe </span>{
-            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_LOCAL_IP, <span class="kw-2">&amp;mut </span>ptr)
-                != curl_sys::CURLE_OK
-            {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
-        }
-
-        <span class="kw">if </span>ptr.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">unsafe </span>{ CStr::from_ptr(ptr) }.to_str().ok()
-    }
-
-    <span class="kw">fn </span>get_local_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u16&gt; {
-        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
-        <span class="kw">let </span><span class="kw-2">mut </span>port: c_long = <span class="number">0</span>;
-
-        <span class="kw">unsafe </span>{
-            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_LOCAL_PORT, <span class="kw-2">&amp;mut </span>port)
-                != curl_sys::CURLE_OK
-            {
-                <span class="kw">return </span><span class="prelude-val">None</span>;
-            }
-        }
-
-        <span class="prelude-val">Some</span>(port <span class="kw">as </span>u16)
-    }
-}
-
-<span class="kw">impl </span>curl::easy::Handler <span class="kw">for </span>RequestHandler {
-    <span class="doccomment">/// Gets called by curl for each line of data in the HTTP response header.
-    </span><span class="kw">fn </span>header(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
-        <span class="comment">// Abort the request if it has been canceled.
-        </span><span class="kw">if </span><span class="self">self</span>.is_future_canceled() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">&quot;header&quot;</span>);
-        <span class="kw">let </span>_enter = span.enter();
-
-        <span class="comment">// If we already returned the response headers, then this header is from
-        // the trailer.
-        </span><span class="kw">if </span><span class="self">self</span>.sender.is_none() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(trailer_headers) = <span class="self">self</span>.response_trailer_writer.get_mut() {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((name, value)) = parse_header(data) {
-                    trailer_headers.append(name, value);
-                    <span class="kw">return </span><span class="bool-val">true</span>;
-                }
-            }
-        }
-
-        <span class="comment">// Curl calls this function for all lines in the response not part of
-        // the response body, not just for headers. We need to inspect the
-        // contents of the string in order to determine what it is and how to
-        // parse it, just as if we were reading from the socket of a HTTP/1.0 or
-        // HTTP/1.1 connection ourselves.
-
-        // Is this the status line?
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((version, status)) = parse_status_line(data) {
-            <span class="self">self</span>.response_version = <span class="prelude-val">Some</span>(version);
-            <span class="self">self</span>.response_status_code = <span class="prelude-val">Some</span>(status);
-
-            <span class="comment">// Also clear any pre-existing headers that might be left over from
-            // a previous intermediate response.
-            </span><span class="self">self</span>.response_headers.clear();
-
-            <span class="kw">return </span><span class="bool-val">true</span>;
-        }
-
-        <span class="comment">// Is this a header line?
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((name, value)) = parse_header(data) {
-            <span class="self">self</span>.response_headers.append(name, value);
-            <span class="kw">return </span><span class="bool-val">true</span>;
-        }
-
-        <span class="comment">// Is this the end of the response header?
-        </span><span class="kw">if </span>data == <span class="string">b&quot;\r\n&quot; </span>{
-            <span class="comment">// We will acknowledge the end of the header, but we can&#39;t complete
-            // our response future yet. If curl decides to follow a redirect,
-            // then this current response is not the final response and not the
-            // one we should complete with.
-            //
-            // Instead, we will complete the future when curl marks the transfer
-            // as complete, or when we start receiving a response body.
-            </span><span class="kw">return </span><span class="bool-val">true</span>;
-        }
-
-        <span class="comment">// Unknown header line we don&#39;t know how to parse.
-        </span><span class="bool-val">false
-    </span>}
-
-    <span class="doccomment">/// Gets called by curl when attempting to send bytes of the request body.
-    </span><span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, ReadError&gt; {
-        <span class="comment">// Abort the request if it has been canceled.
-        </span><span class="kw">if </span><span class="self">self</span>.is_future_canceled() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ReadError::Abort);
-        }
-
-        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">&quot;read&quot;</span>);
-        <span class="kw">let </span>_enter = span.enter();
-
-        <span class="comment">// Create a task context using a waker provided by the agent so we can
-        // do an asynchronous read.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(waker) = <span class="self">self</span>.request_body_waker.as_ref() {
-            <span class="kw">let </span><span class="kw-2">mut </span>context = Context::from_waker(waker);
-
-            <span class="kw">match </span>Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_body).poll_read(<span class="kw-2">&amp;mut </span>context, data) {
-                Poll::Pending =&gt; <span class="prelude-val">Err</span>(ReadError::Pause),
-                Poll::Ready(<span class="prelude-val">Ok</span>(len)) =&gt; <span class="prelude-val">Ok</span>(len),
-                Poll::Ready(<span class="prelude-val">Err</span>(e)) =&gt; {
-                    <span class="macro">tracing::error!</span>(<span class="string">&quot;error reading request body: {}&quot;</span>, e);
-
-                    <span class="comment">// While we could just return an error here to curl and let
-                    // the error bubble up through naturally, right now we have
-                    // the most information about the underlying error  that we
-                    // will ever have. That&#39;s why we set the error now, to
-                    // improve the error message. Otherwise we&#39;ll return a
-                    // rather generic-sounding I/O error to the caller.
-                    </span><span class="self">self</span>.set_result(<span class="prelude-val">Err</span>(e.into()));
-
-                    <span class="prelude-val">Err</span>(ReadError::Abort)
-                }
-            }
-        } <span class="kw">else </span>{
-            <span class="comment">// The request should never be started without calling init first.
-            </span><span class="macro">tracing::error!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
-            <span class="prelude-val">Err</span>(ReadError::Abort)
-        }
-    }
-
-    <span class="doccomment">/// Gets called by curl when it wants to seek to a certain position in the
-    /// request body.
-    ///
-    /// Since this method is synchronous and provides no means of deferring the
-    /// seek, we can&#39;t do any async operations in this callback. That&#39;s why we
-    /// only support trivial types of seeking.
-    </span><span class="kw">fn </span>seek(<span class="kw-2">&amp;mut </span><span class="self">self</span>, whence: io::SeekFrom) -&gt; SeekResult {
-        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">&quot;seek&quot;</span>, whence = <span class="question-mark">?</span>whence);
-        <span class="kw">let </span>_enter = span.enter();
-
-        <span class="comment">// If curl wants to seek to the beginning, there&#39;s a chance that we
-        // can do that.
-        </span><span class="kw">if </span>whence == io::SeekFrom::Start(<span class="number">0</span>) &amp;&amp; <span class="self">self</span>.request_body.reset() {
-            SeekResult::Ok
-        } <span class="kw">else </span>{
-            <span class="macro">tracing::warn!</span>(<span class="string">&quot;seek requested for request body, but it is not supported&quot;</span>);
-            <span class="comment">// We can&#39;t do any other type of seek, sorry :(
-            </span>SeekResult::CantSeek
-        }
-    }
-
-    <span class="doccomment">/// Gets called by curl when bytes from the response body are received.
-    </span><span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, WriteError&gt; {
-        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">&quot;write&quot;</span>);
-        <span class="kw">let </span>_enter = span.enter();
-        <span class="macro">tracing::trace!</span>(<span class="string">&quot;received {} bytes of data&quot;</span>, data.len());
-
-        <span class="comment">// Now that we&#39;ve started receiving the response body, we know no more
-        // redirects can happen and we can complete the future safely.
-        </span><span class="self">self</span>.complete_response_future();
-
-        <span class="comment">// Create a task context using a waker provided by the agent so we can
-        // do an asynchronous write.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(waker) = <span class="self">self</span>.response_body_waker.as_ref() {
-            <span class="kw">let </span><span class="kw-2">mut </span>context = Context::from_waker(waker);
-
-            <span class="kw">match </span>Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.response_body_writer).poll_write(<span class="kw-2">&amp;mut </span>context, data) {
-                Poll::Pending =&gt; <span class="prelude-val">Err</span>(WriteError::Pause),
-                Poll::Ready(<span class="prelude-val">Ok</span>(len)) =&gt; <span class="prelude-val">Ok</span>(len),
-                Poll::Ready(<span class="prelude-val">Err</span>(e)) =&gt; {
-                    <span class="kw">if </span>e.kind() == io::ErrorKind::BrokenPipe {
-                        <span class="comment">// Only warn about connections closed for HTTP/1.x.
-                        </span><span class="kw">if </span>!<span class="self">self</span>.disable_connection_reuse_log
-                            &amp;&amp; <span class="self">self</span>.response_version &lt; <span class="prelude-val">Some</span>(http::Version::HTTP_2)
-                        {
-                            <span class="macro">tracing::info!</span>(
-                                <span class="string">&quot;\
-                                response dropped without fully consuming the response body, connection won&#39;t be reused\n\
-                                Aborting a response without fully consuming the response body can result in sub-optimal \
-                                performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early.&quot;
-                            </span>);
-                        }
-                    } <span class="kw">else </span>{
-                        <span class="macro">tracing::error!</span>(<span class="string">&quot;error writing response body to buffer: {}&quot;</span>, e);
-                    }
-                    <span class="prelude-val">Ok</span>(<span class="number">0</span>)
-                }
-            }
-        } <span class="kw">else </span>{
-            <span class="comment">// The request should never be started without calling init first.
-            </span><span class="macro">tracing::error!</span>(<span class="string">&quot;request has not been initialized!&quot;</span>);
-            <span class="prelude-val">Ok</span>(<span class="number">0</span>)
-        }
-    }
-
-    <span class="doccomment">/// Capture transfer progress updates from curl.
-    </span><span class="kw">fn </span>progress(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dltotal: f64, dlnow: f64, ultotal: f64, ulnow: f64) -&gt; bool {
-        <span class="comment">// Initialize metrics if required.
-        </span><span class="kw">let </span>metrics = <span class="self">self</span>.metrics.get_or_insert_with(Metrics::new);
-
-        <span class="comment">// Store the progress values given.
-        </span>metrics.inner.upload_progress.store(ulnow);
-        metrics.inner.upload_total.store(ultotal);
-        metrics.inner.download_progress.store(dlnow);
-        metrics.inner.download_total.store(dltotal);
-
-        <span class="comment">// Also scrape additional metrics.
-        </span><span class="kw">if </span>!<span class="self">self</span>.handle.is_null() {
-            <span class="kw">unsafe </span>{
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_SPEED_UPLOAD,
-                    metrics.inner.upload_speed.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
-                    metrics.inner.download_speed.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
-                    metrics.inner.namelookup_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_CONNECT_TIME,
-                    metrics.inner.connect_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_APPCONNECT_TIME,
-                    metrics.inner.appconnect_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_PRETRANSFER_TIME,
-                    metrics.inner.pretransfer_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
-                    metrics.inner.starttransfer_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_TOTAL_TIME,
-                    metrics.inner.total_time.as_ptr(),
-                );
-
-                curl_sys::curl_easy_getinfo(
-                    <span class="self">self</span>.handle,
-                    curl_sys::CURLINFO_REDIRECT_TIME,
-                    metrics.inner.redirect_time.as_ptr(),
-                );
-            }
-        }
-
-        <span class="bool-val">true
-    </span>}
-
-    <span class="doccomment">/// Gets called by curl whenever it wishes to log a debug message.
-    ///
-    /// Since we&#39;re using the log crate, this callback normalizes the debug info
-    /// and writes it to our log.
-    </span><span class="kw">fn </span>debug(<span class="kw-2">&amp;mut </span><span class="self">self</span>, kind: InfoType, data: <span class="kw-2">&amp;</span>[u8]) {
-        <span class="kw">let </span>_enter = <span class="self">self</span>.span.enter();
-
-        <span class="kw">struct </span>FormatAscii&lt;T&gt;(T);
-
-        <span class="kw">impl</span>&lt;T: AsRef&lt;[u8]&gt;&gt; fmt::Display <span class="kw">for </span>FormatAscii&lt;T&gt; {
-            <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-                <span class="kw">for </span><span class="kw-2">&amp;</span>byte <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.as_ref() {
-                    ascii::escape_default(byte).fmt(f)<span class="question-mark">?</span>;
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-        }
-
-        <span class="kw">match </span>kind {
-            InfoType::Text =&gt; {
-                <span class="macro">tracing::debug!</span>(<span class="string">&quot;{}&quot;</span>, String::from_utf8_lossy(data).trim_end())
-            }
-            InfoType::HeaderIn | InfoType::DataIn =&gt; {
-                <span class="macro">tracing::trace!</span>(target: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&lt;&lt; {}&quot;</span>, FormatAscii(data))
-            }
-            InfoType::HeaderOut | InfoType::DataOut =&gt; {
-                <span class="macro">tracing::trace!</span>(target: <span class="string">&quot;isahc::wire&quot;</span>, <span class="string">&quot;&gt;&gt; {}&quot;</span>, FormatAscii(data))
-            }
-            <span class="kw">_ </span>=&gt; (),
-        }
-    }
-}
-
-<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>RequestHandler {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;RequestHandler&quot;</span>)
-    }
-}
-
-<span class="doccomment">/// Wrapper around a pipe reader that returns an error that tracks transfer
-/// cancellation.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ResponseBodyReader {
-    inner: pipe::PipeReader,
-    shared: Arc&lt;Shared&gt;,
-}
-
-<span class="kw">impl </span>AsyncRead <span class="kw">for </span>ResponseBodyReader {
-    <span class="kw">fn </span>poll_read(
-        <span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-        cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">&#39;_</span>&gt;,
-        buf: <span class="kw-2">&amp;mut </span>[u8],
-    ) -&gt; Poll&lt;io::Result&lt;usize&gt;&gt; {
-        <span class="kw">let </span>inner = Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.inner);
-
-        <span class="kw">match </span>inner.poll_read(cx, buf) {
-            <span class="comment">// On EOF, check to see if the transfer was cancelled, and if so,
-            // return an error.
-            </span>Poll::Ready(<span class="prelude-val">Ok</span>(<span class="number">0</span>)) =&gt; <span class="kw">match </span><span class="self">self</span>.shared.result.get() {
-                <span class="comment">// The transfer did finish successfully, so return EOF.
-                </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(())) =&gt; Poll::Ready(<span class="prelude-val">Ok</span>(<span class="number">0</span>)),
-
-                <span class="comment">// The transfer finished with an error, so return the error.
-                </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)) =&gt; Poll::Ready(<span class="prelude-val">Err</span>(io::Error::from(e.clone()))),
-
-                <span class="comment">// The transfer did not finish properly at all, so return an error.
-                </span><span class="prelude-val">None </span>=&gt; Poll::Ready(<span class="prelude-val">Err</span>(io::ErrorKind::ConnectionAborted.into())),
-            },
-            poll =&gt; poll,
-        }
-    }
-}
-</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/handler.rs`."><title>handler.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (66da6cae1 2026-04-20)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">isahc/</div>handler.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(unsafe_code)]
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>crate::{
+<a href=#4 id=4 data-nosnippet>4</a>    body::AsyncBody,
+<a href=#5 id=5 data-nosnippet>5</a>    error::{Error, ErrorKind},
+<a href=#6 id=6 data-nosnippet>6</a>    metrics::Metrics,
+<a href=#7 id=7 data-nosnippet>7</a>    parsing::{parse_header, parse_status_line},
+<a href=#8 id=8 data-nosnippet>8</a>    response::{LocalAddr, RemoteAddr},
+<a href=#9 id=9 data-nosnippet>9</a>    trailer::TrailerWriter,
+<a href=#10 id=10 data-nosnippet>10</a>};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>async_channel::Sender;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>curl::easy::{InfoType, ReadError, SeekResult, WriteError};
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>curl_sys::CURL;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>futures_lite::io::{AsyncRead, AsyncWrite};
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>http::Response;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>sluice::pipe;
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>std::{
+<a href=#18 id=18 data-nosnippet>18</a>    ascii,
+<a href=#19 id=19 data-nosnippet>19</a>    ffi::CStr,
+<a href=#20 id=20 data-nosnippet>20</a>    fmt,
+<a href=#21 id=21 data-nosnippet>21</a>    future::Future,
+<a href=#22 id=22 data-nosnippet>22</a>    io, mem,
+<a href=#23 id=23 data-nosnippet>23</a>    net::SocketAddr,
+<a href=#24 id=24 data-nosnippet>24</a>    os::raw::{c_char, c_long},
+<a href=#25 id=25 data-nosnippet>25</a>    pin::Pin,
+<a href=#26 id=26 data-nosnippet>26</a>    ptr,
+<a href=#27 id=27 data-nosnippet>27</a>    sync::{Arc, OnceLock},
+<a href=#28 id=28 data-nosnippet>28</a>    task::{Context, Poll, Waker},
+<a href=#29 id=29 data-nosnippet>29</a>};
+<a href=#30 id=30 data-nosnippet>30</a>
+<a href=#31 id=31 data-nosnippet>31</a><span class="doccomment">/// Stores a copy of the original request body
+<a href=#32 id=32 data-nosnippet>32</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestBody(<span class="kw">pub</span>(<span class="kw">crate</span>) AsyncBody);
+<a href=#33 id=33 data-nosnippet>33</a>
+<a href=#34 id=34 data-nosnippet>34</a><span class="doccomment">/// The http crate version 1+ requires all extensions to implement `Clone`. This
+<a href=#35 id=35 data-nosnippet>35</a>/// is problematic for using it to pass around a resource like a request body.
+<a href=#36 id=36 data-nosnippet>36</a>/// But this particular extension is only used internally and we never clone the
+<a href=#37 id=37 data-nosnippet>37</a>/// response, so implement it just to satisfy the requirement, but panic if it
+<a href=#38 id=38 data-nosnippet>38</a>/// ever is used.
+<a href=#39 id=39 data-nosnippet>39</a></span><span class="kw">impl </span>Clone <span class="kw">for </span>RequestBody {
+<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+<a href=#41 id=41 data-nosnippet>41</a>        <span class="macro">panic!</span>(<span class="string">"RequestBody extension cannot be cloned"</span>);
+<a href=#42 id=42 data-nosnippet>42</a>    }
+<a href=#43 id=43 data-nosnippet>43</a>}
+<a href=#44 id=44 data-nosnippet>44</a>
+<a href=#45 id=45 data-nosnippet>45</a><span class="doccomment">/// Manages the state of a single request/response life cycle.
+<a href=#46 id=46 data-nosnippet>46</a>///
+<a href=#47 id=47 data-nosnippet>47</a>/// During the lifetime of a handler, it will receive callbacks from curl about
+<a href=#48 id=48 data-nosnippet>48</a>/// the progress of the request, and the handler will incrementally build up a
+<a href=#49 id=49 data-nosnippet>49</a>/// response struct as the response is received.
+<a href=#50 id=50 data-nosnippet>50</a>///
+<a href=#51 id=51 data-nosnippet>51</a>/// Every request handler has an associated [`Future`] that can be used to poll
+<a href=#52 id=52 data-nosnippet>52</a>/// the state of the response. The handler will complete the future once the
+<a href=#53 id=53 data-nosnippet>53</a>/// final HTTP response headers are received. The body of the response (if any)
+<a href=#54 id=54 data-nosnippet>54</a>/// is made available to the consumer of the future, and is also driven by the
+<a href=#55 id=55 data-nosnippet>55</a>/// request handler until the response body is fully consumed or discarded.
+<a href=#56 id=56 data-nosnippet>56</a>///
+<a href=#57 id=57 data-nosnippet>57</a>/// If dropped before the response is finished, the associated future will be
+<a href=#58 id=58 data-nosnippet>58</a>/// completed with an error.
+<a href=#59 id=59 data-nosnippet>59</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RequestHandler {
+<a href=#60 id=60 data-nosnippet>60</a>    <span class="doccomment">/// A tracing span for grouping log events under. Since a request is
+<a href=#61 id=61 data-nosnippet>61</a>    /// processed asynchronously inside an agent thread, this span helps
+<a href=#62 id=62 data-nosnippet>62</a>    /// maintain a link to the parent context where the request is actually
+<a href=#63 id=63 data-nosnippet>63</a>    /// initiated.
+<a href=#64 id=64 data-nosnippet>64</a>    ///
+<a href=#65 id=65 data-nosnippet>65</a>    /// We enter and exit this span whenever curl invokes one of our callbacks
+<a href=#66 id=66 data-nosnippet>66</a>    /// to make progress on this request.
+<a href=#67 id=67 data-nosnippet>67</a>    </span>span: tracing::Span,
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a>    <span class="doccomment">/// State shared by the handler and its future.
+<a href=#70 id=70 data-nosnippet>70</a>    </span>shared: Arc&lt;Shared&gt;,
+<a href=#71 id=71 data-nosnippet>71</a>
+<a href=#72 id=72 data-nosnippet>72</a>    <span class="doccomment">/// Sender for the associated future.
+<a href=#73 id=73 data-nosnippet>73</a>    </span>sender: <span class="prelude-ty">Option</span>&lt;Sender&lt;<span class="prelude-ty">Result</span>&lt;http::response::Builder, Error&gt;&gt;&gt;,
+<a href=#74 id=74 data-nosnippet>74</a>
+<a href=#75 id=75 data-nosnippet>75</a>    <span class="doccomment">/// The body to be sent in the request.
+<a href=#76 id=76 data-nosnippet>76</a>    </span>request_body: AsyncBody,
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="doccomment">/// A waker used with reading the request body asynchronously. Populated by
+<a href=#79 id=79 data-nosnippet>79</a>    /// an agent when the request is initialized.
+<a href=#80 id=80 data-nosnippet>80</a>    </span>request_body_waker: <span class="prelude-ty">Option</span>&lt;Waker&gt;,
+<a href=#81 id=81 data-nosnippet>81</a>
+<a href=#82 id=82 data-nosnippet>82</a>    <span class="doccomment">/// Status code of the response.
+<a href=#83 id=83 data-nosnippet>83</a>    </span>response_status_code: <span class="prelude-ty">Option</span>&lt;http::StatusCode&gt;,
+<a href=#84 id=84 data-nosnippet>84</a>
+<a href=#85 id=85 data-nosnippet>85</a>    <span class="doccomment">/// HTTP version of the response.
+<a href=#86 id=86 data-nosnippet>86</a>    </span>response_version: <span class="prelude-ty">Option</span>&lt;http::Version&gt;,
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a>    <span class="doccomment">/// Response headers received so far.
+<a href=#89 id=89 data-nosnippet>89</a>    </span>response_headers: http::HeaderMap,
+<a href=#90 id=90 data-nosnippet>90</a>
+<a href=#91 id=91 data-nosnippet>91</a>    <span class="doccomment">/// Writing end of the pipe where the response body is written.
+<a href=#92 id=92 data-nosnippet>92</a>    </span>response_body_writer: pipe::PipeWriter,
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>    <span class="doccomment">/// A waker used with writing the response body asynchronously. Populated by
+<a href=#95 id=95 data-nosnippet>95</a>    /// an agent when the request is initialized.
+<a href=#96 id=96 data-nosnippet>96</a>    </span>response_body_waker: <span class="prelude-ty">Option</span>&lt;Waker&gt;,
+<a href=#97 id=97 data-nosnippet>97</a>
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="doccomment">/// Holds the response trailer, if any. Used to communicate the trailer
+<a href=#99 id=99 data-nosnippet>99</a>    /// headers out-of-band from the response headers and body.
+<a href=#100 id=100 data-nosnippet>100</a>    </span>response_trailer_writer: TrailerWriter,
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// Metrics object for publishing metrics data to. Lazily initialized.
+<a href=#103 id=103 data-nosnippet>103</a>    </span>metrics: <span class="prelude-ty">Option</span>&lt;Metrics&gt;,
+<a href=#104 id=104 data-nosnippet>104</a>
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="doccomment">/// Raw pointer to the associated curl easy handle. The pointer is not owned
+<a href=#106 id=106 data-nosnippet>106</a>    /// by this struct, but the parent struct to this one, so we know it will be
+<a href=#107 id=107 data-nosnippet>107</a>    /// valid at least for the lifetime of this struct (assuming all other
+<a href=#108 id=108 data-nosnippet>108</a>    /// invariants are upheld).
+<a href=#109 id=109 data-nosnippet>109</a>    </span>handle: <span class="kw-2">*mut </span>CURL,
+<a href=#110 id=110 data-nosnippet>110</a>
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="doccomment">/// If true, do not warn about prematurely closed responses.
+<a href=#112 id=112 data-nosnippet>112</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) disable_connection_reuse_log: bool,
+<a href=#113 id=113 data-nosnippet>113</a>}
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a><span class="comment">// Would be send implicitly except for the raw CURL pointer.
+<a href=#116 id=116 data-nosnippet>116</a></span><span class="kw">unsafe impl </span>Send <span class="kw">for </span>RequestHandler {}
+<a href=#117 id=117 data-nosnippet>117</a>
+<a href=#118 id=118 data-nosnippet>118</a><span class="doccomment">/// State shared by the handler and its future.
+<a href=#119 id=119 data-nosnippet>119</a>///
+<a href=#120 id=120 data-nosnippet>120</a>/// This is also used to keep track of the lifetime of the request.
+<a href=#121 id=121 data-nosnippet>121</a></span><span class="attr">#[derive(Debug, Default)]
+<a href=#122 id=122 data-nosnippet>122</a></span><span class="kw">struct </span>Shared {
+<a href=#123 id=123 data-nosnippet>123</a>    <span class="doccomment">/// Set to the final result of the transfer received from curl. This is used
+<a href=#124 id=124 data-nosnippet>124</a>    /// to communicate an error while reading the response body if the handler
+<a href=#125 id=125 data-nosnippet>125</a>    /// suddenly aborts.
+<a href=#126 id=126 data-nosnippet>126</a>    </span>result: OnceLock&lt;<span class="prelude-ty">Result</span>&lt;(), Error&gt;&gt;,
+<a href=#127 id=127 data-nosnippet>127</a>}
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a><span class="kw">impl </span>RequestHandler {
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="doccomment">/// Create a new request handler and an associated response future.
+<a href=#131 id=131 data-nosnippet>131</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+<a href=#132 id=132 data-nosnippet>132</a>        request_body: AsyncBody,
+<a href=#133 id=133 data-nosnippet>133</a>    ) -&gt; (
+<a href=#134 id=134 data-nosnippet>134</a>        <span class="self">Self</span>,
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">impl </span>Future&lt;Output = <span class="prelude-ty">Result</span>&lt;Response&lt;ResponseBodyReader&gt;, Error&gt;&gt;,
+<a href=#136 id=136 data-nosnippet>136</a>    ) {
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span>(sender, receiver) = async_channel::bounded(<span class="number">1</span>);
+<a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span>shared = Arc::new(Shared::default());
+<a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span>(response_body_reader, response_body_writer) = pipe::pipe();
+<a href=#140 id=140 data-nosnippet>140</a>
+<a href=#141 id=141 data-nosnippet>141</a>        <span class="kw">let </span>handler = <span class="self">Self </span>{
+<a href=#142 id=142 data-nosnippet>142</a>            span: <span class="macro">tracing::debug_span!</span>(<span class="string">"handler"</span>, id = tracing::field::Empty),
+<a href=#143 id=143 data-nosnippet>143</a>            sender: <span class="prelude-val">Some</span>(sender),
+<a href=#144 id=144 data-nosnippet>144</a>            shared: shared.clone(),
+<a href=#145 id=145 data-nosnippet>145</a>            request_body,
+<a href=#146 id=146 data-nosnippet>146</a>            request_body_waker: <span class="prelude-val">None</span>,
+<a href=#147 id=147 data-nosnippet>147</a>            response_status_code: <span class="prelude-val">None</span>,
+<a href=#148 id=148 data-nosnippet>148</a>            response_version: <span class="prelude-val">None</span>,
+<a href=#149 id=149 data-nosnippet>149</a>            response_headers: http::HeaderMap::new(),
+<a href=#150 id=150 data-nosnippet>150</a>            response_body_writer,
+<a href=#151 id=151 data-nosnippet>151</a>            response_body_waker: <span class="prelude-val">None</span>,
+<a href=#152 id=152 data-nosnippet>152</a>            response_trailer_writer: TrailerWriter::new(),
+<a href=#153 id=153 data-nosnippet>153</a>            metrics: <span class="prelude-val">None</span>,
+<a href=#154 id=154 data-nosnippet>154</a>            handle: ptr::null_mut(),
+<a href=#155 id=155 data-nosnippet>155</a>            disable_connection_reuse_log: <span class="bool-val">false</span>,
+<a href=#156 id=156 data-nosnippet>156</a>        };
+<a href=#157 id=157 data-nosnippet>157</a>
+<a href=#158 id=158 data-nosnippet>158</a>        <span class="comment">// Create a future that resolves when the handler receives the response
+<a href=#159 id=159 data-nosnippet>159</a>        // headers.
+<a href=#160 id=160 data-nosnippet>160</a>        </span><span class="kw">let </span>future = <span class="kw">async move </span>{
+<a href=#161 id=161 data-nosnippet>161</a>            <span class="kw">let </span>builder = receiver
+<a href=#162 id=162 data-nosnippet>162</a>                .recv()
+<a href=#163 id=163 data-nosnippet>163</a>                .<span class="kw">await
+<a href=#164 id=164 data-nosnippet>164</a>                </span>.map_err(|e| Error::new(ErrorKind::Unknown, e))<span class="question-mark">??</span>;
+<a href=#165 id=165 data-nosnippet>165</a>
+<a href=#166 id=166 data-nosnippet>166</a>            <span class="kw">let </span>reader = ResponseBodyReader {
+<a href=#167 id=167 data-nosnippet>167</a>                inner: response_body_reader,
+<a href=#168 id=168 data-nosnippet>168</a>                shared,
+<a href=#169 id=169 data-nosnippet>169</a>            };
+<a href=#170 id=170 data-nosnippet>170</a>
+<a href=#171 id=171 data-nosnippet>171</a>            builder
+<a href=#172 id=172 data-nosnippet>172</a>                .body(reader)
+<a href=#173 id=173 data-nosnippet>173</a>                .map_err(|e| Error::new(ErrorKind::ProtocolViolation, e))
+<a href=#174 id=174 data-nosnippet>174</a>        };
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a>        (handler, future)
+<a href=#177 id=177 data-nosnippet>177</a>    }
+<a href=#178 id=178 data-nosnippet>178</a>
+<a href=#179 id=179 data-nosnippet>179</a>    <span class="doccomment">/// Check whether debug info should be generated. This function is used to
+<a href=#180 id=180 data-nosnippet>180</a>    /// determine whether to set the `verbose` curl option to true.
+<a href=#181 id=181 data-nosnippet>181</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_debug_enabled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="comment">// To avoid having curl generate debug strings unnecessarily, we want to
+<a href=#183 id=183 data-nosnippet>183</a>        // enable debug info only if:
+<a href=#184 id=184 data-nosnippet>184</a>        //
+<a href=#185 id=185 data-nosnippet>185</a>        // - a tracing subscriber is set and is interested in the current span,
+<a href=#186 id=186 data-nosnippet>186</a>        // - or a logger is set that is enabled at debug or higher.
+<a href=#187 id=187 data-nosnippet>187</a>        //
+<a href=#188 id=188 data-nosnippet>188</a>        // This logic seems a little screwy when comparing to what the docs say,
+<a href=#189 id=189 data-nosnippet>189</a>        // but it works.
+<a href=#190 id=190 data-nosnippet>190</a>        </span><span class="kw">if </span><span class="self">self</span>.span.is_none() {
+<a href=#191 id=191 data-nosnippet>191</a>            <span class="bool-val">false
+<a href=#192 id=192 data-nosnippet>192</a>        </span>} <span class="kw">else </span>{
+<a href=#193 id=193 data-nosnippet>193</a>            <span class="macro">log::log_enabled!</span>(log::Level::Debug)
+<a href=#194 id=194 data-nosnippet>194</a>        }
+<a href=#195 id=195 data-nosnippet>195</a>    }
+<a href=#196 id=196 data-nosnippet>196</a>
+<a href=#197 id=197 data-nosnippet>197</a>    <span class="kw">fn </span>is_future_canceled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#198 id=198 data-nosnippet>198</a>        <span class="self">self</span>.sender.as_ref().map(Sender::is_closed).unwrap_or(<span class="bool-val">false</span>)
+<a href=#199 id=199 data-nosnippet>199</a>    }
+<a href=#200 id=200 data-nosnippet>200</a>
+<a href=#201 id=201 data-nosnippet>201</a>    <span class="doccomment">/// Initialize the handler and prepare it for the request to begin.
+<a href=#202 id=202 data-nosnippet>202</a>    ///
+<a href=#203 id=203 data-nosnippet>203</a>    /// This is called from within the agent thread when it registers the
+<a href=#204 id=204 data-nosnippet>204</a>    /// request handled by this handler with the multi handle and begins the
+<a href=#205 id=205 data-nosnippet>205</a>    /// request's execution.
+<a href=#206 id=206 data-nosnippet>206</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init(
+<a href=#207 id=207 data-nosnippet>207</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#208 id=208 data-nosnippet>208</a>        id: usize,
+<a href=#209 id=209 data-nosnippet>209</a>        handle: <span class="kw-2">*mut </span>CURL,
+<a href=#210 id=210 data-nosnippet>210</a>        request_waker: Waker,
+<a href=#211 id=211 data-nosnippet>211</a>        response_waker: Waker,
+<a href=#212 id=212 data-nosnippet>212</a>    ) {
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">let </span>_enter = <span class="self">self</span>.span.enter();
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="comment">// Init should not be called more than once.
+<a href=#216 id=216 data-nosnippet>216</a>        </span><span class="macro">debug_assert!</span>(<span class="self">self</span>.request_body_waker.is_none());
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="macro">debug_assert!</span>(<span class="self">self</span>.response_body_waker.is_none());
+<a href=#218 id=218 data-nosnippet>218</a>
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="self">self</span>.span.record(<span class="string">"id"</span>, <span class="kw-2">&amp;</span>id);
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="self">self</span>.handle = handle;
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="self">self</span>.request_body_waker = <span class="prelude-val">Some</span>(request_waker);
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="self">self</span>.response_body_waker = <span class="prelude-val">Some</span>(response_waker);
+<a href=#223 id=223 data-nosnippet>223</a>    }
+<a href=#224 id=224 data-nosnippet>224</a>
+<a href=#225 id=225 data-nosnippet>225</a>    <span class="doccomment">/// Set the final result for this transfer.
+<a href=#226 id=226 data-nosnippet>226</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_result(<span class="kw-2">&amp;mut </span><span class="self">self</span>, result: <span class="prelude-ty">Result</span>&lt;(), Error&gt;) {
+<a href=#227 id=227 data-nosnippet>227</a>        <span class="kw">let </span>result = result.map_err(|<span class="kw-2">mut </span>e| {
+<a href=#228 id=228 data-nosnippet>228</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_local_addr() {
+<a href=#229 id=229 data-nosnippet>229</a>                e = e.with_local_addr(addr);
+<a href=#230 id=230 data-nosnippet>230</a>            }
+<a href=#231 id=231 data-nosnippet>231</a>
+<a href=#232 id=232 data-nosnippet>232</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_primary_addr() {
+<a href=#233 id=233 data-nosnippet>233</a>                e = e.with_remote_addr(addr);
+<a href=#234 id=234 data-nosnippet>234</a>            }
+<a href=#235 id=235 data-nosnippet>235</a>
+<a href=#236 id=236 data-nosnippet>236</a>            e
+<a href=#237 id=237 data-nosnippet>237</a>        });
+<a href=#238 id=238 data-nosnippet>238</a>
+<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">if </span><span class="self">self</span>.shared.result.set(result).is_err() {
+<a href=#240 id=240 data-nosnippet>240</a>            <span class="macro">tracing::debug!</span>(<span class="string">"attempted to set error multiple times"</span>);
+<a href=#241 id=241 data-nosnippet>241</a>        }
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="comment">// Update metrics one last time.
+<a href=#244 id=244 data-nosnippet>244</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(metrics) = <span class="self">self</span>.metrics.as_ref() {
+<a href=#245 id=245 data-nosnippet>245</a>            metrics.update_from_info_complete(<span class="self">self</span>.handle);
+<a href=#246 id=246 data-nosnippet>246</a>        }
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="comment">// Flush the trailer, if we haven't already.
+<a href=#249 id=249 data-nosnippet>249</a>        </span><span class="self">self</span>.response_trailer_writer.flush();
+<a href=#250 id=250 data-nosnippet>250</a>
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="comment">// Complete the response future, if we haven't already.
+<a href=#252 id=252 data-nosnippet>252</a>        </span><span class="self">self</span>.complete_response_future();
+<a href=#253 id=253 data-nosnippet>253</a>    }
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="doccomment">/// Mark the future as completed successfully with the response headers
+<a href=#256 id=256 data-nosnippet>256</a>    /// received so far.
+<a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">fn </span>complete_response_future(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#258 id=258 data-nosnippet>258</a>        <span class="comment">// If the sender has been taken already, then the future has already
+<a href=#259 id=259 data-nosnippet>259</a>        // been completed.
+<a href=#260 id=260 data-nosnippet>260</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="self">self</span>.sender.take() {
+<a href=#261 id=261 data-nosnippet>261</a>            <span class="comment">// If our request has already failed early with an error, return that instead.
+<a href=#262 id=262 data-nosnippet>262</a>            </span><span class="kw">let </span>result = <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)) = <span class="self">self</span>.shared.result.get() {
+<a href=#263 id=263 data-nosnippet>263</a>                <span class="macro">tracing::warn!</span>(<span class="string">"request completed with error: {}"</span>, e);
+<a href=#264 id=264 data-nosnippet>264</a>                <span class="prelude-val">Err</span>(e.clone())
+<a href=#265 id=265 data-nosnippet>265</a>            } <span class="kw">else </span>{
+<a href=#266 id=266 data-nosnippet>266</a>                <span class="prelude-val">Ok</span>(<span class="self">self</span>.build_response())
+<a href=#267 id=267 data-nosnippet>267</a>            };
+<a href=#268 id=268 data-nosnippet>268</a>
+<a href=#269 id=269 data-nosnippet>269</a>            <span class="kw">if </span>sender.try_send(result).is_err() {
+<a href=#270 id=270 data-nosnippet>270</a>                <span class="macro">tracing::debug!</span>(<span class="string">"request canceled by user"</span>);
+<a href=#271 id=271 data-nosnippet>271</a>            }
+<a href=#272 id=272 data-nosnippet>272</a>        }
+<a href=#273 id=273 data-nosnippet>273</a>    }
+<a href=#274 id=274 data-nosnippet>274</a>
+<a href=#275 id=275 data-nosnippet>275</a>    <span class="kw">fn </span>build_response(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; http::response::Builder {
+<a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = http::Response::builder();
+<a href=#277 id=277 data-nosnippet>277</a>
+<a href=#278 id=278 data-nosnippet>278</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(status) = <span class="self">self</span>.response_status_code {
+<a href=#279 id=279 data-nosnippet>279</a>            builder = builder.status(status);
+<a href=#280 id=280 data-nosnippet>280</a>        }
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(version) = <span class="self">self</span>.response_version {
+<a href=#283 id=283 data-nosnippet>283</a>            builder = builder.version(version);
+<a href=#284 id=284 data-nosnippet>284</a>        }
+<a href=#285 id=285 data-nosnippet>285</a>
+<a href=#286 id=286 data-nosnippet>286</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(headers) = builder.headers_mut() {
+<a href=#287 id=287 data-nosnippet>287</a>            headers.extend(<span class="self">self</span>.response_headers.drain());
+<a href=#288 id=288 data-nosnippet>288</a>        }
+<a href=#289 id=289 data-nosnippet>289</a>
+<a href=#290 id=290 data-nosnippet>290</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_local_addr() {
+<a href=#291 id=291 data-nosnippet>291</a>            builder = builder.extension(LocalAddr(addr));
+<a href=#292 id=292 data-nosnippet>292</a>        }
+<a href=#293 id=293 data-nosnippet>293</a>
+<a href=#294 id=294 data-nosnippet>294</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = <span class="self">self</span>.get_primary_addr() {
+<a href=#295 id=295 data-nosnippet>295</a>            builder = builder.extension(RemoteAddr(addr));
+<a href=#296 id=296 data-nosnippet>296</a>        }
+<a href=#297 id=297 data-nosnippet>297</a>
+<a href=#298 id=298 data-nosnippet>298</a>        <span class="comment">// Keep the request body around in case interceptors need access to
+<a href=#299 id=299 data-nosnippet>299</a>        // it. Otherwise we're just going to drop it later.
+<a href=#300 id=300 data-nosnippet>300</a>        </span>builder = builder.extension(RequestBody(mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_body)));
+<a href=#301 id=301 data-nosnippet>301</a>
+<a href=#302 id=302 data-nosnippet>302</a>        <span class="comment">// Include a handle to the trailer headers. We won't know if there
+<a href=#303 id=303 data-nosnippet>303</a>        // are any until we reach the end of the response body.
+<a href=#304 id=304 data-nosnippet>304</a>        </span>builder = builder.extension(<span class="self">self</span>.response_trailer_writer.trailer());
+<a href=#305 id=305 data-nosnippet>305</a>
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="comment">// Include metrics in response, but only if it was created. If
+<a href=#307 id=307 data-nosnippet>307</a>        // metrics are disabled then it won't have been created.
+<a href=#308 id=308 data-nosnippet>308</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(metrics) = <span class="self">self</span>.metrics.clone() {
+<a href=#309 id=309 data-nosnippet>309</a>            builder = builder.extension(metrics);
+<a href=#310 id=310 data-nosnippet>310</a>        }
+<a href=#311 id=311 data-nosnippet>311</a>
+<a href=#312 id=312 data-nosnippet>312</a>        builder
+<a href=#313 id=313 data-nosnippet>313</a>    }
+<a href=#314 id=314 data-nosnippet>314</a>
+<a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">fn </span>get_primary_addr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+<a href=#316 id=316 data-nosnippet>316</a>        <span class="kw">let </span>ip = <span class="self">self</span>.get_primary_ip()<span class="question-mark">?</span>.parse().ok()<span class="question-mark">?</span>;
+<a href=#317 id=317 data-nosnippet>317</a>        <span class="kw">let </span>port = <span class="self">self</span>.get_primary_port()<span class="question-mark">?</span>;
+<a href=#318 id=318 data-nosnippet>318</a>
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="prelude-val">Some</span>(SocketAddr::new(ip, port))
+<a href=#320 id=320 data-nosnippet>320</a>    }
+<a href=#321 id=321 data-nosnippet>321</a>
+<a href=#322 id=322 data-nosnippet>322</a>    <span class="kw">fn </span>get_primary_ip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+<a href=#323 id=323 data-nosnippet>323</a>        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
+<a href=#324 id=324 data-nosnippet>324</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#325 id=325 data-nosnippet>325</a>        }
+<a href=#326 id=326 data-nosnippet>326</a>
+<a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null::&lt;c_char&gt;();
+<a href=#328 id=328 data-nosnippet>328</a>
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">unsafe </span>{
+<a href=#330 id=330 data-nosnippet>330</a>            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_PRIMARY_IP, <span class="kw-2">&amp;mut </span>ptr)
+<a href=#331 id=331 data-nosnippet>331</a>                != curl_sys::CURLE_OK
+<a href=#332 id=332 data-nosnippet>332</a>            {
+<a href=#333 id=333 data-nosnippet>333</a>                <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#334 id=334 data-nosnippet>334</a>            }
+<a href=#335 id=335 data-nosnippet>335</a>        }
+<a href=#336 id=336 data-nosnippet>336</a>
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">if </span>ptr.is_null() {
+<a href=#338 id=338 data-nosnippet>338</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#339 id=339 data-nosnippet>339</a>        }
+<a href=#340 id=340 data-nosnippet>340</a>
+<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw">unsafe </span>{ CStr::from_ptr(ptr) }.to_str().ok()
+<a href=#342 id=342 data-nosnippet>342</a>    }
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">fn </span>get_primary_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u16&gt; {
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
+<a href=#346 id=346 data-nosnippet>346</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#347 id=347 data-nosnippet>347</a>        }
+<a href=#348 id=348 data-nosnippet>348</a>
+<a href=#349 id=349 data-nosnippet>349</a>        <span class="kw">let </span><span class="kw-2">mut </span>port: c_long = <span class="number">0</span>;
+<a href=#350 id=350 data-nosnippet>350</a>
+<a href=#351 id=351 data-nosnippet>351</a>        <span class="kw">unsafe </span>{
+<a href=#352 id=352 data-nosnippet>352</a>            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_PRIMARY_PORT, <span class="kw-2">&amp;mut </span>port)
+<a href=#353 id=353 data-nosnippet>353</a>                != curl_sys::CURLE_OK
+<a href=#354 id=354 data-nosnippet>354</a>            {
+<a href=#355 id=355 data-nosnippet>355</a>                <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#356 id=356 data-nosnippet>356</a>            }
+<a href=#357 id=357 data-nosnippet>357</a>        }
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>        <span class="prelude-val">Some</span>(port <span class="kw">as </span>u16)
+<a href=#360 id=360 data-nosnippet>360</a>    }
+<a href=#361 id=361 data-nosnippet>361</a>
+<a href=#362 id=362 data-nosnippet>362</a>    <span class="kw">fn </span>get_local_addr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
+<a href=#363 id=363 data-nosnippet>363</a>        <span class="kw">let </span>ip = <span class="self">self</span>.get_local_ip()<span class="question-mark">?</span>.parse().ok()<span class="question-mark">?</span>;
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw">let </span>port = <span class="self">self</span>.get_local_port()<span class="question-mark">?</span>;
+<a href=#365 id=365 data-nosnippet>365</a>
+<a href=#366 id=366 data-nosnippet>366</a>        <span class="prelude-val">Some</span>(SocketAddr::new(ip, port))
+<a href=#367 id=367 data-nosnippet>367</a>    }
+<a href=#368 id=368 data-nosnippet>368</a>
+<a href=#369 id=369 data-nosnippet>369</a>    <span class="kw">fn </span>get_local_ip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+<a href=#370 id=370 data-nosnippet>370</a>        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
+<a href=#371 id=371 data-nosnippet>371</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#372 id=372 data-nosnippet>372</a>        }
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a>        <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null::&lt;c_char&gt;();
+<a href=#375 id=375 data-nosnippet>375</a>
+<a href=#376 id=376 data-nosnippet>376</a>        <span class="kw">unsafe </span>{
+<a href=#377 id=377 data-nosnippet>377</a>            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_LOCAL_IP, <span class="kw-2">&amp;mut </span>ptr)
+<a href=#378 id=378 data-nosnippet>378</a>                != curl_sys::CURLE_OK
+<a href=#379 id=379 data-nosnippet>379</a>            {
+<a href=#380 id=380 data-nosnippet>380</a>                <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#381 id=381 data-nosnippet>381</a>            }
+<a href=#382 id=382 data-nosnippet>382</a>        }
+<a href=#383 id=383 data-nosnippet>383</a>
+<a href=#384 id=384 data-nosnippet>384</a>        <span class="kw">if </span>ptr.is_null() {
+<a href=#385 id=385 data-nosnippet>385</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#386 id=386 data-nosnippet>386</a>        }
+<a href=#387 id=387 data-nosnippet>387</a>
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="kw">unsafe </span>{ CStr::from_ptr(ptr) }.to_str().ok()
+<a href=#389 id=389 data-nosnippet>389</a>    }
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="kw">fn </span>get_local_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u16&gt; {
+<a href=#392 id=392 data-nosnippet>392</a>        <span class="kw">if </span><span class="self">self</span>.handle.is_null() {
+<a href=#393 id=393 data-nosnippet>393</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#394 id=394 data-nosnippet>394</a>        }
+<a href=#395 id=395 data-nosnippet>395</a>
+<a href=#396 id=396 data-nosnippet>396</a>        <span class="kw">let </span><span class="kw-2">mut </span>port: c_long = <span class="number">0</span>;
+<a href=#397 id=397 data-nosnippet>397</a>
+<a href=#398 id=398 data-nosnippet>398</a>        <span class="kw">unsafe </span>{
+<a href=#399 id=399 data-nosnippet>399</a>            <span class="kw">if </span>curl_sys::curl_easy_getinfo(<span class="self">self</span>.handle, curl_sys::CURLINFO_LOCAL_PORT, <span class="kw-2">&amp;mut </span>port)
+<a href=#400 id=400 data-nosnippet>400</a>                != curl_sys::CURLE_OK
+<a href=#401 id=401 data-nosnippet>401</a>            {
+<a href=#402 id=402 data-nosnippet>402</a>                <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#403 id=403 data-nosnippet>403</a>            }
+<a href=#404 id=404 data-nosnippet>404</a>        }
+<a href=#405 id=405 data-nosnippet>405</a>
+<a href=#406 id=406 data-nosnippet>406</a>        <span class="prelude-val">Some</span>(port <span class="kw">as </span>u16)
+<a href=#407 id=407 data-nosnippet>407</a>    }
+<a href=#408 id=408 data-nosnippet>408</a>}
+<a href=#409 id=409 data-nosnippet>409</a>
+<a href=#410 id=410 data-nosnippet>410</a><span class="kw">impl </span>curl::easy::Handler <span class="kw">for </span>RequestHandler {
+<a href=#411 id=411 data-nosnippet>411</a>    <span class="doccomment">/// Gets called by curl for each line of data in the HTTP response header.
+<a href=#412 id=412 data-nosnippet>412</a>    </span><span class="kw">fn </span>header(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
+<a href=#413 id=413 data-nosnippet>413</a>        <span class="comment">// Abort the request if it has been canceled.
+<a href=#414 id=414 data-nosnippet>414</a>        </span><span class="kw">if </span><span class="self">self</span>.is_future_canceled() {
+<a href=#415 id=415 data-nosnippet>415</a>            <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#416 id=416 data-nosnippet>416</a>        }
+<a href=#417 id=417 data-nosnippet>417</a>
+<a href=#418 id=418 data-nosnippet>418</a>        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">"header"</span>);
+<a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">let </span>_enter = span.enter();
+<a href=#420 id=420 data-nosnippet>420</a>
+<a href=#421 id=421 data-nosnippet>421</a>        <span class="comment">// If we already returned the response headers, then this header is from
+<a href=#422 id=422 data-nosnippet>422</a>        // the trailer.
+<a href=#423 id=423 data-nosnippet>423</a>        </span><span class="kw">if </span><span class="self">self</span>.sender.is_none() {
+<a href=#424 id=424 data-nosnippet>424</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(trailer_headers) = <span class="self">self</span>.response_trailer_writer.get_mut() {
+<a href=#425 id=425 data-nosnippet>425</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>((name, value)) = parse_header(data) {
+<a href=#426 id=426 data-nosnippet>426</a>                    trailer_headers.append(name, value);
+<a href=#427 id=427 data-nosnippet>427</a>                    <span class="kw">return </span><span class="bool-val">true</span>;
+<a href=#428 id=428 data-nosnippet>428</a>                }
+<a href=#429 id=429 data-nosnippet>429</a>            }
+<a href=#430 id=430 data-nosnippet>430</a>        }
+<a href=#431 id=431 data-nosnippet>431</a>
+<a href=#432 id=432 data-nosnippet>432</a>        <span class="comment">// Curl calls this function for all lines in the response not part of
+<a href=#433 id=433 data-nosnippet>433</a>        // the response body, not just for headers. We need to inspect the
+<a href=#434 id=434 data-nosnippet>434</a>        // contents of the string in order to determine what it is and how to
+<a href=#435 id=435 data-nosnippet>435</a>        // parse it, just as if we were reading from the socket of a HTTP/1.0 or
+<a href=#436 id=436 data-nosnippet>436</a>        // HTTP/1.1 connection ourselves.
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a>        // Is this the status line?
+<a href=#439 id=439 data-nosnippet>439</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((version, status)) = parse_status_line(data) {
+<a href=#440 id=440 data-nosnippet>440</a>            <span class="self">self</span>.response_version = <span class="prelude-val">Some</span>(version);
+<a href=#441 id=441 data-nosnippet>441</a>            <span class="self">self</span>.response_status_code = <span class="prelude-val">Some</span>(status);
+<a href=#442 id=442 data-nosnippet>442</a>
+<a href=#443 id=443 data-nosnippet>443</a>            <span class="comment">// Also clear any pre-existing headers that might be left over from
+<a href=#444 id=444 data-nosnippet>444</a>            // a previous intermediate response.
+<a href=#445 id=445 data-nosnippet>445</a>            </span><span class="self">self</span>.response_headers.clear();
+<a href=#446 id=446 data-nosnippet>446</a>
+<a href=#447 id=447 data-nosnippet>447</a>            <span class="kw">return </span><span class="bool-val">true</span>;
+<a href=#448 id=448 data-nosnippet>448</a>        }
+<a href=#449 id=449 data-nosnippet>449</a>
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="comment">// Is this a header line?
+<a href=#451 id=451 data-nosnippet>451</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((name, value)) = parse_header(data) {
+<a href=#452 id=452 data-nosnippet>452</a>            <span class="self">self</span>.response_headers.append(name, value);
+<a href=#453 id=453 data-nosnippet>453</a>            <span class="kw">return </span><span class="bool-val">true</span>;
+<a href=#454 id=454 data-nosnippet>454</a>        }
+<a href=#455 id=455 data-nosnippet>455</a>
+<a href=#456 id=456 data-nosnippet>456</a>        <span class="comment">// Is this the end of the response header?
+<a href=#457 id=457 data-nosnippet>457</a>        </span><span class="kw">if </span>data == <span class="string">b"\r\n" </span>{
+<a href=#458 id=458 data-nosnippet>458</a>            <span class="comment">// We will acknowledge the end of the header, but we can't complete
+<a href=#459 id=459 data-nosnippet>459</a>            // our response future yet. If curl decides to follow a redirect,
+<a href=#460 id=460 data-nosnippet>460</a>            // then this current response is not the final response and not the
+<a href=#461 id=461 data-nosnippet>461</a>            // one we should complete with.
+<a href=#462 id=462 data-nosnippet>462</a>            //
+<a href=#463 id=463 data-nosnippet>463</a>            // Instead, we will complete the future when curl marks the transfer
+<a href=#464 id=464 data-nosnippet>464</a>            // as complete, or when we start receiving a response body.
+<a href=#465 id=465 data-nosnippet>465</a>            </span><span class="kw">return </span><span class="bool-val">true</span>;
+<a href=#466 id=466 data-nosnippet>466</a>        }
+<a href=#467 id=467 data-nosnippet>467</a>
+<a href=#468 id=468 data-nosnippet>468</a>        <span class="comment">// Unknown header line we don't know how to parse.
+<a href=#469 id=469 data-nosnippet>469</a>        </span><span class="bool-val">false
+<a href=#470 id=470 data-nosnippet>470</a>    </span>}
+<a href=#471 id=471 data-nosnippet>471</a>
+<a href=#472 id=472 data-nosnippet>472</a>    <span class="doccomment">/// Gets called by curl when attempting to send bytes of the request body.
+<a href=#473 id=473 data-nosnippet>473</a>    </span><span class="kw">fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;mut </span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, ReadError&gt; {
+<a href=#474 id=474 data-nosnippet>474</a>        <span class="comment">// Abort the request if it has been canceled.
+<a href=#475 id=475 data-nosnippet>475</a>        </span><span class="kw">if </span><span class="self">self</span>.is_future_canceled() {
+<a href=#476 id=476 data-nosnippet>476</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(ReadError::Abort);
+<a href=#477 id=477 data-nosnippet>477</a>        }
+<a href=#478 id=478 data-nosnippet>478</a>
+<a href=#479 id=479 data-nosnippet>479</a>        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">"read"</span>);
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">let </span>_enter = span.enter();
+<a href=#481 id=481 data-nosnippet>481</a>
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="comment">// Create a task context using a waker provided by the agent so we can
+<a href=#483 id=483 data-nosnippet>483</a>        // do an asynchronous read.
+<a href=#484 id=484 data-nosnippet>484</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(waker) = <span class="self">self</span>.request_body_waker.as_ref() {
+<a href=#485 id=485 data-nosnippet>485</a>            <span class="kw">let </span><span class="kw-2">mut </span>context = Context::from_waker(waker);
+<a href=#486 id=486 data-nosnippet>486</a>
+<a href=#487 id=487 data-nosnippet>487</a>            <span class="kw">match </span>Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.request_body).poll_read(<span class="kw-2">&amp;mut </span>context, data) {
+<a href=#488 id=488 data-nosnippet>488</a>                Poll::Pending =&gt; <span class="prelude-val">Err</span>(ReadError::Pause),
+<a href=#489 id=489 data-nosnippet>489</a>                Poll::Ready(<span class="prelude-val">Ok</span>(len)) =&gt; <span class="prelude-val">Ok</span>(len),
+<a href=#490 id=490 data-nosnippet>490</a>                Poll::Ready(<span class="prelude-val">Err</span>(e)) =&gt; {
+<a href=#491 id=491 data-nosnippet>491</a>                    <span class="macro">tracing::error!</span>(<span class="string">"error reading request body: {}"</span>, e);
+<a href=#492 id=492 data-nosnippet>492</a>
+<a href=#493 id=493 data-nosnippet>493</a>                    <span class="comment">// While we could just return an error here to curl and let
+<a href=#494 id=494 data-nosnippet>494</a>                    // the error bubble up through naturally, right now we have
+<a href=#495 id=495 data-nosnippet>495</a>                    // the most information about the underlying error  that we
+<a href=#496 id=496 data-nosnippet>496</a>                    // will ever have. That's why we set the error now, to
+<a href=#497 id=497 data-nosnippet>497</a>                    // improve the error message. Otherwise we'll return a
+<a href=#498 id=498 data-nosnippet>498</a>                    // rather generic-sounding I/O error to the caller.
+<a href=#499 id=499 data-nosnippet>499</a>                    </span><span class="self">self</span>.set_result(<span class="prelude-val">Err</span>(e.into()));
+<a href=#500 id=500 data-nosnippet>500</a>
+<a href=#501 id=501 data-nosnippet>501</a>                    <span class="prelude-val">Err</span>(ReadError::Abort)
+<a href=#502 id=502 data-nosnippet>502</a>                }
+<a href=#503 id=503 data-nosnippet>503</a>            }
+<a href=#504 id=504 data-nosnippet>504</a>        } <span class="kw">else </span>{
+<a href=#505 id=505 data-nosnippet>505</a>            <span class="comment">// The request should never be started without calling init first.
+<a href=#506 id=506 data-nosnippet>506</a>            </span><span class="macro">tracing::error!</span>(<span class="string">"request has not been initialized!"</span>);
+<a href=#507 id=507 data-nosnippet>507</a>            <span class="prelude-val">Err</span>(ReadError::Abort)
+<a href=#508 id=508 data-nosnippet>508</a>        }
+<a href=#509 id=509 data-nosnippet>509</a>    }
+<a href=#510 id=510 data-nosnippet>510</a>
+<a href=#511 id=511 data-nosnippet>511</a>    <span class="doccomment">/// Gets called by curl when it wants to seek to a certain position in the
+<a href=#512 id=512 data-nosnippet>512</a>    /// request body.
+<a href=#513 id=513 data-nosnippet>513</a>    ///
+<a href=#514 id=514 data-nosnippet>514</a>    /// Since this method is synchronous and provides no means of deferring the
+<a href=#515 id=515 data-nosnippet>515</a>    /// seek, we can't do any async operations in this callback. That's why we
+<a href=#516 id=516 data-nosnippet>516</a>    /// only support trivial types of seeking.
+<a href=#517 id=517 data-nosnippet>517</a>    </span><span class="kw">fn </span>seek(<span class="kw-2">&amp;mut </span><span class="self">self</span>, whence: io::SeekFrom) -&gt; SeekResult {
+<a href=#518 id=518 data-nosnippet>518</a>        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">"seek"</span>, whence = <span class="question-mark">?</span>whence);
+<a href=#519 id=519 data-nosnippet>519</a>        <span class="kw">let </span>_enter = span.enter();
+<a href=#520 id=520 data-nosnippet>520</a>
+<a href=#521 id=521 data-nosnippet>521</a>        <span class="comment">// If curl wants to seek to the beginning, there's a chance that we
+<a href=#522 id=522 data-nosnippet>522</a>        // can do that.
+<a href=#523 id=523 data-nosnippet>523</a>        </span><span class="kw">if </span>whence == io::SeekFrom::Start(<span class="number">0</span>) &amp;&amp; <span class="self">self</span>.request_body.reset() {
+<a href=#524 id=524 data-nosnippet>524</a>            SeekResult::Ok
+<a href=#525 id=525 data-nosnippet>525</a>        } <span class="kw">else </span>{
+<a href=#526 id=526 data-nosnippet>526</a>            <span class="macro">tracing::warn!</span>(<span class="string">"seek requested for request body, but it is not supported"</span>);
+<a href=#527 id=527 data-nosnippet>527</a>            <span class="comment">// We can't do any other type of seek, sorry :(
+<a href=#528 id=528 data-nosnippet>528</a>            </span>SeekResult::CantSeek
+<a href=#529 id=529 data-nosnippet>529</a>        }
+<a href=#530 id=530 data-nosnippet>530</a>    }
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a>    <span class="doccomment">/// Gets called by curl when bytes from the response body are received.
+<a href=#533 id=533 data-nosnippet>533</a>    </span><span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;usize, WriteError&gt; {
+<a href=#534 id=534 data-nosnippet>534</a>        <span class="kw">let </span>span = <span class="macro">tracing::trace_span!</span>(parent: <span class="kw-2">&amp;</span><span class="self">self</span>.span, <span class="string">"write"</span>);
+<a href=#535 id=535 data-nosnippet>535</a>        <span class="kw">let </span>_enter = span.enter();
+<a href=#536 id=536 data-nosnippet>536</a>        <span class="macro">tracing::trace!</span>(<span class="string">"received {} bytes of data"</span>, data.len());
+<a href=#537 id=537 data-nosnippet>537</a>
+<a href=#538 id=538 data-nosnippet>538</a>        <span class="comment">// Now that we've started receiving the response body, we know no more
+<a href=#539 id=539 data-nosnippet>539</a>        // redirects can happen and we can complete the future safely.
+<a href=#540 id=540 data-nosnippet>540</a>        </span><span class="self">self</span>.complete_response_future();
+<a href=#541 id=541 data-nosnippet>541</a>
+<a href=#542 id=542 data-nosnippet>542</a>        <span class="comment">// Create a task context using a waker provided by the agent so we can
+<a href=#543 id=543 data-nosnippet>543</a>        // do an asynchronous write.
+<a href=#544 id=544 data-nosnippet>544</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(waker) = <span class="self">self</span>.response_body_waker.as_ref() {
+<a href=#545 id=545 data-nosnippet>545</a>            <span class="kw">let </span><span class="kw-2">mut </span>context = Context::from_waker(waker);
+<a href=#546 id=546 data-nosnippet>546</a>
+<a href=#547 id=547 data-nosnippet>547</a>            <span class="kw">match </span>Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.response_body_writer).poll_write(<span class="kw-2">&amp;mut </span>context, data) {
+<a href=#548 id=548 data-nosnippet>548</a>                Poll::Pending =&gt; <span class="prelude-val">Err</span>(WriteError::Pause),
+<a href=#549 id=549 data-nosnippet>549</a>                Poll::Ready(<span class="prelude-val">Ok</span>(len)) =&gt; <span class="prelude-val">Ok</span>(len),
+<a href=#550 id=550 data-nosnippet>550</a>                Poll::Ready(<span class="prelude-val">Err</span>(e)) =&gt; {
+<a href=#551 id=551 data-nosnippet>551</a>                    <span class="kw">if </span>e.kind() == io::ErrorKind::BrokenPipe {
+<a href=#552 id=552 data-nosnippet>552</a>                        <span class="comment">// Only warn about connections closed for HTTP/1.x.
+<a href=#553 id=553 data-nosnippet>553</a>                        </span><span class="kw">if </span>!<span class="self">self</span>.disable_connection_reuse_log
+<a href=#554 id=554 data-nosnippet>554</a>                            &amp;&amp; <span class="self">self</span>.response_version &lt; <span class="prelude-val">Some</span>(http::Version::HTTP_2)
+<a href=#555 id=555 data-nosnippet>555</a>                        {
+<a href=#556 id=556 data-nosnippet>556</a>                            <span class="macro">tracing::info!</span>(
+<a href=#557 id=557 data-nosnippet>557</a>                                <span class="string">"\
+<a href=#558 id=558 data-nosnippet>558</a>                                response dropped without fully consuming the response body, connection won't be reused\n\
+<a href=#559 id=559 data-nosnippet>559</a>                                Aborting a response without fully consuming the response body can result in sub-optimal \
+<a href=#560 id=560 data-nosnippet>560</a>                                performance. See https://github.com/sagebind/isahc/wiki/Connection-Reuse#closing-connections-early."
+<a href=#561 id=561 data-nosnippet>561</a>                            </span>);
+<a href=#562 id=562 data-nosnippet>562</a>                        }
+<a href=#563 id=563 data-nosnippet>563</a>                    } <span class="kw">else </span>{
+<a href=#564 id=564 data-nosnippet>564</a>                        <span class="macro">tracing::error!</span>(<span class="string">"error writing response body to buffer: {}"</span>, e);
+<a href=#565 id=565 data-nosnippet>565</a>                    }
+<a href=#566 id=566 data-nosnippet>566</a>                    <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+<a href=#567 id=567 data-nosnippet>567</a>                }
+<a href=#568 id=568 data-nosnippet>568</a>            }
+<a href=#569 id=569 data-nosnippet>569</a>        } <span class="kw">else </span>{
+<a href=#570 id=570 data-nosnippet>570</a>            <span class="comment">// The request should never be started without calling init first.
+<a href=#571 id=571 data-nosnippet>571</a>            </span><span class="macro">tracing::error!</span>(<span class="string">"request has not been initialized!"</span>);
+<a href=#572 id=572 data-nosnippet>572</a>            <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+<a href=#573 id=573 data-nosnippet>573</a>        }
+<a href=#574 id=574 data-nosnippet>574</a>    }
+<a href=#575 id=575 data-nosnippet>575</a>
+<a href=#576 id=576 data-nosnippet>576</a>    <span class="doccomment">/// Capture transfer progress updates from curl.
+<a href=#577 id=577 data-nosnippet>577</a>    </span><span class="kw">fn </span>progress(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dltotal: f64, dlnow: f64, ultotal: f64, ulnow: f64) -&gt; bool {
+<a href=#578 id=578 data-nosnippet>578</a>        <span class="comment">// Initialize metrics if required.
+<a href=#579 id=579 data-nosnippet>579</a>        </span><span class="kw">let </span>metrics = <span class="self">self</span>.metrics.get_or_insert_with(Metrics::new);
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a>        <span class="comment">// Store the progress values given.
+<a href=#582 id=582 data-nosnippet>582</a>        </span>metrics.update_from_progress(<span class="self">self</span>.handle, dltotal, dlnow, ultotal, ulnow);
+<a href=#583 id=583 data-nosnippet>583</a>
+<a href=#584 id=584 data-nosnippet>584</a>        <span class="bool-val">true
+<a href=#585 id=585 data-nosnippet>585</a>    </span>}
+<a href=#586 id=586 data-nosnippet>586</a>
+<a href=#587 id=587 data-nosnippet>587</a>    <span class="doccomment">/// Gets called by curl whenever it wishes to log a debug message.
+<a href=#588 id=588 data-nosnippet>588</a>    ///
+<a href=#589 id=589 data-nosnippet>589</a>    /// Since we're using the log crate, this callback normalizes the debug info
+<a href=#590 id=590 data-nosnippet>590</a>    /// and writes it to our log.
+<a href=#591 id=591 data-nosnippet>591</a>    </span><span class="kw">fn </span>debug(<span class="kw-2">&amp;mut </span><span class="self">self</span>, kind: InfoType, data: <span class="kw-2">&amp;</span>[u8]) {
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="kw">let </span>_enter = <span class="self">self</span>.span.enter();
+<a href=#593 id=593 data-nosnippet>593</a>
+<a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">struct </span>FormatAscii&lt;T&gt;(T);
+<a href=#595 id=595 data-nosnippet>595</a>
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="kw">impl</span>&lt;T: AsRef&lt;[u8]&gt;&gt; fmt::Display <span class="kw">for </span>FormatAscii&lt;T&gt; {
+<a href=#597 id=597 data-nosnippet>597</a>            <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+<a href=#598 id=598 data-nosnippet>598</a>                <span class="kw">for </span><span class="kw-2">&amp;</span>byte <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.as_ref() {
+<a href=#599 id=599 data-nosnippet>599</a>                    ascii::escape_default(byte).fmt(f)<span class="question-mark">?</span>;
+<a href=#600 id=600 data-nosnippet>600</a>                }
+<a href=#601 id=601 data-nosnippet>601</a>                <span class="prelude-val">Ok</span>(())
+<a href=#602 id=602 data-nosnippet>602</a>            }
+<a href=#603 id=603 data-nosnippet>603</a>        }
+<a href=#604 id=604 data-nosnippet>604</a>
+<a href=#605 id=605 data-nosnippet>605</a>        <span class="kw">match </span>kind {
+<a href=#606 id=606 data-nosnippet>606</a>            InfoType::Text =&gt; {
+<a href=#607 id=607 data-nosnippet>607</a>                <span class="macro">tracing::debug!</span>(<span class="string">"{}"</span>, String::from_utf8_lossy(data).trim_end())
+<a href=#608 id=608 data-nosnippet>608</a>            }
+<a href=#609 id=609 data-nosnippet>609</a>            InfoType::HeaderIn | InfoType::DataIn =&gt; {
+<a href=#610 id=610 data-nosnippet>610</a>                <span class="macro">tracing::trace!</span>(target: <span class="string">"isahc::wire"</span>, <span class="string">"&lt;&lt; {}"</span>, FormatAscii(data))
+<a href=#611 id=611 data-nosnippet>611</a>            }
+<a href=#612 id=612 data-nosnippet>612</a>            InfoType::HeaderOut | InfoType::DataOut =&gt; {
+<a href=#613 id=613 data-nosnippet>613</a>                <span class="macro">tracing::trace!</span>(target: <span class="string">"isahc::wire"</span>, <span class="string">"&gt;&gt; {}"</span>, FormatAscii(data))
+<a href=#614 id=614 data-nosnippet>614</a>            }
+<a href=#615 id=615 data-nosnippet>615</a>            <span class="kw">_ </span>=&gt; (),
+<a href=#616 id=616 data-nosnippet>616</a>        }
+<a href=#617 id=617 data-nosnippet>617</a>    }
+<a href=#618 id=618 data-nosnippet>618</a>}
+<a href=#619 id=619 data-nosnippet>619</a>
+<a href=#620 id=620 data-nosnippet>620</a><span class="kw">impl </span>Drop <span class="kw">for </span>RequestHandler {
+<a href=#621 id=621 data-nosnippet>621</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#622 id=622 data-nosnippet>622</a>        <span class="kw">if </span><span class="self">self</span>.sender.is_some() {
+<a href=#623 id=623 data-nosnippet>623</a>            <span class="macro">tracing::warn!</span>(<span class="string">"fixme: request handler dropped before response was completed"</span>);
+<a href=#624 id=624 data-nosnippet>624</a>        }
+<a href=#625 id=625 data-nosnippet>625</a>    }
+<a href=#626 id=626 data-nosnippet>626</a>}
+<a href=#627 id=627 data-nosnippet>627</a>
+<a href=#628 id=628 data-nosnippet>628</a><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>RequestHandler {
+<a href=#629 id=629 data-nosnippet>629</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+<a href=#630 id=630 data-nosnippet>630</a>        <span class="macro">write!</span>(f, <span class="string">"RequestHandler"</span>)
+<a href=#631 id=631 data-nosnippet>631</a>    }
+<a href=#632 id=632 data-nosnippet>632</a>}
+<a href=#633 id=633 data-nosnippet>633</a>
+<a href=#634 id=634 data-nosnippet>634</a><span class="doccomment">/// Wrapper around a pipe reader that returns an error that tracks transfer
+<a href=#635 id=635 data-nosnippet>635</a>/// cancellation.
+<a href=#636 id=636 data-nosnippet>636</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ResponseBodyReader {
+<a href=#637 id=637 data-nosnippet>637</a>    inner: pipe::PipeReader,
+<a href=#638 id=638 data-nosnippet>638</a>    shared: Arc&lt;Shared&gt;,
+<a href=#639 id=639 data-nosnippet>639</a>}
+<a href=#640 id=640 data-nosnippet>640</a>
+<a href=#641 id=641 data-nosnippet>641</a><span class="kw">impl </span>AsyncRead <span class="kw">for </span>ResponseBodyReader {
+<a href=#642 id=642 data-nosnippet>642</a>    <span class="kw">fn </span>poll_read(
+<a href=#643 id=643 data-nosnippet>643</a>        <span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#644 id=644 data-nosnippet>644</a>        cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#645 id=645 data-nosnippet>645</a>        buf: <span class="kw-2">&amp;mut </span>[u8],
+<a href=#646 id=646 data-nosnippet>646</a>    ) -&gt; Poll&lt;io::Result&lt;usize&gt;&gt; {
+<a href=#647 id=647 data-nosnippet>647</a>        <span class="kw">let </span>inner = Pin::new(<span class="kw-2">&amp;mut </span><span class="self">self</span>.inner);
+<a href=#648 id=648 data-nosnippet>648</a>
+<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">match </span>inner.poll_read(cx, buf) {
+<a href=#650 id=650 data-nosnippet>650</a>            <span class="comment">// On EOF, check to see if the transfer was cancelled, and if so,
+<a href=#651 id=651 data-nosnippet>651</a>            // return an error.
+<a href=#652 id=652 data-nosnippet>652</a>            </span>Poll::Ready(<span class="prelude-val">Ok</span>(<span class="number">0</span>)) =&gt; <span class="kw">match </span><span class="self">self</span>.shared.result.get() {
+<a href=#653 id=653 data-nosnippet>653</a>                <span class="comment">// The transfer did finish successfully, so return EOF.
+<a href=#654 id=654 data-nosnippet>654</a>                </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(())) =&gt; Poll::Ready(<span class="prelude-val">Ok</span>(<span class="number">0</span>)),
+<a href=#655 id=655 data-nosnippet>655</a>
+<a href=#656 id=656 data-nosnippet>656</a>                <span class="comment">// The transfer finished with an error, so return the error.
+<a href=#657 id=657 data-nosnippet>657</a>                </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)) =&gt; Poll::Ready(<span class="prelude-val">Err</span>(io::Error::from(e.clone()))),
+<a href=#658 id=658 data-nosnippet>658</a>
+<a href=#659 id=659 data-nosnippet>659</a>                <span class="comment">// The transfer did not finish properly at all, so return an error.
+<a href=#660 id=660 data-nosnippet>660</a>                </span><span class="prelude-val">None </span>=&gt; Poll::Ready(<span class="prelude-val">Err</span>(io::ErrorKind::ConnectionAborted.into())),
+<a href=#661 id=661 data-nosnippet>661</a>            },
+<a href=#662 id=662 data-nosnippet>662</a>            poll =&gt; poll,
+<a href=#663 id=663 data-nosnippet>663</a>        }
+<a href=#664 id=664 data-nosnippet>664</a>    }
+<a href=#665 id=665 data-nosnippet>665</a>}
+<a href=#666 id=666 data-nosnippet>666</a>
+<a href=#667 id=667 data-nosnippet>667</a><span class="doccomment">/// Methods for updating a metrics object with current stats from a curl handle.
+<a href=#668 id=668 data-nosnippet>668</a></span><span class="kw">impl </span>Metrics {
+<a href=#669 id=669 data-nosnippet>669</a>    <span class="kw">fn </span>update_from_info_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: <span class="kw-2">*mut </span>CURL) {
+<a href=#670 id=670 data-nosnippet>670</a>        <span class="kw">if </span>handle.is_null() {
+<a href=#671 id=671 data-nosnippet>671</a>            <span class="kw">return</span>;
+<a href=#672 id=672 data-nosnippet>672</a>        }
+<a href=#673 id=673 data-nosnippet>673</a>
+<a href=#674 id=674 data-nosnippet>674</a>        <span class="kw">let </span><span class="kw-2">mut </span>upload_total: f64 = <span class="number">0.0</span>;
+<a href=#675 id=675 data-nosnippet>675</a>        <span class="kw">let </span><span class="kw-2">mut </span>download_total: f64 = <span class="number">0.0</span>;
+<a href=#676 id=676 data-nosnippet>676</a>
+<a href=#677 id=677 data-nosnippet>677</a>        <span class="kw">unsafe </span>{
+<a href=#678 id=678 data-nosnippet>678</a>            curl_sys::curl_easy_getinfo(handle, curl_sys::CURLINFO_SIZE_UPLOAD, <span class="kw-2">&amp;mut </span>upload_total);
+<a href=#679 id=679 data-nosnippet>679</a>            curl_sys::curl_easy_getinfo(
+<a href=#680 id=680 data-nosnippet>680</a>                handle,
+<a href=#681 id=681 data-nosnippet>681</a>                curl_sys::CURLINFO_SIZE_DOWNLOAD,
+<a href=#682 id=682 data-nosnippet>682</a>                <span class="kw-2">&amp;mut </span>download_total,
+<a href=#683 id=683 data-nosnippet>683</a>            );
+<a href=#684 id=684 data-nosnippet>684</a>        }
+<a href=#685 id=685 data-nosnippet>685</a>
+<a href=#686 id=686 data-nosnippet>686</a>        <span class="self">self</span>.update_from_progress(
+<a href=#687 id=687 data-nosnippet>687</a>            handle,
+<a href=#688 id=688 data-nosnippet>688</a>            download_total,
+<a href=#689 id=689 data-nosnippet>689</a>            download_total,
+<a href=#690 id=690 data-nosnippet>690</a>            upload_total,
+<a href=#691 id=691 data-nosnippet>691</a>            upload_total,
+<a href=#692 id=692 data-nosnippet>692</a>        );
+<a href=#693 id=693 data-nosnippet>693</a>    }
+<a href=#694 id=694 data-nosnippet>694</a>
+<a href=#695 id=695 data-nosnippet>695</a>    <span class="kw">fn </span>update_from_progress(
+<a href=#696 id=696 data-nosnippet>696</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#697 id=697 data-nosnippet>697</a>        handle: <span class="kw-2">*mut </span>CURL,
+<a href=#698 id=698 data-nosnippet>698</a>        dltotal: f64,
+<a href=#699 id=699 data-nosnippet>699</a>        dlnow: f64,
+<a href=#700 id=700 data-nosnippet>700</a>        ultotal: f64,
+<a href=#701 id=701 data-nosnippet>701</a>        ulnow: f64,
+<a href=#702 id=702 data-nosnippet>702</a>    ) {
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="comment">// Store the progress values given.
+<a href=#704 id=704 data-nosnippet>704</a>        </span><span class="self">self</span>.inner.upload_total.store(ultotal);
+<a href=#705 id=705 data-nosnippet>705</a>        <span class="self">self</span>.inner.upload_progress.store(ulnow);
+<a href=#706 id=706 data-nosnippet>706</a>        <span class="self">self</span>.inner.download_total.store(dltotal);
+<a href=#707 id=707 data-nosnippet>707</a>        <span class="self">self</span>.inner.download_progress.store(dlnow);
+<a href=#708 id=708 data-nosnippet>708</a>
+<a href=#709 id=709 data-nosnippet>709</a>        <span class="comment">// Also scrape additional metrics.
+<a href=#710 id=710 data-nosnippet>710</a>        </span><span class="kw">if </span>!handle.is_null() {
+<a href=#711 id=711 data-nosnippet>711</a>            <span class="kw">unsafe </span>{
+<a href=#712 id=712 data-nosnippet>712</a>                curl_sys::curl_easy_getinfo(
+<a href=#713 id=713 data-nosnippet>713</a>                    handle,
+<a href=#714 id=714 data-nosnippet>714</a>                    curl_sys::CURLINFO_SPEED_UPLOAD,
+<a href=#715 id=715 data-nosnippet>715</a>                    <span class="self">self</span>.inner.upload_speed.as_ptr(),
+<a href=#716 id=716 data-nosnippet>716</a>                );
+<a href=#717 id=717 data-nosnippet>717</a>                curl_sys::curl_easy_getinfo(
+<a href=#718 id=718 data-nosnippet>718</a>                    handle,
+<a href=#719 id=719 data-nosnippet>719</a>                    curl_sys::CURLINFO_SPEED_DOWNLOAD,
+<a href=#720 id=720 data-nosnippet>720</a>                    <span class="self">self</span>.inner.download_speed.as_ptr(),
+<a href=#721 id=721 data-nosnippet>721</a>                );
+<a href=#722 id=722 data-nosnippet>722</a>                curl_sys::curl_easy_getinfo(
+<a href=#723 id=723 data-nosnippet>723</a>                    handle,
+<a href=#724 id=724 data-nosnippet>724</a>                    curl_sys::CURLINFO_NAMELOOKUP_TIME,
+<a href=#725 id=725 data-nosnippet>725</a>                    <span class="self">self</span>.inner.namelookup_time.as_ptr(),
+<a href=#726 id=726 data-nosnippet>726</a>                );
+<a href=#727 id=727 data-nosnippet>727</a>                curl_sys::curl_easy_getinfo(
+<a href=#728 id=728 data-nosnippet>728</a>                    handle,
+<a href=#729 id=729 data-nosnippet>729</a>                    curl_sys::CURLINFO_CONNECT_TIME,
+<a href=#730 id=730 data-nosnippet>730</a>                    <span class="self">self</span>.inner.connect_time.as_ptr(),
+<a href=#731 id=731 data-nosnippet>731</a>                );
+<a href=#732 id=732 data-nosnippet>732</a>                curl_sys::curl_easy_getinfo(
+<a href=#733 id=733 data-nosnippet>733</a>                    handle,
+<a href=#734 id=734 data-nosnippet>734</a>                    curl_sys::CURLINFO_APPCONNECT_TIME,
+<a href=#735 id=735 data-nosnippet>735</a>                    <span class="self">self</span>.inner.appconnect_time.as_ptr(),
+<a href=#736 id=736 data-nosnippet>736</a>                );
+<a href=#737 id=737 data-nosnippet>737</a>                curl_sys::curl_easy_getinfo(
+<a href=#738 id=738 data-nosnippet>738</a>                    handle,
+<a href=#739 id=739 data-nosnippet>739</a>                    curl_sys::CURLINFO_PRETRANSFER_TIME,
+<a href=#740 id=740 data-nosnippet>740</a>                    <span class="self">self</span>.inner.pretransfer_time.as_ptr(),
+<a href=#741 id=741 data-nosnippet>741</a>                );
+<a href=#742 id=742 data-nosnippet>742</a>                curl_sys::curl_easy_getinfo(
+<a href=#743 id=743 data-nosnippet>743</a>                    handle,
+<a href=#744 id=744 data-nosnippet>744</a>                    curl_sys::CURLINFO_STARTTRANSFER_TIME,
+<a href=#745 id=745 data-nosnippet>745</a>                    <span class="self">self</span>.inner.starttransfer_time.as_ptr(),
+<a href=#746 id=746 data-nosnippet>746</a>                );
+<a href=#747 id=747 data-nosnippet>747</a>                curl_sys::curl_easy_getinfo(
+<a href=#748 id=748 data-nosnippet>748</a>                    handle,
+<a href=#749 id=749 data-nosnippet>749</a>                    curl_sys::CURLINFO_TOTAL_TIME,
+<a href=#750 id=750 data-nosnippet>750</a>                    <span class="self">self</span>.inner.total_time.as_ptr(),
+<a href=#751 id=751 data-nosnippet>751</a>                );
+<a href=#752 id=752 data-nosnippet>752</a>                curl_sys::curl_easy_getinfo(
+<a href=#753 id=753 data-nosnippet>753</a>                    handle,
+<a href=#754 id=754 data-nosnippet>754</a>                    curl_sys::CURLINFO_REDIRECT_TIME,
+<a href=#755 id=755 data-nosnippet>755</a>                    <span class="self">self</span>.inner.redirect_time.as_ptr(),
+<a href=#756 id=756 data-nosnippet>756</a>                );
+<a href=#757 id=757 data-nosnippet>757</a>            }
+<a href=#758 id=758 data-nosnippet>758</a>        }
+<a href=#759 id=759 data-nosnippet>759</a>    }
+<a href=#760 id=760 data-nosnippet>760</a>}
+</code></pre></div></section></main></body></html>

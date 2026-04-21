@@ -1,77 +1,38 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b826345d929eb323.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-87108236bf50c158.css"><link rel="stylesheet" disabled href="../../../static.files/dark-839c5fb8722cb456.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-d48ac194417684c8.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-74087aa2e88f4475.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0dede64717b247ca.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-201a7e04dc4c6fce.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../isahc/index.html">
-                        <img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
-<span id="2">2</span>
-<span id="3">3</span>
-<span id="4">4</span>
-<span id="5">5</span>
-<span id="6">6</span>
-<span id="7">7</span>
-<span id="8">8</span>
-<span id="9">9</span>
-<span id="10">10</span>
-<span id="11">11</span>
-<span id="12">12</span>
-<span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-<span id="23">23</span>
-<span id="24">24</span>
-<span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Types for cookie state management.
-//!
-//! # Cookie jars
-//!
-//! By default HTTP is a mostly stateless protocol, but using cookies allow a
-//! server to request a client to persist specific state between requests. Isahc
-//! does not do this by default, but provides support for cookie state using a
-//! _cookie jar_, which can store a list of cookies in memory between requests
-//! and is responsible for keeping track of which cookies belong to which
-//! domains.
-//!
-//! A cookie jar can be used on a per-request basis or for all requests sent via
-//! a particular HTTP client. You can assign a cookie jar to a request or to a
-//! client via the
-//! [`Configurable::cookie_jar`](crate::config::Configurable::cookie_jar)
-//! extension method. If different cookie jars are assigned on both a request
-//! and the client sending the request, the one assigned to the individual
-//! request will take precedence.
-//!
-//! The global default client instance does not have an assigned cookie jar.
-//!
-//! # Availability
-//!
-//! This module is only available when the [`cookies`](index.html#cookies)
-//! feature is enabled.
-
-</span><span class="kw">mod </span>cookie;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>interceptor;
-<span class="kw">mod </span>jar;
-
-<span class="attr">#[cfg(feature = <span class="string">&quot;psl&quot;</span>)]
-</span><span class="kw">mod </span>psl;
-
-<span class="kw">pub use </span><span class="self">self</span>::{
-    cookie::{Cookie, CookieBuilder, ParseError},
-    jar::{CookieJar, CookieRejectedError, CookieRejectedErrorKind},
-};
-</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7eef946fc 2022-11-06)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-3a0b9947ba1bd99a.js" data-settings-css="settings-a66f7524084a489a.css" ></div></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cookies/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (66da6cae1 2026-04-20)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">isahc/cookies/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Types for cookie state management.
+<a href=#2 id=2 data-nosnippet>2</a>//!
+<a href=#3 id=3 data-nosnippet>3</a>//! # Cookie jars
+<a href=#4 id=4 data-nosnippet>4</a>//!
+<a href=#5 id=5 data-nosnippet>5</a>//! By default HTTP is a mostly stateless protocol, but using cookies allow a
+<a href=#6 id=6 data-nosnippet>6</a>//! server to request a client to persist specific state between requests. Isahc
+<a href=#7 id=7 data-nosnippet>7</a>//! does not do this by default, but provides support for cookie state using a
+<a href=#8 id=8 data-nosnippet>8</a>//! _cookie jar_, which can store a list of cookies in memory between requests
+<a href=#9 id=9 data-nosnippet>9</a>//! and is responsible for keeping track of which cookies belong to which
+<a href=#10 id=10 data-nosnippet>10</a>//! domains.
+<a href=#11 id=11 data-nosnippet>11</a>//!
+<a href=#12 id=12 data-nosnippet>12</a>//! A cookie jar can be used on a per-request basis or for all requests sent via
+<a href=#13 id=13 data-nosnippet>13</a>//! a particular HTTP client. You can assign a cookie jar to a request or to a
+<a href=#14 id=14 data-nosnippet>14</a>//! client via the
+<a href=#15 id=15 data-nosnippet>15</a>//! [`Configurable::cookie_jar`](crate::config::Configurable::cookie_jar)
+<a href=#16 id=16 data-nosnippet>16</a>//! extension method. If different cookie jars are assigned on both a request
+<a href=#17 id=17 data-nosnippet>17</a>//! and the client sending the request, the one assigned to the individual
+<a href=#18 id=18 data-nosnippet>18</a>//! request will take precedence.
+<a href=#19 id=19 data-nosnippet>19</a>//!
+<a href=#20 id=20 data-nosnippet>20</a>//! The global default client instance does not have an assigned cookie jar.
+<a href=#21 id=21 data-nosnippet>21</a>//!
+<a href=#22 id=22 data-nosnippet>22</a>//! # Availability
+<a href=#23 id=23 data-nosnippet>23</a>//!
+<a href=#24 id=24 data-nosnippet>24</a>//! This module is only available when the [`cookies`](index.html#cookies)
+<a href=#25 id=25 data-nosnippet>25</a>//! feature is enabled.
+<a href=#26 id=26 data-nosnippet>26</a>
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">mod </span>cookie;
+<a href=#28 id=28 data-nosnippet>28</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>interceptor;
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">mod </span>jar;
+<a href=#30 id=30 data-nosnippet>30</a>
+<a href=#31 id=31 data-nosnippet>31</a><span class="attr">#[cfg(feature = <span class="string">"psl"</span>)]
+<a href=#32 id=32 data-nosnippet>32</a></span><span class="kw">mod </span>psl;
+<a href=#33 id=33 data-nosnippet>33</a>
+<a href=#34 id=34 data-nosnippet>34</a><span class="kw">pub use </span>self::{
+<a href=#35 id=35 data-nosnippet>35</a>    cookie::{Cookie, CookieBuilder, ParseError},
+<a href=#36 id=36 data-nosnippet>36</a>    jar::{CookieJar, CookieRejectedError, CookieRejectedErrorKind},
+<a href=#37 id=37 data-nosnippet>37</a>};
+</code></pre></div></section></main></body></html>
