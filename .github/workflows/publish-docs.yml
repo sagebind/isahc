@@ -10,13 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: "nightly"
-          default: true
-
-      - run: cargo doc --no-deps --features cookies,json,nightly
+      - run: cargo +nightly doc --no-deps --features cookies,json,nightly
 
       - uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
