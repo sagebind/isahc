@@ -2,5 +2,6 @@
 target
 *.code-workspace
 .idea/*
+.zed
 # Code coverage reports
 cobertura.xml
