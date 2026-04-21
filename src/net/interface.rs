@@ -164,6 +164,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_interface_name() {
         let selector = Name("eth0");
         assert_eq!(selector.into_interface_string(Sealed).0.unwrap(), "if!eth0");
@@ -179,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_interface_name_and_ip_addr() {
         let selector = (Name("eth0"), Ipv4Addr::new(192, 168, 1, 1));
         assert_eq!(
