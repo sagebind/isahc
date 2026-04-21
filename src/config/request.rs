@@ -1,6 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
-use super::{setopt::*, *};
+use super::{interface::InterfaceString, setopt::*, *};
 use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an

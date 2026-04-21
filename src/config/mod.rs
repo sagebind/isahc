@@ -16,6 +16,7 @@
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
+    net::interface,
 };
 use curl::easy::Easy2;
 use setopt::{SetOpt, SetOptError};
@@ -24,7 +25,6 @@ use std::time::Duration;
 pub(crate) mod client;
 pub(crate) mod dial;
 pub(crate) mod dns;
-pub(crate) mod interface;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
@@ -32,7 +32,6 @@ pub(crate) mod setopt;
 
 pub use dial::{Dialer, DialerParseError};
 pub use dns::{DnsCache, ResolveMap};
-pub use interface::*;
 pub use redirect::RedirectPolicy;
 
 /// Provides additional methods when building a request for configuring various
@@ -348,36 +347,55 @@ pub trait Configurable: request::WithRequestConfig {
     /// Bind to an IP address.
     ///
     /// ```
-    /// use isahc::{
-    ///     prelude::*,
-    ///     config::NetworkInterface,
-    ///     HttpClient,
-    ///     Request,
-    /// };
+    /// use isahc::{prelude::*, HttpClient};
     /// use std::net::IpAddr;
     ///
-    /// // Bind to an IP address.
     /// let client = HttpClient::builder()
     ///     .interface(IpAddr::from([192, 168, 1, 2]))
     ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     ///
-    /// // Bind to an interface by name (not supported on Windows).
-    /// # #[cfg(unix)]
+    /// Bind to an interface by name (not supported on Windows).
+    ///
+    /// ```
+    /// # #![cfg(unix)]
+    /// use isahc::{prelude::*, net::interface::Name, HttpClient};
+    ///
     /// let client = HttpClient::builder()
-    ///     .interface(InterfaceName("eth0"))
+    ///     .interface(Name("eth0"))
     ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
     ///
-    /// // Reset to using whatever interface the TCP stack finds suitable (the
-    /// // default).
+    /// Bind to an interface by both name and IP address.
+    ///
+    /// ```
+    /// # #![cfg(unix)]
+    /// use isahc::{prelude::*, net::interface::Name, HttpClient};
+    /// use std::net::IpAddr;
+    ///
+    /// let client = HttpClient::builder()
+    ///     .interface((Name("eth0"), IpAddr::from([192, 168, 1, 2])))
+    ///     .build()?;
+    /// # Ok::<(), isahc::Error>(())
+    /// ```
+    ///
+    /// Reset to using whatever interface the TCP stack finds suitable (the
+    /// default).
+    ///
+    /// ```
+    /// use isahc::{prelude::*, net::interface::Any, Request};
+    ///
     /// let request = Request::get("https://example.org")
-    ///     .interface(AnyInterface)
+    ///     .interface(Any)
     ///     .body(())?;
     /// # Ok::<(), isahc::Error>(())
     /// ```
     #[must_use = "builders have no effect if unused"]
     fn interface<I>(self, interface: I) -> Self
     where
-        I: InterfaceSelector,
+        I: interface::Selector,
     {
         self.with_config(move |config| {
             config.interface = Some(interface.into());
