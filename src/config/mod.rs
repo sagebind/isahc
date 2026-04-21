@@ -377,10 +377,10 @@ pub trait Configurable: request::WithRequestConfig {
     #[must_use = "builders have no effect if unused"]
     fn interface<I>(self, interface: I) -> Self
     where
-        I: NetworkInterfaceSelector,
+        I: InterfaceSelector,
     {
         self.with_config(move |config| {
-            config.interface = Some(interface.to_selector());
+            config.interface = Some(interface.into());
         })
     }
 

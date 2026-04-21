@@ -1,5 +1,3 @@
-#![allow(private_interfaces)]
-
 use crate::config::setopt::{SetOpt, SetOptError};
 use curl::easy::Easy2;
 use std::{
@@ -14,51 +12,59 @@ pub use unix::*;
 /// use for outgoing connections based on some criteria.
 ///
 /// This trait is sealed and cannot be implemented outside of this module.
-pub trait NetworkInterfaceSelector: sealed::ToSelector {}
+#[expect(private_bounds)]
+pub trait InterfaceSelector: ToInterfaceString {}
 
-impl<T: sealed::ToSelector> NetworkInterfaceSelector for T {}
+/// Private version of the public trait. The public trait acts as just a marker,
+/// while the methods can only be called in this module.
+trait ToInterfaceString {
+    fn to_interface_string(&self) -> InterfaceString;
+}
+
+impl<T: ToInterfaceString> InterfaceSelector for T {}
 
 /// Use whatever interface the TCP stack finds suitable.
 #[derive(Clone, Copy, Debug)]
 pub struct AnyInterface;
 
-impl sealed::ToSelector for AnyInterface {
-    fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-        ComputedNetworkInterfaceSelector { interface: None }
+impl ToInterfaceString for AnyInterface {
+    fn to_interface_string(&self) -> InterfaceString {
+        InterfaceString(None)
     }
 }
 
-impl sealed::ToSelector for IpAddr {
-    fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-        ComputedNetworkInterfaceSelector {
-            interface: Some(format!("host!{}", self)),
-        }
+impl ToInterfaceString for IpAddr {
+    fn to_interface_string(&self) -> InterfaceString {
+        InterfaceString(Some(format!("host!{}", self)))
     }
 }
 
-impl sealed::ToSelector for Ipv4Addr {
-    fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-        IpAddr::from(*self).to_selector()
+impl ToInterfaceString for Ipv4Addr {
+    fn to_interface_string(&self) -> InterfaceString {
+        IpAddr::from(*self).to_interface_string()
     }
 }
 
-impl sealed::ToSelector for Ipv6Addr {
-    fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-        IpAddr::from(*self).to_selector()
+impl ToInterfaceString for Ipv6Addr {
+    fn to_interface_string(&self) -> InterfaceString {
+        IpAddr::from(*self).to_interface_string()
     }
 }
 
 /// Selects a network interface to use for outgoing connections based on some
 /// criteria.
 #[derive(Clone, Debug)]
-pub(crate) struct ComputedNetworkInterfaceSelector {
-    /// Interface in verbose curl format.
-    interface: Option<String>,
+pub(crate) struct InterfaceString(Option<String>);
+
+impl<T: InterfaceSelector> From<T> for InterfaceString {
+    fn from(selector: T) -> Self {
+        selector.to_interface_string()
+    }
 }
 
-impl SetOpt for ComputedNetworkInterfaceSelector {
+impl SetOpt for InterfaceString {
     fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        match self.interface.as_ref() {
+        match self.0.as_ref() {
             Some(interface) => easy.interface(interface).map_err(Into::into),
 
             // Use raw FFI because safe wrapper doesn't let us set to null.
@@ -97,11 +103,9 @@ mod unix {
         }
     }
 
-    impl<Name: AsRef<str>> sealed::ToSelector for InterfaceName<Name> {
-        fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-            ComputedNetworkInterfaceSelector {
-                interface: Some(format!("if!{}", self.0.as_ref())),
-            }
+    impl<Name: AsRef<str>> ToInterfaceString for InterfaceName<Name> {
+        fn to_interface_string(&self) -> InterfaceString {
+            InterfaceString(Some(format!("if!{}", self.0.as_ref())))
         }
     }
 
@@ -114,11 +118,13 @@ mod unix {
         ip_addr: IpAddr,
     }
 
-    impl<Name: AsRef<str>> sealed::ToSelector for InterfaceNameAndIpAddr<Name> {
-        fn to_selector(&self) -> ComputedNetworkInterfaceSelector {
-            ComputedNetworkInterfaceSelector {
-                interface: Some(format!("ifhost!{}!{}", self.name.0.as_ref(), self.ip_addr)),
-            }
+    impl<Name: AsRef<str>> ToInterfaceString for InterfaceNameAndIpAddr<Name> {
+        fn to_interface_string(&self) -> InterfaceString {
+            InterfaceString(Some(format!(
+                "ifhost!{}!{}",
+                self.name.0.as_ref(),
+                self.ip_addr
+            )))
         }
     }
 
@@ -152,29 +158,26 @@ mod unix {
     }
 }
 
-mod sealed {
-    #[doc(hidden)]
-    pub trait ToSelector {
-        fn to_selector(&self) -> super::ComputedNetworkInterfaceSelector;
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::sealed::ToSelector;
     use super::*;
+
+    #[test]
+    fn test_any_interface() {
+        assert!(AnyInterface.to_interface_string().0.is_none());
+    }
 
     #[test]
     fn test_interface_name() {
         let selector = InterfaceName("eth0");
-        assert_eq!(selector.to_selector().interface.unwrap(), "if!eth0");
+        assert_eq!(selector.to_interface_string().0.unwrap(), "if!eth0");
     }
 
     #[test]
     fn test_interface_ip_addr() {
         let selector = Ipv4Addr::new(192, 168, 1, 1);
         assert_eq!(
-            selector.to_selector().interface.unwrap(),
+            selector.to_interface_string().0.unwrap(),
             "host!192.168.1.1"
         );
     }
@@ -183,7 +186,7 @@ mod tests {
     fn test_interface_name_and_ip_addr() {
         let selector = InterfaceName("eth0") & Ipv4Addr::new(192, 168, 1, 1);
         assert_eq!(
-            selector.to_selector().interface.unwrap(),
+            selector.to_interface_string().0.unwrap(),
             "ifhost!eth0!192.168.1.1"
         );
     }
