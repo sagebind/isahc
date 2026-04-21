@@ -358,24 +358,28 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// Bind to an interface by name (not supported on Windows).
     ///
-    /// ```ignore-windows
+    /// ```
+    /// # #[cfg(unix)] {
     /// use isahc::{prelude::*, net::interface::Name, HttpClient};
     ///
     /// let client = HttpClient::builder()
     ///     .interface(Name("eth0"))
     ///     .build()?;
+    /// # }
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
     /// Bind to an interface by both name and IP address.
     ///
-    /// ```ignore-windows
+    /// ```
+    /// # #[cfg(unix)] {
     /// use isahc::{prelude::*, net::interface::Name, HttpClient};
     /// use std::net::IpAddr;
     ///
     /// let client = HttpClient::builder()
     ///     .interface((Name("eth0"), IpAddr::from([192, 168, 1, 2])))
     ///     .build()?;
+    /// # }
     /// # Ok::<(), isahc::Error>(())
     /// ```
     ///
