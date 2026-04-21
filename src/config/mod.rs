@@ -358,8 +358,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// Bind to an interface by name (not supported on Windows).
     ///
-    /// ```
-    /// # #![cfg(unix)]
+    /// ```ignore-windows
     /// use isahc::{prelude::*, net::interface::Name, HttpClient};
     ///
     /// let client = HttpClient::builder()
@@ -370,8 +369,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// Bind to an interface by both name and IP address.
     ///
-    /// ```
-    /// # #![cfg(unix)]
+    /// ```ignore-windows
     /// use isahc::{prelude::*, net::interface::Name, HttpClient};
     /// use std::net::IpAddr;
     ///
