@@ -61,6 +61,7 @@ use crate::{
 use curl::easy::{SslOpt, SslVersion};
 use std::fmt;
 
+mod cert;
 mod identity;
 mod trust;
 
@@ -68,8 +69,9 @@ mod trust;
 mod webpki_roots;
 
 pub use self::{
+    cert::Certificate,
     identity::{Identity, PrivateKey},
-    trust::{Certificate, TrustStore},
+    trust::TrustStore,
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
