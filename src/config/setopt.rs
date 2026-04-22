@@ -1,15 +1,18 @@
+use crate::handler::RequestHandler;
 use curl::easy::Easy2;
+
+pub(crate) type EasyHandle = Easy2<RequestHandler>;
 
 /// A helper trait for applying a configuration value to a given curl handle.
 pub(crate) trait SetOpt {
     /// Apply this configuration property to the given curl handle.
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError>;
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError>;
 }
 
 /// Like [`SetOpt`], but applies the configuration specifically for proxy
 /// connections rather than the origin itself.
 pub(crate) trait SetOptProxy: SetOpt {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError>;
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError>;
 }
 
 pub(crate) enum SetOptError {

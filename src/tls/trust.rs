@@ -7,13 +7,16 @@
 
 use super::TlsEngine;
 use crate::{
-    config::setopt::{SetOpt, SetOptError, SetOptProxy},
+    config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
+    handler::BlobOptions,
     info::curl_version,
-    util::set_blob_nocopy,
 };
-use curl::easy::{Easy2, SslOpt};
-use curl_sys::{CURL_BLOB_NOCOPY, curl_blob};
+use curl::easy::SslOpt;
+use curl_sys::{
+    CURLOPT_CAINFO, CURLOPT_CAINFO_BLOB, CURLOPT_CAPATH, CURLOPT_PROXY_CAINFO,
+    CURLOPT_PROXY_CAINFO_BLOB, CURLOPT_PROXY_CAPATH,
+};
 use std::{
     env, fmt,
     os::raw::c_char,
@@ -220,88 +223,6 @@ impl Default for TrustStore {
     }
 }
 
-impl SetOpt for TrustStore {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        match &self.0 {
-            Repr::NativeCa | Repr::NoOp => Ok(()),
-            Repr::FilePath(path) => easy.cainfo(path).map_err(Into::into),
-            Repr::PemBundle { bytes } => {
-                unsafe { set_blob_nocopy(easy, curl_sys::CURLOPT_CAINFO_BLOB, bytes) }
-                    .map_err(Into::into)
-            }
-            Repr::Unset => {
-                // safe wrapper does not allow setting to null
-                unsafe {
-                    curl_sys::curl_easy_setopt(
-                        easy.raw(),
-                        curl_sys::CURLOPT_CAINFO,
-                        ptr::null_mut::<c_char>(),
-                    );
-                    curl_sys::curl_easy_setopt(
-                        easy.raw(),
-                        curl_sys::CURLOPT_CAPATH,
-                        ptr::null_mut::<c_char>(),
-                    );
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-impl SetOptProxy for TrustStore {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
-        match &self.0 {
-            Repr::NativeCa | Repr::NoOp => Ok(()),
-            Repr::FilePath(path) => {
-                if let Some(path) = path.to_str() {
-                    easy.proxy_cainfo(path).map_err(Into::into)
-                } else {
-                    Err(Error::new(
-                        ErrorKind::InvalidTlsConfiguration,
-                        CertificatePathNotUtf8Error { path: path.clone() },
-                    )
-                    .into())
-                }
-            }
-            Repr::PemBundle { bytes } => {
-                unsafe { set_blob_nocopy(easy, curl_sys::CURLOPT_PROXY_CAINFO_BLOB, bytes) }
-                    .map_err(Into::into)
-            }
-            Repr::Unset => {
-                // safe wrapper does not allow setting to null
-                unsafe {
-                    curl_sys::curl_easy_setopt(
-                        easy.raw(),
-                        curl_sys::CURLOPT_PROXY_CAINFO,
-                        ptr::null_mut::<c_char>(),
-                    );
-                    curl_sys::curl_easy_setopt(
-                        easy.raw(),
-                        curl_sys::CURLOPT_PROXY_CAPATH,
-                        ptr::null_mut::<c_char>(),
-                    );
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-impl fmt::Debug for TrustStore {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            Repr::NativeCa => f.debug_tuple("TrustStore::NativeCa").finish(),
-            Repr::FilePath(path) => f.debug_tuple("TrustStore::FilePath").field(path).finish(),
-            Repr::PemBundle { .. } => f.debug_tuple("TrustStore::PemBundle").finish(),
-            Repr::Unset => f.debug_tuple("TrustStore::Unset").finish(),
-            Repr::NoOp => f.debug_tuple("TrustStore::NoOp").finish(),
-        }
-    }
-}
-
 /// Builds a custom bundle of X.509 certificates for certificate authorities
 /// that are considered trusted for verifying server certificates.
 #[derive(Clone, Debug)]
@@ -341,10 +262,109 @@ impl CertificateBundleBuilder {
         self
     }
 
+    /// Finalize the builder and return a new trust store.
+    ///
+    /// # Memory characteristics
+    ///
+    /// A trust store containing one or more in-memory certificates will be
+    /// stored in the heap and reference counted. Cloning the [`TrustStore`]
+    /// will only create another reference to the same underlying data. This
+    /// means you can cheaply clone the trust store and reuse it in multiple
+    /// requests or HTTP clients as needed.
+    ///
+    /// Once an HTTP client executes a request that makes use of the trust
+    /// store, the established TLS connection may make additional copies of the
+    /// certificates in memory, to ensure that the certificates are available
+    /// for as long as the connection remains in the connection pool, which may
+    /// be reused for subsequent requests. It is possible that the collection of
+    /// certificates will never be freed from memory until the HTTP client that
+    /// used them is closed.
     pub fn build(self) -> TrustStore {
         TrustStore(Repr::PemBundle {
             bytes: self.pem.into(),
         })
+    }
+}
+
+impl SetOpt for TrustStore {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
+        match &self.0 {
+            Repr::NativeCa | Repr::NoOp => {}
+            Repr::FilePath(path) => {
+                easy.cainfo(path)?;
+            }
+            Repr::PemBundle { bytes } => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, bytes)?;
+            },
+            Repr::Unset => {
+                // safe wrapper does not allow setting to null
+                unsafe {
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        CURLOPT_CAINFO,
+                        ptr::null_mut::<c_char>(),
+                    );
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        CURLOPT_CAPATH,
+                        ptr::null_mut::<c_char>(),
+                    );
+                }
+            }
+        };
+
+        Ok(())
+    }
+}
+
+impl SetOptProxy for TrustStore {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
+        match &self.0 {
+            Repr::NativeCa | Repr::NoOp => {}
+            Repr::FilePath(path) => {
+                if let Some(path) = path.to_str() {
+                    easy.proxy_cainfo(path)?;
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::InvalidTlsConfiguration,
+                        CertificatePathNotUtf8Error { path: path.clone() },
+                    )
+                    .into());
+                }
+            }
+            Repr::PemBundle { bytes } => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, bytes)?;
+            },
+            Repr::Unset => {
+                // safe wrapper does not allow setting to null
+                unsafe {
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        CURLOPT_PROXY_CAINFO,
+                        ptr::null_mut::<c_char>(),
+                    );
+                    curl_sys::curl_easy_setopt(
+                        easy.raw(),
+                        CURLOPT_PROXY_CAPATH,
+                        ptr::null_mut::<c_char>(),
+                    );
+                }
+            }
+        };
+
+        Ok(())
+    }
+}
+
+impl fmt::Debug for TrustStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Repr::NativeCa => f.debug_tuple("TrustStore::NativeCa").finish(),
+            Repr::FilePath(path) => f.debug_tuple("TrustStore::FilePath").field(path).finish(),
+            Repr::PemBundle { .. } => f.debug_tuple("TrustStore::PemBundle").finish(),
+            Repr::Unset => f.debug_tuple("TrustStore::Unset").finish(),
+            Repr::NoOp => f.debug_tuple("TrustStore::NoOp").finish(),
+        }
     }
 }
 

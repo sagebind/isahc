@@ -1,6 +1,12 @@
-use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
-use curl::easy::Easy2;
-use std::path::PathBuf;
+use crate::{
+    config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
+    handler::BlobOptions,
+};
+use curl_sys::{
+    CURLOPT_PROXY_SSLCERT_BLOB, CURLOPT_PROXY_SSLKEY_BLOB, CURLOPT_SSLCERT_BLOB,
+    CURLOPT_SSLKEY_BLOB,
+};
+use std::{path::PathBuf, sync::Arc};
 
 /// A cryptographic identity used to authenticate the client with a server.
 ///
@@ -41,7 +47,7 @@ impl Identity {
     {
         Self {
             format: CertFormat::Pem,
-            data: PathOrBlob::Blob(bytes.into()),
+            data: PathOrBlob::Blob(Arc::from(bytes.into())),
             private_key: private_key.into(),
             password: None,
         }
@@ -63,7 +69,7 @@ impl Identity {
     {
         Self {
             format: CertFormat::Der,
-            data: PathOrBlob::Blob(bytes.into()),
+            data: PathOrBlob::Blob(Arc::from(bytes.into())),
             private_key: private_key.into(),
             password: None,
         }
@@ -86,7 +92,7 @@ impl Identity {
     {
         Self {
             format: CertFormat::Pkcs12,
-            data: PathOrBlob::Blob(bytes.into()),
+            data: PathOrBlob::Blob(Arc::from(bytes.into())),
             private_key: None,
             password: password.into(),
         }
@@ -145,12 +151,14 @@ impl Identity {
 }
 
 impl SetOpt for Identity {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.ssl_cert_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.ssl_cert(path.as_path()),
-            PathOrBlob::Blob(bytes) => easy.ssl_cert_blob(bytes.as_slice()),
+            PathOrBlob::Blob(bytes) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_SSLCERT_BLOB, bytes)
+            },
         }?;
 
         if let Some(key) = self.private_key.as_ref() {
@@ -166,12 +174,14 @@ impl SetOpt for Identity {
 }
 
 impl SetOptProxy for Identity {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.proxy_sslcert_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.proxy_sslcert(path.to_str().unwrap()),
-            PathOrBlob::Blob(bytes) => easy.proxy_sslcert_blob(bytes.as_slice()),
+            PathOrBlob::Blob(bytes) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_SSLCERT_BLOB, bytes)
+            },
         }?;
 
         if let Some(key) = self.private_key.as_ref() {
@@ -215,7 +225,7 @@ impl PrivateKey {
     {
         Self {
             format: CertFormat::Pem,
-            data: PathOrBlob::Blob(bytes.into()),
+            data: PathOrBlob::Blob(Arc::from(bytes.into())),
             password: password.into(),
         }
     }
@@ -235,7 +245,7 @@ impl PrivateKey {
     {
         Self {
             format: CertFormat::Der,
-            data: PathOrBlob::Blob(bytes.into()),
+            data: PathOrBlob::Blob(Arc::from(bytes.into())),
             password: password.into(),
         }
     }
@@ -270,12 +280,14 @@ impl PrivateKey {
 }
 
 impl SetOpt for PrivateKey {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.ssl_key_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.ssl_key(path.as_path()),
-            PathOrBlob::Blob(bytes) => easy.ssl_key_blob(bytes.as_slice()),
+            PathOrBlob::Blob(bytes) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_SSLKEY_BLOB, bytes)
+            },
         }?;
 
         if let Some(password) = self.password.as_ref() {
@@ -287,12 +299,14 @@ impl SetOpt for PrivateKey {
 }
 
 impl SetOptProxy for PrivateKey {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.proxy_sslkey_type(self.format.as_str())?;
 
         match &self.data {
             PathOrBlob::Path(path) => easy.proxy_sslkey(path.to_str().unwrap()),
-            PathOrBlob::Blob(bytes) => easy.proxy_sslkey_blob(bytes.as_slice()),
+            PathOrBlob::Blob(bytes) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_SSLKEY_BLOB, bytes)
+            },
         }?;
 
         if let Some(password) = self.password.as_ref() {
@@ -308,7 +322,7 @@ impl SetOptProxy for PrivateKey {
 #[derive(Clone, Debug)]
 enum PathOrBlob {
     Path(PathBuf),
-    Blob(Vec<u8>),
+    Blob(Arc<[u8]>),
 }
 
 /// Possible formats for certificates supported by curl.

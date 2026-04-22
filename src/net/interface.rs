@@ -2,8 +2,7 @@
 
 #![expect(private_interfaces)]
 
-use crate::config::setopt::{SetOpt, SetOptError};
-use curl::easy::Easy2;
+use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[cfg(unix)]
@@ -65,7 +64,7 @@ impl<T: Selector> From<T> for InterfaceString {
 }
 
 impl SetOpt for InterfaceString {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         match self.0.as_ref() {
             Some(interface) => easy.interface(interface).map_err(Into::into),
 

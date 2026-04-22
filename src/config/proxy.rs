@@ -1,5 +1,4 @@
-use super::setopt::{SetOpt, SetOptError};
-use curl::easy::Easy2;
+use super::setopt::{EasyHandle, SetOpt, SetOptError};
 use std::iter::FromIterator;
 
 /// A list of host names that do not require a proxy to get reached, even if one
@@ -22,7 +21,7 @@ impl FromIterator<String> for Blacklist {
 }
 
 impl SetOpt for Blacklist {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.noproxy(&self.skip)?;
         Ok(())
     }

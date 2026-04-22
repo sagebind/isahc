@@ -1,8 +1,8 @@
 //! Configuration for customizing how connections are established and sockets
 //! are opened.
 
-use super::setopt::{SetOpt, SetOptError};
-use curl::easy::{Easy2, List};
+use super::setopt::{EasyHandle, SetOpt, SetOptError};
+use curl::easy::List;
 use http::Uri;
 use std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
 
@@ -170,7 +170,7 @@ impl TryFrom<Uri> for Dialer {
 }
 
 impl SetOpt for Dialer {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         let mut connect_to = List::new();
 
         if let Inner::IpSocket(addr) = &self.0 {

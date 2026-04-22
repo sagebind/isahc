@@ -18,8 +18,7 @@ use crate::{
     is_http_version_supported,
     net::interface,
 };
-use curl::easy::Easy2;
-use setopt::{SetOpt, SetOptError};
+use setopt::{EasyHandle, SetOpt, SetOptError};
 use std::time::Duration;
 
 pub(crate) mod client;
@@ -832,7 +831,7 @@ impl VersionNegotiation {
 }
 
 impl SetOpt for VersionNegotiation {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         match self.0 {
             VersionNegotiationInner::LatestCompatible => {
                 // If HTTP/2 support is available, this basically the most
@@ -879,7 +878,7 @@ impl Default for IpVersion {
 }
 
 impl SetOpt for IpVersion {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.ip_resolve(match &self {
             IpVersion::V4 => curl::easy::IpResolve::V4,
             IpVersion::V6 => curl::easy::IpResolve::V6,
@@ -963,7 +962,7 @@ impl From<Duration> for ExpectContinue {
 }
 
 impl SetOpt for ExpectContinue {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         if let Some(timeout) = self.timeout {
             easy.expect_100_timeout(timeout)?;
         }

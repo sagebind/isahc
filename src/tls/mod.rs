@@ -54,11 +54,11 @@
 //!     https://developer.apple.com/documentation/security/secure_transport
 
 use crate::{
-    config::setopt::{SetOpt, SetOptError, SetOptProxy},
+    config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
     info::curl_info,
 };
-use curl::easy::{Easy2, SslOpt, SslVersion};
+use curl::easy::{SslOpt, SslVersion};
 use std::fmt;
 
 mod identity;
@@ -410,7 +410,7 @@ impl Default for TlsConfig {
 }
 
 impl SetOpt for TlsConfig {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         if let Some(ciphers) = self.ciphers.as_ref() {
             easy.ssl_cipher_list(ciphers)?;
         }
@@ -461,7 +461,7 @@ impl SetOpt for TlsConfig {
 }
 
 impl SetOptProxy for TlsConfig {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         if let Some(ciphers) = self.ciphers.as_ref() {
             easy.proxy_ssl_cipher_list(ciphers)?;
         }

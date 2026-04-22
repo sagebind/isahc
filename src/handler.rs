@@ -10,12 +10,13 @@ use crate::{
 };
 use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
-use curl_sys::CURL;
+use curl_sys::{CURL, CURL_BLOB_NOCOPY, CURLE_OK, CURLoption, curl_blob};
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
 use sluice::pipe;
 use std::{
     ascii,
+    collections::HashMap,
     ffi::CStr,
     fmt,
     future::Future,
@@ -102,6 +103,12 @@ pub(crate) struct RequestHandler {
     /// Metrics object for publishing metrics data to. Lazily initialized.
     metrics: Option<Metrics>,
 
+    /// Any blob options set on the easy handle without copying need to have
+    /// their blobs retained in memory until the easy handle is destroyed. This
+    /// map keeps these blobs alive until our handler is dropped, which happens
+    /// immediately after the easy handle.
+    blobs: HashMap<CURLoption, Arc<[u8]>>,
+
     /// Raw pointer to the associated curl easy handle. The pointer is not owned
     /// by this struct, but the parent struct to this one, so we know it will be
     /// valid at least for the lifetime of this struct (assuming all other
@@ -151,6 +158,7 @@ impl RequestHandler {
             response_body_waker: None,
             response_trailer_writer: TrailerWriter::new(),
             metrics: None,
+            blobs: Default::default(),
             handle: ptr::null_mut(),
             disable_connection_reuse_log: false,
         };
@@ -617,11 +625,62 @@ impl curl::easy::Handler for RequestHandler {
     }
 }
 
+/// Adds no-copy blob support to easy handles using our handler.
+///
+/// curl-rust does not provide a safe wrapper around blobs because its not easy
+/// to solve this problem in a generalized way that works for everyone. But
+/// since we have full control over the behavior of our easy handlers, we can
+/// provide our own wrapper that works for our use cases.
+pub(crate) trait BlobOptions {
+    /// Set a curl option to a blob without copying the data.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to ensure that the option supplied is an option
+    /// that accepts a blob as a value.
+    unsafe fn setopt_blob_nocopy(
+        &mut self,
+        option: CURLoption,
+        data: &Arc<[u8]>,
+    ) -> Result<(), curl::Error>;
+}
+
+impl BlobOptions for curl::easy::Easy2<RequestHandler> {
+    unsafe fn setopt_blob_nocopy(
+        &mut self,
+        option: CURLoption,
+        data: &Arc<[u8]>,
+    ) -> Result<(), curl::Error> {
+        let blob = curl_blob {
+            data: data.as_ptr().cast_mut().cast(),
+            len: data.len(),
+            flags: CURL_BLOB_NOCOPY,
+        };
+
+        let code = unsafe { curl_sys::curl_easy_setopt(self.raw(), option, &blob) };
+
+        if code == CURLE_OK {
+            self.get_mut().blobs.insert(option, Arc::clone(data));
+            Ok(())
+        } else {
+            let mut err = curl::Error::new(code);
+
+            if let Some(msg) = self.take_error_buf() {
+                err.set_extra(msg);
+            }
+
+            Err(err)
+        }
+    }
+}
+
 impl Drop for RequestHandler {
     fn drop(&mut self) {
         if self.sender.is_some() {
             tracing::warn!("fixme: request handler dropped before response was completed");
         }
+
+        self.blobs.clear();
     }
 }
 
