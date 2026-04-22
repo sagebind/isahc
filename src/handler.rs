@@ -632,7 +632,9 @@ impl curl::easy::Handler for RequestHandler {
 /// since we have full control over the behavior of our easy handlers, we can
 /// provide our own wrapper that works for our use cases.
 pub(crate) trait BlobOptions {
-    /// Set a curl option to a blob without copying the data.
+    /// Set a curl option to a blob without copying the data. A clone of the
+    /// given Arc will be made to extend the lifetime of the data until the easy
+    /// handler is dropped, or the option is replaced with a different blob.
     ///
     /// # Safety
     ///

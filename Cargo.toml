@@ -96,11 +96,6 @@ optional = true
 version = "0.8"
 optional = true
 
-[dependencies.rustls-pki-types]
-version = "1"
-default-features = false
-optional = true
-
 [dependencies.serde]
 version = "1"
 optional = true
