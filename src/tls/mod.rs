@@ -396,7 +396,7 @@ impl TlsConfig {
 
     /// Create a new [`TlsConfigBuilder`] for creating a custom SSL/TLS
     /// configuration. The initial configuration of the builder will start from
-    /// the default TLS settings as described in [`TlsConfigBuilder::new`].
+    /// the default TLS settings as described in [`TlsConfig::builder`].
     #[inline]
     pub fn builder() -> TlsConfigBuilder {
         TlsConfigBuilder::default()

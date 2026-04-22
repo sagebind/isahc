@@ -47,9 +47,8 @@
 //! ```
 //!
 //! If you want to customize the request by adding headers, setting timeouts,
-//! etc, then you can create a [`Request`][Request] using a
-//! builder-style fluent interface, then finishing it off with a
-//! [`send`][RequestExt::send]:
+//! etc, then you can create a [`Request`] using a builder-style fluent
+//! interface, then finishing it off with a [`send`][RequestExt::send]:
 //!
 //! ```no_run
 //! use isahc::{prelude::*, Request};
@@ -279,6 +278,7 @@ mod util;
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod net;
 
 #[cfg(feature = "cookies")]
 pub mod cookies;
