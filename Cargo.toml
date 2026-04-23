@@ -11,7 +11,7 @@ documentation = "https://docs.rs/isahc/"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.85"
-exclude = [".*", "benchmarks", "media"]
+exclude = [".*", "benchmarks", "media", "Makefile"]
 
 [package.metadata.docs.rs]
 features = ["cookies", "json", "nightly"]
@@ -91,8 +91,10 @@ features = ["std", "std-future"]
 [dev-dependencies]
 clap.version = "4"
 clap.features = ["derive"]
+divan = "0.1"
 env_logger = "0.11"
 flate2 = "1"
+httpmock = "0.8"
 indicatif = "0.15"
 quickcheck = "1"
 quickcheck_macros = "1"
@@ -107,6 +109,10 @@ serde_json = "1"
 [dev-dependencies.testserver]
 path = "testserver"
 
+[[bench]]
+name = "download"
+harness = false
+
 [[example]]
 name = "cookies"
 required-features = ["cookies"]
@@ -116,4 +122,4 @@ name = "json"
 required-features = ["json", "serde/derive"]
 
 [workspace]
-members = ["benchmarks", "testserver"]
+members = ["testserver"]
