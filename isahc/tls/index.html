@@ -1,39 +1,36 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Configuration options related to SSL/TLS for supporting HTTPS requests."><title>isahc::tls - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (9ec5d5f32 2026-04-21)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc mod"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module tls</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../../isahc/index.html"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><h2><a href="../../isahc/index.html">isahc</a><span class="version">1.8.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module tls</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#backends" title="Backends">Backends</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate isahc</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">isahc</a></div><h1>Module <span>tls</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/isahc/tls/mod.rs.html#1-575">Source</a> </span></div><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>tls</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Configuration options related to SSL/TLS for supporting HTTPS requests.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Configuration options related to SSL/TLS for supporting HTTPS requests."><title>isahc::tls - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="isahc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (36ba2c771 2026-04-23)" data-channel="nightly" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-aa4d37ac.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="icon" href="https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"></head><body class="rustdoc mod"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module tls</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../../isahc/index.html"><img src="https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png" alt="logo"></a><h2><a href="../../isahc/index.html">isahc</a><span class="version">1.8.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module tls</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#backends" title="Backends">Backends</a><ul><li><a href="#native-backend" title="Native backend">Native backend</a></li></ul></li><li><a href="#other-features" title="Other features">Other features</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate isahc</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">isahc</a></div><h1>Module <span>tls</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/isahc/tls/mod.rs.html#1-617">Source</a> </span></div><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>tls</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Configuration options related to SSL/TLS for supporting HTTPS requests.</p>
 <h2 id="backends"><a class="doc-anchor" href="#backends">§</a>Backends</h2>
 <p>Isahc does not implement the TLS protocol itself, but instead uses one of
 various available <em>TLS backends</em> which implement support. With the default
-crate configuration, Isahc will use the target platform’s “native” TLS
-implementation:</p>
-<ul>
-<li>Windows: <a href="https://docs.microsoft.com/en-us/windows/win32/com/schannel">Schannel</a></li>
-<li>macOS and iOS: <a href="https://developer.apple.com/documentation/security/secure_transport">Secure Transport</a></li>
-<li>Linux and other UNIX-like systems: <a href="https://www.openssl.org">OpenSSL</a> or one of its API-compatible
-forks are usually considered the “default” TLS engine on most Linux
-distributions and are treated as the native backend here. The library is
-dynamically linked to by default.</li>
-</ul>
-<p>Regardless of platform, support for TLS is gated behind the optional <code>tls</code>
-crate feature, which while enabled by default can be disabled if you don’t
-need or want to make HTTPS requests. Enabling the crate feature enables this
-API module, but does not select which backend to use. To select which
-backend to use, additional crate features are provided:</p>
+crate configuration, Isahc will use <a href="https://github.com/rustls/rustls">rustls</a> as the TLS backend.</p>
+<p>Support for TLS is gated behind the optional <code>tls</code> crate feature, which
+while enabled by default can be disabled if you don’t need or want to make
+HTTPS requests. Enabling the crate feature enables this API module, but does
+not select which backend to use. To select which backend to use, additional
+crate features are provided:</p>
 <ul>
 <li><code>default-tls</code>: Use whatever Isahc’s preferred default TLS engine is for
-the target platform. Currently Isahc defaults to using the platform native
-TLS engine, so this is just an alias for <code>native-tls</code>. However, this could
-change in the future. This is the TLS feature that is selected by default.</li>
+the target platform. Currently Isahc defaults to using rustls, so this is
+just an alias for <code>rustls-tls</code>. However, this could change in the future.
+This is the TLS feature that is selected by default.</li>
 <li><code>native-tls</code>: Use the target platform’s native TLS engine, as described
-earlier. If you explicitly want to use the native TLS backend regardless
-of what Isahc might default to, you should use this feature.</li>
+below.</li>
 <li><code>native-tls-static</code>: Use the target platform’s native TLS engine, and
 statically link to it where it makes sense. On Windows and macOS this does
 nothing. On platforms using an OpenSSL-compatible library, attempt to
 statically link to the library.</li>
 <li><code>rustls-tls</code>: Use a statically-linked <a href="https://github.com/rustls/rustls">rustls</a>, a modern TLS library
-written in Rust.</li>
-<li><code>rustls-tls-native-certs</code>: Use <a href="https://github.com/rustls/rustls">rustls</a> along with the
-<a href="https://github.com/rustls/rustls-native-certs">rustls-native-certs</a> library to allow rustls to use the platform’s native
-root certificate store.</li>
+written in Rust. Trusted root certificates will be provided using whatever
+Isahc prefers by default. If you want to use a specific or alternative
+trust provider, you can instead use one of the more specific features
+beginning with <code>rustls-tls-</code>.</li>
+<li><code>rustls-tls-webpki-roots</code>: Use <a href="https://github.com/rustls/rustls">rustls</a> along with the <a href="https://github.com/rustls/webpki-roots">webpki-root-certs</a>
+crate to provide a static set of root certificates from the Mozilla CA
+bundle.</li>
+<li><code>trust-webpki-roots</code>: Provides integration with the <a href="https://github.com/rustls/webpki-roots">webpki-root-certs</a> as
+a trust store which can be used at runtime. This feature by itself does
+not change the default trust provider, and can be used with any TLS
+backend.</li>
 </ul>
 <p>If using rustls without native cert support, your application will need to
 provide its own certificates to use for verification, as none are included
@@ -42,4 +39,27 @@ by default.</p>
 cases. For a more in-depth look at the available backends see the <a href="https://github.com/sagebind/isahc/wiki/TLS-Backends">wiki
 article on TLS
 backends</a>.</p>
+<h3 id="native-backend"><a class="doc-anchor" href="#native-backend">§</a>Native backend</h3>
+<p>The <code>native-tls</code> feature selects the target platform’s “native” TLS
+implementation, which is usually as follows:</p>
+<ul>
+<li>Windows: <a href="https://docs.microsoft.com/en-us/windows/win32/com/schannel">Schannel</a></li>
+<li>macOS and iOS: <a href="https://developer.apple.com/documentation/security/secure_transport">Secure Transport</a></li>
+<li>Linux and other UNIX-like systems: <a href="https://www.openssl.org">OpenSSL</a> or one of its API-compatible
+forks are usually considered the “default” TLS engine on most Linux
+distributions and are treated as the native backend here. The library is
+dynamically linked to by default.</li>
+</ul>
+<p>Note that it is also possible to have Isahc dynamically link to the system’s
+libcurl when in this mode, and in that case, the TLS backend will be
+whatever the system’s libcurl is compiled to use, which may or may not be
+the same as the above.</p>
+<h2 id="other-features"><a class="doc-anchor" href="#other-features">§</a>Other features</h2>
+<p>Other crate features of note affecting TLS support:</p>
+<ul>
+<li><code>tls</code>: Enables TLS support and the API in this module. Enabled by default.</li>
+<li><code>tls-insecure</code>: Enables options that allow you to opt-out of various
+security checks on TLS certificates. Disabled by default, as this is
+generally dangerous.</li>
+</ul>
 </div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Certificate.html" title="struct isahc::tls::Certificate">Certificate</a></dt><dd>An X.509 digital certificate.</dd><dt><a class="struct" href="struct.Identity.html" title="struct isahc::tls::Identity">Identity</a></dt><dd>A cryptographic identity used to authenticate the client with a server.</dd><dt><a class="struct" href="struct.PrivateKey.html" title="struct isahc::tls::PrivateKey">Private<wbr>Key</a></dt><dd>A private key file.</dd><dt><a class="struct" href="struct.TlsConfig.html" title="struct isahc::tls::TlsConfig">TlsConfig</a></dt><dd>Configuration for making SSL/TLS connections.</dd><dt><a class="struct" href="struct.TlsConfigBuilder.html" title="struct isahc::tls::TlsConfigBuilder">TlsConfig<wbr>Builder</a></dt><dd>A builder for creating a custom SSL/TLS connector configuration.</dd><dt><a class="struct" href="struct.TrustStore.html" title="struct isahc::tls::TrustStore">Trust<wbr>Store</a></dt><dd>A store that provides a collection of trusted root certificates.</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.ProtocolVersion.html" title="enum isahc::tls::ProtocolVersion">Protocol<wbr>Version</a></dt><dd>Possible SSL/TLS versions that can be used.</dd></dl></section></div></main></body></html>
