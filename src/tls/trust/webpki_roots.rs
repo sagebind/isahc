@@ -34,8 +34,8 @@ impl TrustStore {
         static WEBPKI_ROOTS: LazyLock<TrustStore> = LazyLock::new(|| {
             webpki_root_certs::TLS_SERVER_ROOT_CERTS
                 .iter()
-                .fold(TrustStore::custom(), |builder, cert| {
-                    builder.add_from_der(cert)
+                .fold(TrustStore::builder(), |builder, cert| {
+                    builder.certificate_from_der(cert)
                 })
                 .build()
         });

@@ -25,6 +25,9 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
+#[cfg(feature = "trust-webpki-roots")]
+mod webpki_roots;
+
 /// A store that provides a collection of trusted root certificates.
 ///
 /// Root certificates are used for validating the authenticity of a server
@@ -45,7 +48,8 @@ use std::{
 /// certificate store.
 ///
 /// If the `rustls-tls-webpki-roots` feature is enabled, then the default is to
-/// use [`TrustStore::webpki_roots`] instead.
+/// use rustls as the TLS backend, with [`TrustStore::webpki_roots`] instead as
+/// the default trust store.
 ///
 /// # Cloning
 ///
@@ -192,15 +196,23 @@ impl TrustStore {
         Self(Repr::FilePath(path.into()))
     }
 
-    /// Create a custom certificate store containing exactly the given
-    /// certificates.
-    ///
-    /// Server certificates will be verified using only certificates given.
+    /// Return a builder for creating a custom certificate store, which allows
+    /// you to supply your own collection of trusted certificates in memory.
     ///
     /// This store is supported by most TLS backends, including OpenSSL, rustls,
     /// and Secure Transport.
-    pub fn custom() -> CertificateBundleBuilder {
-        CertificateBundleBuilder { pem: Vec::new() }
+    ///
+    /// # Examples
+    /// ```
+    /// use isahc::tls::TrustStore;
+    ///
+    /// let store = TrustStore::builder()
+    ///     .certificate_from_pem(include_str!("../../../tests/certs/isrgrootx1.pem"))
+    ///     .certificate_from_der(include_bytes!("../../../tests/certs/isrgrootx1.der"))
+    ///     .build();
+    /// ```
+    pub fn builder() -> TrustStoreBuilder {
+        TrustStoreBuilder { pem: Vec::new() }
     }
 
     pub(super) fn configure_ssl_options(&self, ssl_opt: &mut SslOpt) {
@@ -213,7 +225,6 @@ impl TrustStore {
 impl Default for TrustStore {
     #[cfg(feature = "rustls-tls-webpki-roots")]
     fn default() -> Self {
-        tracing::debug!("using webpki_roots as default trust store");
         Self::webpki_roots()
     }
 
@@ -226,19 +237,19 @@ impl Default for TrustStore {
 /// Builds a custom bundle of X.509 certificates for certificate authorities
 /// that are considered trusted for verifying server certificates.
 #[derive(Clone, Debug)]
-pub struct CertificateBundleBuilder {
+pub struct TrustStoreBuilder {
     pem: Vec<u8>,
 }
 
-impl CertificateBundleBuilder {
+impl TrustStoreBuilder {
     /// Add a trusted certificate in PEM format.
     ///
     /// The certificates are not parsed or validated here. If a certificate is
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn add_from_pem(mut self, pem: &str) -> Self {
-        self.pem.extend_from_slice(pem.as_bytes());
+    pub fn certificate_from_pem<B: AsRef<[u8]>>(mut self, pem: B) -> Self {
+        self.pem.extend_from_slice(pem.as_ref());
         self
     }
 
@@ -248,7 +259,8 @@ impl CertificateBundleBuilder {
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
-    pub fn add_from_der(mut self, der: &[u8]) -> Self {
+    pub fn certificate_from_der<B: AsRef<[u8]>>(mut self, der: B) -> Self {
+        let der = der.as_ref();
         let label = "CERTIFICATE";
         let line_ending = Default::default();
 
@@ -359,11 +371,9 @@ impl SetOptProxy for TrustStore {
 impl fmt::Debug for TrustStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
-            Repr::NativeCa => f.debug_tuple("TrustStore::NativeCa").finish(),
             Repr::FilePath(path) => f.debug_tuple("TrustStore::FilePath").field(path).finish(),
             Repr::PemBundle { .. } => f.debug_tuple("TrustStore::PemBundle").finish(),
-            Repr::Unset => f.debug_tuple("TrustStore::Unset").finish(),
-            Repr::NoOp => f.debug_tuple("TrustStore::NoOp").finish(),
+            _ => f.debug_tuple("TrustStore").finish(),
         }
     }
 }

@@ -682,7 +682,10 @@ pub trait Configurable: request::WithRequestConfig {
     ///         .trust_store(TrustStore::native())
     ///         .identity(Identity::from_pem_file(
     ///             "client.pem",
-    ///             PrivateKey::from_pem_file("key.pem", String::from("secret"))
+    ///             Some(PrivateKey::from_pem_file(
+    ///                 "key.pem",
+    ///                 String::from("secret")
+    ///             ))
     ///         ))
     ///         .build())
     ///     .body(())?

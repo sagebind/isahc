@@ -38,8 +38,10 @@ default-tls = ["rustls-tls"]
 native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
 native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
 rustls-tls = ["static-curl", "tls", "curl/rustls", "curl-sys/rustls"]
-rustls-tls-webpki-roots = ["rustls-tls", "webpki-roots"]
-webpki-roots = ["dep:webpki-root-certs"]
+rustls-tls-webpki-roots = ["rustls-tls", "trust-webpki-roots"]
+
+# Alternative trust stores
+trust-webpki-roots = ["dep:webpki-root-certs"]
 
 [dependencies]
 async-channel = ">=1.4.2, <3"

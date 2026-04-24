@@ -32,10 +32,17 @@
 //!   nothing. On platforms using an OpenSSL-compatible library, attempt to
 //!   statically link to the library.
 //! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library
-//!   written in Rust.
+//!   written in Rust. Trusted root certificates will be provided using whatever
+//!   Isahc prefers by default. Currently this is currently an alias for
+//!   `rustls-tls-native-certs`. If you want to use a specific or alternative
+//!   trust provider, you can instead use one of the more specific features
+//!   beginning with `rustls-tls-`.
 //! - `rustls-tls-native-certs`: Use [rustls] along with the
 //!   [rustls-native-certs] library to allow rustls to use the platform's native
 //!   root certificate store.
+//! - `rustls-tls-webpki-roots`: Use [rustls] along with the [webpki-root-certs]
+//!   library to provide a static set of root certificates from the Mozilla CA
+//!   bundle.
 //!
 //! If using rustls without native cert support, your application will need to
 //! provide its own certificates to use for verification, as none are included
@@ -49,6 +56,7 @@
 //! [OpenSSL]: https://www.openssl.org
 //! [rustls]: https://github.com/rustls/rustls
 //! [rustls-native-certs]: https://github.com/rustls/rustls-native-certs
+//! [webpki-root-certs]: https://github.com/rustls/webpki-roots
 //! [Schannel]: https://docs.microsoft.com/en-us/windows/win32/com/schannel
 //! [Secure Transport]:
 //!     https://developer.apple.com/documentation/security/secure_transport
@@ -64,9 +72,6 @@ use std::fmt;
 mod cert;
 mod identity;
 mod trust;
-
-#[cfg(feature = "webpki-roots")]
-mod webpki_roots;
 
 pub use self::{
     cert::Certificate,
@@ -123,12 +128,12 @@ impl TlsConfigBuilder {
     ///     // Use a specific certificate bundle file
     ///     .trust_store(TrustStore::from_file("/etc/certs/cabundle.pem"))
     ///     // Use custom certs in memory
-    ///     .trust_store(TrustStore::custom()
-    ///         .add_from_pem("(some long PEM string)")
+    ///     .trust_store(TrustStore::builder()
+    ///         .certificate_from_pem("(some long PEM string)")
     ///         .build())
     ///     // You could even include a certificate bundle in your binary
-    ///     .trust_store(TrustStore::custom()
-    ///         .add_from_pem(include_str!("../../tests/certs/isrgrootx1.pem"))
+    ///     .trust_store(TrustStore::builder()
+    ///         .certificate_from_pem(include_str!("../../tests/certs/isrgrootx1.pem"))
     ///         .build())
     ///     .build();
     /// ```
@@ -184,10 +189,25 @@ impl TlsConfigBuilder {
     /// ```
     /// use isahc::tls::{Identity, PrivateKey, TlsConfig};
     ///
+    /// // Using a file.
     /// let config = TlsConfig::builder()
     ///     .identity(Identity::from_pem_file(
     ///         "client.pem",
-    ///         PrivateKey::from_pem_file("key.pem", String::from("secret"))
+    ///         Some(PrivateKey::from_pem_file(
+    ///             "key.pem",
+    ///             Some("secret".into())
+    ///         ))
+    ///     ))
+    ///     .build();
+    ///
+    /// // Using in-memory buffers.
+    /// let config = TlsConfig::builder()
+    ///     .identity(Identity::from_pem(
+    ///         "<<PEM DATA>>",
+    ///         Some(PrivateKey::from_pem(
+    ///             "<<PEM DATA>>",
+    ///             Some("secret".into())
+    ///         ))
     ///     ))
     ///     .build();
     /// ```
