@@ -58,7 +58,7 @@ isahc::get_async(<span class="string">"https://example.org"</span>).<span class=
 <span class="kw">let </span>image_bytes = isahc::get_async(<span class="string">"https://httpbin.org/image/jpeg"</span>)
     .<span class="kw">await</span><span class="question-mark">?
     </span>.bytes()
-    .<span class="kw">await</span><span class="question-mark">?</span>;</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="tymethod.text" class="method"><a class="src rightside" href="../src/isahc/response.rs.html#418">Source</a><h4 class="code-header">fn <a href="#tymethod.text" class="fn">text</a>(&amp;mut self) -&gt; TextFuture&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut R</a>&gt;</h4></section><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>text-decoding</code></strong> only.</div></span></summary><div class="docblock"><p>Read the response body as a string asynchronously.</p>
+    .<span class="kw">await</span><span class="question-mark">?</span>;</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="tymethod.text" class="method"><a class="src rightside" href="../src/isahc/response.rs.html#418">Source</a><h4 class="code-header">fn <a href="#tymethod.text" class="fn">text</a>(&amp;mut self) -&gt; TextFuture&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut R</a>&gt;</h4></section></summary><div class="docblock"><p>Read the response body as a string asynchronously.</p>
 <p>This method consumes the entire response body stream and can only be
 called once.</p>
 <h5 id="availability"><a class="doc-anchor" href="#availability">§</a>Availability</h5>
@@ -71,7 +71,7 @@ is by default.</p>
 <span class="kw">let </span>text = isahc::get_async(<span class="string">"https://example.org"</span>).<span class="kw">await</span><span class="question-mark">?
     </span>.text().<span class="kw">await</span><span class="question-mark">?</span>;
 <span class="macro">println!</span>(<span class="string">"{}"</span>, text);</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="tymethod.json" class="method"><a class="src rightside" href="../src/isahc/response.rs.html#447-449">Source</a><h4 class="code-header">fn <a href="#tymethod.json" class="fn">json</a>&lt;T&gt;(&amp;mut self) -&gt; JsonFuture&lt;'_, R, T&gt;<div class="where">where
-    T: <a class="trait" href="https://docs.rs/serde_core/1.0.228/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>json</code></strong> only.</div></span></summary><div class="docblock"><p>Deserialize the response body as JSON into a given type.</p>
+    T: <a class="trait" href="https://docs.rs/serde_core/1.0.228/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></summary><div class="docblock"><p>Deserialize the response body as JSON into a given type.</p>
 <h5 id="caveats"><a class="doc-anchor" href="#caveats">§</a>Caveats</h5>
 <p>Unlike its <a href="trait.ReadResponseExt.html#tymethod.json" title="method isahc::ReadResponseExt::json">synchronous equivalent</a>, this method
 reads the entire response body into memory before attempting
