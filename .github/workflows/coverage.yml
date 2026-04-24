@@ -16,7 +16,7 @@ jobs:
           cargo +nightly tarpaulin --verbose --features cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors --workspace --timeout 120 --out xml
 
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           fail_ci_if_error: true
