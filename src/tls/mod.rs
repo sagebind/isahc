@@ -4,45 +4,36 @@
 //!
 //! Isahc does not implement the TLS protocol itself, but instead uses one of
 //! various available *TLS backends* which implement support. With the default
-//! crate configuration, Isahc will use the target platform's "native" TLS
-//! implementation:
+//! crate configuration, Isahc will use [rustls] as the TLS backend.
 //!
-//! - Windows: [Schannel]
-//! - macOS and iOS: [Secure Transport]
-//! - Linux and other UNIX-like systems: [OpenSSL] or one of its API-compatible
-//!   forks are usually considered the "default" TLS engine on most Linux
-//!   distributions and are treated as the native backend here. The library is
-//!   dynamically linked to by default.
-//!
-//! Regardless of platform, support for TLS is gated behind the optional `tls`
-//! crate feature, which while enabled by default can be disabled if you don't
-//! need or want to make HTTPS requests. Enabling the crate feature enables this
-//! API module, but does not select which backend to use. To select which
-//! backend to use, additional crate features are provided:
+//! Support for TLS is gated behind the optional `tls` crate feature, which
+//! while enabled by default can be disabled if you don't need or want to make
+//! HTTPS requests. Enabling the crate feature enables this API module, but does
+//! not select which backend to use. To select which backend to use, additional
+//! crate features are provided:
 //!
 //! - `default-tls`: Use whatever Isahc's preferred default TLS engine is for
-//!   the target platform. Currently Isahc defaults to using the platform native
-//!   TLS engine, so this is just an alias for `native-tls`. However, this could
-//!   change in the future. This is the TLS feature that is selected by default.
+//!   the target platform. Currently Isahc defaults to using rustls, so this is
+//!   just an alias for `rustls-tls`. However, this could change in the future.
+//!   This is the TLS feature that is selected by default.
 //! - `native-tls`: Use the target platform's native TLS engine, as described
-//!   earlier. If you explicitly want to use the native TLS backend regardless
-//!   of what Isahc might default to, you should use this feature.
+//!   below.
 //! - `native-tls-static`: Use the target platform's native TLS engine, and
 //!   statically link to it where it makes sense. On Windows and macOS this does
 //!   nothing. On platforms using an OpenSSL-compatible library, attempt to
 //!   statically link to the library.
 //! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library
 //!   written in Rust. Trusted root certificates will be provided using whatever
-//!   Isahc prefers by default. Currently this is currently an alias for
-//!   `rustls-tls-native-certs`. If you want to use a specific or alternative
+//!   Isahc prefers by default. If you want to use a specific or alternative
 //!   trust provider, you can instead use one of the more specific features
 //!   beginning with `rustls-tls-`.
-//! - `rustls-tls-native-certs`: Use [rustls] along with the
-//!   [rustls-native-certs] library to allow rustls to use the platform's native
-//!   root certificate store.
 //! - `rustls-tls-webpki-roots`: Use [rustls] along with the [webpki-root-certs]
-//!   library to provide a static set of root certificates from the Mozilla CA
+//!   crate to provide a static set of root certificates from the Mozilla CA
 //!   bundle.
+//! - `trust-webpki-roots`: Provides integration with the [webpki-root-certs] as
+//!   a trust store which can be used at runtime. This feature by itself does
+//!   not change the default trust provider, and can be used with any TLS
+//!   backend.
 //!
 //! If using rustls without native cert support, your application will need to
 //! provide its own certificates to use for verification, as none are included
@@ -52,6 +43,32 @@
 //! cases. For a more in-depth look at the available backends see the [wiki
 //! article on TLS
 //! backends](https://github.com/sagebind/isahc/wiki/TLS-Backends).
+//!
+//! ## Native backend
+//!
+//! The `native-tls` feature selects the target platform's "native" TLS
+//! implementation, which is usually as follows:
+//!
+//! - Windows: [Schannel]
+//! - macOS and iOS: [Secure Transport]
+//! - Linux and other UNIX-like systems: [OpenSSL] or one of its API-compatible
+//!   forks are usually considered the "default" TLS engine on most Linux
+//!   distributions and are treated as the native backend here. The library is
+//!   dynamically linked to by default.
+//!
+//! Note that it is also possible to have Isahc dynamically link to the system's
+//! libcurl when in this mode, and in that case, the TLS backend will be
+//! whatever the system's libcurl is compiled to use, which may or may not be
+//! the same as the above.
+//!
+//! # Other features
+//!
+//! Other crate features of note affecting TLS support:
+//!
+//! - `tls`: Enables TLS support and the API in this module. Enabled by default.
+//! - `tls-insecure`: Enables options that allow you to opt-out of various
+//! security checks on TLS certificates. Disabled by default, as this is
+//! generally dangerous.
 //!
 //! [OpenSSL]: https://www.openssl.org
 //! [rustls]: https://github.com/rustls/rustls
