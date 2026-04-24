@@ -14,7 +14,7 @@ rust-version = "1.85"
 exclude = [".*", "benchmarks", "media"]
 
 [package.metadata.docs.rs]
-features = ["cookies", "json", "nightly"]
+features = ["cookies", "json", "nightly", "tls-insecure"]
 
 [badges.maintenance]
 status = "passively-maintained"
