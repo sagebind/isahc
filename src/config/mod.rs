@@ -604,7 +604,8 @@ pub trait Configurable: request::WithRequestConfig {
     /// risks, but may be required as a last resort. Note that the most secure
     /// options are typically the default and do not need to be specified.
     ///
-    /// The default value is [`TlsConfig::default`].
+    /// The default value is
+    /// [`TlsConfig::default`](crate::tls::TlsConfig::default).
     ///
     /// # Warning
     ///
