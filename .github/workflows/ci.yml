@@ -75,3 +75,14 @@ jobs:
 
       - name: Run tests
         run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
+
+  docs-rs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/install@cargo-docs-rs
+      - run: cargo docs-rs

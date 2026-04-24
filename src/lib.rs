@@ -240,7 +240,7 @@
     html_logo_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/isahc.svg.png",
     html_favicon_url = "https://raw.githubusercontent.com/sagebind/isahc/master/media/icon.png"
 )]
-#![cfg_attr(feature = "nightly", feature(doc_cfg))]
+#![cfg_attr(any(doc, docsrs), feature(doc_cfg))]
 #![warn(
     future_incompatible,
     missing_debug_implementations,

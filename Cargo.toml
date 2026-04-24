@@ -138,6 +138,10 @@ serde_json = "1"
 [dev-dependencies.testserver]
 path = "testserver"
 
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ["cfg(tarpaulin)"]
+
 [[example]]
 name = "badssl"
 required-features = ["tls-insecure"]

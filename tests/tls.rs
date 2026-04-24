@@ -4,7 +4,7 @@ use isahc::{
     Request,
     error::ErrorKind,
     prelude::*,
-    tls::{ProtocolVersion, TlsConfig, TrustStore},
+    tls::{ProtocolVersion, TlsConfig},
 };
 
 #[test]
@@ -86,8 +86,10 @@ fn tls_less_than_min_version_is_rejected() {
 }
 
 #[test]
-#[cfg(feature = "webpki-roots")]
+#[cfg(feature = "trust-webpki-roots")]
 fn trust_webpki_roots() {
+    use isahc::tls::TrustStore;
+
     Request::get("https://example.org")
         .tls_config(
             TlsConfig::builder()
