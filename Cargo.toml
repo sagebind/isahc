@@ -32,18 +32,21 @@ text-decoding = ["dep:encoding_rs", "dep:mime"]
 unstable-interceptors = []
 
 # TLS-related features
-tls = []
+tls = ["dep:pem-rfc7468"]
 tls-insecure = []
 default-tls = ["rustls-tls"]
 native-tls = ["tls", "curl/ssl", "curl-sys/ssl"]
 native-tls-static = ["native-tls", "curl/static-ssl", "curl-sys/static-ssl"]
 rustls-tls = ["static-curl", "tls", "curl/rustls", "curl-sys/rustls"]
+rustls-tls-webpki-roots = ["rustls-tls", "trust-webpki-roots"]
+
+# Alternative trust stores
+trust-webpki-roots = ["dep:webpki-root-certs"]
 
 [dependencies]
 async-channel = ">=1.4.2, <3"
 castaway = "0.2"
 crossbeam-utils = ">=0.7.0, <0.9.0"
-data-encoding = "2"
 event-listener = "5"
 futures-lite = ">=1.10.1, <3"
 http = ">=0.2.1, <2"
@@ -73,6 +76,11 @@ optional = true
 
 [dependencies.mime]
 version = "0.3"
+optional = true
+
+[dependencies.pem-rfc7468]
+version = "1"
+features = ["std"]
 optional = true
 
 # Provides a precompiled copy of the PSL
@@ -106,6 +114,10 @@ features = ["log"]
 version = "0.2"
 default-features = false
 features = ["std", "std-future"]
+
+[dependencies.webpki-root-certs]
+version = "1"
+optional = true
 
 [dev-dependencies]
 clap.version = "4"

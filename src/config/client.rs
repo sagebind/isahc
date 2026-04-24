@@ -1,6 +1,6 @@
 use super::{
     dns::{DnsCache, ResolveMap},
-    setopt::{SetOpt, SetOptError},
+    setopt::{EasyHandle, SetOpt, SetOptError},
 };
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ pub(crate) struct ClientConfig {
 }
 
 impl SetOpt for ClientConfig {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         if let Some(ttl) = self.connection_cache_ttl {
             easy.maxage_conn(ttl)?;
         }

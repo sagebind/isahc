@@ -1,6 +1,6 @@
 //! Types for working with HTTP authentication methods.
 
-use crate::config::setopt::{SetOpt, SetOptError, SetOptProxy};
+use crate::config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy};
 use std::{
     fmt,
     ops::{BitOr, BitOrAssign},
@@ -25,7 +25,7 @@ impl Credentials {
 }
 
 impl SetOpt for Credentials {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.username(&self.username)?;
         easy.password(&self.password)?;
         Ok(())
@@ -33,7 +33,7 @@ impl SetOpt for Credentials {
 }
 
 impl SetOptProxy for Credentials {
-    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         easy.proxy_username(&self.username)?;
         easy.proxy_password(&self.password)?;
         Ok(())
@@ -160,7 +160,7 @@ impl BitOrAssign for Authentication {
 }
 
 impl SetOpt for Authentication {
-    fn set_opt<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         #[cfg(feature = "spnego")]
         {
             if self.contains(Authentication::negotiate()) {
@@ -178,7 +178,7 @@ impl SetOpt for Authentication {
 }
 
 impl SetOptProxy for Authentication {
-    fn set_opt_proxy<H>(&self, easy: &mut curl::easy::Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         #[cfg(feature = "spnego")]
         {
             if self.contains(Authentication::negotiate()) {

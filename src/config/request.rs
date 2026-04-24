@@ -1,7 +1,6 @@
 //! Internal traits that define the Isahc configuration system.
 
 use super::{interface::InterfaceString, setopt::*, *};
-use curl::easy::Easy2;
 
 /// Base trait for any object that can be configured for requests, such as an
 /// HTTP request builder or an HTTP client.
@@ -103,7 +102,7 @@ impl RequestConfig {
 }
 
 impl SetOpt for RequestConfig {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         if let Some(timeout) = self.timeout {
             easy.timeout(timeout)?;
         }

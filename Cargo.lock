@@ -162,6 +162,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64ct"
+version = "1.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
+
+[[package]]
 name = "bitflags"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -502,12 +508,6 @@ dependencies = [
  "vcpkg",
  "windows-sys 0.59.0",
 ]
-
-[[package]]
-name = "data-encoding"
-version = "2.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "deflate"
@@ -989,7 +989,6 @@ dependencies = [
  "crossbeam-utils",
  "curl",
  "curl-sys",
- "data-encoding",
  "encoding_rs",
  "env_logger",
  "event-listener",
@@ -1000,6 +999,7 @@ dependencies = [
  "indicatif",
  "log",
  "mime",
+ "pem-rfc7468",
  "polling",
  "psl",
  "publicsuffix",
@@ -1021,6 +1021,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "waker-fn",
+ "webpki-root-certs",
 ]
 
 [[package]]
@@ -1390,6 +1391,15 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pem-rfc7468"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6305423e0e7738146434843d1694d621cce767262b2a86910beab705e4493d9"
+dependencies = [
+ "base64ct",
+]
 
 [[package]]
 name = "percent-encoding"

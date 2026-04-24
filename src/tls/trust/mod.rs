@@ -7,12 +7,26 @@
 
 use super::TlsEngine;
 use crate::{
-    config::setopt::{SetOpt, SetOptError, SetOptProxy},
+    config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
+    handler::BlobOptions,
     info::curl_version,
 };
-use curl::easy::{Easy2, SslOpt};
-use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
+use curl::easy::SslOpt;
+use curl_sys::{
+    CURLOPT_CAINFO, CURLOPT_CAINFO_BLOB, CURLOPT_CAPATH, CURLOPT_PROXY_CAINFO,
+    CURLOPT_PROXY_CAINFO_BLOB, CURLOPT_PROXY_CAPATH,
+};
+use std::{
+    env, fmt,
+    os::raw::c_char,
+    path::PathBuf,
+    ptr,
+    sync::{Arc, LazyLock},
+};
+
+#[cfg(feature = "trust-webpki-roots")]
+mod webpki_roots;
 
 /// A store that provides a collection of trusted root certificates.
 ///
@@ -24,10 +38,28 @@ use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 ///
 /// Isahc supports multiple kinds of stores, though the default is to use the
 /// shared store provided by the operating system (if any).
-#[derive(Clone, Debug)]
+///
+/// # Defaults
+///
+/// The default trust store that is used (and returned by the [`Default`]
+/// implementation) depends on how Isahc was compiled and the environment it is
+/// running in. With the default crate feature set, [`TrustStore::native`] is
+/// the default implementation, which will use the operating system's shared
+/// certificate store.
+///
+/// If the `rustls-tls-webpki-roots` feature is enabled, then the default is to
+/// use rustls as the TLS backend, with [`TrustStore::webpki_roots`] instead as
+/// the default trust store.
+///
+/// # Cloning
+///
+/// A trust store can be expensive to create, but once created, it should be
+/// considered cheap to clone. This allows you to easily reuse it across
+/// multiple requests or multiple HTTP clients.
+#[derive(Clone)]
 pub struct TrustStore(Repr);
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 enum Repr {
     /// Do nothing to configure trust, and rely on curl's default behavior.
     NoOp,
@@ -56,15 +88,24 @@ enum Repr {
     ///
     /// This may or may not be combined with OS-native certificate stores,
     /// depending on the TLS backend.
-    PemBundle(String),
+    ///
+    /// Since the bundle could be very large, it would be extremely wasteful to
+    /// have curl copy the bundle into its own memory every time a request is
+    /// made. So to deal with this, we use the C API to allocate a single "blob"
+    /// that can be reused with multiple parallel easy handles and does not need
+    /// to be copied.
+    ///
+    /// This requires some `unsafe` because we must be very careful to ensure
+    /// this blob is not freed until it is no longer in use.
+    PemBundle {
+        // TODO: How to track when it is safe to free this?
+        bytes: Arc<[u8]>,
+    },
 }
 
 impl TrustStore {
     /// Use the operating system's native APIs for verifying certificate trust,
-    /// if possible.
-    ///
-    /// This is normally the trust method used for most typical applications.
-    /// This is also returned as the [`Default`] implementation.
+    /// if possible. This is normally the trust method used for most typical applications.
     ///
     /// On Windows, macOS, and iOS this involves using the certificate
     /// management features provided by the operating system. On Linux and other
@@ -155,24 +196,23 @@ impl TrustStore {
         Self(Repr::FilePath(path.into()))
     }
 
-    /// Create a custom certificate store containing exactly the given
-    /// certificates.
-    ///
-    /// Server certificates will be verified using only certificates given.
+    /// Return a builder for creating a custom certificate store, which allows
+    /// you to supply your own collection of trusted certificates in memory.
     ///
     /// This store is supported by most TLS backends, including OpenSSL, rustls,
     /// and Secure Transport.
-    pub fn custom<I>(certificates: I) -> Self
-    where
-        I: IntoIterator<Item = Certificate>,
-    {
-        // Generate a PEM bundle.
-        let bundle = certificates
-            .into_iter()
-            .map(|cert| cert.into_pem_string())
-            .collect();
-
-        Self(Repr::PemBundle(bundle))
+    ///
+    /// # Examples
+    /// ```
+    /// use isahc::tls::TrustStore;
+    ///
+    /// let store = TrustStore::builder()
+    ///     .certificate_from_pem(include_str!("../../../tests/certs/isrgrootx1.pem"))
+    ///     .certificate_from_der(include_bytes!("../../../tests/certs/isrgrootx1.der"))
+    ///     .build();
+    /// ```
+    pub fn builder() -> TrustStoreBuilder {
+        TrustStoreBuilder { pem: Vec::new() }
     }
 
     pub(super) fn configure_ssl_options(&self, ssl_opt: &mut SslOpt) {
@@ -183,133 +223,158 @@ impl TrustStore {
 }
 
 impl Default for TrustStore {
+    #[cfg(feature = "rustls-tls-webpki-roots")]
+    fn default() -> Self {
+        Self::webpki_roots()
+    }
+
+    #[cfg(not(feature = "rustls-tls-webpki-roots"))]
     fn default() -> Self {
         Self::native()
     }
 }
 
+/// Builds a custom bundle of X.509 certificates for certificate authorities
+/// that are considered trusted for verifying server certificates.
+#[derive(Clone, Debug)]
+pub struct TrustStoreBuilder {
+    pem: Vec<u8>,
+}
+
+impl TrustStoreBuilder {
+    /// Add a trusted certificate in PEM format.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    pub fn certificate_from_pem<B: AsRef<[u8]>>(mut self, pem: B) -> Self {
+        self.pem.extend_from_slice(pem.as_ref());
+        self
+    }
+
+    /// Add a trusted certificate in DER format.
+    ///
+    /// The certificates are not parsed or validated here. If a certificate is
+    /// malformed or the format is not supported by the underlying SSL/TLS
+    /// engine, an error will be returned when attempting to send a request
+    /// using the offending certificate.
+    pub fn certificate_from_der<B: AsRef<[u8]>>(mut self, der: B) -> Self {
+        let der = der.as_ref();
+        let label = "CERTIFICATE";
+        let line_ending = Default::default();
+
+        let len = pem_rfc7468::encoded_len(label, line_ending, der).unwrap();
+        let existing_len = self.pem.len();
+
+        self.pem.resize(existing_len + len, 0);
+
+        pem_rfc7468::encode(label, line_ending, der, &mut self.pem[existing_len..]).unwrap();
+
+        self
+    }
+
+    /// Finalize the builder and return a new trust store.
+    ///
+    /// # Memory characteristics
+    ///
+    /// A trust store containing one or more in-memory certificates will be
+    /// stored in the heap and reference counted. Cloning the [`TrustStore`]
+    /// will only create another reference to the same underlying data. This
+    /// means you can cheaply clone the trust store and reuse it in multiple
+    /// requests or HTTP clients as needed.
+    ///
+    /// Once an HTTP client executes a request that makes use of the trust
+    /// store, the established TLS connection may make additional copies of the
+    /// certificates in memory, to ensure that the certificates are available
+    /// for as long as the connection remains in the connection pool, which may
+    /// be reused for subsequent requests. It is possible that the collection of
+    /// certificates will never be freed from memory until the HTTP client that
+    /// used them is closed.
+    pub fn build(self) -> TrustStore {
+        TrustStore(Repr::PemBundle {
+            bytes: self.pem.into(),
+        })
+    }
+}
+
 impl SetOpt for TrustStore {
-    fn set_opt<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         match &self.0 {
-            Repr::NativeCa | Repr::NoOp => Ok(()),
-            Repr::FilePath(path) => easy.cainfo(path).map_err(Into::into),
-            Repr::PemBundle(bundle) => easy.ssl_cainfo_blob(bundle.as_bytes()).map_err(Into::into),
+            Repr::NativeCa | Repr::NoOp => {}
+            Repr::FilePath(path) => {
+                easy.cainfo(path)?;
+            }
+            Repr::PemBundle { bytes } => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, bytes)?;
+            },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
                     curl_sys::curl_easy_setopt(
                         easy.raw(),
-                        curl_sys::CURLOPT_CAINFO,
+                        CURLOPT_CAINFO,
                         ptr::null_mut::<c_char>(),
                     );
                     curl_sys::curl_easy_setopt(
                         easy.raw(),
-                        curl_sys::CURLOPT_CAPATH,
+                        CURLOPT_CAPATH,
                         ptr::null_mut::<c_char>(),
                     );
                 }
-
-                Ok(())
             }
-        }
+        };
+
+        Ok(())
     }
 }
 
 impl SetOptProxy for TrustStore {
-    fn set_opt_proxy<H>(&self, easy: &mut Easy2<H>) -> Result<(), SetOptError> {
+    fn set_opt_proxy(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         match &self.0 {
-            Repr::NativeCa | Repr::NoOp => Ok(()),
+            Repr::NativeCa | Repr::NoOp => {}
             Repr::FilePath(path) => {
                 if let Some(path) = path.to_str() {
-                    easy.proxy_cainfo(path).map_err(Into::into)
+                    easy.proxy_cainfo(path)?;
                 } else {
-                    Err(Error::new(
+                    return Err(Error::new(
                         ErrorKind::InvalidTlsConfiguration,
                         CertificatePathNotUtf8Error { path: path.clone() },
                     )
-                    .into())
+                    .into());
                 }
             }
-            Repr::PemBundle(bundle) => easy
-                .proxy_ssl_cainfo_blob(bundle.as_bytes())
-                .map_err(Into::into),
+            Repr::PemBundle { bytes } => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, bytes)?;
+            },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
                 unsafe {
                     curl_sys::curl_easy_setopt(
                         easy.raw(),
-                        curl_sys::CURLOPT_PROXY_CAINFO,
+                        CURLOPT_PROXY_CAINFO,
                         ptr::null_mut::<c_char>(),
                     );
                     curl_sys::curl_easy_setopt(
                         easy.raw(),
-                        curl_sys::CURLOPT_PROXY_CAPATH,
+                        CURLOPT_PROXY_CAPATH,
                         ptr::null_mut::<c_char>(),
                     );
                 }
-
-                Ok(())
             }
-        }
+        };
+
+        Ok(())
     }
 }
 
-/// An X.509 digital certificate.
-#[derive(Clone, Debug)]
-pub struct Certificate {
-    /// Curl prefers to work in the PEM format, so internally we do as well.
-    pem: String,
-}
-
-impl Certificate {
-    /// Use one or more DER-encoded certificates stored in memory.
-    ///
-    /// The certificates are not parsed or validated here. If a certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn from_der<B: AsRef<[u8]>>(der: B) -> Self {
-        #[cfg(windows)]
-        const LINE_ENDING: &str = "\r\n";
-        #[cfg(not(windows))]
-        const LINE_ENDING: &str = "\n";
-
-        let mut base64_spec = data_encoding::BASE64.specification();
-        base64_spec.wrap.width = 64;
-        base64_spec.wrap.separator.push_str(LINE_ENDING);
-        let base64 = base64_spec.encoding().unwrap();
-
-        let mut pem = String::new();
-
-        pem.push_str("-----BEGIN CERTIFICATE-----");
-        pem.push_str(LINE_ENDING);
-        base64.encode_append(der.as_ref(), &mut pem);
-        pem.push_str("-----END CERTIFICATE-----");
-        pem.push_str(LINE_ENDING);
-        Self::from_pem(pem)
-    }
-
-    /// Use one or more PEM-encoded certificates in the given byte buffer.
-    ///
-    /// The certificate object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
-    ///
-    /// The certificates are not parsed or validated here. If a certificate is
-    /// malformed or the format is not supported by the underlying SSL/TLS
-    /// engine, an error will be returned when attempting to send a request
-    /// using the offending certificate.
-    pub fn from_pem<B: AsRef<[u8]>>(pem: B) -> Self {
-        Self {
-            pem: String::from_utf8(pem.as_ref().to_vec()).unwrap(),
+impl fmt::Debug for TrustStore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Repr::FilePath(path) => f.debug_tuple("TrustStore::FilePath").field(path).finish(),
+            Repr::PemBundle { .. } => f.debug_tuple("TrustStore::PemBundle").finish(),
+            _ => f.debug_tuple("TrustStore").finish(),
         }
-    }
-
-    pub(crate) fn as_pem_bytes(&self) -> &[u8] {
-        self.pem.as_bytes()
-    }
-
-    pub(crate) fn into_pem_string(self) -> String {
-        self.pem
     }
 }
 
@@ -327,21 +392,5 @@ impl fmt::Display for CertificatePathNotUtf8Error {
             "certificate path is not valid UTF-8: {}",
             self.path.display()
         )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn certificate_from_der() {
-        let cert = Certificate::from_der(include_bytes!("../../tests/certs/isrgrootx1.der"));
-
-        assert!(
-            cert.into_pem_string()
-                .lines()
-                .eq(include_str!("../../tests/certs/isrgrootx1.pem").lines())
-        );
     }
 }

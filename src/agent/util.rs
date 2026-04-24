@@ -15,7 +15,7 @@ impl Hasher for IntHasher {
                 self.1 = true;
             }
 
-            if bytes.len() > 8 {
+            if bytes.len() > size_of::<u64>() {
                 panic!("only a maximum of 8 bytes can be hashed");
             }
         }

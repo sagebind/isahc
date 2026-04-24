@@ -13,7 +13,7 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --features cookies,psl,unstable-interceptors --workspace --timeout 120 --out xml
+          cargo +nightly tarpaulin --verbose --features cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors --workspace --timeout 120 --out xml
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v5

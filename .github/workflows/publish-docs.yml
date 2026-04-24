@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - run: cargo +nightly doc --no-deps --features cookies,json,nightly,tls-insecure
+      - run: cargo +nightly doc --no-deps --features cookies,json,nightly,tls-insecure,trust-webpki-roots
 
       - uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
