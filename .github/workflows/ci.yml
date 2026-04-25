@@ -59,7 +59,7 @@ jobs:
 
       - name: Install musl toolchain
         run: |
-          apt install -y musl-tools
+          sudo apt install -y musl-tools
           rustup target add x86_64-unknown-linux-musl
 
       - name: Update Cargo.lock
