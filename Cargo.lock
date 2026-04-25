@@ -1007,7 +1007,6 @@ dependencies = [
  "quickcheck_macros",
  "rayon",
  "regex",
- "rustls-native-certs",
  "serde",
  "serde_json",
  "slab",

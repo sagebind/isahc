@@ -20,11 +20,11 @@ features = ["cookies", "json", "tls-insecure", "trust-webpki-roots"]
 status = "passively-maintained"
 
 [features]
-default = ["default-tls", "http2", "static-curl", "text-decoding"]
+default = ["default-tls", "http2", "log", "static-curl", "text-decoding"]
 cookies = ["dep:httpdate"]
 http2 = ["curl/http2"]
 json = ["dep:serde", "dep:serde_json"]
-nightly = []
+log = ["tracing/log", "dep:log"]
 psl = ["dep:httpdate", "dep:psl", "dep:publicsuffix"]
 spnego = ["curl-sys/spnego"]
 static-curl = ["curl/static-curl"]
@@ -50,10 +50,10 @@ crossbeam-utils = ">=0.7.0, <0.9.0"
 event-listener = "5"
 futures-lite = ">=1.10.1, <3"
 http = ">=0.2.1, <2"
-log = "0.4"
 polling = "3"
 slab = "0.4"
 sluice = "0.6"
+tracing = "0.1.17"
 url = "2.1"
 waker-fn = "1"
 
@@ -72,6 +72,10 @@ optional = true
 
 [dependencies.httpdate]
 version = "1"
+optional = true
+
+[dependencies.log]
+version = "0.4"
 optional = true
 
 [dependencies.mime]
@@ -94,10 +98,6 @@ version = "2"
 features = ["std"]
 optional = true
 
-[dependencies.rustls-native-certs]
-version = "0.8"
-optional = true
-
 [dependencies.serde]
 version = "1"
 optional = true
@@ -105,10 +105,6 @@ optional = true
 [dependencies.serde_json]
 version = "1"
 optional = true
-
-[dependencies.tracing]
-version = "0.1.17"
-features = ["log"]
 
 [dependencies.tracing-futures]
 version = "0.2"

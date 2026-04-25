@@ -226,10 +226,15 @@
 //! # Logging and tracing
 //!
 //! Isahc logs quite a bit of useful information at various levels compatible
-//! with the [log](https://docs.rs/log) crate. For even more in-depth
-//! diagnostics, you can use a [tracing](https://docs.rs/tracing) subscriber to
-//! track log events grouped by individual requests. This can be especially
-//! useful if you are sending multiple requests concurrently.
+//! with the [tracing](https://docs.rs/tracing) crate. Tracing events are
+//! grouped by individual requests, which can be especially useful if you are
+//! sending multiple requests concurrently.
+//!
+//! If you are using the [log](https://docs.rs/log) crate ecosystem instead and
+//! want Isahc logs to be exposed to a logger, then you can enable the `log`
+//! crate feature, which will translate all tracing events into log events. This
+//! feature is enabled by default, though it will only take effect if a tracing
+//! subscriber is not registered.
 //!
 //! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in

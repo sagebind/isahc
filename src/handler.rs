@@ -195,11 +195,16 @@ impl RequestHandler {
         //
         // This logic seems a little screwy when comparing to what the docs say,
         // but it works.
-        if self.span.is_none() {
-            false
-        } else {
-            log::log_enabled!(log::Level::Debug)
+        if !self.span.is_none() {
+            return true;
         }
+
+        #[cfg(feature = "log")]
+        if log::log_enabled!(log::Level::Debug) {
+            return true;
+        }
+
+        false
     }
 
     fn is_future_canceled(&self) -> bool {
