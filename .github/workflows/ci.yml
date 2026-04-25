@@ -57,6 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install musl toolchain
+        run: rustup target add x86_64-unknown-linux-musl
+
       - name: Update Cargo.lock
         run: cargo update
 
