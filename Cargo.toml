@@ -140,12 +140,13 @@ path = "testserver"
 level = "warn"
 check-cfg = ["cfg(tarpaulin)"]
 
-[[example]]
-name = "badssl"
-required-features = ["tls-insecure"]
 [[bench]]
 name = "download"
 harness = false
+
+[[example]]
+name = "badssl"
+required-features = ["tls-insecure"]
 
 [[example]]
 name = "cookies"
