@@ -179,11 +179,6 @@ mod tests {
 
     #[test]
     fn refresh_cache() {
-        if std::env::var("CI").is_ok() && cfg!(target_os = "windows") {
-            eprintln!("skip in Windows CI due to firewall...");
-            return;
-        }
-
         // Reset cache.
         let mut cache = ListCache::default();
 
