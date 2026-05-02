@@ -86,7 +86,7 @@ jobs:
     timeout-minutes: 20
     env:
       RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
+      RUST_LOG: isahc=trace
     steps:
       - uses: actions/checkout@v6
 
@@ -107,6 +107,8 @@ jobs:
             cargo-${{ runner.os }}-
 
       - run: nslookup publicsuffix.org
+
+      - run: curl -v https://publicsuffix.org
 
       - name: Run tests
         run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
