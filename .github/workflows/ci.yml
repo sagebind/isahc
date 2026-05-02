@@ -16,7 +16,7 @@ jobs:
           - macos-latest
           - windows-latest
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -50,7 +50,7 @@ jobs:
 
   test-linux-rustls-musl-static:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -83,7 +83,7 @@ jobs:
 
   test-windows-native-tls:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=trace
@@ -93,28 +93,21 @@ jobs:
       - name: Update Cargo.lock
         run: cargo update
 
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - run: nslookup publicsuffix.org
-
-      - run: curl -v https://publicsuffix.org
-
-      - name: Run example program
-        run: cargo run --release --example reqwest
+      # - name: Cache Cargo dependencies
+      #   uses: actions/cache@v5
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       target/
+      #     key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+      #     restore-keys: |
+      #       cargo-${{ runner.os }}-
 
       - name: Run tests
-        run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
+        run: cargo test --no-default-features --features cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
 
   docs-rs:
     runs-on: ubuntu-latest
