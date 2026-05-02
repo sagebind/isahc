@@ -19,11 +19,7 @@
 //! list. If we can't, then we log a warning and use the stale list anyway,
 //! since a stale list is better than no list at all.
 
-use crate::{
-    ReadResponseExt,
-    config::{Configurable, IpVersion},
-    request::RequestExt,
-};
+use crate::{ReadResponseExt, request::RequestExt};
 use publicsuffix::Psl as _;
 use std::{
     error::Error,
@@ -89,7 +85,7 @@ impl ListCache {
     }
 
     fn try_refresh(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut request = http::Request::get(publicsuffix::LIST_URL).ip_version(IpVersion::V4);
+        let mut request = http::Request::get(publicsuffix::LIST_URL);
 
         if let Some(last_updated) = self.last_updated {
             request = request.header(
@@ -183,6 +179,11 @@ mod tests {
 
     #[test]
     fn refresh_cache() {
+        if std::env::var("CI").is_ok() && cfg!(target_os = "windows") {
+            eprintln!("skip in Windows CI due to firewall...");
+            return;
+        }
+
         // Reset cache.
         let mut cache = ListCache::default();
 
