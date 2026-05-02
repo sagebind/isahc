@@ -1,5 +1,10 @@
 name: dependabot
-on: pull_request
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
 
 permissions:
   actions: read
@@ -9,7 +14,7 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'sagebind/isahc'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'sagebind/isahc' && !github.event.pull_request.draft
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
