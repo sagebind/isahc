@@ -1,6 +1,11 @@
 name: coverage
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '**.rs'
 
-on: [push]
 jobs:
   test:
     name: coverage
