@@ -106,6 +106,9 @@ jobs:
       #     restore-keys: |
       #       cargo-${{ runner.os }}-
 
+      - run: cargo run --example version --no-default-features --features cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
+      - run: cargo run --example simple --no-default-features --features cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
+
       - name: Run tests
         run: cargo test --no-default-features --features cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
 
