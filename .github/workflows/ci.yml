@@ -111,7 +111,7 @@ jobs:
       - run: curl -v https://publicsuffix.org
 
       - name: Run example program
-        run: cargo run --release --example blocking
+        run: cargo run --release --example version
 
       - name: Run tests
         run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
