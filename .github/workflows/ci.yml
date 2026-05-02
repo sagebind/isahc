@@ -80,7 +80,7 @@ jobs:
     timeout-minutes: 10
     env:
       RUST_BACKTRACE: 1
-      RUST_LOG: isahc=trace
+      RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
 
