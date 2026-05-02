@@ -106,6 +106,8 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
+      - run: nslookup publicsuffix.org
+
       - name: Run tests
         run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
 
