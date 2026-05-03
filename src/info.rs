@@ -71,7 +71,7 @@ mod tests {
     fn version_expected() {
         let version = version();
 
-        assert!(version.starts_with("isahc/1."));
+        assert!(version.starts_with(&format!("isahc/{}", env!("CARGO_PKG_VERSION"))));
         assert!(version.contains("curl/7.") || version.contains("curl/8."));
     }
 
