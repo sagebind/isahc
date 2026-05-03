@@ -4,17 +4,19 @@ on:
     branches: [master, "1.x", "2.x"]
   pull_request:
 
-env:
-  FEATURES: cookies,psl,tls-insecure,trust-webpki-roots
-
 jobs:
   test-rustls:
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+        include:
+          - os: ubuntu-latest
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+          - os: macos-latest
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+          - os: windows-latest
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+          - os: windows-latest
+            features: cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors,http2,json,native-tls,spnego,text-decoding
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     env:
@@ -37,13 +39,13 @@ jobs:
             cargo-${{ runner.os }}-
 
       - name: Check Clippy lints
-        run: cargo clippy --features ${{ env.FEATURES }},unstable-interceptors
+        run: cargo clippy --no-default-features --features ${{ matrix.features }}
 
       - name: Run tests
-        run: cargo test --features ${{ env.FEATURES }},unstable-interceptors
+        run: cargo test --no-default-features --features ${{ matrix.features }}
 
       - name: Run example program
-        run: cargo run --release --example simple
+        run: cargo run --release --example simple --no-default-features --features ${{ matrix.features }}
 
   test-linux-rustls-musl-static:
     runs-on: ubuntu-latest
@@ -74,31 +76,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --target x86_64-unknown-linux-musl --features ${{ env.FEATURES }}
-
-  test-windows-native-tls:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: Run tests
-        run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
 
   docs-rs:
     runs-on: ubuntu-latest

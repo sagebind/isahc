@@ -6,6 +6,9 @@ use std::{
     ops::{BitOr, BitOrAssign},
 };
 
+#[cfg(all(windows, feature = "spnego", not(feature = "native-tls")))]
+compile_error!("SPNEGO requires native-tls on Windows");
+
 /// Credentials consisting of a username and a secret (password) that can be
 /// used to establish user identity.
 #[derive(Clone)]
