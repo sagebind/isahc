@@ -71,7 +71,7 @@
 <a href=#71 id=71 data-nosnippet>71</a>    </span><span class="kw">fn </span>version_expected() {
 <a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>version = version();
 <a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>        <span class="macro">assert!</span>(version.starts_with(<span class="string">"isahc/1."</span>));
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="macro">assert!</span>(version.starts_with(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"isahc/{}"</span>, <span class="macro">env!</span>(<span class="string">"CARGO_PKG_VERSION"</span>))));
 <a href=#75 id=75 data-nosnippet>75</a>        <span class="macro">assert!</span>(version.contains(<span class="string">"curl/7."</span>) || version.contains(<span class="string">"curl/8."</span>));
 <a href=#76 id=76 data-nosnippet>76</a>    }
 <a href=#77 id=77 data-nosnippet>77</a>
