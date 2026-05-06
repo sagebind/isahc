@@ -110,6 +110,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - run: cargo run --example version
+      - run: cargo run --example curldns --no-default-features --features native-tls
       - run: cargo run --example simple
 
   docs-rs:
