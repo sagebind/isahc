@@ -102,7 +102,7 @@ jobs:
 
   test-windows-dns:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
     env:
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
@@ -111,6 +111,9 @@ jobs:
 
       - run: cargo run --example version
       - run: cargo run --example curldns --no-default-features --features native-tls
+      - run: cargo run --example curldns --no-default-features --features native-tls,http2,static-curl
+      - run: cargo run --example curldns --no-default-features --features native-tls,http2,static-curl,spnego
+      - run: cargo run --example curldns
       - run: cargo run --example simple
 
   docs-rs:
