@@ -12,6 +12,7 @@ jobs:
           - os: ubuntu-latest
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
           - os: macos-latest
+            target: aarch64-apple-darwin
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
           - os: windows-latest
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
@@ -24,6 +25,12 @@ jobs:
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libkrb5-dev
+        if: matrix.os == 'ubuntu-latest'
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v5
