@@ -100,6 +100,18 @@ jobs:
       - name: Run tests
         run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
 
+  test-windows-dns:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      RUST_BACKTRACE: 1
+      RUST_LOG: isahc=debug
+    steps:
+      - uses: actions/checkout@v6
+
+      - run: cargo run --example version
+      - run: cargo run --example simple
+
   docs-rs:
     runs-on: ubuntu-latest
     env:
