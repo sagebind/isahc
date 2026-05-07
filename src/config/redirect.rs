@@ -1,8 +1,7 @@
 /// Describes a policy for handling server redirects.
 ///
 /// The default is to not follow redirects.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum RedirectPolicy {
     /// Do not apply any special treatment to redirect responses. The response
     /// will be returned as-is and redirects will not be followed.
@@ -17,4 +16,3 @@ pub enum RedirectPolicy {
     /// Follow redirects automatically up to a maximum number of redirects.
     Limit(u32),
 }
-
