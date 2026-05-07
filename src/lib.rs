@@ -252,11 +252,9 @@
     missing_docs,
     rust_2018_idioms,
     unreachable_pub,
-    unused,
-    clippy::all
+    unused
 )]
-// These lints suggest to use features not available in our MSRV.
-#![allow(clippy::manual_strip, clippy::match_like_matches_macro)]
+#![allow(clippy::needless_lifetimes)]
 
 use std::convert::TryFrom;
 

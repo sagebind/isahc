@@ -325,15 +325,15 @@ impl Error {
     /// probably should not be retried without first fixing the request
     /// parameters.
     pub fn is_client(&self) -> bool {
-        match self.kind() {
+        matches!(
+            self.kind(),
             ErrorKind::BadClientCertificate
-            | ErrorKind::ClientInitialization
-            | ErrorKind::InvalidCredentials
-            | ErrorKind::InvalidRequest
-            | ErrorKind::RequestBodyNotRewindable
-            | ErrorKind::TlsEngine => true,
-            _ => false,
-        }
+                | ErrorKind::ClientInitialization
+                | ErrorKind::InvalidCredentials
+                | ErrorKind::InvalidRequest
+                | ErrorKind::RequestBodyNotRewindable
+                | ErrorKind::TlsEngine
+        )
     }
 
     /// Returns true if this is an error likely related to network failures.
@@ -341,20 +341,20 @@ impl Error {
     /// Network operations are inherently unreliable. Sometimes retrying the
     /// request once or twice is enough to resolve the error.
     pub fn is_network(&self) -> bool {
-        match self.kind() {
-            ErrorKind::ConnectionFailed | ErrorKind::Io | ErrorKind::NameResolution => true,
-            _ => false,
-        }
+        matches!(
+            self.kind(),
+            ErrorKind::ConnectionFailed | ErrorKind::Io | ErrorKind::NameResolution
+        )
     }
 
     /// Returns true if this error was likely the fault of the server.
     pub fn is_server(&self) -> bool {
-        match self.kind() {
+        matches!(
+            self.kind(),
             ErrorKind::BadServerCertificate
-            | ErrorKind::ProtocolViolation
-            | ErrorKind::TooManyRedirects => true,
-            _ => false,
-        }
+                | ErrorKind::ProtocolViolation
+                | ErrorKind::TooManyRedirects
+        )
     }
 
     /// Returns true if this error is caused from exceeding a configured
@@ -375,12 +375,12 @@ impl Error {
 
     /// Returns true if this error is related to SSL/TLS.
     pub fn is_tls(&self) -> bool {
-        match self.kind() {
+        matches!(
+            self.kind(),
             ErrorKind::BadClientCertificate
-            | ErrorKind::BadServerCertificate
-            | ErrorKind::TlsEngine => true,
-            _ => false,
-        }
+                | ErrorKind::BadServerCertificate
+                | ErrorKind::TlsEngine
+        )
     }
 
     /// Get the local socket address of the last-used connection involved in

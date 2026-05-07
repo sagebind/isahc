@@ -6,12 +6,12 @@ use crate::{
     config::{
         client::ClientConfig,
         request::{RequestConfig, WithRequestConfig},
-        setopt::{SetOpt, SetOptError},
+        setopt::{EasyHandle, SetOpt, SetOptError},
         *,
     },
     default_headers::DefaultHeadersInterceptor,
     error::{Error, ErrorKind},
-    handler::{RequestHandler, ResponseBodyReader},
+    handler::{RequestHandler, ResponseBodyReader, ResponseResult},
     headers::HasHeaders,
     interceptor::{self, Interceptor, InterceptorObj},
     parsing::header_to_curl_string,
@@ -1038,20 +1038,14 @@ impl HttpClient {
     fn create_easy_handle(
         &self,
         mut request: Request<AsyncBody>,
-    ) -> Result<
-        (
-            curl::easy::Easy2<RequestHandler>,
-            impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
-        ),
-        SetOptError,
-    > {
+    ) -> Result<(EasyHandle, impl Future<Output = ResponseResult>), SetOptError> {
         // Prepare the request plumbing.
         let body = std::mem::take(request.body_mut());
         let has_body = !body.is_empty();
         let body_length = body.len();
         let (handler, future) = RequestHandler::new(body);
 
-        let mut easy = curl::easy::Easy2::new(handler);
+        let mut easy = EasyHandle::new(handler);
 
         // Set whether curl should generate verbose debug data for us to log.
         easy.verbose(easy.get_ref().is_debug_enabled())?;

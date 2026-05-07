@@ -35,7 +35,7 @@ fn request_with_zero_length_body(method: &str) {
     m.request().expect_header("content-length", "0");
     m.request()
         .expect_header("content-type", "application/json");
-    m.request().expect_body(&[]);
+    m.request().expect_body([]);
 }
 
 #[test_case("GET")]
@@ -68,7 +68,7 @@ fn request_with_special_empty_body_does_not_send_a_body(method: &str) {
         .expect_header("content-type", "application/json");
 
     // For HTTP/1.1, reading after the header should just be an immediate EOF.
-    m.request().expect_body(&[]);
+    m.request().expect_body([]);
 }
 
 #[test_case("GET")]

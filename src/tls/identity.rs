@@ -47,7 +47,7 @@ impl Identity {
         Self {
             format: CertFormat::Pem,
             data: PathOrBlob::Blob(Arc::from(bytes.into())),
-            private_key: private_key.into(),
+            private_key,
             password: None,
         }
     }
@@ -68,7 +68,7 @@ impl Identity {
         Self {
             format: CertFormat::Der,
             data: PathOrBlob::Blob(Arc::from(bytes.into())),
-            private_key: private_key.into(),
+            private_key,
             password: None,
         }
     }
@@ -91,7 +91,7 @@ impl Identity {
             format: CertFormat::Pkcs12,
             data: PathOrBlob::Blob(Arc::from(bytes.into())),
             private_key: None,
-            password: password.map(Into::into),
+            password,
         }
     }
 
@@ -126,7 +126,7 @@ impl Identity {
         Self {
             format: CertFormat::Der,
             data: PathOrBlob::Path(path.into()),
-            private_key: private_key.into(),
+            private_key,
             password: None,
         }
     }

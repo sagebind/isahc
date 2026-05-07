@@ -122,6 +122,9 @@ pub(crate) struct RequestHandler {
 // Would be send implicitly except for the raw CURL pointer.
 unsafe impl Send for RequestHandler {}
 
+/// The result that a request asynchronously resolves to.
+pub(crate) type ResponseResult = Result<Response<ResponseBodyReader>, Error>;
+
 /// State shared by the handler and its future.
 ///
 /// This is also used to keep track of the lifetime of the request.
@@ -135,12 +138,7 @@ struct Shared {
 
 impl RequestHandler {
     /// Create a new request handler and an associated response future.
-    pub(crate) fn new(
-        request_body: AsyncBody,
-    ) -> (
-        Self,
-        impl Future<Output = Result<Response<ResponseBodyReader>, Error>>,
-    ) {
+    pub(crate) fn new(request_body: AsyncBody) -> (Self, impl Future<Output = ResponseResult>) {
         let (sender, receiver) = async_channel::bounded(1);
         let shared = Arc::new(Shared::default());
         let (response_body_reader, response_body_writer) = pipe::pipe();
@@ -229,7 +227,7 @@ impl RequestHandler {
         debug_assert!(self.request_body_waker.is_none());
         debug_assert!(self.response_body_waker.is_none());
 
-        self.span.record("id", &id);
+        self.span.record("id", id);
         self.handle = handle;
         self.request_body_waker = Some(request_waker);
         self.response_body_waker = Some(response_waker);

@@ -195,7 +195,7 @@ impl TrailerWriter {
             let _ = self.shared.headers.set(headers);
 
             // Wake up any calls waiting for the headers.
-            self.shared.ready.notify(usize::max_value());
+            self.shared.ready.notify(usize::MAX);
 
             true
         } else {

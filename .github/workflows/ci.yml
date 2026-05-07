@@ -8,6 +8,12 @@ env:
   FEATURES: cookies,psl,tls-insecure,trust-webpki-roots
 
 jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: cargo clippy -- -Dwarnings
+
   test-rustls:
     strategy:
       matrix:
