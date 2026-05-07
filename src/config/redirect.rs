@@ -2,11 +2,13 @@
 ///
 /// The default is to not follow redirects.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Default)]
 pub enum RedirectPolicy {
     /// Do not apply any special treatment to redirect responses. The response
     /// will be returned as-is and redirects will not be followed.
     ///
     /// This is the default policy.
+    #[default]
     None,
 
     /// Follow all redirects automatically.
@@ -16,8 +18,3 @@ pub enum RedirectPolicy {
     Limit(u32),
 }
 
-impl Default for RedirectPolicy {
-    fn default() -> Self {
-        RedirectPolicy::None
-    }
-}

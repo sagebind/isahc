@@ -67,8 +67,8 @@
 //!
 //! - `tls`: Enables TLS support and the API in this module. Enabled by default.
 //! - `tls-insecure`: Enables options that allow you to opt-out of various
-//! security checks on TLS certificates. Disabled by default, as this is
-//! generally dangerous.
+//!   security checks on TLS certificates. Disabled by default, as this is
+//!   generally dangerous.
 //!
 //! [OpenSSL]: https://www.openssl.org
 //! [rustls]: https://github.com/rustls/rustls
