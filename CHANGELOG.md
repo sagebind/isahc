@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
+
+### Dependencies
+
+- Locked curl-sys to at most 0.4.87 due to a regression in the latest version that causes DNS to hang indefinitely on Windows. See <https://github.com/sagebind/isahc/issues/501> for more info. ([#507](https://github.com/sagebind/isahc/pull/507))
+
 ## [1.8.1](https://github.com/sagebind/isahc/compare/isahc-v1.8.0...isahc-v1.8.1) - 2026-04-11
 
 ### Fixed
