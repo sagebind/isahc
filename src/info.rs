@@ -75,7 +75,7 @@ pub(crate) fn do_curl_sanity_checks() {
         panic!("libcurl 8.20.0 detected, this version has a known bug that causes DNS to hang");
     }
 
-    if curl_info().protocols().find(|&p| p == "http").is_none() {
+    if !curl_info().protocols().any(|p| p == "http") {
         panic!("linked libcurl does not support HTTP");
     }
 }
