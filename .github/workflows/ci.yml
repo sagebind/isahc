@@ -65,9 +65,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: cargo-${{ matrix.target }}-${{ matrix.features }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-${{ matrix.target }}-${{ matrix.features }}-
+            cargo-${{ matrix.target }}-
 
       - name: Check Clippy lints
         run: cargo clippy --no-default-features --features ${{ matrix.features }}
