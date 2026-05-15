@@ -13,29 +13,60 @@ jobs:
 
   test:
     strategy:
+      # Set up several combinations of CPU architectures, operating systems,
+      # compiler targets, and crate features to test against.
       matrix:
         include:
+          # x64 + linux + rustls
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             features: default,cookies,psl,spnego,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + linux + native-tls
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: cookies,psl,tls-insecure,http2,json,native-tls,text-decoding
+
+          # x64 + linux + musl + rustls
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-musl
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + linux + rustls
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + macos + rustls
           - runner: macos-latest
             target: aarch64-apple-darwin
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + macos + native-tls
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            features: cookies,psl,tls-insecure,http2,json,native-tls,text-decoding
+
+          # x64 + macos + rustls
+          - runner: macos-26-intel
+            target: x86_64-apple-darwin
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + windows + rustls
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + windows + native-tls
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-            features: cookies,psl,tls-insecure,unstable-interceptors,http2,json,native-tls,spnego,text-decoding
+            features: cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
+
+          # arm + windows + rustls
           - runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     env:
