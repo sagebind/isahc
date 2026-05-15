@@ -9,22 +9,28 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             features: default,cookies,psl,spnego,tls-insecure,trust-webpki-roots,unstable-interceptors
-          - os: ubuntu-latest
+          - runner: ubuntu-latest
             target: x86_64-unknown-linux-musl
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
-          - os: macos-latest
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+          - runner: macos-latest
             target: aarch64-apple-darwin
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
-          - os: windows-latest
+          - runner: windows-latest
             target: x86_64-pc-windows-msvc
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
-          - os: windows-latest
+          - runner: windows-latest
             target: x86_64-pc-windows-msvc
             features: cookies,psl,tls-insecure,unstable-interceptors,http2,json,native-tls,spnego,text-decoding
-    runs-on: ${{ matrix.os }}
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     env:
       CARGO_BUILD_TARGET: ${{ matrix.target }}
@@ -39,7 +45,7 @@ jobs:
 
       - name: Install SPNEGO dependencies
         run: sudo apt install -y libkrb5-dev
-        if: matrix.os == 'ubuntu-latest' && matrix.features contains 'spnego'
+        if: contains(matrix.runner, 'ubuntu') && contains(matrix.features, 'spnego')
 
       - name: Install target toolchain
         run: rustup target add ${{ matrix.target }}
@@ -53,9 +59,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: cargo-${{ runner.os }}-${{ matrix.features }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ matrix.target }}-${{ matrix.features }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-${{ runner.os }}-
+            cargo-${{ matrix.target }}-${{ matrix.features }}-
 
       - name: Check Clippy lints
         run: cargo clippy --no-default-features --features ${{ matrix.features }}
