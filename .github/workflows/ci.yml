@@ -5,32 +5,44 @@ on:
   pull_request:
 
 jobs:
-  test-rustls:
+  test:
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: default,cookies,psl,spnego,tls-insecure,trust-webpki-roots,unstable-interceptors
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
           - os: macos-latest
             target: aarch64-apple-darwin
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
           - os: windows-latest
+            target: x86_64-pc-windows-msvc
             features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
           - os: windows-latest
-            features: cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors,http2,json,native-tls,spnego,text-decoding
+            target: x86_64-pc-windows-msvc
+            features: cookies,psl,tls-insecure,unstable-interceptors,http2,json,native-tls,spnego,text-decoding
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
+      CARGO_BUILD_TARGET: ${{ matrix.target }}
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y libkrb5-dev
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install musl toolchain
+        run: sudo apt install -y musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+
+      - name: Install SPNEGO dependencies
+        run: sudo apt install -y libkrb5-dev
+        if: matrix.os == 'ubuntu-latest' && matrix.features contains 'spnego'
+
+      - name: Install target toolchain
+        run: rustup target add ${{ matrix.target }}
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v5
@@ -41,7 +53,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ matrix.features }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 
@@ -53,36 +65,6 @@ jobs:
 
       - name: Run example program
         run: cargo run --release --example simple --no-default-features --features ${{ matrix.features }}
-
-  test-linux-rustls-musl-static:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install musl toolchain
-        run: |
-          sudo apt install -y musl-tools
-          rustup target add x86_64-unknown-linux-musl
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: Run tests
-        run: cargo test --target x86_64-unknown-linux-musl --features ${{ env.FEATURES }}
 
   docs-rs:
     runs-on: ubuntu-latest
