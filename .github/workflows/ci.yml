@@ -4,9 +4,6 @@ on:
     branches: [master, "1.x", "2.x"]
   pull_request:
 
-env:
-  FEATURES: cookies,psl,tls-insecure,trust-webpki-roots
-
 jobs:
   clippy:
     runs-on: ubuntu-latest
@@ -14,56 +11,81 @@ jobs:
       - uses: actions/checkout@v6
       - run: cargo clippy -- -Dwarnings
 
-  test-rustls:
+  test:
     strategy:
+      # Set up several combinations of CPU architectures, operating systems,
+      # compiler targets, and crate features to test against.
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+        include:
+          # x64 + linux + rustls
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: default,cookies,psl,spnego,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + linux + native-tls
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            features: cookies,psl,tls-insecure,http2,json,native-tls,text-decoding
+
+          # x64 + linux + musl + rustls
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + linux + rustls
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + macos + rustls
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # arm + macos + native-tls
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            features: cookies,psl,tls-insecure,http2,json,native-tls,text-decoding
+
+          # x64 + macos + rustls
+          - runner: macos-26-intel
+            target: x86_64-apple-darwin
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + windows + rustls
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+          # x64 + windows + native-tls
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: cookies,psl,tls-insecure,http2,json,native-tls,spnego,text-decoding
+
+          # arm + windows + rustls
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            features: default,cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
     env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: Check Clippy lints
-        run: cargo clippy --features ${{ env.FEATURES }},unstable-interceptors
-
-      - name: Run tests
-        run: cargo test --features ${{ env.FEATURES }},unstable-interceptors
-
-      - name: Run example program
-        run: cargo run --release --example simple
-
-  test-linux-rustls-musl-static:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
+      CARGO_BUILD_TARGET: ${{ matrix.target }}
       RUST_BACKTRACE: 1
       RUST_LOG: isahc=debug
     steps:
       - uses: actions/checkout@v6
 
       - name: Install musl toolchain
-        run: |
-          sudo apt install -y musl-tools
-          rustup target add x86_64-unknown-linux-musl
+        run: sudo apt install -y musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+
+      - name: Install SPNEGO dependencies
+        run: sudo apt install -y libkrb5-dev
+        if: contains(matrix.runner, 'ubuntu') && contains(matrix.features, 'spnego')
+
+      - name: Install target toolchain
+        run: rustup target add ${{ matrix.target }}
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v5
@@ -74,37 +96,18 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            cargo-${{ runner.os }}-
+            cargo-${{ matrix.target }}-
+
+      - name: Check Clippy lints
+        run: cargo clippy --no-default-features --features ${{ matrix.features }}
 
       - name: Run tests
-        run: cargo test --target x86_64-unknown-linux-musl --features ${{ env.FEATURES }}
+        run: cargo test --no-default-features --features ${{ matrix.features }}
 
-  test-windows-native-tls:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: isahc=debug
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: Run tests
-        run: cargo test --no-default-features --features ${{ env.FEATURES }},http2,json,native-tls,spnego,text-decoding
+      - name: Run example program
+        run: cargo run --release --example simple --no-default-features --features ${{ matrix.features }}
 
   docs-rs:
     runs-on: ubuntu-latest
