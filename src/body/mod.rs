@@ -126,10 +126,7 @@ impl AsyncBody {
     /// difference between the absence of a body and the presence of a
     /// zero-length body. This method will only return `true` for the former.
     pub fn is_empty(&self) -> bool {
-        match self.0 {
-            Inner::Empty => true,
-            _ => false,
-        }
+        matches!(self.0, Inner::Empty)
     }
 
     /// Get the size of the body, if known.
@@ -318,7 +315,7 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = AsyncBody::from_reader(futures_lite::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 
     #[test]

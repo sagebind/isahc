@@ -20,7 +20,7 @@ impl Hasher for IntHasher {
             }
         }
 
-        (&mut self.0[..bytes.len()]).copy_from_slice(bytes);
+        self.0[..bytes.len()].copy_from_slice(bytes);
     }
 
     #[inline]

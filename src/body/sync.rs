@@ -1,6 +1,6 @@
 use super::AsyncBody;
 use futures_lite::{future::yield_now, io::AsyncWriteExt};
-use sluice::pipe::{pipe, PipeWriter};
+use sluice::pipe::{PipeWriter, pipe};
 use std::{
     borrow::Cow,
     fmt,
@@ -102,10 +102,7 @@ impl Body {
     /// difference between the absence of a body and the presence of a
     /// zero-length body. This method will only return `true` for the former.
     pub fn is_empty(&self) -> bool {
-        match self.0 {
-            Inner::Empty => true,
-            _ => false,
-        }
+        matches!(self.0, Inner::Empty)
     }
 
     /// Get the size of the body, if known.
@@ -166,10 +163,7 @@ impl Body {
                     } else {
                         AsyncBody::from_reader(pipe_reader)
                     },
-                    Some(Writer {
-                        reader,
-                        writer,
-                    }),
+                    Some(Writer { reader, writer }),
                 )
             }
         }
@@ -338,6 +332,6 @@ mod tests {
     fn cannot_reset_reader() {
         let mut body = Body::from_reader(std::io::empty());
 
-        assert_eq!(body.reset(), false);
+        assert!(!body.reset());
     }
 }
