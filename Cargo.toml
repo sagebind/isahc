@@ -1,6 +1,10 @@
 [package]
 name = "isahc"
+<<<<<<< Updated upstream
 version = "1.8.2"
+=======
+version = "2.0.0"
+>>>>>>> Stashed changes
 description = "The practical HTTP client that is fun to use."
 authors = ["Stephen M. Coakley <me@stephencoakley.com>"]
 license = "MIT"

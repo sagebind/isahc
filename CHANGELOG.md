@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+<<<<<<< Updated upstream
 ## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
 
 ### Dependencies
 
 - Locked curl-sys to at most 0.4.87 due to a regression in the latest version that causes DNS to hang indefinitely on Windows. See <https://github.com/sagebind/isahc/issues/501> for more info. ([#507](https://github.com/sagebind/isahc/pull/507))
+=======
+## [2.0.0](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v2.0.0) - 2026-05-15
+
+### Feat
+
+- *(tls)* [**breaking**] Support using webpki-roots as a trust store ([#492](https://github.com/sagebind/isahc/pull/492))
+- *(net)* [**breaking**] Support multiple selectors for interface configuration ([#494](https://github.com/sagebind/isahc/pull/494))
+
+### Fix
+
+- DNS errors in Windows CI builds ([#499](https://github.com/sagebind/isahc/pull/499))
+>>>>>>> Stashed changes
 
 ## [1.8.1](https://github.com/sagebind/isahc/compare/isahc-v1.8.0...isahc-v1.8.1) - 2026-04-11
 
