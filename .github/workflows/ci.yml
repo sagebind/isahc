@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: cargo clippy -- -Dwarnings
+      - run: cargo clippy --features cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors -- -Dwarnings
 
   test:
     strategy:
@@ -99,9 +99,6 @@ jobs:
           key: cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ matrix.target }}-
-
-      - name: Check Clippy lints
-        run: cargo clippy --no-default-features --features ${{ matrix.features }}
 
       - name: Run tests
         run: cargo test --no-default-features --features ${{ matrix.features }}
