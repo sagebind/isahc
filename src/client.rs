@@ -94,6 +94,11 @@ impl HttpClientBuilder {
     ///
     /// This is equivalent to the [`Default`] implementation.
     pub fn new() -> Self {
+        // This is a good a time as any to do some sanity checks against the
+        // version of curl we find ourselves linked to, before the user attempts
+        // to use an HTTP client.
+        crate::info::do_curl_sanity_checks();
+
         Self {
             agent_builder: AgentBuilder::default(),
             client_config: ClientConfig::default(),

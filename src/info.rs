@@ -7,6 +7,11 @@ use std::sync::LazyLock;
 ///
 /// This function can be helpful when troubleshooting issues in Isahc or one of
 /// its dependencies.
+///
+/// # Stability
+///
+/// The format of this string should *not* be considered stable, and should only
+/// be used for display, diagnostic, or debugging purposes.
 pub fn version() -> &'static str {
     static VERSION_STRING: LazyLock<String> = LazyLock::new(|| {
         format!(
@@ -61,6 +66,18 @@ pub(crate) fn curl_version() -> (u8, u8, u8) {
     let bits = curl_info().version_num();
 
     ((bits >> 16) as u8, (bits >> 8) as u8, bits as u8)
+}
+
+/// Inspect at runtime the version of curl Isahc is linked to and perform sanity
+/// checks to ensure it is something that we can use.
+pub(crate) fn do_curl_sanity_checks() {
+    if curl_version() == (8, 20, 0) {
+        panic!("libcurl 8.20.0 detected, this version has a known bug that causes DNS to hang");
+    }
+
+    if !curl_info().protocols().any(|p| p == "http") {
+        panic!("linked libcurl does not support HTTP");
+    }
 }
 
 #[cfg(test)]
