@@ -19,8 +19,9 @@
 //! - `native-tls`: Use the target platform's native TLS engine, as described
 //!   below.
 //! - `native-tls-static`: Use the target platform's native TLS engine, and
-//!   statically link to it where it makes sense. On Windows and macOS this does
-//!   nothing. On platforms using an OpenSSL-compatible library, attempt to
+//!   statically link to it where it makes sense. On Windows and macOS this is
+//!   the same as `native-tls`, since static linking is not possible to native
+//!   TLS APIs. On platforms using an OpenSSL-compatible library, attempt to
 //!   statically link to the library.
 //! - `rustls-tls`: Use a statically-linked [rustls], a modern TLS library
 //!   written in Rust. Trusted root certificates will be provided using whatever
@@ -34,10 +35,6 @@
 //!   a trust store which can be used at runtime. This feature by itself does
 //!   not change the default trust provider, and can be used with any TLS
 //!   backend.
-//!
-//! If using rustls without native cert support, your application will need to
-//! provide its own certificates to use for verification, as none are included
-//! by default.
 //!
 //! There are pros and cons to different backends, and none are best for all use
 //! cases. For a more in-depth look at the available backends see the [wiki

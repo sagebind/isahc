@@ -200,7 +200,8 @@
 //! and is a good choice when writing a library that might require TLS support,
 //! but want to allow the application writer to decide which TLS backend to use.
 //! See the documentation for the [`tls`] module for more details on
-//! compile-time and runtime TLS configuration.
+//! compile-time and runtime TLS configuration, and for additional TLS-related
+//! crate features.
 //!
 //! This feature is automatically enabled when enabling a specific TLS backend.
 //! Conversely, if this feature is enabled but no backend feature is enabled, a
