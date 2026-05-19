@@ -8,8 +8,8 @@ Say hello to Isahc (pronounced like _Isaac_), the practical HTTP client that is 
 [![Minimum supported Rust version](https://img.shields.io/badge/rustc-1.85+-yellow.svg)](#minimum-supported-rust-version)
 [![Crates.io downloads](https://img.shields.io/crates/d/isahc)](https://crates.io/crates/isahc)
 ![Maintenance](https://img.shields.io/badge/maintenance-passively--maintained-brightgreen.svg)
-[![Build](https://github.com/sagebind/isahc/actions/workflows/ci.yml/badge.svg?branch=1.x)](https://github.com/sagebind/isahc/actions)
-[![codecov](https://codecov.io/gh/sagebind/isahc/branch/1.x/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
+[![Build](https://github.com/sagebind/isahc/actions/workflows/ci.yml/badge.svg)](https://github.com/sagebind/isahc/actions)
+[![codecov](https://codecov.io/gh/sagebind/isahc/branch/master/graph/badge.svg)](https://codecov.io/gh/sagebind/isahc)
 
 ## Key features
 
