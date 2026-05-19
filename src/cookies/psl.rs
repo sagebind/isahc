@@ -37,22 +37,11 @@ static TTL: Duration = Duration::from_secs(24 * 60 * 60);
 /// Global in-memory PSL cache.
 static CACHE: LazyLock<RwLock<ListCache>> = LazyLock::new(Default::default);
 
+#[derive(Default)]
 struct ListCache {
     list: Option<publicsuffix::List>,
     last_refreshed: Option<SystemTime>,
     last_updated: Option<SystemTime>,
-}
-
-impl Default for ListCache {
-    fn default() -> Self {
-        Self {
-            list: None,
-            // Refresh the list right away.
-            last_refreshed: None,
-            // Assume the bundled list is always out of date.
-            last_updated: None,
-        }
-    }
 }
 
 impl ListCache {

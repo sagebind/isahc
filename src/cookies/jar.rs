@@ -13,7 +13,7 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct CookieRejectedError {
     kind: CookieRejectedErrorKind,
-    cookie: Cookie,
+    cookie: Box<Cookie>,
 }
 
 /// The reason why the [`Cookie`] was rejected.
@@ -42,7 +42,7 @@ impl CookieRejectedError {
 
     /// Get back the [`Cookie`] that failed to be set.
     pub fn cookie(self) -> Cookie {
-        self.cookie
+        *self.cookie
     }
 }
 
@@ -140,7 +140,7 @@ impl CookieJar {
             );
             return Err(CookieRejectedError {
                 kind: CookieRejectedErrorKind::InvalidRequestDomain,
-                cookie,
+                cookie: Box::new(cookie),
             });
         };
 
@@ -157,7 +157,7 @@ impl CookieJar {
                 );
                 return Err(CookieRejectedError {
                     kind: CookieRejectedErrorKind::DomainMismatch,
-                    cookie,
+                    cookie: Box::new(cookie),
                 });
             }
 
@@ -170,7 +170,7 @@ impl CookieJar {
                 );
                 return Err(CookieRejectedError {
                     kind: CookieRejectedErrorKind::InvalidCookieDomain,
-                    cookie,
+                    cookie: Box::new(cookie),
                 });
             }
 
@@ -186,7 +186,7 @@ impl CookieJar {
                     );
                     return Err(CookieRejectedError {
                         kind: CookieRejectedErrorKind::InvalidCookieDomain,
-                        cookie,
+                        cookie: Box::new(cookie),
                     });
                 }
             }
@@ -347,24 +347,27 @@ mod tests {
     fn cookie_domain_not_allowed() {
         let jar = CookieJar::default();
 
-        assert!(jar
-            .set(
+        assert!(
+            jar.set(
                 Cookie::parse("foo=bar").unwrap(),
                 &"https://bar.baz.com".parse().unwrap()
             )
-            .is_ok());
-        assert!(jar
-            .set(
+            .is_ok()
+        );
+        assert!(
+            jar.set(
                 Cookie::parse("foo=bar; domain=bar.baz.com").unwrap(),
                 &"https://bar.baz.com".parse().unwrap()
             )
-            .is_ok());
-        assert!(jar
-            .set(
+            .is_ok()
+        );
+        assert!(
+            jar.set(
                 Cookie::parse("foo=bar; domain=baz.com").unwrap(),
                 &"https://bar.baz.com".parse().unwrap()
             )
-            .is_ok());
+            .is_ok()
+        );
 
         assert!(
             jar.set(

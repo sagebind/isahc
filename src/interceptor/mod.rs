@@ -121,7 +121,7 @@ impl<F: fmt::Debug> fmt::Debug for InterceptorFn<F> {
 }
 
 // Workaround for https://github.com/rust-lang/rust/issues/51004
-#[allow(unreachable_pub)]
+#[allow(dead_code, unreachable_pub)]
 mod private {
     use std::future::Future;
 
