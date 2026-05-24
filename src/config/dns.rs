@@ -36,7 +36,6 @@ impl From<Duration> for DnsCache {
 }
 
 impl SetOpt for DnsCache {
-    #[allow(unsafe_code)]
     fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
         let value = match self {
             DnsCache::Disable => 0,

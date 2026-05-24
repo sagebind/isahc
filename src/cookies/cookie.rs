@@ -360,7 +360,6 @@ impl PartialEq<String> for Cookie {
 // }
 
 // https://tools.ietf.org/html/rfc6265#section-4.1.1
-#[allow(unsafe_code)]
 fn parse_cookie_value(mut bytes: &[u8]) -> Result<&str, ParseError> {
     // Strip quotes, but only if in a legal pair.
     if bytes.starts_with(b"\"") && bytes.ends_with(b"\"") {
@@ -385,7 +384,6 @@ fn is_valid_cookie_value(bytes: &[u8]) -> bool {
 }
 
 // https://tools.ietf.org/html/rfc2616#section-2.2
-#[allow(unsafe_code)]
 fn parse_token(bytes: &[u8]) -> Result<&str, ParseError> {
     if is_valid_token(bytes) {
         // Safety: We know that the given bytes are valid US-ASCII at this

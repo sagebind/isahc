@@ -1,4 +1,5 @@
 use crate::{
+    blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     handler::BlobOptions,
 };
@@ -6,7 +7,7 @@ use curl_sys::{
     CURLOPT_PROXY_SSLCERT_BLOB, CURLOPT_PROXY_SSLKEY_BLOB, CURLOPT_SSLCERT_BLOB,
     CURLOPT_SSLKEY_BLOB,
 };
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 /// A cryptographic identity used to authenticate the client with a server.
 ///
@@ -42,11 +43,11 @@ impl Identity {
     /// using the offending certificate.
     pub fn from_pem<B>(bytes: B, private_key: Option<PrivateKey>) -> Self
     where
-        B: Into<Vec<u8>>,
+        B: AsRef<[u8]> + Send + Sync + 'static,
     {
         Self {
             format: CertFormat::Pem,
-            data: PathOrBlob::Blob(Arc::from(bytes.into())),
+            data: PathOrBlob::Blob(Blob::new(bytes)),
             private_key,
             password: None,
         }
@@ -63,11 +64,11 @@ impl Identity {
     /// using the offending certificate.
     pub fn from_der<B>(bytes: B, private_key: Option<PrivateKey>) -> Self
     where
-        B: Into<Vec<u8>>,
+        B: AsRef<[u8]> + Send + Sync + 'static,
     {
         Self {
             format: CertFormat::Der,
-            data: PathOrBlob::Blob(Arc::from(bytes.into())),
+            data: PathOrBlob::Blob(Blob::new(bytes)),
             private_key,
             password: None,
         }
@@ -85,11 +86,11 @@ impl Identity {
     /// using the offending certificate.
     pub fn from_pkcs12<B>(bytes: B, password: Option<String>) -> Self
     where
-        B: Into<Vec<u8>>,
+        B: AsRef<[u8]> + Send + Sync + 'static,
     {
         Self {
             format: CertFormat::Pkcs12,
-            data: PathOrBlob::Blob(Arc::from(bytes.into())),
+            data: PathOrBlob::Blob(Blob::new(bytes)),
             private_key: None,
             password,
         }
@@ -210,42 +211,46 @@ pub struct PrivateKey {
 }
 
 impl PrivateKey {
-    /// Use a PEM-encoded private key stored in the given byte buffer.
+    /// Use a PEM-encoded private key.
     ///
-    /// The private key object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
+    /// The private key can be supplied as any type which can be references as
+    /// contiguous bytes. This could be a simple [`String`], or a pre-parsed PEM
+    /// object that allows access to its underlying bytes. The `PrivateKey`
+    /// object takes ownership of the bytes regardless.
     ///
     /// The key is not parsed or validated here. If the key is malformed or the
     /// format is not supported by the underlying SSL/TLS engine, an error will
     /// be returned when attempting to send a request using the offending key.
     pub fn from_pem<B, P>(bytes: B, password: P) -> Self
     where
-        B: Into<Vec<u8>>,
+        B: AsRef<[u8]> + Send + Sync + 'static,
         P: Into<Option<String>>,
     {
         Self {
             format: CertFormat::Pem,
-            data: PathOrBlob::Blob(Arc::from(bytes.into())),
+            data: PathOrBlob::Blob(Blob::new(bytes)),
             password: password.into(),
         }
     }
 
-    /// Use a DER-encoded private key stored in the given byte buffer.
+    /// Use a DER-encoded private key.
     ///
-    /// The private key object takes ownership of the byte buffer. If a borrowed
-    /// type is supplied, such as `&[u8]`, then the bytes will be copied.
+    /// The private key can be supplied as any type which can be references as
+    /// contiguous bytes. This could be a simple `Vec<u8>`, or a pre-parsed DER
+    /// object that allows access to its underlying bytes. The `PrivateKey`
+    /// object takes ownership of the bytes regardless.
     ///
     /// The key is not parsed or validated here. If the key is malformed or the
     /// format is not supported by the underlying SSL/TLS engine, an error will
     /// be returned when attempting to send a request using the offending key.
     pub fn from_der<B, P>(bytes: B, password: P) -> Self
     where
-        B: Into<Vec<u8>>,
+        B: AsRef<[u8]> + Send + Sync + 'static,
         P: Into<Option<String>>,
     {
         Self {
             format: CertFormat::Der,
-            data: PathOrBlob::Blob(Arc::from(bytes.into())),
+            data: PathOrBlob::Blob(Blob::new(bytes)),
             password: password.into(),
         }
     }
@@ -322,7 +327,7 @@ impl SetOptProxy for PrivateKey {
 #[derive(Clone, Debug)]
 enum PathOrBlob {
     Path(PathBuf),
-    Blob(Arc<[u8]>),
+    Blob(Blob),
 }
 
 /// Possible formats for certificates supported by curl.

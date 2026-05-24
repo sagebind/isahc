@@ -38,7 +38,6 @@ macro_rules! decl_future {
 
             $(#[$meta])*
             $(
-                #[allow(unsafe_code)]
                 unsafe impl<$($S: Send),*> Send for $ident<'_, $($S),*> {}
             )*
         )*
