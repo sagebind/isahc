@@ -1,0 +1,17 @@
+[advisories]
+unmaintained = "workspace"
+
+[licenses]
+private.ignore = true
+unused-allowed-license = "allow"
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+]
