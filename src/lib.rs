@@ -237,6 +237,11 @@
 //! feature is enabled by default, though it will only take effect if a tracing
 //! subscriber is not registered.
 //!
+//! If you disable the `log` feature, Isahc will no longer request the `log`
+//! feature to be enabled for the `tracing` crate. If for some reason you wish
+//! to use both `log` and `tracing` in the same application, but keep their
+//! events distinct, you may need to disable this feature.
+//!
 //! If you set the log level to `Trace` for the `isahc::wire` target, Isahc will
 //! also log all incoming and outgoing data while in flight. This may come in
 //! handy if you are debugging code and need to see the exact data being sent to
