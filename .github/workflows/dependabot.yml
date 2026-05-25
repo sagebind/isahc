@@ -26,10 +26,10 @@ jobs:
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Auto-approve simple updates to psl crate
-        if: contains(steps.metadata.outputs.dependency-names, 'psl') && steps.metadata.outputs.update-type == 'version-update:semver-patch'
+      - name: Auto-approve simple patch updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
