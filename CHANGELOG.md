@@ -20,6 +20,10 @@ This release includes a handful of breaking changes, primarily around TLS backen
     - `config::PrivateKey` has been moved to `tls::PrivateKey`.
     - `config::SslOption` has been removed and merged into regular builder methods for `tls::TlsConfig`.
 - Redesign `NetworkInterface` into multiple types in a new `net::interface` module, which has a more natural API and also supports combining multiple criteria for selecting an interface to bind to. ([#494](https://github.com/sagebind/isahc/pull/494))
+- Several network-related types have been moved from the `config` module into the `net` module. ([#518](https://github.com/sagebind/isahc/pull/518))
+    - `config::Dialer` and `config::DialerParseError` moved into `net`.
+    - `config::IpVersion` moved to `net::IpVersion`.
+    - `config::DnCache` and `config::ResolveMap` moved into `net::dns`.
 - Support for [log](https://crates.io/crates/log) is now an optional feature, which is enabled by default. ([e07e64bd](https://github.com/sagebind/isahc/commit/e07e64bda68ce7cdf8408d53bdefba85b91bd4bf))
 
 ### Added
