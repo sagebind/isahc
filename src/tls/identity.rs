@@ -213,7 +213,7 @@ pub struct PrivateKey {
 impl PrivateKey {
     /// Use a PEM-encoded private key.
     ///
-    /// The private key can be supplied as any type which can be references as
+    /// The private key can be supplied as any type which can be referenced as
     /// contiguous bytes. This could be a simple [`String`], or a pre-parsed PEM
     /// object that allows access to its underlying bytes. The `PrivateKey`
     /// object takes ownership of the bytes regardless.
@@ -235,7 +235,7 @@ impl PrivateKey {
 
     /// Use a DER-encoded private key.
     ///
-    /// The private key can be supplied as any type which can be references as
+    /// The private key can be supplied as any type which can be referenced as
     /// contiguous bytes. This could be a simple `Vec<u8>`, or a pre-parsed DER
     /// object that allows access to its underlying bytes. The `PrivateKey`
     /// object takes ownership of the bytes regardless.
@@ -290,9 +290,7 @@ impl SetOpt for PrivateKey {
 
         match &self.data {
             PathOrBlob::Path(path) => easy.ssl_key(path.as_path()),
-            PathOrBlob::Blob(bytes) => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_SSLKEY_BLOB, bytes)
-            },
+            PathOrBlob::Blob(blob) => unsafe { easy.setopt_blob_nocopy(CURLOPT_SSLKEY_BLOB, blob) },
         }?;
 
         if let Some(password) = self.password.as_ref() {
@@ -309,8 +307,8 @@ impl SetOptProxy for PrivateKey {
 
         match &self.data {
             PathOrBlob::Path(path) => easy.proxy_sslkey(path.to_str().unwrap()),
-            PathOrBlob::Blob(bytes) => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_PROXY_SSLKEY_BLOB, bytes)
+            PathOrBlob::Blob(blob) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_SSLKEY_BLOB, blob)
             },
         }?;
 

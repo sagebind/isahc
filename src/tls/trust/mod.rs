@@ -296,8 +296,8 @@ impl SetOpt for TrustStore {
             Repr::FilePath(path) => {
                 easy.cainfo(path)?;
             }
-            Repr::PemBundle(bytes) => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, bytes)?;
+            Repr::PemBundle(blob) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, blob)?;
             },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
@@ -335,8 +335,8 @@ impl SetOptProxy for TrustStore {
                     .into());
                 }
             }
-            Repr::PemBundle(bytes) => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, bytes)?;
+            Repr::PemBundle(blob) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, blob)?;
             },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null

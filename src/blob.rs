@@ -23,7 +23,7 @@ struct Inner<T: ?Sized> {
     ///
     /// # Safety
     ///
-    /// This contains a pointer to data owned by the `_object` field. This field
+    /// This contains a pointer to data owned by the `object` field. This field
     /// therefore must be dropped first, which is why it is defined first in the
     /// struct.
     blob: UnsafeCell<curl_blob>,

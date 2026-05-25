@@ -1,6 +1,10 @@
 [advisories]
 unmaintained = "workspace"
 
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0009"
+reason = "time is only used in examples, and we can't upgrade due to our MSRV"
+
 [licenses]
 private.ignore = true
 unused-allowed-license = "allow"
