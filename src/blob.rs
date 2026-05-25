@@ -108,3 +108,48 @@ unsafe impl<T: Send + ?Sized> Send for Inner<T> {}
 ///
 /// The inner pointer is `Sync` as long as the object it references is `Sync`.
 unsafe impl<T: Sync + ?Sized> Sync for Inner<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn blob_len_matches_input() {
+        let data = vec![1, 2, 3, 4, 5];
+        let blob = Blob::new(data);
+        assert_eq!(blob.len(), 5);
+    }
+
+    #[test]
+    fn blob_has_expected_flags() {
+        let data = vec![1, 2, 3, 4, 5];
+        let blob = Blob::new(data);
+        assert_eq!(blob.as_raw_ref().flags, CURL_BLOB_NOCOPY);
+    }
+
+    #[test]
+    fn blob_from_stack_array() {
+        let data = [1, 2, 3];
+        let blob = Blob::new(data);
+        assert_eq!(blob.len(), 3);
+    }
+
+    #[test]
+    fn blob_clone_preserves_data_and_len() {
+        let data = "hello world";
+        let len = data.len();
+        let blob1 = Blob::new(data);
+        let blob2 = blob1.clone();
+
+        assert_eq!(blob1.len(), len);
+        assert_eq!(blob2.len(), len);
+
+        let raw1 = blob1.as_raw_ref();
+        let raw2 = blob2.as_raw_ref();
+
+        assert!(!raw1.data.is_null());
+        assert_eq!(raw1.data, raw2.data);
+        assert_eq!(raw1.len, raw2.len);
+        assert_eq!(raw1.flags, raw2.flags);
+    }
+}
