@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ProtocolVersion"],"struct":["Certificate","Identity","PrivateKey","TlsConfig","TlsConfigBuilder","TrustStore"]};
+window.SIDEBAR_ITEMS = {"enum":["ProtocolVersion"],"struct":["Identity","Issuer","PrivateKey","TlsConfig","TlsConfigBuilder","TrustStore"]};
