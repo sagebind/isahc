@@ -1,3 +1,6 @@
+[graph]
+exclude-dev = true
+
 [advisories]
 unmaintained = "workspace"
 

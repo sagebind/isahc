@@ -1,4 +1,5 @@
 use crate::{
+    blob::Blob,
     body::AsyncBody,
     error::{Error, ErrorKind},
     metrics::Metrics,
@@ -8,7 +9,7 @@ use crate::{
 };
 use async_channel::Sender;
 use curl::easy::{InfoType, ReadError, SeekResult, WriteError};
-use curl_sys::{CURL, CURL_BLOB_NOCOPY, CURLE_OK, CURLoption, curl_blob};
+use curl_sys::{CURL, CURLE_OK, CURLoption};
 use futures_lite::io::{AsyncRead, AsyncWrite};
 use http::Response;
 use sluice::pipe;
@@ -105,7 +106,7 @@ pub(crate) struct RequestHandler {
     /// their blobs retained in memory until the easy handle is destroyed. This
     /// map keeps these blobs alive until our handler is dropped, which happens
     /// immediately after the easy handle.
-    blobs: HashMap<CURLoption, Arc<[u8]>>,
+    blobs: HashMap<CURLoption, Blob>,
 
     /// Raw pointer to the associated curl easy handle. The pointer is not owned
     /// by this struct, but the parent struct to this one, so we know it will be
@@ -644,7 +645,7 @@ pub(crate) trait BlobOptions {
     unsafe fn setopt_blob_nocopy(
         &mut self,
         option: CURLoption,
-        data: &Arc<[u8]>,
+        data: &Blob,
     ) -> Result<(), curl::Error>;
 }
 
@@ -652,18 +653,12 @@ impl BlobOptions for curl::easy::Easy2<RequestHandler> {
     unsafe fn setopt_blob_nocopy(
         &mut self,
         option: CURLoption,
-        data: &Arc<[u8]>,
+        blob: &Blob,
     ) -> Result<(), curl::Error> {
-        let blob = curl_blob {
-            data: data.as_ptr().cast_mut().cast(),
-            len: data.len(),
-            flags: CURL_BLOB_NOCOPY,
-        };
-
-        let code = unsafe { curl_sys::curl_easy_setopt(self.raw(), option, &blob) };
+        let code = unsafe { curl_sys::curl_easy_setopt(self.raw(), option, blob.as_raw_ptr()) };
 
         if code == CURLE_OK {
-            self.get_mut().blobs.insert(option, Arc::clone(data));
+            self.get_mut().blobs.insert(option, blob.clone());
             Ok(())
         } else {
             let mut err = curl::Error::new(code);

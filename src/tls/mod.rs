@@ -76,21 +76,20 @@
 //!     https://developer.apple.com/documentation/security/secure_transport
 
 use crate::{
+    blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
     info::curl_info,
 };
 use curl::easy::{SslOpt, SslVersion};
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
-mod cert;
 mod identity;
 mod trust;
 
 pub use self::{
-    cert::Certificate,
     identity::{Identity, PrivateKey},
-    trust::TrustStore,
+    trust::{TrustStore, issuer::Issuer},
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
@@ -104,7 +103,7 @@ compile_error!("multiple TLS engines cannot be enabled at the same time");
 #[must_use = "builders have no effect if unused"]
 pub struct TlsConfigBuilder {
     trust_store: TrustStore,
-    issuer_cert: Option<Certificate>,
+    issuer: Option<Issuer>,
     identity: Option<Identity>,
     ciphers: Option<String>,
     min_version: Option<ProtocolVersion>,
@@ -163,8 +162,20 @@ impl TlsConfigBuilder {
     /// method specifies that certificate which servers must match exactly.
     ///
     /// By default, no issuer certificate is set.
-    pub fn issuer_certificate(mut self, cert: Certificate) -> Self {
-        self.issuer_cert = Some(cert);
+    ///
+    /// Only some TLS backends support this option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use isahc::tls::{Issuer, TlsConfig};
+    ///
+    /// let config = TlsConfig::builder()
+    ///     .issuer(Issuer::from_pem_file("ca.pem"))
+    ///     .build();
+    /// ```
+    pub fn issuer(mut self, cert: Issuer) -> Self {
+        self.issuer = Some(cert);
         self
     }
 
@@ -373,7 +384,7 @@ impl TlsConfigBuilder {
                 options
             },
             trust_store: self.trust_store,
-            issuer_cert: self.issuer_cert,
+            issuer: self.issuer,
             identity: self.identity,
             ciphers: self.ciphers,
             min_version: self
@@ -394,7 +405,7 @@ impl TlsConfigBuilder {
 #[derive(Clone, Debug)]
 pub struct TlsConfig {
     trust_store: TrustStore,
-    issuer_cert: Option<Certificate>,
+    issuer: Option<Issuer>,
     identity: Option<Identity>,
 
     /// List of ciphers to use, in a string format compatible with curl.
@@ -480,8 +491,8 @@ impl SetOpt for TlsConfig {
 
         self.trust_store.set_opt(easy)?;
 
-        if let Some(cert) = self.issuer_cert.as_ref() {
-            easy.issuer_cert_blob(cert.as_pem_bytes())?;
+        if let Some(issuer) = self.issuer.as_ref() {
+            issuer.set_opt(easy)?;
         }
 
         if let Some(identity) = self.identity.as_ref() {
@@ -509,8 +520,8 @@ impl SetOptProxy for TlsConfig {
 
         self.trust_store.set_opt_proxy(easy)?;
 
-        if let Some(cert) = self.issuer_cert.as_ref() {
-            easy.proxy_issuer_cert_blob(cert.as_pem_bytes())?;
+        if let Some(issuer) = self.issuer.as_ref() {
+            issuer.set_opt_proxy(easy)?;
         }
 
         if let Some(identity) = self.identity.as_ref() {
@@ -607,4 +618,13 @@ impl fmt::Display for MaximumTlsVersionNotSupportedByEngineError {
             self.max_requested, self.engine
         )
     }
+}
+
+/// curl supports both in-memory certs and certs loaded from files for some
+/// options. This holds one or the other, depending on which the user has
+/// provided.
+#[derive(Clone, Debug)]
+enum PathOrBlob {
+    Path(PathBuf),
+    Blob(Blob),
 }

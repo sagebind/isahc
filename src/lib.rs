@@ -272,6 +272,7 @@ use std::convert::TryFrom;
 mod macros;
 
 mod agent;
+mod blob;
 mod body;
 mod client;
 mod default_headers;

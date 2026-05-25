@@ -7,6 +7,7 @@
 
 use super::TlsEngine;
 use crate::{
+    blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
     handler::BlobOptions,
@@ -17,13 +18,9 @@ use curl_sys::{
     CURLOPT_CAINFO, CURLOPT_CAINFO_BLOB, CURLOPT_CAPATH, CURLOPT_PROXY_CAINFO,
     CURLOPT_PROXY_CAINFO_BLOB, CURLOPT_PROXY_CAPATH,
 };
-use std::{
-    env, fmt,
-    os::raw::c_char,
-    path::PathBuf,
-    ptr,
-    sync::{Arc, LazyLock},
-};
+use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
+
+pub(super) mod issuer;
 
 #[cfg(feature = "trust-webpki-roots")]
 mod webpki_roots;
@@ -97,15 +94,13 @@ enum Repr {
     ///
     /// This requires some `unsafe` because we must be very careful to ensure
     /// this blob is not freed until it is no longer in use.
-    PemBundle {
-        // TODO: How to track when it is safe to free this?
-        bytes: Arc<[u8]>,
-    },
+    PemBundle(Blob),
 }
 
 impl TrustStore {
     /// Use the operating system's native APIs for verifying certificate trust,
-    /// if possible. This is normally the trust method used for most typical applications.
+    /// if possible. This is normally the trust method used for most typical
+    /// applications.
     ///
     /// On Windows, macOS, and iOS this involves using the certificate
     /// management features provided by the operating system. On Linux and other
@@ -244,7 +239,9 @@ pub struct TrustStoreBuilder {
 impl TrustStoreBuilder {
     /// Add a trusted certificate in PEM format.
     ///
-    /// The certificates are not parsed or validated here. If a certificate is
+    /// The certificate bytes are copied into the builder.
+    ///
+    /// The certificate is not parsed or validated here. If a certificate is
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
@@ -255,7 +252,9 @@ impl TrustStoreBuilder {
 
     /// Add a trusted certificate in DER format.
     ///
-    /// The certificates are not parsed or validated here. If a certificate is
+    /// The certificate bytes are copied into the builder.
+    ///
+    /// The certificate is not parsed or validated here. If a certificate is
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
@@ -292,9 +291,7 @@ impl TrustStoreBuilder {
     /// certificates will never be freed from memory until the HTTP client that
     /// used them is closed.
     pub fn build(self) -> TrustStore {
-        TrustStore(Repr::PemBundle {
-            bytes: self.pem.into(),
-        })
+        TrustStore(Repr::PemBundle(Blob::new(self.pem)))
     }
 }
 
@@ -305,8 +302,8 @@ impl SetOpt for TrustStore {
             Repr::FilePath(path) => {
                 easy.cainfo(path)?;
             }
-            Repr::PemBundle { bytes } => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, bytes)?;
+            Repr::PemBundle(blob) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_CAINFO_BLOB, blob)?;
             },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
@@ -344,8 +341,8 @@ impl SetOptProxy for TrustStore {
                     .into());
                 }
             }
-            Repr::PemBundle { bytes } => unsafe {
-                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, bytes)?;
+            Repr::PemBundle(blob) => unsafe {
+                easy.setopt_blob_nocopy(CURLOPT_PROXY_CAINFO_BLOB, blob)?;
             },
             Repr::Unset => {
                 // safe wrapper does not allow setting to null
