@@ -717,7 +717,7 @@ pub trait Configurable: request::WithRequestConfig {
     /// Enable or disable sending HTTP header names in Title-Case instead of
     /// lowercase form.
     ///
-    /// This option only affects ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++user-supplied headers and does not affect
+    /// This option only affects user-supplied headers and does not affect
     /// low-level headers that are automatically supplied for HTTP protocol
     /// details, such as `Connection` and `Host` (unless you override such a
     /// header yourself).
