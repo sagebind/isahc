@@ -1,6 +1,6 @@
 //! Configuration of DNS resolution.
 
-use super::setopt::{EasyHandle, SetOpt, SetOptError};
+use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
 use std::{net::IpAddr, time::Duration};
 
 /// DNS caching configuration.

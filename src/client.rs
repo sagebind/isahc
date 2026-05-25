@@ -14,6 +14,7 @@ use crate::{
     handler::{RequestHandler, ResponseBodyReader, ResponseResult},
     headers::HasHeaders,
     interceptor::{self, Interceptor, InterceptorObj},
+    net::dns::{DnsCache, ResolveMap},
     parsing::header_to_curl_string,
 };
 use futures_lite::{
@@ -265,7 +266,7 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// use isahc::{config::*, prelude::*, HttpClient};
+    /// use isahc::{net::dns::DnsCache, prelude::*, HttpClient};
     /// use std::time::Duration;
     ///
     /// let client = HttpClient::builder()
@@ -301,7 +302,7 @@ impl HttpClientBuilder {
     /// # Examples
     ///
     /// ```
-    /// use isahc::{config::ResolveMap, prelude::*, HttpClient};
+    /// use isahc::{net::dns::ResolveMap, prelude::*, HttpClient};
     /// use std::net::IpAddr;
     ///
     /// let client = HttpClient::builder()

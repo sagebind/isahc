@@ -1,4 +1,4 @@
-use isahc::{config::IpVersion, error::ErrorKind, prelude::*, Request};
+use isahc::{Request, error::ErrorKind, net::IpVersion, prelude::*};
 use std::{
     io::{self, Read, Write},
     net::{Ipv4Addr, Ipv6Addr, Shutdown, TcpListener, TcpStream, ToSocketAddrs},

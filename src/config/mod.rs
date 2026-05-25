@@ -16,21 +16,17 @@
 use crate::{
     auth::{Authentication, Credentials},
     is_http_version_supported,
-    net::interface,
+    net::{Dialer, IpVersion, interface},
 };
 use setopt::{EasyHandle, SetOpt, SetOptError};
 use std::time::Duration;
 
 pub(crate) mod client;
-pub(crate) mod dial;
-pub(crate) mod dns;
 pub(crate) mod proxy;
 pub(crate) mod redirect;
 pub(crate) mod request;
 pub(crate) mod setopt;
 
-pub use dial::{Dialer, DialerParseError};
-pub use dns::{DnsCache, ResolveMap};
 pub use redirect::RedirectPolicy;
 
 /// Provides additional methods when building a request for configuring various
@@ -426,7 +422,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// ```
     /// use isahc::{
-    ///     config::Dialer,
+    ///     net::Dialer,
     ///     prelude::*,
     ///     Request,
     /// };
@@ -442,7 +438,7 @@ pub trait Configurable: request::WithRequestConfig {
     ///
     /// ```
     /// use isahc::{
-    ///     config::Dialer,
+    ///     net::Dialer,
     ///     prelude::*,
     ///     Request,
     /// };
@@ -856,40 +852,6 @@ impl SetOpt for VersionNegotiation {
                 easy.http_version(version).map_err(Into::into)
             }
         }
-    }
-}
-
-/// Supported IP versions that can be used.
-#[derive(Clone, Debug)]
-pub enum IpVersion {
-    /// Use IPv4 addresses only. IPv6 addresses will be ignored.
-    V4,
-
-    /// Use IPv6 addresses only. IPv4 addresses will be ignored.
-    V6,
-
-    /// Use either IPv4 or IPv6 addresses. By default IPv6 addresses are
-    /// preferred if available, otherwise an IPv4 address will be used. IPv6
-    /// addresses are tried first by following the recommendations of [RFC
-    /// 6555 "Happy Eyeballs"](https://tools.ietf.org/html/rfc6555).
-    Any,
-}
-
-impl Default for IpVersion {
-    fn default() -> Self {
-        Self::Any
-    }
-}
-
-impl SetOpt for IpVersion {
-    fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
-        easy.ip_resolve(match &self {
-            IpVersion::V4 => curl::easy::IpResolve::V4,
-            IpVersion::V6 => curl::easy::IpResolve::V6,
-            IpVersion::Any => curl::easy::IpResolve::Any,
-        })?;
-
-        Ok(())
     }
 }
 
