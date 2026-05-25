@@ -68,7 +68,7 @@ Install via Cargo by adding to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-isahc = "1.8"
+isahc = "2.0"
 ```
 
 ### Minimum supported Rust version
