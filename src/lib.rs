@@ -172,8 +172,8 @@
 //!
 //! ## `log`
 //!
-//! Enable support for emitting log events via the [log] crate. Enabled by
-//! default. See section on logging and tracing below.
+//! Enable support for emitting log events via the [log](https://docs.rs/log)
+//! crate. Enabled by default. See section on logging and tracing below.
 //!
 //! ## `psl`
 //!
