@@ -120,105 +120,104 @@
 <a href=#120 id=120 data-nosnippet>120</a>            negotiation.set_opt(easy)<span class="question-mark">?</span>;
 <a href=#121 id=121 data-nosnippet>121</a>        }
 <a href=#122 id=122 data-nosnippet>122</a>
-<a href=#123 id=123 data-nosnippet>123</a>        <span class="attr">#[allow(unsafe_code)]
-<a href=#124 id=124 data-nosnippet>124</a>        </span>{
-<a href=#125 id=125 data-nosnippet>125</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.automatic_decompression {
-<a href=#126 id=126 data-nosnippet>126</a>                <span class="kw">if </span>enable {
-<a href=#127 id=127 data-nosnippet>127</a>                    <span class="comment">// Enable automatic decompression, and also populate the
-<a href=#128 id=128 data-nosnippet>128</a>                    // Accept-Encoding header with all supported encodings if not
-<a href=#129 id=129 data-nosnippet>129</a>                    // explicitly set.
-<a href=#130 id=130 data-nosnippet>130</a>                    </span>easy.accept_encoding(<span class="string">""</span>)<span class="question-mark">?</span>;
-<a href=#131 id=131 data-nosnippet>131</a>                } <span class="kw">else </span>{
-<a href=#132 id=132 data-nosnippet>132</a>                    <span class="comment">// Use raw FFI because safe wrapper doesn't let us set to null.
-<a href=#133 id=133 data-nosnippet>133</a>                    </span><span class="kw">unsafe </span>{
-<a href=#134 id=134 data-nosnippet>134</a>                        <span class="kw">match </span>curl_sys::curl_easy_setopt(
-<a href=#135 id=135 data-nosnippet>135</a>                            easy.raw(),
-<a href=#136 id=136 data-nosnippet>136</a>                            curl_sys::CURLOPT_ACCEPT_ENCODING,
-<a href=#137 id=137 data-nosnippet>137</a>                            <span class="number">0</span>,
-<a href=#138 id=138 data-nosnippet>138</a>                        ) {
-<a href=#139 id=139 data-nosnippet>139</a>                            curl_sys::CURLE_OK =&gt; {}
-<a href=#140 id=140 data-nosnippet>140</a>                            code =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(curl::Error::new(code).into()),
-<a href=#141 id=141 data-nosnippet>141</a>                        }
-<a href=#142 id=142 data-nosnippet>142</a>                    }
-<a href=#143 id=143 data-nosnippet>143</a>                }
-<a href=#144 id=144 data-nosnippet>144</a>            }
-<a href=#145 id=145 data-nosnippet>145</a>        }
-<a href=#146 id=146 data-nosnippet>146</a>
-<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(expect_continue) = <span class="self">self</span>.expect_continue.as_ref() {
-<a href=#148 id=148 data-nosnippet>148</a>            expect_continue.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#149 id=149 data-nosnippet>149</a>        }
-<a href=#150 id=150 data-nosnippet>150</a>
-<a href=#151 id=151 data-nosnippet>151</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.authentication.as_ref() {
-<a href=#152 id=152 data-nosnippet>152</a>            auth.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#153 id=153 data-nosnippet>153</a>        }
-<a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.credentials.as_ref() {
-<a href=#156 id=156 data-nosnippet>156</a>            credentials.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#157 id=157 data-nosnippet>157</a>        }
-<a href=#158 id=158 data-nosnippet>158</a>
-<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(interval) = <span class="self">self</span>.tcp_keepalive {
-<a href=#160 id=160 data-nosnippet>160</a>            easy.tcp_keepalive(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
-<a href=#161 id=161 data-nosnippet>161</a>            easy.tcp_keepintvl(interval)<span class="question-mark">?</span>;
-<a href=#162 id=162 data-nosnippet>162</a>        }
-<a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.tcp_nodelay {
-<a href=#165 id=165 data-nosnippet>165</a>            easy.tcp_nodelay(enable)<span class="question-mark">?</span>;
-<a href=#166 id=166 data-nosnippet>166</a>        }
-<a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(interface) = <span class="self">self</span>.interface.as_ref() {
-<a href=#169 id=169 data-nosnippet>169</a>            interface.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#170 id=170 data-nosnippet>170</a>        }
-<a href=#171 id=171 data-nosnippet>171</a>
-<a href=#172 id=172 data-nosnippet>172</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(version) = <span class="self">self</span>.ip_version.as_ref() {
-<a href=#173 id=173 data-nosnippet>173</a>            version.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#174 id=174 data-nosnippet>174</a>        }
-<a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(dialer) = <span class="self">self</span>.dial.as_ref() {
-<a href=#177 id=177 data-nosnippet>177</a>            dialer.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#178 id=178 data-nosnippet>178</a>        }
-<a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proxy) = <span class="self">self</span>.proxy.as_ref() {
-<a href=#181 id=181 data-nosnippet>181</a>            <span class="kw">match </span>proxy {
-<a href=#182 id=182 data-nosnippet>182</a>                <span class="prelude-val">Some</span>(uri) =&gt; easy.proxy(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}"</span>, uri))<span class="question-mark">?</span>,
-<a href=#183 id=183 data-nosnippet>183</a>                <span class="prelude-val">None </span>=&gt; easy.proxy(<span class="string">""</span>)<span class="question-mark">?</span>,
-<a href=#184 id=184 data-nosnippet>184</a>            }
-<a href=#185 id=185 data-nosnippet>185</a>        }
-<a href=#186 id=186 data-nosnippet>186</a>
-<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(blacklist) = <span class="self">self</span>.proxy_blacklist.as_ref() {
-<a href=#188 id=188 data-nosnippet>188</a>            blacklist.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#189 id=189 data-nosnippet>189</a>        }
-<a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.proxy_authentication.as_ref() {
-<a href=#192 id=192 data-nosnippet>192</a>            auth.set_opt_proxy(easy)<span class="question-mark">?</span>;
-<a href=#193 id=193 data-nosnippet>193</a>        }
-<a href=#194 id=194 data-nosnippet>194</a>
-<a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.proxy_credentials.as_ref() {
-<a href=#196 id=196 data-nosnippet>196</a>            credentials.set_opt_proxy(easy)<span class="question-mark">?</span>;
-<a href=#197 id=197 data-nosnippet>197</a>        }
-<a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_upload_speed {
-<a href=#200 id=200 data-nosnippet>200</a>            easy.max_send_speed(max)<span class="question-mark">?</span>;
-<a href=#201 id=201 data-nosnippet>201</a>        }
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_download_speed {
-<a href=#204 id=204 data-nosnippet>204</a>            easy.max_recv_speed(max)<span class="question-mark">?</span>;
-<a href=#205 id=205 data-nosnippet>205</a>        }
-<a href=#206 id=206 data-nosnippet>206</a>
-<a href=#207 id=207 data-nosnippet>207</a>        <span class="attr">#[cfg(feature = <span class="string">"tls"</span>)]
-<a href=#208 id=208 data-nosnippet>208</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(config) = <span class="self">self</span>.tls_config.as_ref() {
-<a href=#209 id=209 data-nosnippet>209</a>            config.set_opt(easy)<span class="question-mark">?</span>;
-<a href=#210 id=210 data-nosnippet>210</a>        }
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="attr">#[cfg(feature = <span class="string">"tls"</span>)]
-<a href=#213 id=213 data-nosnippet>213</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(config) = <span class="self">self</span>.proxy_tls_config.as_ref() {
-<a href=#214 id=214 data-nosnippet>214</a>            config.set_opt_proxy(easy)<span class="question-mark">?</span>;
-<a href=#215 id=215 data-nosnippet>215</a>        }
-<a href=#216 id=216 data-nosnippet>216</a>
-<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.enable_metrics {
-<a href=#218 id=218 data-nosnippet>218</a>            easy.progress(enable)<span class="question-mark">?</span>;
-<a href=#219 id=219 data-nosnippet>219</a>        }
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="prelude-val">Ok</span>(())
-<a href=#222 id=222 data-nosnippet>222</a>    }
-<a href=#223 id=223 data-nosnippet>223</a>}
+<a href=#123 id=123 data-nosnippet>123</a>        {
+<a href=#124 id=124 data-nosnippet>124</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.automatic_decompression {
+<a href=#125 id=125 data-nosnippet>125</a>                <span class="kw">if </span>enable {
+<a href=#126 id=126 data-nosnippet>126</a>                    <span class="comment">// Enable automatic decompression, and also populate the
+<a href=#127 id=127 data-nosnippet>127</a>                    // Accept-Encoding header with all supported encodings if not
+<a href=#128 id=128 data-nosnippet>128</a>                    // explicitly set.
+<a href=#129 id=129 data-nosnippet>129</a>                    </span>easy.accept_encoding(<span class="string">""</span>)<span class="question-mark">?</span>;
+<a href=#130 id=130 data-nosnippet>130</a>                } <span class="kw">else </span>{
+<a href=#131 id=131 data-nosnippet>131</a>                    <span class="comment">// Use raw FFI because safe wrapper doesn't let us set to null.
+<a href=#132 id=132 data-nosnippet>132</a>                    </span><span class="kw">unsafe </span>{
+<a href=#133 id=133 data-nosnippet>133</a>                        <span class="kw">match </span>curl_sys::curl_easy_setopt(
+<a href=#134 id=134 data-nosnippet>134</a>                            easy.raw(),
+<a href=#135 id=135 data-nosnippet>135</a>                            curl_sys::CURLOPT_ACCEPT_ENCODING,
+<a href=#136 id=136 data-nosnippet>136</a>                            <span class="number">0</span>,
+<a href=#137 id=137 data-nosnippet>137</a>                        ) {
+<a href=#138 id=138 data-nosnippet>138</a>                            curl_sys::CURLE_OK =&gt; {}
+<a href=#139 id=139 data-nosnippet>139</a>                            code =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(curl::Error::new(code).into()),
+<a href=#140 id=140 data-nosnippet>140</a>                        }
+<a href=#141 id=141 data-nosnippet>141</a>                    }
+<a href=#142 id=142 data-nosnippet>142</a>                }
+<a href=#143 id=143 data-nosnippet>143</a>            }
+<a href=#144 id=144 data-nosnippet>144</a>        }
+<a href=#145 id=145 data-nosnippet>145</a>
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(expect_continue) = <span class="self">self</span>.expect_continue.as_ref() {
+<a href=#147 id=147 data-nosnippet>147</a>            expect_continue.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#148 id=148 data-nosnippet>148</a>        }
+<a href=#149 id=149 data-nosnippet>149</a>
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.authentication.as_ref() {
+<a href=#151 id=151 data-nosnippet>151</a>            auth.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#152 id=152 data-nosnippet>152</a>        }
+<a href=#153 id=153 data-nosnippet>153</a>
+<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.credentials.as_ref() {
+<a href=#155 id=155 data-nosnippet>155</a>            credentials.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#156 id=156 data-nosnippet>156</a>        }
+<a href=#157 id=157 data-nosnippet>157</a>
+<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(interval) = <span class="self">self</span>.tcp_keepalive {
+<a href=#159 id=159 data-nosnippet>159</a>            easy.tcp_keepalive(<span class="bool-val">true</span>)<span class="question-mark">?</span>;
+<a href=#160 id=160 data-nosnippet>160</a>            easy.tcp_keepintvl(interval)<span class="question-mark">?</span>;
+<a href=#161 id=161 data-nosnippet>161</a>        }
+<a href=#162 id=162 data-nosnippet>162</a>
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.tcp_nodelay {
+<a href=#164 id=164 data-nosnippet>164</a>            easy.tcp_nodelay(enable)<span class="question-mark">?</span>;
+<a href=#165 id=165 data-nosnippet>165</a>        }
+<a href=#166 id=166 data-nosnippet>166</a>
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(interface) = <span class="self">self</span>.interface.as_ref() {
+<a href=#168 id=168 data-nosnippet>168</a>            interface.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#169 id=169 data-nosnippet>169</a>        }
+<a href=#170 id=170 data-nosnippet>170</a>
+<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(version) = <span class="self">self</span>.ip_version.as_ref() {
+<a href=#172 id=172 data-nosnippet>172</a>            version.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#173 id=173 data-nosnippet>173</a>        }
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(dialer) = <span class="self">self</span>.dial.as_ref() {
+<a href=#176 id=176 data-nosnippet>176</a>            dialer.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#177 id=177 data-nosnippet>177</a>        }
+<a href=#178 id=178 data-nosnippet>178</a>
+<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proxy) = <span class="self">self</span>.proxy.as_ref() {
+<a href=#180 id=180 data-nosnippet>180</a>            <span class="kw">match </span>proxy {
+<a href=#181 id=181 data-nosnippet>181</a>                <span class="prelude-val">Some</span>(uri) =&gt; easy.proxy(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}"</span>, uri))<span class="question-mark">?</span>,
+<a href=#182 id=182 data-nosnippet>182</a>                <span class="prelude-val">None </span>=&gt; easy.proxy(<span class="string">""</span>)<span class="question-mark">?</span>,
+<a href=#183 id=183 data-nosnippet>183</a>            }
+<a href=#184 id=184 data-nosnippet>184</a>        }
+<a href=#185 id=185 data-nosnippet>185</a>
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(blacklist) = <span class="self">self</span>.proxy_blacklist.as_ref() {
+<a href=#187 id=187 data-nosnippet>187</a>            blacklist.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#188 id=188 data-nosnippet>188</a>        }
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(auth) = <span class="self">self</span>.proxy_authentication.as_ref() {
+<a href=#191 id=191 data-nosnippet>191</a>            auth.set_opt_proxy(easy)<span class="question-mark">?</span>;
+<a href=#192 id=192 data-nosnippet>192</a>        }
+<a href=#193 id=193 data-nosnippet>193</a>
+<a href=#194 id=194 data-nosnippet>194</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(credentials) = <span class="self">self</span>.proxy_credentials.as_ref() {
+<a href=#195 id=195 data-nosnippet>195</a>            credentials.set_opt_proxy(easy)<span class="question-mark">?</span>;
+<a href=#196 id=196 data-nosnippet>196</a>        }
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_upload_speed {
+<a href=#199 id=199 data-nosnippet>199</a>            easy.max_send_speed(max)<span class="question-mark">?</span>;
+<a href=#200 id=200 data-nosnippet>200</a>        }
+<a href=#201 id=201 data-nosnippet>201</a>
+<a href=#202 id=202 data-nosnippet>202</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(max) = <span class="self">self</span>.max_download_speed {
+<a href=#203 id=203 data-nosnippet>203</a>            easy.max_recv_speed(max)<span class="question-mark">?</span>;
+<a href=#204 id=204 data-nosnippet>204</a>        }
+<a href=#205 id=205 data-nosnippet>205</a>
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="attr">#[cfg(feature = <span class="string">"tls"</span>)]
+<a href=#207 id=207 data-nosnippet>207</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(config) = <span class="self">self</span>.tls_config.as_ref() {
+<a href=#208 id=208 data-nosnippet>208</a>            config.set_opt(easy)<span class="question-mark">?</span>;
+<a href=#209 id=209 data-nosnippet>209</a>        }
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>        <span class="attr">#[cfg(feature = <span class="string">"tls"</span>)]
+<a href=#212 id=212 data-nosnippet>212</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(config) = <span class="self">self</span>.proxy_tls_config.as_ref() {
+<a href=#213 id=213 data-nosnippet>213</a>            config.set_opt_proxy(easy)<span class="question-mark">?</span>;
+<a href=#214 id=214 data-nosnippet>214</a>        }
+<a href=#215 id=215 data-nosnippet>215</a>
+<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(enable) = <span class="self">self</span>.enable_metrics {
+<a href=#217 id=217 data-nosnippet>217</a>            easy.progress(enable)<span class="question-mark">?</span>;
+<a href=#218 id=218 data-nosnippet>218</a>        }
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="prelude-val">Ok</span>(())
+<a href=#221 id=221 data-nosnippet>221</a>    }
+<a href=#222 id=222 data-nosnippet>222</a>}
 </code></pre></div></section></main></body></html>
