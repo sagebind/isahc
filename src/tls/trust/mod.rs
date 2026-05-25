@@ -20,6 +20,8 @@ use curl_sys::{
 };
 use std::{env, fmt, os::raw::c_char, path::PathBuf, ptr, sync::LazyLock};
 
+pub(super) mod issuer;
+
 #[cfg(feature = "trust-webpki-roots")]
 mod webpki_roots;
 
@@ -237,7 +239,9 @@ pub struct TrustStoreBuilder {
 impl TrustStoreBuilder {
     /// Add a trusted certificate in PEM format.
     ///
-    /// The certificates are not parsed or validated here. If a certificate is
+    /// The certificate bytes are copied into the builder.
+    ///
+    /// The certificate is not parsed or validated here. If a certificate is
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.
@@ -248,7 +252,9 @@ impl TrustStoreBuilder {
 
     /// Add a trusted certificate in DER format.
     ///
-    /// The certificates are not parsed or validated here. If a certificate is
+    /// The certificate bytes are copied into the builder.
+    ///
+    /// The certificate is not parsed or validated here. If a certificate is
     /// malformed or the format is not supported by the underlying SSL/TLS
     /// engine, an error will be returned when attempting to send a request
     /// using the offending certificate.

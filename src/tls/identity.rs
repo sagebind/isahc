@@ -1,3 +1,4 @@
+use super::PathOrBlob;
 use crate::{
     blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
@@ -318,14 +319,6 @@ impl SetOptProxy for PrivateKey {
 
         Ok(())
     }
-}
-
-/// curl supports both in-memory certs and certs loaded from files for mTLS.
-/// This holds one or the other, depending on which the user has provided.
-#[derive(Clone, Debug)]
-enum PathOrBlob {
-    Path(PathBuf),
-    Blob(Blob),
 }
 
 /// Possible formats for certificates supported by curl.
