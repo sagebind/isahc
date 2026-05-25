@@ -11,13 +11,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Breaking Changes
 
+This release includes a handful of breaking changes, primarily around TLS backends and the TLS API. For more detail on these changes and how to adapt your code when upgrading from 1.x, please see the [migration guide](https://github.com/sagebind/isahc/wiki/Migration-guide#20).
+
 - Isahc now supports choosing between multiple TLS backends, and crate features have been changed to reflect this. Support for [rustls](https://github.com/rustls/rustls) as a TLS backend has been added, and the default TLS backend has been changed to be rustls. ([#491](https://github.com/sagebind/isahc/pull/491))
 - Remove and replace all SSL-related options on `Configurable` with a new `tls` module consolidated into `tls::TlsConfig`. The names of all individual options have been renamed, and include several small breaking changes. ([#491](https://github.com/sagebind/isahc/pull/491))
+    - `config::CaCertificate` renamed to `tls::TrustStore`, and expanded with new methods for selecting entire providers of CA certificates, beyond just a single PEM bundle.
+    - `config::ClientCertificate` has been renamed to `tls::Identity` with additional options for loading certificates and keys from other formats.
+    - `config::PrivateKey` has been moved to `tls::PrivateKey`.
+    - `config::SslOption` has been removed and merged into regular builder methods for `tls::TlsConfig`.
 - Redesign `NetworkInterface` into multiple types in a new `net::interface` module, which has a more natural API and also supports combining multiple criteria for selecting an interface to bind to. ([#494](https://github.com/sagebind/isahc/pull/494))
 - Support for [log](https://crates.io/crates/log) is now an optional feature, which is enabled by default. ([e07e64bd](https://github.com/sagebind/isahc/commit/e07e64bda68ce7cdf8408d53bdefba85b91bd4bf))
 
 ### Added
 
+- TLS validation can now be augmented by validating a server's certificate is issued by a specific issuer chain using `tls::Issuer`. Not all backends support this option. ([#491](https://github.com/sagebind/isahc/pull/491))
 - Added optional support for using [webpki-root-certs](https://crates.io/crates/webpki-root-certs) as a trust store for root certificates behind a `trust-webpki-roots` crate feature, which can be used with any TLS backend. This can be used automatically by default combined with [rustls](https://github.com/rustls/rustls) by enabling the `rustls-tls-webpki-roots` crate feature. ([#492](https://github.com/sagebind/isahc/pull/492))
 
 ### Changes
