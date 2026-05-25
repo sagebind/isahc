@@ -1,7 +1,5 @@
-use super::{
-    dns::{DnsCache, ResolveMap},
-    setopt::{EasyHandle, SetOpt, SetOptError},
-};
+use super::setopt::{EasyHandle, SetOpt, SetOptError};
+use crate::net::dns::{DnsCache, ResolveMap};
 use std::time::Duration;
 
 #[derive(Debug, Default)]

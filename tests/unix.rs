@@ -1,6 +1,6 @@
 #![cfg(unix)]
 
-use isahc::{config::Dialer, prelude::*, Request};
+use isahc::{Request, net::Dialer, prelude::*};
 use std::{
     io::{self, Write},
     os::unix::net::UnixListener,

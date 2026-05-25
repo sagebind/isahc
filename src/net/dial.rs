@@ -1,7 +1,7 @@
 //! Configuration for customizing how connections are established and sockets
 //! are opened.
 
-use super::setopt::{EasyHandle, SetOpt, SetOptError};
+use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
 use curl::easy::List;
 use http::Uri;
 use std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
@@ -35,11 +35,11 @@ impl std::error::Error for DialerParseError {}
 /// Connect to a Unix socket URI:
 ///
 /// ```
-/// use isahc::config::Dialer;
+/// use isahc::net::Dialer;
 ///
 /// # #[cfg(unix)]
 /// let unix_socket = "unix:/path/to/my.sock".parse::<Dialer>()?;
-/// # Ok::<(), isahc::config::DialerParseError>(())
+/// # Ok::<(), isahc::net::DialerParseError>(())
 /// ```
 #[derive(Clone, Debug)]
 pub struct Dialer(Inner);
@@ -63,14 +63,14 @@ impl Dialer {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::Dialer;
+    /// use isahc::net::Dialer;
     /// use std::net::Ipv4Addr;
     ///
     /// let dialer = Dialer::ip_socket((Ipv4Addr::LOCALHOST, 8080));
     /// ```
     ///
     /// ```
-    /// use isahc::config::Dialer;
+    /// use isahc::net::Dialer;
     /// use std::net::SocketAddr;
     ///
     /// let dialer = Dialer::ip_socket("0.0.0.0:8765".parse::<SocketAddr>()?);
@@ -90,7 +90,7 @@ impl Dialer {
     /// # Examples
     ///
     /// ```
-    /// use isahc::config::Dialer;
+    /// use isahc::net::Dialer;
     ///
     /// let docker = Dialer::unix_socket("/var/run/docker.sock");
     /// ```
