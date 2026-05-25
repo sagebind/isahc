@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DnsCache","IpVersion","RedirectPolicy"],"struct":["Dialer","DialerParseError","ExpectContinue","ResolveMap","VersionNegotiation"],"trait":["Configurable"]};
+window.SIDEBAR_ITEMS = {"enum":["RedirectPolicy"],"struct":["ExpectContinue","VersionNegotiation"],"trait":["Configurable"]};

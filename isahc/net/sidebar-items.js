@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["interface"]};
+window.SIDEBAR_ITEMS = {"enum":["IpVersion"],"mod":["dns","interface"],"struct":["Dialer","DialerParseError"]};
