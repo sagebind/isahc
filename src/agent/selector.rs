@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use super::util::IntHasher;
 use curl::multi::Socket;
 use polling::{AsSource, Event, Events, Poller};

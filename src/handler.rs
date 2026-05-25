@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use crate::{
     body::AsyncBody,
     error::{Error, ErrorKind},

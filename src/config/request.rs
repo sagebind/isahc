@@ -120,7 +120,6 @@ impl SetOpt for RequestConfig {
             negotiation.set_opt(easy)?;
         }
 
-        #[allow(unsafe_code)]
         {
             if let Some(enable) = self.automatic_decompression {
                 if enable {
