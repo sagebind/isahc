@@ -170,6 +170,11 @@
 //! Additional serialization and deserialization of JSON bodies via
 //! [serde](https://serde.rs). Disabled by default.
 //!
+//! ## `log`
+//!
+//! Enable support for emitting log events via the [log](https://docs.rs/log)
+//! crate. Enabled by default. See section on logging and tracing below.
+//!
 //! ## `psl`
 //!
 //! Enable use of the Public Suffix List to filter out potentially malicious
