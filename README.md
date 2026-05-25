@@ -107,7 +107,7 @@ Safe Rust bindings to libcurl are provided by the [curl crate], which you can us
 Not every library is perfect for every use-case. While Isahc strives to be a full-featured and general-purpose HTTP client that should work well for many projects, there are a few scenarios that Isahc is not well suited for:
 
 - **Tiny binaries**: If you are creating an application where tiny binary size is a key priority, you might find Isahc to be too large for you. While Isahc's dependencies are carefully curated and a number of features can be disabled, Isahc's core feature set includes things like async which does have some file size overhead. You might find something like [ureq] more suitable.
-- **WebAssembly support**: If your project needs to be able to be compiled to WebAssembly, then Isahc will probably not work for you. Instead you might like an HTTP client that supports multiple backends such as [Surf].
+- **WebAssembly support**: If your project needs to be able to be compiled to WebAssembly, then Isahc will probably not work for you.
 
 ## License
 
@@ -127,5 +127,4 @@ The Isahc logo and related assets are licensed under a [Creative Commons Attribu
 [rfc4559]: https://tools.ietf.org/html/rfc4559
 [rust]: https://www.rustlang.org
 [serde]: https://serde.rs
-[Surf]: https://github.com/http-rs/surf
 [ureq]: https://github.com/algesten/ureq
