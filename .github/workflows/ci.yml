@@ -19,6 +19,7 @@ jobs:
 
   test:
     strategy:
+      fail-fast: false
       # Set up several combinations of CPU architectures, operating systems,
       # compiler targets, and crate features to test against.
       matrix:
