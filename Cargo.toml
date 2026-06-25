@@ -65,7 +65,7 @@ default-features = false
 # Minimum version for rustls-platform-verifier support is 0.4.81.
 # 0.4.88 bundles libcurl 8.20.0 which has a DNS resolver bug that affects us
 # severely, so we exclude it.
-version = ">=0.4.81, <0.4.88"
+version = ">=0.4.81, <0.4.90"
 default-features = false
 
 [dependencies.encoding_rs]
