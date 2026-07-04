@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+<<<<<<< Updated upstream
 ## [2.0.0](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v2.0.0) - 2026-05-25
 
 ### Breaking Changes
@@ -44,6 +45,9 @@ This release includes a handful of breaking changes, primarily around TLS backen
 
 - Bump http from 0.2.12 to 1.4.0 ([#472](https://github.com/sagebind/isahc/pull/472))
 - Bump codecov/codecov-action from 5 to 6 ([#474](https://github.com/sagebind/isahc/pull/474))
+=======
+## [1.8.3](https://github.com/sagebind/isahc/compare/isahc-v1.8.2...isahc-v1.8.3) - 2026-07-04
+>>>>>>> Stashed changes
 
 ## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
 
