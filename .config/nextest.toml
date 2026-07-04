@@ -5,6 +5,6 @@ fail-fast = false
 filter = "binary(tls)"
 retries = {
     backoff = "fixed",
-    count = 3,
-    delay = "5s",
+    count = 5,
+    delay = "10s",
 }
