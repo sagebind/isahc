@@ -57,18 +57,6 @@ fn curl_version() -> (u8, u8, u8) {
     ((bits >> 16) as u8, (bits >> 8) as u8, bits as u8)
 }
 
-/// Inspect at runtime the version of curl Isahc is linked to and perform sanity
-/// checks to ensure it is something that we can use.
-pub(crate) fn do_curl_sanity_checks() {
-    if curl_version() == (8, 20, 0) {
-        panic!("libcurl 8.20.0 detected, this version has a known bug that causes DNS to hang");
-    }
-
-    if !CURL_VERSION.protocols().any(|p| p == "http") {
-        panic!("linked libcurl does not support HTTP");
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
