@@ -23,5 +23,5 @@ jobs:
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v7
         with:
-          token: ${{secrets.CODECOV_TOKEN}}
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true

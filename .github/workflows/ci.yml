@@ -115,6 +115,15 @@ jobs:
       - name: Run example program
         run: cargo run --release --example simple --no-default-features --features ${{ matrix.features }}
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          directory: target/nextest/ci
+          fail_ci_if_error: false
+
   docs-rs:
     runs-on: ubuntu-latest
     env:
