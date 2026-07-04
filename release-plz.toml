@@ -1,6 +1,10 @@
 [workspace]
 pr_labels = ["release"]
 
+[[package]]
+name = "isahc"
+git_tag_name = "{{ version }}"
+
 [[changelog.commit_parsers]]
 footer = "Co-authored-by: dependabot"
 group = "Dependency Updates"
