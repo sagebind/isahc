@@ -1,0 +1,9 @@
+[tools]
+cargo-binstall = "latest"
+
+[tools."cargo:cargo-nextest"]
+version = "latest"
+dependencies = ["cargo-binstall"]
+
+[tasks.test]
+run = "cargo nextest run"

@@ -1,0 +1,10 @@
+[profile.ci]
+fail-fast = false
+
+[[profile.ci.overrides]]
+filter = "binary(tls)"
+retries = {
+    backoff = "fixed",
+    count = 3,
+    delay = "5s",
+}
