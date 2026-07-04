@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.8.3](https://github.com/sagebind/isahc/compare/1.8.2...1.8.3) - 2026-07-04
 
+### Dependencies
+
+- Remove the restriction on curl-sys dependency versions from the prior release, now that the latest version of curl-sys fixes the DNS hanging issue. Running `cargo update` should be enough to pull in the latest version of Isahc 1.x and of curl-sys.
+- The runtime logic of checking for the presence of libcurl version 8.20.0 affected by <https://github.com/curl/curl/issues/21558> has been backported from [#510](https://github.com/sagebind/isahc/pull/510) since we no longer prevent that version from being pulled in using dependency ranges. ([#541](https://github.com/sagebind/isahc/pull/541)).
+
 ## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
 
 ### Dependencies
