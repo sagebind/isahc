@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.3](https://github.com/sagebind/isahc/compare/1.8.2...1.8.3) - 2026-07-04
+
 ## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
 
 ### Dependencies
