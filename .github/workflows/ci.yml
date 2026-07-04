@@ -122,6 +122,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
           directory: target/nextest/ci
+          flags: ${{ matrix.target }},${{ matrix.features }}
           fail_ci_if_error: false
 
   coverage:
