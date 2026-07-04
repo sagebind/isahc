@@ -115,6 +115,34 @@ jobs:
       - name: Run example program
         run: cargo run --release --example simple --no-default-features --features ${{ matrix.features }}
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          directory: target/nextest/ci
+          flags: ${{ matrix.target }},${{ matrix.features }}
+          fail_ci_if_error: false
+
+  coverage:
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --verbose --features cookies,psl,tls-insecure,trust-webpki-roots,unstable-interceptors --workspace --timeout 120 --out xml
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
   docs-rs:
     runs-on: ubuntu-latest
     env:
