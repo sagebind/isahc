@@ -5,7 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+<<<<<<< Updated upstream
 ## [Unreleased]
+=======
+## [2.0.1](https://github.com/sagebind/isahc/compare/2.0.0...2.0.1) - 2026-07-05
+
+## [2.0.0](https://github.com/sagebind/isahc/compare/1.8.1...2.0.0) - 2026-05-25
+
+### Breaking Changes
+
+This release includes a handful of breaking changes, primarily around TLS backends and the TLS API. For more detail on these changes and how to adapt your code when upgrading from 1.x, please see the [migration guide](https://github.com/sagebind/isahc/wiki/Migration-guide#20).
+
+- Isahc now supports choosing between multiple TLS backends, and crate features have been changed to reflect this. Support for [rustls](https://github.com/rustls/rustls) as a TLS backend has been added, and the default TLS backend has been changed to be rustls. ([#491](https://github.com/sagebind/isahc/pull/491))
+- Remove and replace all SSL-related options on `Configurable` with a new `tls` module consolidated into `tls::TlsConfig`. The names of all individual options have been renamed, and include several small breaking changes. ([#491](https://github.com/sagebind/isahc/pull/491))
+    - `config::CaCertificate` renamed to `tls::TrustStore`, and expanded with new methods for selecting entire providers of CA certificates, beyond just a single PEM bundle.
+    - `config::ClientCertificate` has been renamed to `tls::Identity` with additional options for loading certificates and keys from other formats.
+    - `config::PrivateKey` has been moved to `tls::PrivateKey`.
+    - `config::SslOption` has been removed and merged into regular builder methods for `tls::TlsConfig`.
+- Redesign `NetworkInterface` into multiple types in a new `net::interface` module, which has a more natural API and also supports combining multiple criteria for selecting an interface to bind to. ([#494](https://github.com/sagebind/isahc/pull/494))
+- Several network-related types have been moved from the `config` module into the `net` module. ([#518](https://github.com/sagebind/isahc/pull/518))
+    - `config::Dialer` and `config::DialerParseError` moved into `net`.
+    - `config::IpVersion` moved to `net::IpVersion`.
+    - `config::DnCache` and `config::ResolveMap` moved into `net::dns`.
+- Support for [log](https://crates.io/crates/log) is now an optional feature, which is enabled by default. ([e07e64bd](https://github.com/sagebind/isahc/commit/e07e64bda68ce7cdf8408d53bdefba85b91bd4bf))
+
+### Added
+
+- TLS validation can now be augmented by validating a server's certificate is issued by a specific issuer chain using `tls::Issuer`. Not all backends support this option. ([#491](https://github.com/sagebind/isahc/pull/491))
+- Added optional support for using [webpki-root-certs](https://crates.io/crates/webpki-root-certs) as a trust store for root certificates behind a `trust-webpki-roots` crate feature, which can be used with any TLS backend. This can be used automatically by default combined with [rustls](https://github.com/rustls/rustls) by enabling the `rustls-tls-webpki-roots` crate feature. ([#492](https://github.com/sagebind/isahc/pull/492))
+
+### Changes
+
+- Add some sanity checks that are performed at runtime when Isahc first initializes to make sure the linked version of libcurl is of a compatible version and seems to be configured to work properly. ([#510](https://github.com/sagebind/isahc/pull/510))
+- Internal blob handling has been revamped in order to reduce or even eliminate unnecessary copying of in-memory certificates and keys in TLS configuration. This may result in a small performance improvement and reduction in memory usage when using these options. ([#516](https://github.com/sagebind/isahc/pull/516))
+
+### Maintenance
+
+- Revamp and improve GitHub Actions workflows to test Isahc more comprehensively with more platforms, CPU architectures, and feature combinations. ([#499](https://github.com/sagebind/isahc/pull/499)) ([#500](https://github.com/sagebind/isahc/pull/500)) ([#504](https://github.com/sagebind/isahc/pull/504))
+
+### Dependencies
+
+- Bump http from 0.2.12 to 1.4.0 ([#472](https://github.com/sagebind/isahc/pull/472))
+- Bump codecov/codecov-action from 5 to 6 ([#474](https://github.com/sagebind/isahc/pull/474))
+>>>>>>> Stashed changes
 
 ## [1.8.3](https://github.com/sagebind/isahc/compare/1.8.2...1.8.3) - 2026-07-04
 
