@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.0.1](https://github.com/sagebind/isahc/compare/2.0.0...2.0.1) - 2026-07-04
+
+### Maintenance
+
+- Use Nextest in CI with retries ([#537](https://github.com/sagebind/isahc/pull/537))
+- Upload test results to Codecov ([#540](https://github.com/sagebind/isahc/pull/540))
+
+### Dependencies
+
+- Bump minimum curl-sys version from 0.4.81 to 0.4.90 ([#539](https://github.com/sagebind/isahc/pull/539))
+    - This pulls in a bundled libcurl version 8.21.0, which addresses <https://github.com/curl/curl/issues/21558> present in 8.20.0. This addresses issue [#501](https://github.com/sagebind/isahc/issues/501).
+- Bump log from 0.4.29 to 0.4.30 in ([#522](https://github.com/sagebind/isahc/pull/522))
+- Bump rustls-pki-types from 1.14.0 to 1.14.1 in ([#523](https://github.com/sagebind/isahc/pull/523))
+- Bump http from 1.4.0 to 1.4.1 in ([#524](https://github.com/sagebind/isahc/pull/524))
+- Bump psl from 2.1.210 to 2.1.211 ([#526](https://github.com/sagebind/isahc/pull/526))
+- Bump psl from 2.1.211 to 2.1.213 ([#535](https://github.com/sagebind/isahc/pull/535))
+- Bump actions/checkout from 6 to 7 ([#533](https://github.com/sagebind/isahc/pull/533))
+- Bump log from 0.4.30 to 0.4.32 ([#529](https://github.com/sagebind/isahc/pull/529))
+- Bump http from 1.4.1 to 1.4.2 ([#530](https://github.com/sagebind/isahc/pull/530))
+- Bump regex from 1.12.3 to 1.12.4 ([#531](https://github.com/sagebind/isahc/pull/531))
+- Bump webpki-root-certs from 1.0.7 to 1.0.8 ([#536](https://github.com/sagebind/isahc/pull/536))
+- Bump codecov/codecov-action from 6 to 7 ([#525](https://github.com/sagebind/isahc/pull/525))
+- Bump actions/cache from 5 to 6 ([#532](https://github.com/sagebind/isahc/pull/532))
+
 ## [2.0.0](https://github.com/sagebind/isahc/compare/1.8.1...2.0.0) - 2026-05-25
 
 ### Breaking Changes
