@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [2.0.0](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v2.0.0) - 2026-05-25
+## [2.0.0](https://github.com/sagebind/isahc/compare/1.8.1...2.0.0) - 2026-05-25
 
 ### Breaking Changes
 
@@ -45,13 +45,20 @@ This release includes a handful of breaking changes, primarily around TLS backen
 - Bump http from 0.2.12 to 1.4.0 ([#472](https://github.com/sagebind/isahc/pull/472))
 - Bump codecov/codecov-action from 5 to 6 ([#474](https://github.com/sagebind/isahc/pull/474))
 
-## [1.8.2](https://github.com/sagebind/isahc/compare/isahc-v1.8.1...isahc-v1.8.2) - 2026-05-11
+## [1.8.3](https://github.com/sagebind/isahc/compare/1.8.2...1.8.3) - 2026-07-04
+
+### Dependencies
+
+- Remove the restriction on curl-sys dependency versions from the prior release, now that the latest version of curl-sys fixes the DNS hanging issue. Running `cargo update` should be enough to pull in the latest version of Isahc 1.x and of curl-sys.
+- The runtime logic of checking for the presence of libcurl version 8.20.0 affected by <https://github.com/curl/curl/issues/21558> has been backported from [#510](https://github.com/sagebind/isahc/pull/510) since we no longer prevent that version from being pulled in using dependency ranges. ([#541](https://github.com/sagebind/isahc/pull/541)).
+
+## [1.8.2](https://github.com/sagebind/isahc/compare/1.8.1...1.8.2) - 2026-05-11
 
 ### Dependencies
 
 - Locked curl-sys to at most 0.4.87 due to a regression in the latest version that causes DNS to hang indefinitely on Windows. See [#501](https://github.com/sagebind/isahc/issues/501) for more info. ([#507](https://github.com/sagebind/isahc/pull/507))
 
-## [1.8.1](https://github.com/sagebind/isahc/compare/isahc-v1.8.0...isahc-v1.8.1) - 2026-04-11
+## [1.8.1](https://github.com/sagebind/isahc/compare/1.8.0...1.8.1) - 2026-04-11
 
 ### Fixed
 
@@ -913,8 +920,8 @@ This is the first alpha release for version 0.5! There are a lot of things in th
 
 - Initial release.
 
-[Unreleased]: https://github.com/sagebind/isahc/compare/isahc-v1.8.0...HEAD
-[1.8.0]: https://github.com/sagebind/isahc/compare/1.7.2...isahc-v1.8.0
+[Unreleased]: https://github.com/sagebind/isahc/compare/2.0.0...HEAD
+[1.8.0]: https://github.com/sagebind/isahc/compare/1.7.2...1.8.0
 [1.7.2]: https://github.com/sagebind/isahc/compare/1.7.1...1.7.2
 [1.7.1]: https://github.com/sagebind/isahc/compare/1.7.0...1.7.1
 [1.7.0]: https://github.com/sagebind/isahc/compare/1.6.0...1.7.0
