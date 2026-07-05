@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.4](https://github.com/sagebind/isahc/compare/1.8.3...1.8.4) - 2026-07-05
+
+### Chore
+
+- release v1.8.3 ([#544](https://github.com/sagebind/isahc/pull/544))
+
 ## [1.8.3](https://github.com/sagebind/isahc/compare/1.8.2...1.8.3) - 2026-07-04
 
 ### Dependencies
