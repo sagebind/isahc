@@ -1,5 +1,6 @@
 [workspace]
 pr_labels = ["release"]
+pr_branch_prefix = "release-plz-master-"
 
 [[package]]
 name = "isahc"
