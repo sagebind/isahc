@@ -35,7 +35,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tracing_futures::Instrument;
+use tracing::Instrument;
 
 static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     format!(
