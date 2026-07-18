@@ -17,30 +17,41 @@ use std::{
 /// across requests for the same list. The compromise this makes is that the
 /// list is immutable once built, but this is acceptable for our use case.
 #[derive(Clone)]
-pub(crate) struct ArcList(Arc<Inner>);
-
-struct Inner {
-    raw: *mut curl_slist,
-}
+pub(crate) struct ArcList(Arc<SList>);
 
 impl ArcList {
-    pub(crate) fn singleton(string: impl Into<Vec<u8>>) -> Result<Self, NulError> {
-        Ok(Self::builder().append(string)?.build())
+    /// Create a new list containing only a single item.
+    pub(crate) fn singleton(string: impl AsRef<CStr>) -> Self {
+        Self::builder().append(string).build()
     }
 
+    /// Create a new list builder.
     pub(crate) fn builder() -> Builder {
         Builder::default()
     }
 
+    /// Get the underlying raw pointer of the list.
     pub(crate) fn as_raw_ptr(&self) -> *mut curl_slist {
         self.0.raw
     }
 
+    /// Create an iterator for walking forward through the items in the list.
+    #[allow(unused)]
     pub(crate) fn iter(&self) -> Iter {
         Iter {
-            list: self,
+            _list: self,
             head: self.0.raw,
         }
+    }
+}
+
+impl TryFrom<String> for ArcList {
+    type Error = NulError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let value = CString::new(value)?;
+
+        Ok(Self::singleton(value))
     }
 }
 
@@ -50,49 +61,31 @@ impl fmt::Debug for ArcList {
     }
 }
 
-unsafe impl Send for ArcList {}
-unsafe impl Sync for ArcList {}
-
-impl Drop for Inner {
-    fn drop(&mut self) {
-        unsafe { curl_slist_free_all(self.raw) }
-    }
-}
-
-pub(crate) struct Builder {
-    raw: *mut curl_slist,
-}
-
-impl Default for Builder {
-    fn default() -> Self {
-        Self { raw: null_mut() }
-    }
-}
+/// Builder for an [`ArcList`]. Since the type is immutable a builder is
+/// required to create a list with items.
+#[derive(Default)]
+pub(crate) struct Builder(SList);
 
 impl Builder {
-    pub(crate) fn append(mut self, string: impl Into<Vec<u8>>) -> Result<Self, NulError> {
-        let string = CString::new(string)?;
-        let raw = unsafe { curl_slist_append(self.raw, string.as_ptr()) };
+    /// Append a string to the list. The list holds C strings, so a C string is
+    /// required.
+    pub(crate) fn append(mut self, string: impl AsRef<CStr>) -> Self {
+        let raw = unsafe { curl_slist_append(self.0.raw, string.as_ref().as_ptr()) };
         assert!(!raw.is_null());
-        self.raw = raw;
-        Ok(self)
+        self.0.raw = raw;
+        self
     }
 
-    pub(crate) fn build(mut self) -> ArcList {
-        let raw = self.raw;
-        self.raw = null_mut();
-        ArcList(Arc::new(Inner { raw }))
-    }
-}
-
-impl Drop for Builder {
-    fn drop(&mut self) {
-        unsafe { curl_slist_free_all(self.raw) }
+    /// Build the list. The returned list is immutable, and all strings added to
+    /// this builder are moved into the list.
+    pub(crate) fn build(self) -> ArcList {
+        ArcList(Arc::new(self.0))
     }
 }
 
+/// Iterates over items in a list.
 pub(crate) struct Iter<'a> {
-    list: &'a ArcList,
+    _list: &'a ArcList,
     head: *mut curl_slist,
 }
 
@@ -112,3 +105,32 @@ impl<'a> Iterator for Iter<'a> {
         }
     }
 }
+
+/// Wrapper around an slist pointer that adds a destructor.
+struct SList {
+    raw: *mut curl_slist,
+}
+
+impl SList {
+    /// Create a new empty list. Curl doesn't have a special representation for
+    /// empty lists; null just means an empty list.
+    const fn new() -> Self {
+        Self { raw: null_mut() }
+    }
+}
+
+impl Default for SList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for SList {
+    fn drop(&mut self) {
+        // According to curl docs, passing in a null pointer here does nothing.
+        unsafe { curl_slist_free_all(self.raw) }
+    }
+}
+
+unsafe impl Send for SList {}
+unsafe impl Sync for SList {}

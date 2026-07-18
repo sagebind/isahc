@@ -83,7 +83,7 @@ impl Dialer {
     pub fn ip_socket(addr: impl Into<SocketAddr>) -> Self {
         // Create a string in the format CURLOPT_CONNECT_TO expects.
         Self(Inner::IpSocket(
-            ArcList::singleton(format!("::{}", addr.into())).unwrap(),
+            format!("::{}", addr.into()).try_into().unwrap(),
         ))
     }
 
