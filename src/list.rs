@@ -134,3 +134,62 @@ impl Drop for SList {
 
 unsafe impl Send for SList {}
 unsafe impl Sync for SList {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn singleton_creates_one_item() {
+        let list = ArcList::singleton(CStr::from_bytes_with_nul(b"hello\0").unwrap());
+        let items: Vec<&CStr> = list.iter().collect();
+        assert_eq!(items, vec![CStr::from_bytes_with_nul(b"hello\0").unwrap()]);
+    }
+
+    #[test]
+    fn builder_appends_and_builds() {
+        let list = Builder::default()
+            .append(CString::new("first").expect("valid CString"))
+            .append(CString::new("second").expect("valid CString"))
+            .build();
+
+        let items: Vec<&CStr> = list.iter().collect();
+        assert_eq!(
+            items,
+            vec![
+                CStr::from_bytes_with_nul(b"first\0").unwrap(),
+                CStr::from_bytes_with_nul(b"second\0").unwrap(),
+            ]
+        );
+    }
+
+    #[test]
+    fn try_from_string_creates_singleton() {
+        let s = String::from("world");
+        let list = ArcList::try_from(s).unwrap();
+        let items: Vec<&CStr> = list.iter().collect();
+        assert_eq!(items, vec![CStr::from_bytes_with_nul(b"world\0").unwrap()]);
+    }
+
+    #[test]
+    fn iter_empty_yields_none() {
+        let list = Builder::default().build();
+        let mut iter = list.iter();
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn cloned_list_has_same_items() {
+        let original = Builder::default()
+            .append(CString::new("a").unwrap())
+            .append(CString::new("b").unwrap())
+            .build();
+
+        let cloned = original.clone();
+
+        let orig_items: Vec<&CStr> = original.iter().collect();
+        let clone_items: Vec<&CStr> = cloned.iter().collect();
+
+        assert_eq!(orig_items, clone_items);
+    }
+}
