@@ -1,8 +1,12 @@
 //! Configuration for customizing how connections are established and sockets
 //! are opened.
 
-use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
-use curl::easy::List;
+use crate::{
+    config::setopt::{EasyHandle, SetOpt, SetOptError},
+    handler::EasyExt,
+    list::ArcList,
+};
+use curl_sys::CURLOPT_CONNECT_TO;
 use http::Uri;
 use std::{convert::TryFrom, fmt, net::SocketAddr, str::FromStr};
 
@@ -44,11 +48,11 @@ impl std::error::Error for DialerParseError {}
 #[derive(Clone, Debug)]
 pub struct Dialer(Inner);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 enum Inner {
     Default,
 
-    IpSocket(String),
+    IpSocket(ArcList),
 
     #[cfg(unix)]
     UnixSocket(std::path::PathBuf),
@@ -78,7 +82,9 @@ impl Dialer {
     /// ```
     pub fn ip_socket(addr: impl Into<SocketAddr>) -> Self {
         // Create a string in the format CURLOPT_CONNECT_TO expects.
-        Self(Inner::IpSocket(format!("::{}", addr.into())))
+        Self(Inner::IpSocket(
+            ArcList::singleton(format!("::{}", addr.into())).unwrap(),
+        ))
     }
 
     /// Connect to a Unix socket described by a file.
@@ -171,13 +177,15 @@ impl TryFrom<Uri> for Dialer {
 
 impl SetOpt for Dialer {
     fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
-        let mut connect_to = List::new();
-
-        if let Inner::IpSocket(addr) = &self.0 {
-            connect_to.append(addr)?;
+        if let Inner::IpSocket(list) = &self.0 {
+            unsafe {
+                easy.setopt_arc_list(CURLOPT_CONNECT_TO, Some(list))?;
+            }
+        } else {
+            unsafe {
+                easy.setopt_arc_list(CURLOPT_CONNECT_TO, None)?;
+            }
         }
-
-        easy.connect_to(connect_to)?;
 
         #[cfg(unix)]
         easy.unix_socket_path(match &self.0 {
@@ -197,7 +205,9 @@ mod tests {
     fn parse_tcp_socket_and_port_uri() {
         let dialer = "tcp:127.0.0.1:1200".parse::<Dialer>().unwrap();
 
-        assert_eq!(dialer.0, Inner::IpSocket("::127.0.0.1:1200".into()));
+        assert!(
+            matches!(dialer.0, Inner::IpSocket(list) if list.iter().next().map(|s| s.to_bytes()) == Some(b"::127.0.0.1:1200"))
+        );
     }
 
     #[test]
@@ -210,17 +220,27 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn parse_unix_socket_uri() {
+        use std::path::Path;
+
         let dialer = "unix:/path/to/my.sock".parse::<Dialer>().unwrap();
 
-        assert_eq!(dialer.0, Inner::UnixSocket("/path/to/my.sock".into()));
+        assert!(matches!(
+            dialer.0,
+            Inner::UnixSocket(path) if path == Path::new("/path/to/my.sock")
+        ));
     }
 
     #[test]
     #[cfg(unix)]
     fn from_unix_socket_uri() {
+        use std::path::Path;
+
         let uri = "unix://path/to/my.sock".parse::<http::Uri>().unwrap();
         let dialer = Dialer::try_from(uri).unwrap();
 
-        assert_eq!(dialer.0, Inner::UnixSocket("/path/to/my.sock".into()));
+        assert!(matches!(
+            dialer.0,
+            Inner::UnixSocket(path) if path == Path::new("/path/to/my.sock")
+        ));
     }
 }

@@ -2,7 +2,7 @@ use super::super::PathOrBlob;
 use crate::{
     blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
-    handler::BlobOptions,
+    handler::EasyExt,
 };
 use curl_sys::{CURLOPT_ISSUERCERT_BLOB, CURLOPT_PROXY_ISSUERCERT_BLOB};
 use std::path::PathBuf;

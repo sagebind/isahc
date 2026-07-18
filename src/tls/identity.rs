@@ -2,7 +2,7 @@ use super::PathOrBlob;
 use crate::{
     blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
-    handler::BlobOptions,
+    handler::EasyExt,
 };
 use curl_sys::{
     CURLOPT_PROXY_SSLCERT_BLOB, CURLOPT_PROXY_SSLKEY_BLOB, CURLOPT_SSLCERT_BLOB,
