@@ -35,7 +35,7 @@
 <a href=#35 id=35 data-nosnippet>35</a>    task::{Context, Poll},
 <a href=#36 id=36 data-nosnippet>36</a>    time::Duration,
 <a href=#37 id=37 data-nosnippet>37</a>};
-<a href=#38 id=38 data-nosnippet>38</a><span class="kw">use </span>tracing_futures::Instrument;
+<a href=#38 id=38 data-nosnippet>38</a><span class="kw">use </span>tracing::Instrument;
 <a href=#39 id=39 data-nosnippet>39</a>
 <a href=#40 id=40 data-nosnippet>40</a><span class="kw">static </span>USER_AGENT: LazyLock&lt;String&gt; = LazyLock::new(|| {
 <a href=#41 id=41 data-nosnippet>41</a>    <span class="macro">format!</span>(
