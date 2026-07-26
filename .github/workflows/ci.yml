@@ -86,11 +86,11 @@ jobs:
       - uses: jdx/mise-action@v4
 
       - name: Install musl toolchain
-        run: sudo apt install -y musl-tools
+        run: sudo apt update && sudo apt install -y musl-tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
 
       - name: Install SPNEGO dependencies
-        run: sudo apt install -y libkrb5-dev
+        run: sudo apt update && sudo apt install -y libkrb5-dev
         if: contains(matrix.runner, 'ubuntu') && contains(matrix.features, 'spnego')
 
       - name: Install target toolchain
