@@ -26,8 +26,8 @@ impl ArcList {
     }
 
     /// Create a new list builder.
-    pub(crate) fn builder() -> Builder {
-        Builder::default()
+    pub(crate) const fn builder() -> Builder {
+        Builder::new()
     }
 
     /// Get the underlying raw pointer of the list.
@@ -38,10 +38,7 @@ impl ArcList {
     /// Create an iterator for walking forward through the items in the list.
     #[allow(unused)]
     pub(crate) fn iter(&self) -> Iter {
-        Iter {
-            _list: self,
-            head: self.0.raw,
-        }
+        self.0.iter()
     }
 }
 
@@ -67,6 +64,10 @@ impl fmt::Debug for ArcList {
 pub(crate) struct Builder(SList);
 
 impl Builder {
+    pub(crate) const fn new() -> Self {
+        Self(SList::new())
+    }
+
     /// Append a string to the list. The list holds C strings, so a C string is
     /// required.
     pub(crate) fn append(mut self, string: impl AsRef<CStr>) -> Self {
@@ -83,9 +84,27 @@ impl Builder {
     }
 }
 
+impl Clone for Builder {
+    fn clone(&self) -> Self {
+        let mut builder = Self::new();
+
+        for s in self.0.iter() {
+            builder = builder.append(s);
+        }
+
+        builder
+    }
+}
+
+impl fmt::Debug for Builder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ArcList::Builder").finish()
+    }
+}
+
 /// Iterates over items in a list.
 pub(crate) struct Iter<'a> {
-    _list: &'a ArcList,
+    _list: &'a SList,
     head: *mut curl_slist,
 }
 
@@ -116,6 +135,13 @@ impl SList {
     /// empty lists; null just means an empty list.
     const fn new() -> Self {
         Self { raw: null_mut() }
+    }
+
+    fn iter(&self) -> Iter {
+        Iter {
+            _list: self,
+            head: self.raw,
+        }
     }
 }
 
