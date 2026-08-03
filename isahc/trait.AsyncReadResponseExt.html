@@ -6,7 +6,7 @@
 <span class="item-spacer"></span>    fn <a href="#tymethod.bytes" class="fn">bytes</a>(&amp;mut self) -&gt; BytesFuture&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut R</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.text" class="fn">text</a>(&amp;mut self) -&gt; TextFuture&lt;'_, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut R</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.json" class="fn">json</a>&lt;T&gt;(&amp;mut self) -&gt; JsonFuture&lt;'_, R, T&gt;
-       <span class="where">where T: <a class="trait" href="https://docs.rs/serde_core/1.0.228/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a></span>;
+       <span class="where">where T: <a class="trait" href="https://docs.rs/serde_core/1.0.229/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a></span>;
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Provides extension methods for consuming asynchronous HTTP response streams.</p>
 </div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.consume" class="method"><a class="src rightside" href="../src/isahc/response.rs.html#355">Source</a><h4 class="code-header">fn <a href="#tymethod.consume" class="fn">consume</a>(&amp;mut self) -&gt; ConsumeFuture&lt;'_, R&gt;</h4></section></summary><div class="docblock"><p>Read any remaining bytes from the response body stream and discard them
 until the end of the stream is reached. It is usually a good idea to
@@ -71,7 +71,7 @@ is by default.</p>
 <span class="kw">let </span>text = isahc::get_async(<span class="string">"https://example.org"</span>).<span class="kw">await</span><span class="question-mark">?
     </span>.text().<span class="kw">await</span><span class="question-mark">?</span>;
 <span class="macro">println!</span>(<span class="string">"{}"</span>, text);</code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="tymethod.json" class="method"><a class="src rightside" href="../src/isahc/response.rs.html#447-449">Source</a><h4 class="code-header">fn <a href="#tymethod.json" class="fn">json</a>&lt;T&gt;(&amp;mut self) -&gt; JsonFuture&lt;'_, R, T&gt;<div class="where">where
-    T: <a class="trait" href="https://docs.rs/serde_core/1.0.228/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></summary><div class="docblock"><p>Deserialize the response body as JSON into a given type.</p>
+    T: <a class="trait" href="https://docs.rs/serde_core/1.0.229/serde_core/de/trait.DeserializeOwned.html" title="trait serde_core::de::DeserializeOwned">DeserializeOwned</a>,</div></h4></section></summary><div class="docblock"><p>Deserialize the response body as JSON into a given type.</p>
 <h5 id="caveats"><a class="doc-anchor" href="#caveats">§</a>Caveats</h5>
 <p>Unlike its <a href="trait.ReadResponseExt.html#tymethod.json" title="method isahc::ReadResponseExt::json">synchronous equivalent</a>, this method
 reads the entire response body into memory before attempting
