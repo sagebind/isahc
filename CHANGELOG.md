@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.0.2](https://github.com/sagebind/isahc/compare/2.0.1...2.0.2) - 2026-09-02
+
+### Build
+
+- *(deps)* bump psl from 2.1.224 to 2.1.225 ([#583](https://github.com/sagebind/isahc/pull/583))
+- *(deps)* bump psl from 2.1.223 to 2.1.224 ([#582](https://github.com/sagebind/isahc/pull/582))
+- *(deps)* bump clap from 4.6.5 to 4.6.6 ([#581](https://github.com/sagebind/isahc/pull/581))
+- *(deps)* bump clap from 4.6.4 to 4.6.5 ([#580](https://github.com/sagebind/isahc/pull/580))
+
+### Chore
+
+- *(deps)* Remove redundant dependency ([#559](https://github.com/sagebind/isahc/pull/559))
+
 ## [2.0.1](https://github.com/sagebind/isahc/compare/2.0.0...2.0.1) - 2026-07-04
 
 ### Maintenance
