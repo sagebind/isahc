@@ -15,6 +15,8 @@ jobs:
       contents: write
       id-token: write
       pull-requests: read
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - &checkout
         name: Checkout repository
@@ -44,6 +46,8 @@ jobs:
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
+    env:
+      RUSTUP_TOOLCHAIN: stable
     steps:
       - *checkout
       - *install-rust
