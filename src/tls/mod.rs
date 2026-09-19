@@ -89,7 +89,7 @@ mod trust;
 
 pub use self::{
     identity::{Identity, PrivateKey},
-    trust::{TrustStore, issuer::Issuer},
+    trust::{TrustStore, TrustStoreBuilder, issuer::Issuer},
 };
 
 #[cfg(not(any(feature = "native-tls", feature = "rustls-tls")))]
