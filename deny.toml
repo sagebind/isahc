@@ -3,6 +3,11 @@ exclude-dev = true
 
 [advisories]
 unmaintained = "workspace"
+ignore = [
+    # Unfortunately we have no control over rustls version, it is decided by
+    # rustls-ffi.
+    "RUSTSEC-2026-0285",
+]
 
 [licenses]
 private.ignore = true
