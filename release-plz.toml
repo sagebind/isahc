@@ -3,6 +3,7 @@ pr_labels = ["release"]
 pr_branch_prefix = "release-plz-master-"
 git_release_name = "{{ version }}"
 git_tag_name = "{{ version }}"
+semver_check = false
 
 [[changelog.commit_parsers]]
 footer = "Co-authored-by: dependabot"
