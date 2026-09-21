@@ -10,7 +10,7 @@ use crate::{
     blob::Blob,
     config::setopt::{EasyHandle, SetOpt, SetOptError, SetOptProxy},
     error::{Error, ErrorKind},
-    handler::BlobOptions,
+    handler::EasyExt,
     info::curl_version,
 };
 use curl::easy::SslOpt;
