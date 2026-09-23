@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.0.2](https://github.com/sagebind/isahc/compare/2.0.1...2.0.2) - 2026-09-23
+
+### Build
+
+- *(deps)* bump psl from 2.1.231 to 2.1.232 ([#592](https://github.com/sagebind/isahc/pull/592))
+- *(deps)* bump psl from 2.1.228 to 2.1.231 ([#591](https://github.com/sagebind/isahc/pull/591))
+- *(deps)* bump crossbeam-utils from 0.8.22 to 0.8.23 ([#590](https://github.com/sagebind/isahc/pull/590))
+- *(deps)* bump psl from 2.1.227 to 2.1.228 ([#588](https://github.com/sagebind/isahc/pull/588))
+- *(deps)* bump psl from 2.1.225 to 2.1.227 ([#587](https://github.com/sagebind/isahc/pull/587))
+- *(deps)* bump flate2 from 1.1.9 to 1.1.10 ([#586](https://github.com/sagebind/isahc/pull/586))
+- *(deps)* bump log from 0.4.33 to 0.4.34 ([#585](https://github.com/sagebind/isahc/pull/585))
+- *(deps)* bump psl from 2.1.224 to 2.1.225 ([#583](https://github.com/sagebind/isahc/pull/583))
+- *(deps)* bump psl from 2.1.223 to 2.1.224 ([#582](https://github.com/sagebind/isahc/pull/582))
+- *(deps)* bump clap from 4.6.5 to 4.6.6 ([#581](https://github.com/sagebind/isahc/pull/581))
+- *(deps)* bump clap from 4.6.4 to 4.6.5 ([#580](https://github.com/sagebind/isahc/pull/580))
+
+### Chore
+
+- *(deps)* Remove redundant dependency ([#559](https://github.com/sagebind/isahc/pull/559))
+
+### Fix
+
+- *(tls)* fix trust store builder hidden ([#589](https://github.com/sagebind/isahc/pull/589))
+
 ## [2.0.1](https://github.com/sagebind/isahc/compare/2.0.0...2.0.1) - 2026-07-04
 
 ### Maintenance
