@@ -1,5 +1,5 @@
 use super::setopt::{EasyHandle, SetOpt, SetOptError};
-use crate::net::dns::{DnsCache, ResolveMap};
+use crate::net::dns::{CompiledResolveMap, DnsCache};
 use std::time::Duration;
 
 #[derive(Debug, Default)]
@@ -7,7 +7,7 @@ pub(crate) struct ClientConfig {
     pub(crate) connection_cache_ttl: Option<Duration>,
     pub(crate) close_connections: bool,
     pub(crate) dns_cache: Option<DnsCache>,
-    pub(crate) dns_resolve: Option<ResolveMap>,
+    pub(crate) dns_resolve: Option<CompiledResolveMap>,
 }
 
 impl SetOpt for ClientConfig {
