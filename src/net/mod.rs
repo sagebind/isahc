@@ -5,6 +5,7 @@ use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
 mod dial;
 pub mod dns;
 pub mod interface;
+pub mod rewrite;
 
 pub use dial::{Dialer, DialerParseError};
 
