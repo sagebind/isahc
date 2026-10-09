@@ -202,6 +202,10 @@ impl Selector {
             Ok(0) => Ok(false),
             Ok(_) => Ok(true),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => Ok(false),
+            // The poll(2) backend of `polling` can report a race in its own
+            // notification as `WouldBlock`. It only means that no events are
+            // ready, so treat it like a timeout instead of failing the agent.
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => Ok(false),
             Err(e) => Err(e),
         }
     }
