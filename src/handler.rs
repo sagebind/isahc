@@ -2,6 +2,7 @@ use crate::{
     blob::Blob,
     body::AsyncBody,
     error::{Error, ErrorKind},
+    list::ArcList,
     metrics::Metrics,
     parsing::{parse_header, parse_status_line},
     response::{LocalAddr, RemoteAddr},
@@ -23,7 +24,7 @@ use std::{
     net::SocketAddr,
     os::raw::{c_char, c_long},
     pin::Pin,
-    ptr,
+    ptr::{self, null_mut},
     sync::{Arc, OnceLock},
     task::{Context, Poll, Waker},
 };
@@ -108,6 +109,10 @@ pub(crate) struct RequestHandler {
     /// immediately after the easy handle.
     blobs: HashMap<CURLoption, Blob>,
 
+    /// Similar to blobs, keep track of lists that are being referened by curl
+    /// options.
+    lists: HashMap<CURLoption, ArcList>,
+
     /// Raw pointer to the associated curl easy handle. The pointer is not owned
     /// by this struct, but the parent struct to this one, so we know it will be
     /// valid at least for the lifetime of this struct (assuming all other
@@ -156,6 +161,7 @@ impl RequestHandler {
             response_trailer_writer: TrailerWriter::new(),
             metrics: None,
             blobs: Default::default(),
+            lists: Default::default(),
             handle: ptr::null_mut(),
             disable_connection_reuse_log: false,
         };
@@ -627,16 +633,16 @@ impl curl::easy::Handler for RequestHandler {
     }
 }
 
-/// Adds no-copy blob support to easy handles using our handler.
-///
-/// curl-rust does not provide a safe wrapper around blobs because its not easy
-/// to solve this problem in a generalized way that works for everyone. But
-/// since we have full control over the behavior of our easy handlers, we can
-/// provide our own wrapper that works for our use cases.
-pub(crate) trait BlobOptions {
+/// Adds custom easy methods when using our specific handler implementation.
+pub(crate) trait EasyExt {
     /// Set a curl option to a blob without copying the data. A clone of the
     /// given Arc will be made to extend the lifetime of the data until the easy
     /// handler is dropped, or the option is replaced with a different blob.
+    ///
+    /// curl-rust does not provide a safe wrapper around blobs because its not
+    /// easy to solve this problem in a generalized way that works for everyone.
+    /// But since we have full control over the behavior of our easy handlers,
+    /// we can provide our own wrapper that works for our use cases.
     ///
     /// # Safety
     ///
@@ -647,9 +653,15 @@ pub(crate) trait BlobOptions {
         option: CURLoption,
         data: &Blob,
     ) -> Result<(), curl::Error>;
+
+    unsafe fn setopt_arc_list(
+        &mut self,
+        option: CURLoption,
+        list: Option<&ArcList>,
+    ) -> Result<(), curl::Error>;
 }
 
-impl BlobOptions for curl::easy::Easy2<RequestHandler> {
+impl EasyExt for curl::easy::Easy2<RequestHandler> {
     unsafe fn setopt_blob_nocopy(
         &mut self,
         option: CURLoption,
@@ -659,6 +671,32 @@ impl BlobOptions for curl::easy::Easy2<RequestHandler> {
 
         if code == CURLE_OK {
             self.get_mut().blobs.insert(option, blob.clone());
+            Ok(())
+        } else {
+            let mut err = curl::Error::new(code);
+
+            if let Some(msg) = self.take_error_buf() {
+                err.set_extra(msg);
+            }
+
+            Err(err)
+        }
+    }
+
+    unsafe fn setopt_arc_list(
+        &mut self,
+        option: CURLoption,
+        list: Option<&ArcList>,
+    ) -> Result<(), curl::Error> {
+        let ptr = list.map(|list| list.as_raw_ptr()).unwrap_or(null_mut());
+        let code = unsafe { curl_sys::curl_easy_setopt(self.raw(), option, ptr) };
+
+        if code == CURLE_OK {
+            if let Some(list) = list {
+                self.get_mut().lists.insert(option, list.clone());
+            } else {
+                self.get_mut().lists.remove(&option);
+            }
             Ok(())
         } else {
             let mut err = curl::Error::new(code);
