@@ -7,6 +7,9 @@ ignore = [
     # Unfortunately we have no control over rustls version, it is decided by
     # rustls-ffi.
     "RUSTSEC-2026-0285",
+    "RUSTSEC-2026-0346",
+    "RUSTSEC-2026-0348",
+    "RUSTSEC-2026-0349",
 ]
 
 [licenses]
