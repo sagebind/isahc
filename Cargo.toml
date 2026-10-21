@@ -109,7 +109,7 @@ version = "1"
 optional = true
 
 [dependencies.webpki-root-certs]
-version = "1"
+version = "1.0.10"
 optional = true
 
 [dev-dependencies]
