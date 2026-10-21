@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.0.2](https://github.com/sagebind/isahc/compare/2.0.1...2.0.2) - 2026-10-21
+
+### Security
+
+- The minimum required version of `webpki-root-certs` has been raised to [version 1.0.10](https://github.com/rustls/webpki-roots/releases/tag/v%2F1.0.10) which removes trust from certificates issued by the compromised [eMudhra CA](https://emudhra.we-have-a-problem.com/). If you are using Isahc with webpki, it is strongly advised that you update Isahc to this version promptly.
+    - This only affects users that are opting in to using the webpki crates for built-in trusted certificates ([`TrustStore::webpki_roots`](https://docs.rs/isahc/latest/isahc/tls/struct.TrustStore.html#method.webpki_roots), or enabling the `rustls-tls-webpki-roots` crate feature). Isahc's default behavior is to use the trust store provided by the operating system ([`TrustStore::native`](https://docs.rs/isahc/latest/isahc/tls/struct.TrustStore.html#method.native)), in which case please update your operating system packages to address this vulnerability.
+    - You can also just update your transitive dependencies on `webpki-root-certs` using `cargo update -p webpki-root-certs` in order to receive the patch, without updating Isahc.
+
+### Build
+
+- _(deps)_ bump psl from 2.1.239 to 2.1.240 ([#603](https://github.com/sagebind/isahc/pull/603))
+- _(deps)_ bump psl from 2.1.238 to 2.1.239 ([#602](https://github.com/sagebind/isahc/pull/602))
+- _(deps)_ bump psl from 2.1.237 to 2.1.238 ([#601](https://github.com/sagebind/isahc/pull/601))
+- _(deps)_ bump psl from 2.1.236 to 2.1.237 ([#598](https://github.com/sagebind/isahc/pull/598))
+- _(deps)_ bump psl from 2.1.235 to 2.1.236 ([#596](https://github.com/sagebind/isahc/pull/596))
+- _(deps)_ bump psl from 2.1.233 to 2.1.235 ([#595](https://github.com/sagebind/isahc/pull/595))
+- _(deps)_ bump psl from 2.1.232 to 2.1.233 ([#594](https://github.com/sagebind/isahc/pull/594))
+- _(deps)_ bump clap from 4.6.6 to 4.6.7 ([#593](https://github.com/sagebind/isahc/pull/593))
+- _(deps)_ bump psl from 2.1.231 to 2.1.232 ([#592](https://github.com/sagebind/isahc/pull/592))
+- _(deps)_ bump psl from 2.1.228 to 2.1.231 ([#591](https://github.com/sagebind/isahc/pull/591))
+- _(deps)_ bump crossbeam-utils from 0.8.22 to 0.8.23 ([#590](https://github.com/sagebind/isahc/pull/590))
+- _(deps)_ bump psl from 2.1.227 to 2.1.228 ([#588](https://github.com/sagebind/isahc/pull/588))
+- _(deps)_ bump psl from 2.1.225 to 2.1.227 ([#587](https://github.com/sagebind/isahc/pull/587))
+- _(deps)_ bump flate2 from 1.1.9 to 1.1.10 ([#586](https://github.com/sagebind/isahc/pull/586))
+- _(deps)_ bump log from 0.4.33 to 0.4.34 ([#585](https://github.com/sagebind/isahc/pull/585))
+- _(deps)_ bump psl from 2.1.224 to 2.1.225 ([#583](https://github.com/sagebind/isahc/pull/583))
+- _(deps)_ bump psl from 2.1.223 to 2.1.224 ([#582](https://github.com/sagebind/isahc/pull/582))
+- _(deps)_ bump clap from 4.6.5 to 4.6.6 ([#581](https://github.com/sagebind/isahc/pull/581))
+- _(deps)_ bump clap from 4.6.4 to 4.6.5 ([#580](https://github.com/sagebind/isahc/pull/580))
+
+### Chore
+
+- _(deps)_ Remove redundant dependency ([#559](https://github.com/sagebind/isahc/pull/559))
+
+### Fix
+
+- _(tls)_ fix trust store builder hidden ([#589](https://github.com/sagebind/isahc/pull/589))
+
 ## [2.0.1](https://github.com/sagebind/isahc/compare/2.0.0...2.0.1) - 2026-07-04
 
 ### Maintenance
