@@ -316,7 +316,7 @@ impl HttpClientBuilder {
         // Similar to the dns_cache option, this operation actually affects all
         // requests in a multi handle so we do not expose it per-request to
         // avoid confusing behavior.
-        self.client_config.dns_resolve = Some(map);
+        self.client_config.dns_resolve = Some(map.build());
         self
     }
 

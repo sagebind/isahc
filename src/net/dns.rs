@@ -1,7 +1,12 @@
 //! Configuration of DNS resolution.
 
-use crate::config::setopt::{EasyHandle, SetOpt, SetOptError};
-use std::{net::IpAddr, time::Duration};
+use crate::{
+    config::setopt::{EasyHandle, SetOpt, SetOptError},
+    handler::EasyExt,
+    list::{ArcList, Builder},
+};
+use curl_sys::CURLOPT_RESOLVE;
+use std::{ffi::CString, net::IpAddr, time::Duration};
 
 /// DNS caching configuration.
 ///
@@ -60,12 +65,12 @@ impl SetOpt for DnsCache {
 /// request and use specific IP addresses instead of using the default name
 /// resolver.
 #[derive(Clone, Debug, Default)]
-pub struct ResolveMap(Vec<String>);
+pub struct ResolveMap(Builder);
 
 impl ResolveMap {
     /// Create a new empty resolve map.
     pub const fn new() -> Self {
-        ResolveMap(Vec::new())
+        ResolveMap(ArcList::builder())
     }
 
     /// Add a DNS mapping for a given host and port pair.
@@ -75,21 +80,25 @@ impl ResolveMap {
         H: AsRef<str>,
         A: Into<IpAddr>,
     {
-        self.0
-            .push(format!("{}:{}:{}", host.as_ref(), port, addr.into()));
+        self.0 = self
+            .0
+            .append(CString::new(format!("{}:{}:{}", host.as_ref(), port, addr.into())).unwrap());
         self
+    }
+
+    pub(crate) fn build(self) -> CompiledResolveMap {
+        CompiledResolveMap(self.0.build())
     }
 }
 
-impl SetOpt for ResolveMap {
+#[derive(Clone, Debug)]
+pub(crate) struct CompiledResolveMap(ArcList);
+
+impl SetOpt for CompiledResolveMap {
     fn set_opt(&self, easy: &mut EasyHandle) -> Result<(), SetOptError> {
-        let mut list = curl::easy::List::new();
-
-        for entry in self.0.iter() {
-            list.append(entry)?;
+        unsafe {
+            easy.setopt_arc_list(CURLOPT_RESOLVE, Some(&self.0))?;
         }
-
-        easy.resolve(list)?;
 
         Ok(())
     }
